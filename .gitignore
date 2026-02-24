@@ -1,0 +1,62 @@
+# Dependencies and AdonisJS build
+node_modules
+build
+tmp
+
+# Secrets
+.env
+.env.local
+.env.prod
+.env.production.local
+.env.development.local
+.env.production
+
+# Frontend assets compiled code
+public/assets
+
+# Build tools specific
+npm-debug.log
+yarn-error.log
+
+# Editors specific
+.fleet
+.idea
+.vscode
+
+# Platform specific
+.DS_Store
+
+# auto type declarations
+auto-imports.d.ts
+components.d.ts
+
+# ai generated files
+.opencode/
+openspec/
+.roo/
+.junie/
+.ai/
+.sisyphus/
+AGENTS.md
+
+docs/
+# docker files
+docker-compose.dev.yml
+
+# web/ directory (Nuxt.js)
+.output
+.data
+.nuxt
+.nitro
+dist
+!.env.example
+
+# Worktrees
+.worktrees/
+
+# Logs
+logs/
+*.log
+
+# deploy
+deploy.sh

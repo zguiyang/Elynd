@@ -1,0 +1,28 @@
+{
+  "name": "linky",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "GPL-3.0-or-later OR Commercial",
+  "packageManager": "pnpm@10.26.1",
+  "scripts": {
+    "dev:backend": "pnpm --filter backend dev",
+    "dev:web": "pnpm --filter web dev",
+    "backend:jobs": "pnpm --filter backend run:jobs",
+    "build": "pnpm --filter backend build && pnpm --filter web build",
+    "start": "pnpm --filter backend start",
+    "preview": "pnpm --filter web preview",
+    "lint": "pnpm --filter backend lint & pnpm --filter web lint",
+    "format": "pnpm --filter backend format",
+    "typecheck": "pnpm --filter backend typecheck & pnpm --filter web typecheck",
+    "test": "pnpm --filter backend test"
+  },
+  "devDependencies": {
+    "@linky/backend": "workspace:*",
+    "@linky/web": "workspace:*",
+    "@types/node": "^22.19.7"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

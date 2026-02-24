@@ -1,0 +1,39 @@
+{
+  "name": "@linky/web",
+  "private": true,
+  "type": "module",
+  "license": "GPL-3.0-or-later OR Commercial",
+  "scripts": {
+    "build": "nuxt build --dotenv .env.production --envName=production",
+    "build:local": "nuxt build --dotenv .env.local --envName=local",
+    "dev": "nuxt dev --dotenv .env.local --envName=local",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "lint": "eslint .",
+    "typecheck": "nuxt typecheck"
+  },
+  "dependencies": {
+    "@adonisjs/transmit-client": "^1.1.0",
+    "@iconify-json/lucide": "^1.2.82",
+    "@iconify-json/simple-icons": "^1.2.63",
+    "@nuxt/icon": "2.2.1",
+    "@nuxt/ui": "^4.3.0",
+    "@pinia/nuxt": "^0.11.3",
+    "@vueuse/core": "^14.1.0",
+    "@vueuse/nuxt": "^14.1.0",
+    "nuxt": "^4.2.2",
+    "ofetch": "^1.5.1",
+    "pinia": "^3.0.4",
+    "pinia-plugin-persistedstate": "^4.7.1",
+    "tailwindcss": "^4.1.18"
+  },
+  "devDependencies": {
+    "@iconify/json": "^2.2.431",
+    "@nuxt/eslint": "^1.12.1",
+    "eslint": "^9.39.2",
+    "eslint-plugin-vue-composable": "^1.0.0",
+    "typescript": "^5.9.3",
+    "vue-tsc": "^3.2.1"
+  },
+  "packageManager": "pnpm@10.26.1"
+}

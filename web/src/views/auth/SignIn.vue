@@ -53,7 +53,6 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <AuthLayout>
     <Card class="w-full max-w-sm mx-auto">
       <CardHeader class="text-center">
         <CardTitle class="text-xl">登录</CardTitle>
@@ -117,5 +116,4 @@ const handleSubmit = async () => {
         </div>
       </CardContent>
     </Card>
-  </AuthLayout>
 </template>

@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Home from '../views/Home.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -7,32 +6,35 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: Home,
+      component: () => import('@/views/index.vue'),
     },
     {
-      path: '/auth/sign-in',
-      name: 'sign-in',
-      component: () => import('../views/auth/SignIn.vue'),
-    },
-    {
-      path: '/auth/sign-up',
-      name: 'sign-up',
-      component: () => import('../views/auth/SignUp.vue'),
-    },
-    {
-      path: '/auth/forgot-password',
-      name: 'forgot-password',
-      component: () => import('../views/auth/ForgotPassword.vue'),
-    },
-    {
-      path: '/auth/reset-password',
-      name: 'reset-password',
-      component: () => import('../views/auth/ResetPassword.vue'),
-    },
-    {
-      path: '/about',
-      name: 'about',
-      component: () => import('../views/about.vue'),
+      path: '/auth',
+      name: 'auth',
+      component: () => import('@/layouts/AuthLayout.vue'),
+      redirect: '/auth/sign-in',
+      children: [
+        {
+          path: 'sign-in',
+          name: 'sign-in',
+          component: () => import('@/views/auth/SignIn.vue'),
+        },
+        {
+          path: 'sign-up',
+          name: 'sign-up',
+          component: () => import('@/views/auth/SignUp.vue'),
+        },
+        {
+          path: 'forgot-password',
+          name: 'forgot-password',
+          component: () => import('@/views/auth/ForgotPassword.vue'),
+        },
+        {
+          path: 'reset-password',
+          name: 'reset-password',
+          component: () => import('@/views/auth/ResetPassword.vue'),
+        },
+      ],
     },
   ],
 })

@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { useAuthStore } from '@/stores/auth'
-import AuthLayout from '@/layouts/AuthLayout.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -65,7 +64,6 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <AuthLayout>
     <template v-if="!token">
       <Card class="w-full max-w-sm mx-auto">
         <CardHeader class="text-center">
@@ -149,5 +147,4 @@ const handleSubmit = async () => {
         </CardContent>
       </Card>
     </template>
-  </AuthLayout>
 </template>

@@ -17,7 +17,7 @@ import { BookOpenIcon } from 'lucide-vue-next'
     </header>
 
     <main class="flex-1 flex items-center justify-center px-4 py-8 min-h-[calc(100vh-8rem)]">
-      <slot />
+      <router-view />
     </main>
 
     <footer class="border-t py-6">

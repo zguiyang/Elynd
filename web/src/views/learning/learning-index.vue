@@ -3,7 +3,7 @@ import { RouterLink } from 'vue-router'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { PlayCircle, Search, Brain, ArrowRight, Clock, BookMarked } from 'lucide-vue-next'
+import { PlayCircle, Search, ArrowRight, Clock, BookMarked } from 'lucide-vue-next'
 
 const mockUser = {
   name: '学习者',
@@ -84,7 +84,7 @@ const getDifficultyVariant = (difficulty: string) => {
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
       <Card v-for="stat in mockStats" :key="stat.label">
-        <CardContent class="flex items-center gap-4 pt-6">
+        <CardContent class="flex items-center gap-4 py-6">
           <div :class="['flex h-12 w-12 items-center justify-center rounded-lg bg-muted', stat.color]">
             <component :is="stat.icon" class="size-6" />
           </div>
@@ -181,35 +181,6 @@ const getDifficultyVariant = (difficulty: string) => {
             <CardDescription class="text-base">
               {{ article.description }}
             </CardDescription>
-          </CardContent>
-        </Card>
-      </div>
-    </section>
-
-    <!-- Quick Actions -->
-    <section>
-      <h2 class="text-xl font-semibold mb-4">快捷功能</h2>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card class="hover:shadow-md transition-shadow cursor-pointer">
-          <CardContent class="flex items-center gap-4 pt-6">
-            <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900">
-              <Search class="size-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <CardTitle class="text-base">查词</CardTitle>
-              <CardDescription>点击任意单词查看释义</CardDescription>
-            </div>
-          </CardContent>
-        </Card>
-        <Card class="hover:shadow-md transition-shadow cursor-pointer">
-          <CardContent class="flex items-center gap-4 pt-6">
-            <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900">
-              <Brain class="size-6 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <CardTitle class="text-base">AI 问答</CardTitle>
-              <CardDescription>针对文章内容向 AI 提问</CardDescription>
-            </div>
           </CardContent>
         </Card>
       </div>

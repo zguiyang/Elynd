@@ -5,16 +5,79 @@ import { Badge } from '@/components/ui/badge'
 import { HugeiconsIcon } from '@hugeicons/react'
 import {
   BookOpenIcon,
-  HeadphonesIcon,
-  SpellCheck,
   SparklesIcon,
   ArrowRightIcon,
   PlayCircleIcon,
+  FileIcon,
+  TranslateIcon,
+  BrainCircuit,
+  LinkSquare01Icon,
+  VideoReplayIcon,
+  QuestionIcon,
+  Sparkles,
+  BookCheck,
+  AiAudioIcon,
 } from '@hugeicons/core-free-icons'
 
 export const Route = createFileRoute('/')({
   component: LandingPage,
 })
+
+const PAIN_POINTS = [
+  {
+    icon: FileIcon,
+    title: '材料难度不匹配',
+    description: '纯英文内容太难，有中文的又太简单，总是找不到适合自己"i+1"难度的学习材料',
+  },
+  {
+    icon: TranslateIcon,
+    title: '母语干扰',
+    description: '即便有中英文对照，注意力也会被中文吸引，无法真正沉浸在新语言中',
+  },
+  {
+    icon: BrainCircuit,
+    title: '词汇场景脱节',
+    description: '背的单词与生活、工作场景脱节，无法形成关联记忆，总是背了又忘',
+  },
+  {
+    icon: LinkSquare01Icon,
+    title: '听读材料割裂',
+    description: '有原文没有音频，有音频没有原文，听读分离导致学习无法闭环',
+  },
+  {
+    icon: VideoReplayIcon,
+    title: '视听困难',
+    description: '看YouTube学习进度太慢，纯英文听不懂，太简单的又没用',
+  },
+  {
+    icon: QuestionIcon,
+    title: '问题无法及时解答',
+    description: '学习过程中遇到语法、词汇、语境等问题，无法及时获得答案，只能暂停学习去搜索',
+  },
+]
+
+const SOLUTION_POINTS = [
+  {
+    icon: Sparkles,
+    title: 'AI 智能匹配',
+    description: 'AI 分析你的水平，推荐或生成"i+1"难度的学习材料',
+  },
+  {
+    icon: BookCheck,
+    title: '单词词典',
+    description: 'AI 自动提取材料核心词汇，带语境例句，边学边记',
+  },
+  {
+    icon: AiAudioIcon,
+    title: '听读一体',
+    description: '同一份材料同时提供原文和音频，边听边读培养语感',
+  },
+  {
+    icon: QuestionIcon,
+    title: 'AI 问答',
+    description: '随时针对材料提问，AI 实时解答，学习不中断',
+  },
+]
 
 const FEATURES = [
   {
@@ -23,12 +86,12 @@ const FEATURES = [
     description: '精选原版文章，AI 智能推荐适合你水平的阅读内容，让学习更高效',
   },
   {
-    icon: HeadphonesIcon,
+    icon: PlayCircleIcon,
     title: '听读一体',
     description: '内置语音朗读，支持播放、暂停、重播，边听边读培养语感',
   },
   {
-    icon: SpellCheck,
+    icon: TranslateIcon,
     title: '即点即查',
     description: '点击任意单词立即查看释义，中英双语解释，轻松积累词汇量',
   },
@@ -70,6 +133,9 @@ function LandingPage() {
             <span className="text-xl font-semibold">Elynd</span>
           </div>
           <div className="hidden md:flex items-center gap-8">
+            <a href="#why-elynd" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              为什么做
+            </a>
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               功能介绍
             </a>
@@ -130,6 +196,90 @@ function LandingPage() {
         </div>
       </section>
 
+      {/* Why Elynd Section */}
+      <section id="why-elynd" className="py-20 lg:py-28 relative overflow-hidden">
+        <div className="absolute inset-0 -z-10">
+          <div className="absolute left-0 top-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl" />
+          <div className="absolute right-0 bottom-0 w-[400px] h-[400px] bg-secondary/5 rounded-full blur-3xl" />
+        </div>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <Badge variant="outline" className="mb-4">
+              真实痛点
+            </Badge>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              我们在英语学习中遇到的困境
+            </h2>
+            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+              这也是我们做 Elynd 的原因——每一个困境我们都亲身经历过
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {PAIN_POINTS.map((point, index) => (
+              <Card 
+                key={point.title}
+                className={`border-muted hover:border-primary/30 transition-all duration-300 hover:shadow-lg ${
+                  index % 2 === 1 ? 'md:mt-0 lg:mt-12' : ''
+                }`}
+              >
+                <CardHeader>
+                  <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                    <HugeiconsIcon icon={point.icon} className="size-5" />
+                  </div>
+                  <CardTitle className="text-lg">{point.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription className="text-base">
+                    {point.description}
+                  </CardDescription>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Solution Section */}
+      <section id="solution" className="py-20 lg:py-28 bg-muted/30">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <Badge variant="outline" className="mb-4">
+              解决方案
+            </Badge>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              以输入材料为核心的闭环学习
+            </h2>
+            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+              平台通过 AI 分析你的水平，推荐或生成适合你的学习材料，让英语学习真正闭环
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {SOLUTION_POINTS.map((point) => (
+              <Card 
+                key={point.title}
+                className="border-muted hover:border-primary/30 transition-all duration-300 hover:shadow-lg group"
+              >
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-4">
+                    <div className="flex shrink-0 h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                      <HugeiconsIcon icon={point.icon} className="size-7" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold mb-1">{point.title}</h3>
+                      <p className="text-muted-foreground">
+                        {point.description}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
       <section id="features" className="py-20 lg:py-28">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -166,8 +316,8 @@ function LandingPage() {
       </section>
 
       {/* How It Works Section */}
-      <section id="how-it-works" className="py-20 lg:py-28 bg-muted/30">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <section id="how-it-works" className="py-20 lg:py-28">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
               三步开启学习之旅
@@ -176,21 +326,20 @@ function LandingPage() {
               简单易上手，快速进入学习状态
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {STEPS.map((step, index) => (
-              <div key={step.number} className="relative">
-                {index < STEPS.length - 1 && (
-                  <div className="hidden md:block absolute top-8 left-[calc(50%+40px)] w-[calc(100%-80px)] h-px bg-border" />
-                )}
-                <div className="flex flex-col items-center text-center">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground text-2xl font-bold">
+          
+          <div className="relative">
+            <div className="hidden md:block absolute top-8 left-[20%] right-[20%] h-0.5 bg-border" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {STEPS.map((step) => (
+                <div key={step.number} className="relative flex flex-col items-center text-center">
+                  <div className="relative z-10 flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground text-2xl font-bold shadow-lg">
                     {step.number}
                   </div>
                   <h3 className="mt-6 text-xl font-semibold">{step.title}</h3>
                   <p className="mt-2 text-muted-foreground">{step.description}</p>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </section>

@@ -18,6 +18,28 @@ export default defineConfigWithVueTs(
   globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**']),
 
   ...pluginVue.configs['flat/essential'],
+
+  {
+    name: 'app/vue-component-naming',
+    files: ['**/*.vue'],
+    rules: {
+      'vue/multi-word-component-names': 'off',
+    },
+  },
+
+  {
+    name: 'app/vue-component-naming-views',
+    files: ['src/views/**/*.vue', 'src/layouts/**/*.vue'],
+    rules: {
+      'vue/multi-word-component-names': [
+        'error',
+        {
+          ignores: ['index'],
+        },
+      ],
+    },
+  },
+
   vueTsConfigs.recommended,
 
   ...pluginOxlint.buildFromOxlintConfigFile('.oxlintrc.json'),

@@ -20,23 +20,11 @@ export default defineConfigWithVueTs(
   ...pluginVue.configs['flat/essential'],
 
   {
-    name: 'app/vue-component-naming',
+    name: 'app/vue-naming-rules',
     files: ['**/*.vue'],
     rules: {
       'vue/multi-word-component-names': 'off',
-    },
-  },
-
-  {
-    name: 'app/vue-component-naming-views',
-    files: ['src/views/**/*.vue', 'src/layouts/**/*.vue'],
-    rules: {
-      'vue/multi-word-component-names': [
-        'error',
-        {
-          ignores: ['index'],
-        },
-      ],
+      'vue/component-name-in-template-casing': ['error', 'PascalCase'],
     },
   },
 

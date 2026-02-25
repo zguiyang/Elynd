@@ -43,7 +43,7 @@ const handleSubmit = async () => {
       rememberMe: rememberMe.value,
     })
     toast.success('登录成功')
-    router.push('/workspace')
+    router.push('/learning')
   } catch (error: unknown) {
     const err = error as { response?: { data?: { message?: string } } }
     toast.error(err.response?.data?.message || '登录失败，请检查邮箱和密码')

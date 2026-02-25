@@ -60,7 +60,7 @@ const handleSubmit = async () => {
   try {
     await authStore.register({ name: name.value, email: email.value, password: password.value })
     toast.success('注册成功')
-    router.push('/workspace')
+    router.push('/learning')
   } catch (error: unknown) {
     const err = error as { response?: { data?: { message?: string } } }
     toast.error(err.response?.data?.message || '注册失败，请稍后重试')

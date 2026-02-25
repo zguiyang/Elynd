@@ -36,6 +36,29 @@ const router = createRouter({
         },
       ],
     },
+    {
+      path: '/learning',
+      name: 'learning',
+      component: () => import('@/layouts/learning-layout.vue'),
+      redirect: '/learning',
+      children: [
+        {
+          path: '',
+          name: 'learning-index',
+          component: () => import('@/views/learning/learning-index.vue'),
+        },
+        {
+          path: 'articles',
+          name: 'learning-articles',
+          component: () => import('@/views/learning/learning-articles.vue'),
+        },
+        {
+          path: 'article/:id',
+          name: 'learning-article',
+          component: () => import('@/views/learning/learning-article.vue'),
+        },
+      ],
+    },
   ],
 })
 

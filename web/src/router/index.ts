@@ -11,28 +11,28 @@ const router = createRouter({
     {
       path: '/auth',
       name: 'auth',
-      component: () => import('@/layouts/AuthLayout.vue'),
+      component: () => import('@/layouts/auth-layout.vue'),
       redirect: '/auth/sign-in',
       children: [
         {
           path: 'sign-in',
           name: 'sign-in',
-          component: () => import('@/views/auth/SignIn.vue'),
+          component: () => import('@/views/auth/sign-in.vue'),
         },
         {
           path: 'sign-up',
           name: 'sign-up',
-          component: () => import('@/views/auth/SignUp.vue'),
+          component: () => import('@/views/auth/sign-up.vue'),
         },
         {
           path: 'forgot-password',
           name: 'forgot-password',
-          component: () => import('@/views/auth/ForgotPassword.vue'),
+          component: () => import('@/views/auth/forgot-password.vue'),
         },
         {
           path: 'reset-password',
           name: 'reset-password',
-          component: () => import('@/views/auth/ResetPassword.vue'),
+          component: () => import('@/views/auth/reset-password.vue'),
         },
       ],
     },

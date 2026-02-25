@@ -44,11 +44,17 @@ docs/
 docker-compose.dev.yml
 
 # web/ directory (Nuxt.js)
-.output
-.data
-.nuxt
-.nitro
 dist
+dist-ssr
+*.local
+.nitro
+.tanstack
+.wrangler
+.output
+.vinxi
+__unconfig*
+todos.json
+
 !.env.example
 
 # Worktrees

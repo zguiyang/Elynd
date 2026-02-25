@@ -1,5 +1,5 @@
 {
-  "name": "linky",
+  "name": "elynd",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -18,8 +18,8 @@
     "test": "pnpm --filter backend test"
   },
   "devDependencies": {
-    "@linky/backend": "workspace:*",
-    "@linky/web": "workspace:*",
+    "@elynd/backend": "workspace:*",
+    "@elynd/web": "workspace:*",
     "@types/node": "^22.19.7"
   },
   "engines": {

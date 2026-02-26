@@ -7,6 +7,7 @@ import {
   X,
   ChevronDown,
 } from 'lucide-vue-next'
+import { useReadingSettingsStore } from '@/stores/reading-settings'
 import type { LineHeight, ContentWidth } from '@/stores/reading-settings'
 
 interface Props {

@@ -111,7 +111,7 @@ const openAiDrawer = () => {
 
 <template>
   <!-- 页面级容器：占满剩余高度，无滚动条 -->
-  <div class="h-full overflow-hidden flex flex-col bg-background relative">
+  <div class="h-full overflow-hidden flex flex-col bg-background relative container mx-auto">
     <!-- 头部栏 -->
     <header class="flex-none bg-background/95 backdrop-blur-sm border-b">
       <div class="flex items-center justify-between px-4 py-3">
@@ -206,7 +206,7 @@ const openAiDrawer = () => {
           >
             <ChevronLeft class="size-4" />
           </Button>
-          <span class="text-sm text-muted-foreground min-w-[60px] text-center">
+          <span class="text-sm text-muted-foreground min-w-(60px) text-center">
             {{ currentPage }} / {{ totalPages }}
           </span>
           <Button
@@ -222,7 +222,7 @@ const openAiDrawer = () => {
     </div>
 
     <!-- 内容区域：flex-1 填充剩余空间，内部可滚动 -->
-    <main class="flex-1 min-h-0 flex flex-col px-4 pb-4">
+    <main class="flex-1 min-h-0 flex flex-col px-4 pb-6 mt-6 w-full">
       <ArticleReader
         :paragraphs="mockArticle.paragraphs"
         :word-definitions="mockWordDefinitions"
@@ -231,9 +231,9 @@ const openAiDrawer = () => {
     </main>
 
     <!-- 音频播放器：绝对定位，固定宽度，水平居中 -->
-    <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-40">
-      <Card class="shadow-lg border-0">
-        <CardContent class="flex items-center gap-3 py-2 px-3">
+    <div class="absolute bottom-10 left-1/2 -translate-x-1/2 z-40">
+      <Card class="shadow-xl border bg-background/60 backdrop-blur-md py-0">
+        <CardContent class="flex items-center gap-3 p-3">
           <Button
             :variant="isPlaying ? 'default' : 'outline'"
             size="icon"

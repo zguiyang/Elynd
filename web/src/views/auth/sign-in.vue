@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { isAxiosError } from 'axios'
 import { toast } from 'vue-sonner'
-import { useDebounceFn } from '@vueuse/core'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
@@ -9,48 +9,8 @@ const authStore = useAuthStore()
 const email = ref('')
 const password = ref('')
 const rememberMe = ref(false)
-const errors = ref<{ email?: string; password?: string }>({})
-
-const validate = useDebounceFn(() => {
-  const newErrors: { email?: string; password?: string } = {}
-
-  if (!email.value) {
-    newErrors.email = '请输入邮箱地址'
-  } else if (!/\S+@\S+\.\S+/.test(email.value)) {
-    newErrors.email = '请输入有效的邮箱地址'
-  }
-
-  if (!password.value) {
-    newErrors.password = '请输入密码'
-  }
-
-  errors.value = newErrors
-}, 300)
-
-watch([email, password], () => {
-  validate()
-}, { flush: 'post' })
-
-const validateImmediate = () => {
-  const newErrors: { email?: string; password?: string } = {}
-
-  if (!email.value) {
-    newErrors.email = '请输入邮箱地址'
-  } else if (!/\S+@\S+\.\S+/.test(email.value)) {
-    newErrors.email = '请输入有效的邮箱地址'
-  }
-
-  if (!password.value) {
-    newErrors.password = '请输入密码'
-  }
-
-  errors.value = newErrors
-  return Object.keys(newErrors).length === 0
-}
 
 const handleSubmit = async () => {
-  if (!validateImmediate()) return
-
   try {
     await authStore.login({
       email: email.value,
@@ -59,9 +19,12 @@ const handleSubmit = async () => {
     })
     toast.success('登录成功')
     router.push('/learning')
-  } catch (error: unknown) {
-    const err = error as { response?: { data?: { message?: string } } }
-    toast.error(err.response?.data?.message || '登录失败，请检查邮箱和密码')
+  } catch (error) {
+    let message = '登录失败，请检查邮箱和密码'
+    if (isAxiosError(error)) {
+      message = error.response?.data?.message || message
+    }
+    toast.error(message)
   }
 }
 </script>
@@ -81,10 +44,9 @@ const handleSubmit = async () => {
               type="email"
               placeholder="you@example.com"
               v-model="email"
+              required
               :disabled="authStore.isLoading"
-              :class="{ 'border-destructive': errors.email }"
             />
-            <p v-if="errors.email" class="text-sm text-destructive">{{ errors.email }}</p>
           </div>
 
           <div class="space-y-2">
@@ -94,10 +56,9 @@ const handleSubmit = async () => {
               type="password"
               placeholder="请输入密码"
               v-model="password"
+              required
               :disabled="authStore.isLoading"
-              :class="{ 'border-destructive': errors.password }"
             />
-            <p v-if="errors.password" class="text-sm text-destructive">{{ errors.password }}</p>
           </div>
 
           <div class="flex items-center justify-between">

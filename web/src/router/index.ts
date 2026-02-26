@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { setupAuthGuard } from './guards/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -13,6 +14,7 @@ const router = createRouter({
       name: 'auth',
       component: () => import('@/layouts/auth-layout.vue'),
       redirect: '/auth/sign-in',
+      meta: { guest: true },
       children: [
         {
           path: 'sign-in',
@@ -41,6 +43,7 @@ const router = createRouter({
       name: 'learning',
       component: () => import('@/layouts/learning-layout.vue'),
       redirect: '/learning',
+      meta: { requiresAuth: true },
       children: [
         {
           path: '',
@@ -61,5 +64,7 @@ const router = createRouter({
     },
   ],
 })
+
+router.beforeEach(setupAuthGuard)
 
 export default router

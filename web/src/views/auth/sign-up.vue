@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { isAxiosError } from 'axios'
 import { toast } from 'vue-sonner'
-import { useDebounceFn } from '@vueuse/core'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
@@ -11,88 +11,17 @@ const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 
-const errors = ref<{
-  name?: string
-  email?: string
-  password?: string
-  confirmPassword?: string
-}>({})
-
-const validate = useDebounceFn(() => {
-  const newErrors: typeof errors.value = {}
-
-  if (!name.value) {
-    newErrors.name = '请输入用户名'
-  } else if (name.value.length < 2) {
-    newErrors.name = '用户名至少需要2个字符'
-  }
-
-  if (!email.value) {
-    newErrors.email = '请输入邮箱地址'
-  } else if (!/\S+@\S+\.\S+/.test(email.value)) {
-    newErrors.email = '请输入有效的邮箱地址'
-  }
-
-  if (!password.value) {
-    newErrors.password = '请输入密码'
-  } else if (password.value.length < 6) {
-    newErrors.password = '密码至少需要6个字符'
-  }
-
-  if (!confirmPassword.value) {
-    newErrors.confirmPassword = '请确认密码'
-  } else if (password.value !== confirmPassword.value) {
-    newErrors.confirmPassword = '两次输入的密码不一致'
-  }
-
-  errors.value = newErrors
-}, 300)
-
-watch([name, email, password, confirmPassword], () => {
-  validate()
-}, { flush: 'post' })
-
-const validateImmediate = () => {
-  const newErrors: typeof errors.value = {}
-
-  if (!name.value) {
-    newErrors.name = '请输入用户名'
-  } else if (name.value.length < 2) {
-    newErrors.name = '用户名至少需要2个字符'
-  }
-
-  if (!email.value) {
-    newErrors.email = '请输入邮箱地址'
-  } else if (!/\S+@\S+\.\S+/.test(email.value)) {
-    newErrors.email = '请输入有效的邮箱地址'
-  }
-
-  if (!password.value) {
-    newErrors.password = '请输入密码'
-  } else if (password.value.length < 6) {
-    newErrors.password = '密码至少需要6个字符'
-  }
-
-  if (!confirmPassword.value) {
-    newErrors.confirmPassword = '请确认密码'
-  } else if (password.value !== confirmPassword.value) {
-    newErrors.confirmPassword = '两次输入的密码不一致'
-  }
-
-  errors.value = newErrors
-  return Object.keys(newErrors).length === 0
-}
-
 const handleSubmit = async () => {
-  if (!validateImmediate()) return
-
   try {
     await authStore.register({ name: name.value, email: email.value, password: password.value })
     toast.success('注册成功')
     router.push('/learning')
-  } catch (error: unknown) {
-    const err = error as { response?: { data?: { message?: string } } }
-    toast.error(err.response?.data?.message || '注册失败，请稍后重试')
+  } catch (error) {
+    let message = '注册失败，请稍后重试'
+    if (isAxiosError(error)) {
+      message = error.response?.data?.message || message
+    }
+    toast.error(message)
   }
 }
 </script>
@@ -112,9 +41,9 @@ const handleSubmit = async () => {
               type="text"
               placeholder="请输入用户名"
               v-model="name"
+              required
               :disabled="authStore.isLoading"
             />
-            <p v-if="errors.name" class="text-sm text-destructive">{{ errors.name }}</p>
           </div>
 
           <div class="space-y-2">
@@ -124,9 +53,9 @@ const handleSubmit = async () => {
               type="email"
               placeholder="you@example.com"
               v-model="email"
+              required
               :disabled="authStore.isLoading"
             />
-            <p v-if="errors.email" class="text-sm text-destructive">{{ errors.email }}</p>
           </div>
 
           <div class="space-y-2">
@@ -136,9 +65,9 @@ const handleSubmit = async () => {
               type="password"
               placeholder="至少6个字符"
               v-model="password"
+              required
               :disabled="authStore.isLoading"
             />
-            <p v-if="errors.password" class="text-sm text-destructive">{{ errors.password }}</p>
           </div>
 
           <div class="space-y-2">
@@ -148,9 +77,9 @@ const handleSubmit = async () => {
               type="password"
               placeholder="请再次输入密码"
               v-model="confirmPassword"
+              required
               :disabled="authStore.isLoading"
             />
-            <p v-if="errors.confirmPassword" class="text-sm text-destructive">{{ errors.confirmPassword }}</p>
           </div>
 
           <Button type="submit" class="w-full" :disabled="authStore.isLoading">

@@ -71,6 +71,18 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  const fetchUser = async (): Promise<User | null> => {
+    try {
+      const response = await authApi.me()
+      user.value = response.data
+      return user.value
+    } catch {
+      clearTokenCookie()
+      user.value = null
+      return null
+    }
+  }
+
   return {
     user,
     isAuthenticated,
@@ -80,5 +92,6 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     forgotPassword,
     resetPassword,
+    fetchUser,
   }
 })

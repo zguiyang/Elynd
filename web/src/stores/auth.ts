@@ -1,5 +1,6 @@
 import { authApi } from '@/api/auth'
-import type { User, LoginData, RegisterData, AuthResponse, ForgotPasswordResponse, ResetPasswordData } from '@/api/auth'
+import { userApi, type User } from '@/api/user'
+import type { LoginData, RegisterData, AuthResponse, ForgotPasswordResponse, ResetPasswordData } from '@/api/auth'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
@@ -13,7 +14,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await authApi.login(data)
       const authResponse = response.data
       token.value = authResponse.token
-      user.value = authResponse.user
+      user.value = authResponse.user as unknown as User
       return authResponse
     } finally {
       isLoading.value = false
@@ -26,7 +27,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await authApi.register(data)
       const authResponse = response.data
       token.value = authResponse.token
-      user.value = authResponse.user
+      user.value = authResponse.user as unknown as User
       return authResponse
     } finally {
       isLoading.value = false
@@ -41,9 +42,7 @@ export const useAuthStore = defineStore('auth', () => {
       token.value = null
       user.value = null
       isLoading.value = false
-      // 清除本地存储的所有数据
       localStorage.clear()
-      // 跳转到登录页
       window.location.href = '/auth/sign-in'
     }
   }
@@ -69,7 +68,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const fetchUser = async (): Promise<User | null> => {
     try {
-      const response = await authApi.me()
+      const response = await userApi.me()
       user.value = response.data
       return user.value
     } catch {

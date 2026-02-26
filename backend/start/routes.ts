@@ -34,6 +34,7 @@ router
     // 用户 API
     router.get('/user/me', [UsersController, 'me'])
     router.put('/user', [UsersController, 'update'])
+    router.post('/user/change-password', [UsersController, 'changePassword'])
   })
   .prefix('api')
   .middleware(middleware.auth())

@@ -50,9 +50,11 @@ const navigation = [
           <DropdownMenuContent align="end" class="w-56">
             <DropdownMenuLabel>我的账户</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <User class="mr-2 size-4" />
-              <span>个人资料</span>
+            <DropdownMenuItem as-child>
+              <RouterLink to="/learning/profile" class="flex items-center cursor-pointer">
+                <User class="mr-2 size-4" />
+                <span>个人资料</span>
+              </RouterLink>
             </DropdownMenuItem>
             <DropdownMenuItem>
               <Settings class="mr-2 size-4" />

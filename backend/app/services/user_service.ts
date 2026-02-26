@@ -135,4 +135,22 @@ export class UserService {
     const rateKey = `verify:rate:${email}`
     await redis.set(rateKey, '1', 'EX', EMAIL_VERIFICATION.COOLDOWN_MINUTES * 60)
   }
+
+  async changePassword(userId: number, currentPassword: string, newPassword: string) {
+    logger.info({ userId }, 'Changing password')
+
+    const user = await User.findOrFail(userId)
+
+    const isValid = await user.verifyPassword(currentPassword)
+    if (!isValid) {
+      throw new Exception('当前密码错误', { status: 400 })
+    }
+
+    user.password = newPassword
+    await user.save()
+
+    logger.info({ userId }, 'Password changed successfully')
+
+    return user
+  }
 }

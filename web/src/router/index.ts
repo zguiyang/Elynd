@@ -60,6 +60,11 @@ const router = createRouter({
           name: 'learning-article',
           component: () => import('@/views/learning/learning-article.vue'),
         },
+        {
+          path: 'profile',
+          name: 'profile',
+          component: () => import('@/views/profile/profile-view.vue'),
+        },
       ],
     },
   ],

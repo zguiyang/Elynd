@@ -1,12 +1,5 @@
 import request from '@/lib/request'
 
-export interface User {
-  id: number
-  email: string
-  name: string
-  avatar: string | null
-}
-
 export interface LoginData {
   email: string
   password: string
@@ -20,7 +13,12 @@ export interface RegisterData {
 }
 
 export interface AuthResponse {
-  user: User
+  user: {
+    id: number
+    email: string
+    fullName: string | null
+    avatar: string | null
+  }
   token: string
 }
 
@@ -40,5 +38,4 @@ export const authApi = {
   logout: () => request.post('/api/auth/logout'),
   forgotPassword: (email: string) => request.post<ForgotPasswordResponse>('/api/auth/forgot-password', { email }),
   resetPassword: (data: ResetPasswordData) => request.post('/api/auth/reset-password', data),
-  me: () => request.get<User>('/api/user/me'),
 }

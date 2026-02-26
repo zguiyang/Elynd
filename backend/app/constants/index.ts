@@ -43,5 +43,12 @@ const EMAIL_VERIFICATION = {
 
 type EmailVerification = (typeof EMAIL_VERIFICATION)[keyof typeof EMAIL_VERIFICATION]
 
-export { ORDER_BY, PAGINATION, SORT_ORDER, VALIDATION, EMAIL_VERIFICATION }
-export type { OrderBy, Pagination, SortOrder, Validation, EmailVerification }
+const AI = {
+  DEFAULT_TIMEOUT: 60000,
+  DEFAULT_MAX_RETRIES: 2,
+} as const
+
+type Ai = (typeof AI)[keyof typeof AI]
+
+export { ORDER_BY, PAGINATION, SORT_ORDER, VALIDATION, EMAIL_VERIFICATION, AI }
+export type { OrderBy, Pagination, SortOrder, Validation, EmailVerification, Ai }

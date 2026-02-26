@@ -1,13 +1,10 @@
 import { inject } from '@adonisjs/core'
 import { Exception } from '@adonisjs/core/exceptions'
 import logger from '@adonisjs/core/services/logger'
-import { MultipartFile } from '@adonisjs/core/bodyparser'
 import { randomUUID } from 'node:crypto'
-import fs from 'node:fs/promises'
-import path from 'node:path'
 import redis from '@adonisjs/redis/services/main'
 import User from '#models/user'
-import { EMAIL_VERIFICATION, AVATAR } from '#constants'
+import { EMAIL_VERIFICATION } from '#constants'
 import { NotificationService } from '#services/notification_service'
 
 @inject()

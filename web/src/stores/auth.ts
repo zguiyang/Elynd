@@ -1,56 +1,5 @@
-import axios from 'axios'
-import type { AxiosInstance } from 'axios'
-
-interface User {
-  id: number
-  email: string
-  name: string
-}
-
-interface LoginData {
-  email: string
-  password: string
-  rememberMe?: boolean
-}
-
-interface RegisterData {
-  email: string
-  name: string
-  password: string
-}
-
-interface AuthResponse {
-  user: User
-  token: string
-}
-
-interface ForgotPasswordResponse {
-  message: string
-}
-
-interface ResetPasswordData {
-  token: string
-  password: string
-  passwordConfirmation: string
-}
-
-const api: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3333',
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  withCredentials: true,
-})
-
-function setTokenCookie(token: string, rememberMe?: boolean) {
-  const maxAge = rememberMe ? 60 * 60 * 24 * 7 : 60 * 60 * 24
-  document.cookie = `auth_token=${token}; path=/; max-age=${maxAge}; SameSite=Lax`
-}
-
-function clearTokenCookie() {
-  document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
-}
+import { authApi } from '@/api/auth'
+import type { User, LoginData, RegisterData, AuthResponse, ForgotPasswordResponse, ResetPasswordData } from '@/api/auth'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
@@ -69,7 +18,7 @@ export const useAuthStore = defineStore('auth', () => {
   const login = async (data: LoginData): Promise<AuthResponse> => {
     isLoading.value = true
     try {
-      const response = await api.post<AuthResponse>('/api/auth/login', data)
+      const response = await authApi.login(data)
       const authResponse = response.data
       setTokenCookie(authResponse.token, data.rememberMe)
       user.value = authResponse.user
@@ -82,7 +31,7 @@ export const useAuthStore = defineStore('auth', () => {
   const register = async (data: RegisterData): Promise<AuthResponse> => {
     isLoading.value = true
     try {
-      const response = await api.post<AuthResponse>('/api/auth/register', data)
+      const response = await authApi.register(data)
       const authResponse = response.data
       setTokenCookie(authResponse.token, true)
       user.value = authResponse.user
@@ -95,7 +44,7 @@ export const useAuthStore = defineStore('auth', () => {
   const logout = async (): Promise<void> => {
     isLoading.value = true
     try {
-      await api.post('/api/auth/logout')
+      await authApi.logout()
     } finally {
       clearTokenCookie()
       user.value = null
@@ -106,7 +55,7 @@ export const useAuthStore = defineStore('auth', () => {
   const forgotPassword = async (email: string): Promise<ForgotPasswordResponse> => {
     isLoading.value = true
     try {
-      const response = await api.post<ForgotPasswordResponse>('/api/auth/forgot-password', { email })
+      const response = await authApi.forgotPassword(email)
       return response.data
     } finally {
       isLoading.value = false
@@ -116,7 +65,7 @@ export const useAuthStore = defineStore('auth', () => {
   const resetPassword = async (data: ResetPasswordData): Promise<void> => {
     isLoading.value = true
     try {
-      await api.post('/api/auth/reset-password', data)
+      await authApi.resetPassword(data)
     } finally {
       isLoading.value = false
     }

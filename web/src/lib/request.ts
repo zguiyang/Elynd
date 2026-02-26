@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const api = axios.create({
+const request = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3333',
   timeout: 10000,
   headers: {
@@ -9,7 +9,7 @@ const api = axios.create({
   withCredentials: true,
 })
 
-api.interceptors.request.use((config) => {
+request.interceptors.request.use((config) => {
   const token = document.cookie
     .split('; ')
     .find((row) => row.startsWith('auth_token='))
@@ -22,7 +22,7 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-api.interceptors.response.use(
+request.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
@@ -33,4 +33,4 @@ api.interceptors.response.use(
   }
 )
 
-export { api }
+export default request

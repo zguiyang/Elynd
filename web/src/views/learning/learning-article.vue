@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { ArrowLeft, Play, Pause, RotateCcw, Volume2, MessageSquare } from 'lucide-vue-next'
-import AiChatDrawer from '@/components/shared/AiChatDrawer.vue'
-import ArticleReader from '@/components/shared/ArticleReader.vue'
 
 const route = useRoute()
 const articleId = route.params.id

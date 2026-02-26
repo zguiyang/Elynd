@@ -42,14 +42,14 @@ export const useReadingSettingsStore = defineStore('reading-settings', () => {
   const incrementFontSize = () => {
     const currentIndex = FONT_SIZE_ORDER.indexOf(fontSize.value)
     if (currentIndex < FONT_SIZE_ORDER.length - 1) {
-      fontSize.value = FONT_SIZE_ORDER[currentIndex + 1]
+      fontSize.value = FONT_SIZE_ORDER[currentIndex + 1] as FontSize
     }
   }
 
   const decrementFontSize = () => {
     const currentIndex = FONT_SIZE_ORDER.indexOf(fontSize.value)
     if (currentIndex > 0) {
-      fontSize.value = FONT_SIZE_ORDER[currentIndex - 1]
+      fontSize.value = FONT_SIZE_ORDER[currentIndex - 1] as FontSize
     }
   }
 

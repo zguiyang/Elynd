@@ -1,9 +1,5 @@
 <script setup lang="ts">
 import { Bot, Send } from 'lucide-vue-next'
-import Sheet from '@/components/ui/sheet/Sheet.vue'
-import SheetContent from '@/components/ui/sheet/SheetContent.vue'
-import SheetHeader from '@/components/ui/sheet/SheetHeader.vue'
-import SheetTitle from '@/components/ui/sheet/SheetTitle.vue'
 
 const open = defineModel<boolean>('open', { default: false })
 

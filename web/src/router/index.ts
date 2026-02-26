@@ -8,13 +8,14 @@ const router = createRouter({
       path: '/',
       name: 'home',
       component: () => import('@/views/index.vue'),
+      meta: { requiresAuth: false },
     },
     {
       path: '/auth',
       name: 'auth',
       component: () => import('@/layouts/auth-layout.vue'),
       redirect: '/auth/sign-in',
-      meta: { guest: true },
+      meta: { requiresAuth: false },
       children: [
         {
           path: 'sign-in',
@@ -43,7 +44,6 @@ const router = createRouter({
       name: 'learning',
       component: () => import('@/layouts/learning-layout.vue'),
       redirect: '/learning',
-      meta: { requiresAuth: true },
       children: [
         {
           path: '',

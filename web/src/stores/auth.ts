@@ -3,24 +3,16 @@ import type { User, LoginData, RegisterData, AuthResponse, ForgotPasswordRespons
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
+  const token = ref<string | null>(null)
   const isLoading = ref(false)
-  const isAuthenticated = computed(() => !!user.value)
-
-  function setTokenCookie(token: string, rememberMe?: boolean) {
-    const maxAge = rememberMe ? 60 * 60 * 24 * 7 : 60 * 60 * 24
-    document.cookie = `auth_token=${token}; path=/; max-age=${maxAge}; SameSite=Lax`
-  }
-
-  function clearTokenCookie() {
-    document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
-  }
+  const isAuthenticated = computed(() => !!token.value)
 
   const login = async (data: LoginData): Promise<AuthResponse> => {
     isLoading.value = true
     try {
       const response = await authApi.login(data)
       const authResponse = response.data
-      setTokenCookie(authResponse.token, data.rememberMe)
+      token.value = authResponse.token
       user.value = authResponse.user
       return authResponse
     } finally {
@@ -33,7 +25,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await authApi.register(data)
       const authResponse = response.data
-      setTokenCookie(authResponse.token, true)
+      token.value = authResponse.token
       user.value = authResponse.user
       return authResponse
     } finally {
@@ -46,7 +38,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       await authApi.logout()
     } finally {
-      clearTokenCookie()
+      token.value = null
       user.value = null
       isLoading.value = false
     }
@@ -77,7 +69,7 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = response.data
       return user.value
     } catch {
-      clearTokenCookie()
+      token.value = null
       user.value = null
       return null
     }
@@ -85,6 +77,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   return {
     user,
+    token,
     isAuthenticated,
     isLoading,
     login,
@@ -95,5 +88,7 @@ export const useAuthStore = defineStore('auth', () => {
     fetchUser,
   }
 }, {
-  persist: true,
+  persist: {
+    pick: ['token'],
+  },
 })

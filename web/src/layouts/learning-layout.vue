@@ -59,7 +59,7 @@ const navigation = [
               <span>设置</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem @click="authStore.logout()">
               <span>退出登录</span>
             </DropdownMenuItem>
           </DropdownMenuContent>

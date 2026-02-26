@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
+import { toast } from 'vue-sonner'
 
 const request = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3333',
@@ -24,7 +25,10 @@ request.interceptors.request.use((config) => {
 request.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status
+    const message = error.response?.data?.message || error.message || '网络错误'
+
+    if (status === 401) {
       const authStore = useAuthStore()
       authStore.token = null
       authStore.user = null
@@ -34,7 +38,8 @@ request.interceptors.response.use(
         window.location.href = '/auth/sign-in'
       }
     }
-    return Promise.reject(error)
+    toast.error(message)
+    return Promise.resolve(error.response?.data || { message, error: true })
   }
 )
 

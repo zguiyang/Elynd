@@ -83,7 +83,7 @@ const getDifficultyVariant = (difficulty: string) => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
     <!-- Header -->
     <div class="flex items-center gap-4">
       <Button variant="ghost" size="icon" as-child>

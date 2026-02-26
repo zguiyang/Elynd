@@ -1,6 +1,6 @@
 export type FontSize = 'sm' | 'base' | 'lg' | 'xl'
 export type LineHeight = 'compact' | 'normal' | 'relaxed'
-export type ContentWidth = 'narrow' | 'medium' | 'wide'
+export type ContentWidth = 'narrow' | 'medium' | 'wide' | 'full'
 
 export interface ReadingSettingsState {
   fontSize: FontSize
@@ -24,12 +24,13 @@ const CONTENT_WIDTH_CSS: Record<ContentWidth, string> = {
   narrow: '600px',
   medium: '680px',
   wide: '800px',
+  full: '100%',
 }
 
 export const useReadingSettingsStore = defineStore('reading-settings', () => {
   const fontSize = ref<FontSize>('base')
   const lineHeight = ref<LineHeight>('normal')
-  const contentWidth = ref<ContentWidth>('medium')
+  const contentWidth = ref<ContentWidth>('full')
 
   const fontSizeCss = computed(() => FONT_SIZE_CSS[fontSize.value])
   const lineHeightCss = computed(() => LINE_HEIGHT_CSS[lineHeight.value])

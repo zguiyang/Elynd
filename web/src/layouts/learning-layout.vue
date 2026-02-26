@@ -10,9 +10,9 @@ const navigation = [
 </script>
 
 <template>
-  <div class="min-h-screen bg-background">
+  <div class="h-dvh flex flex-col bg-background">
     <!-- Header -->
-    <header class="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
+    <header class="flex-none border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
       <div class="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <!-- Logo -->
         <RouterLink to="/learning" class="flex items-center gap-2">
@@ -72,7 +72,7 @@ const navigation = [
     </header>
 
     <!-- Main Content -->
-    <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+    <main class="flex-1 min-h-0 overflow-auto">
       <router-view />
     </main>
   </div>

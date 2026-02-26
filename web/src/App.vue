@@ -2,8 +2,8 @@
 </script>
 
 <template>
-  <RouterView />
-  <Sonner position="top-center" />
+    <RouterView />
+    <Sonner position="top-center" />
 </template>
 
 <style scoped></style>

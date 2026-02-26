@@ -222,7 +222,7 @@ const openAiDrawer = () => {
     </div>
 
     <!-- 内容区域：flex-1 填充剩余空间，内部可滚动 -->
-    <main class="flex-1 min-h-0 flex flex-col px-4 pb-6 mt-6 w-full">
+    <main class="flex-1 min-h-0 flex flex-col px-4 pb-6 mt-4 w-full">
       <ArticleReader
         :paragraphs="mockArticle.paragraphs"
         :word-definitions="mockWordDefinitions"
@@ -231,7 +231,7 @@ const openAiDrawer = () => {
     </main>
 
     <!-- 音频播放器：绝对定位，固定宽度，水平居中 -->
-    <div class="absolute bottom-10 left-1/2 -translate-x-1/2 z-40">
+    <div class="absolute bottom-14 left-1/2 -translate-x-1/2 z-40">
       <Card class="shadow-xl border bg-background/60 backdrop-blur-md py-0">
         <CardContent class="flex items-center gap-3 p-3">
           <Button

@@ -49,7 +49,7 @@ const splitIntoWords = (paragraph: string) => {
 
 <template>
   <div class="flex-1 min-h-0 flex flex-col">
-    <Card class="flex-1 min-h-0 flex flex-col border-none sm:border shadow-none sm:shadow-sm">
+    <Card class="flex-1 min-h-0 flex flex-col border shadow-md mb-2 bg-card">
       <CardContent class="p-6 flex-1 min-h-0 overflow-y-auto">
         <div
           class="mx-auto transition-all duration-300"

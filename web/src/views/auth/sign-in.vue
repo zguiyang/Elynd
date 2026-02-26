@@ -55,7 +55,7 @@ const handleSubmit = async () => {
         <div class="flex items-center justify-between">
           <label class="flex items-center gap-2 text-sm cursor-pointer">
             <input type="checkbox" v-model="rememberMe" class="rounded border-border" />
-            <span class="text-muted-foreground">记住我</span>
+            <span class="text-muted-foreground">30天免登录</span>
           </label>
           <RouterLink to="/auth/forgot-password" class="text-sm text-primary hover:underline"> 忘记密码？ </RouterLink>
         </div>

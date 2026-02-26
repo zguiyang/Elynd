@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
 import { BookOpenIcon } from 'lucide-vue-next'
+
 </script>
 
 <template>

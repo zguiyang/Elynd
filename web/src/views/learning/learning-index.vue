@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { PlayCircle, Search, ArrowRight, Clock, BookMarked } from 'lucide-vue-next'
 
 const mockUser = {

@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { BookOpen, ArrowLeft } from 'lucide-vue-next'
 
 const difficulties = ['全部', 'L1', 'L2', 'L3'] as const

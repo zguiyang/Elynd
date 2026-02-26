@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
 import { BookOpen, User, Settings, BookMarked } from 'lucide-vue-next'
 
 const navigation = [

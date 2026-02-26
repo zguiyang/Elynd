@@ -43,14 +43,5 @@ const EMAIL_VERIFICATION = {
 
 type EmailVerification = (typeof EMAIL_VERIFICATION)[keyof typeof EMAIL_VERIFICATION]
 
-const AVATAR = {
-  MAX_SIZE: 200 * 1024,
-  ALLOWED_TYPES: ['image/jpeg', 'image/png', 'image/gif'],
-  STORAGE_DIR: 'storage/avatars',
-  URL_PREFIX: '/avatars',
-} as const
-
-type Avatar = (typeof AVATAR)[keyof typeof AVATAR]
-
-export { ORDER_BY, PAGINATION, SORT_ORDER, VALIDATION, EMAIL_VERIFICATION, AVATAR }
-export type { OrderBy, Pagination, SortOrder, Validation, EmailVerification, Avatar }
+export { ORDER_BY, PAGINATION, SORT_ORDER, VALIDATION, EMAIL_VERIFICATION }
+export type { OrderBy, Pagination, SortOrder, Validation, EmailVerification }

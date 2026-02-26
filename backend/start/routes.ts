@@ -6,8 +6,6 @@
 | The routes file is used for defining the HTTP routes.
 |
 */
-import fs from 'node:fs/promises'
-import path from 'node:path'
 import router from '@adonisjs/core/services/router'
 import { middleware } from '#start/kernel'
 import env from '#start/env'
@@ -36,50 +34,6 @@ router
     // 用户 API
     router.get('/user/me', [UsersController, 'me'])
     router.put('/user', [UsersController, 'update'])
-    router.post('/user/avatar', [UsersController, 'uploadAvatar'])
-    router.delete('/user/avatar', [UsersController, 'removeAvatar'])
-
-    // 标签 API
-    // router.get('/tags', [TagsController, 'index'])
-    // router.get('/tags/:id', [TagsController, 'show'])
-    // router.get('/tags/:id/items', [TagsController, 'items'])
-    // router.post('/tags', [TagsController, 'store'])
-    // router.put('/tags/:id', [TagsController, 'update'])
-    // router.delete('/tags/:id', [TagsController, 'destroy'])
-
-    // 书签 API
-    // router.get('/bookmarks', [BookmarksController, 'index'])
-    // router.get('/bookmarks/paginate', [BookmarksController, 'paginate'])
-    // router.get('/bookmarks/fetching-count', [BookmarksController, 'fetchingCount'])
-    // router.get('/bookmarks/:id', [BookmarksController, 'show'])
-    // router.post('/bookmarks', [BookmarksController, 'store'])
-    // router.post('/bookmarks/by-url', [BookmarksController, 'createByUrl'])
-    // router.post('/bookmarks/:id/refresh-metadata', [BookmarksController, 'refreshMetadata'])
-    // router.post('/bookmarks/:id/visit', [BookmarksController, 'recordVisit'])
-    // router.post('/bookmarks/import', [BookmarksController, 'import'])
-    // router.get('/bookmarks/import/:jobId/status', [BookmarksController, 'importStatus'])
-    // router.put('/bookmarks/:id', [BookmarksController, 'update'])
-    // router.delete('/bookmarks/:id', [BookmarksController, 'destroy'])
-
-    // 备忘录 API
-    // router.get('/memos', [MemosController, 'index'])
-    // router.get('/memos/paginate', [MemosController, 'paginate'])
-    // router.get('/memos/:id', [MemosController, 'show'])
-    // router.post('/memos', [MemosController, 'store'])
-    // router.put('/memos/:id', [MemosController, 'update'])
-    // router.delete('/memos/:id', [MemosController, 'destroy'])
-
-    // 设置 API
-    // router.get('/settings/ai', [SettingsController, 'getAiConfig'])
-    // router.put('/settings/ai', [SettingsController, 'updateAiConfig'])
-
-    // AI API - 独立限流
-    // router.get('/ai/config', [AiController, 'getConfig'])
-    // router.post('/ai/chat', [AiController, 'chat']).use(aiChatLimiter)
-    // router.post('/ai/chat/stream', [AiController, 'stream']).use(aiChatLimiter)
-
-    // 全局搜索 - 独立限流
-    // router.get('/search', [SearchController, 'search']).use(searchLimiter)
   })
   .prefix('api')
   .middleware(middleware.auth())
@@ -117,19 +71,4 @@ transmit.authorize('placeholder:userId', (ctx, { userId }) => {
     return false
   }
   return Number(ctx.auth.user?.id) === Number(userId)
-})
-
-router.get('/avatars/:filename', async ({ params, response }) => {
-  const filename = params.filename
-  const filepath = path.resolve(process.cwd(), 'storage', 'avatars', filename)
-
-  try {
-    const stat = await fs.stat(filepath)
-    if (!stat.isFile()) {
-      return response.notFound({ error: 'Avatar not found' })
-    }
-    return response.download(filepath)
-  } catch {
-    return response.notFound({ error: 'Avatar not found' })
-  }
 })

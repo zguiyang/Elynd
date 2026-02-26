@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { BookOpen, User, Settings, BookMarked } from 'lucide-vue-next'
+import { useAuthStore } from '@/stores/auth'
 
+const authStore = useAuthStore()
 const navigation = [
   { name: '学习', path: '/learning', icon: BookMarked },
   { name: '文章', path: '/learning/articles', icon: BookOpen },
@@ -38,7 +40,7 @@ const navigation = [
           <DropdownMenuTrigger as-child>
             <Button variant="ghost" size="icon" class="rounded-full">
               <Avatar class="size-8">
-                <AvatarImage src="" alt="User" />
+                <AvatarImage :src="authStore.user?.avatar || ''" alt="User" />
                 <AvatarFallback>
                   <User class="size-4" />
                 </AvatarFallback>

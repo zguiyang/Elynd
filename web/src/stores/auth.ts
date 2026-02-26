@@ -41,6 +41,10 @@ export const useAuthStore = defineStore('auth', () => {
       token.value = null
       user.value = null
       isLoading.value = false
+      // 清除本地存储的所有数据
+      localStorage.clear()
+      // 跳转到登录页
+      window.location.href = '/auth/sign-in'
     }
   }
 

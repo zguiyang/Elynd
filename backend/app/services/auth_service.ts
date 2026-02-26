@@ -11,7 +11,6 @@ export class AuthService {
     logger.info({ email: data.email }, 'Registration attempt')
 
     const user = await this.userService.create(data)
-    await this.userService.resendVerificationEmail(user.id)
 
     const token = await User.accessTokens.create(user)
 

@@ -1,6 +1,5 @@
 import { inject } from '@adonisjs/core'
 import { Exception } from '@adonisjs/core/exceptions'
-import hash from '@adonisjs/core/services/hash'
 import logger from '@adonisjs/core/services/logger'
 import { MultipartFile } from '@adonisjs/core/bodyparser'
 import { randomUUID } from 'node:crypto'
@@ -28,49 +27,6 @@ export class UserService {
     return user
   }
 
-  async verifyEmailByUser(userId: number, emailToken: string) {
-    // 1. 获取并立即销毁 Token 数据
-    const data = await this.getDataFromToken(emailToken)
-    if (!data) {
-      throw new Exception('验证链接已失效或已过期', { status: 403 })
-    }
-
-    const user = await User.findOrFail(userId)
-
-    // 2. 根据类型执行不同业务
-    if (data.type === 'change_email') {
-      // 更换邮箱场景：更新邮箱地址并设为已验证
-      user.email = data.email
-      user.isEmailVerified = true
-    } else {
-      // 注册验证场景：校验邮箱匹配
-      if (user.email !== data.email) {
-        throw new Exception('邮箱信息不匹配', { status: 403 })
-      }
-      user.isEmailVerified = true
-    }
-
-    await user.save()
-
-    logger.info({ userId: user.id, type: data.type }, 'Email verified')
-
-    return user
-  }
-
-  async getDataFromToken(token: string): Promise<{ email: string; type: string } | null> {
-    const key = `verify:${token}`
-    const rawData = await redis.getdel(key)
-    if (!rawData) {
-      return null
-    }
-    try {
-      return JSON.parse(rawData)
-    } catch {
-      // 兼容老版本存储的纯字符串 email
-      return { email: rawData, type: 'registration' }
-    }
-  }
-
   async resetPassword(token: string, newPassword: string) {
     logger.info({ token }, 'Resetting password')
 
@@ -90,6 +46,20 @@ export class UserService {
     logger.info({ userId: user.id }, 'Password reset')
 
     return user
+  }
+
+  async getDataFromToken(token: string): Promise<{ email: string; type: string } | null> {
+    const key = `verify:${token}`
+    const rawData = await redis.getdel(key)
+    if (!rawData) {
+      return null
+    }
+    try {
+      return JSON.parse(rawData)
+    } catch {
+      // 兼容老版本存储的纯字符串 email
+      return { email: rawData, type: 'registration' }
+    }
   }
 
   async findByEmail(email: string) {
@@ -123,10 +93,6 @@ export class UserService {
       throw new Exception('用户不存在', { status: 404 })
     }
 
-    if (!user.isEmailVerified) {
-      throw new Exception('请先验证您的邮箱地址', { status: 403 })
-    }
-
     const canSend = await this.checkCanSend(email)
     if (!canSend) {
       throw new Exception('邮件发送过于频繁，请稍后再试', {
@@ -145,69 +111,9 @@ export class UserService {
     logger.info({ userId: user.id }, 'Password reset email sent')
   }
 
-  async changeEmail(userId: number, newEmail: string, password: string): Promise<User> {
-    const user = await User.findOrFail(userId)
-
-    const isValidPassword = await hash.verify(user.password, password)
-    if (!isValidPassword) {
-      throw new Exception('Invalid password', { status: 403 })
-    }
-
-    if (user.email === newEmail) {
-      throw new Exception('New email must be different from current email', { status: 400 })
-    }
-
-    const existingUser = await User.findBy('email', newEmail)
-    if (existingUser) {
-      throw new Exception('Email is already in use', { status: 400 })
-    }
-
-    const canSend = await this.checkCanSend(newEmail)
-    if (!canSend) {
-      throw new Exception('邮件发送过于频繁，请稍后再试', {
-        status: 429,
-      })
-    }
-
-    logger.info({ userId, newEmail }, 'Changing email')
-
-    const emailToken = await this.storeEmailVerificationToken(newEmail, 'change_email')
-
-    await this.notificationService.sendVerificationEmail(newEmail, user.fullName, emailToken)
-
-    await this.setSendRate(newEmail)
-
-    logger.info({ userId, newEmail }, 'Email change initiated, verification email sent')
-
-    return user
-  }
-
-  async resendVerificationEmail(userId: number): Promise<void> {
-    const user = await User.findOrFail(userId)
-
-    if (user.isEmailVerified) {
-      throw new Exception('Email already verified', { status: 400 })
-    }
-
-    const canSend = await this.checkCanSend(user.email)
-    if (!canSend) {
-      throw new Exception('邮件发送过于频繁，请稍后再试', {
-        status: 429,
-      })
-    }
-
-    const emailToken = await this.storeEmailVerificationToken(user.email, 'registration')
-
-    await this.notificationService.sendVerificationEmail(user.email, user.fullName, emailToken)
-
-    await this.setSendRate(user.email)
-
-    logger.info({ userId }, 'Verification email resent')
-  }
-
   async storeEmailVerificationToken(
     email: string,
-    type: 'registration' | 'change_email' | 'reset_password' = 'registration'
+    type: 'reset_password'
   ): Promise<string> {
     const emailToken = randomUUID()
     const key = `verify:${emailToken}`

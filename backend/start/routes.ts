@@ -38,9 +38,6 @@ router
     router.put('/user', [UsersController, 'update'])
     router.post('/user/avatar', [UsersController, 'uploadAvatar'])
     router.delete('/user/avatar', [UsersController, 'removeAvatar'])
-    router.post('/user/change-email', [UsersController, 'changeEmail'])
-    router.get('/user/verify-email', [UsersController, 'verifyEmail'])
-    router.post('/user/resend-verification', [UsersController, 'resendVerification'])
 
     // 标签 API
     // router.get('/tags', [TagsController, 'index'])

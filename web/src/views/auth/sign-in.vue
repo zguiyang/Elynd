@@ -10,7 +10,27 @@ const password = ref('')
 const rememberMe = ref(false)
 const errors = ref<{ email?: string; password?: string }>({})
 
-const validate = () => {
+const validate = useDebounceFn(() => {
+  const newErrors: { email?: string; password?: string } = {}
+
+  if (!email.value) {
+    newErrors.email = '请输入邮箱地址'
+  } else if (!/\S+@\S+\.\S+/.test(email.value)) {
+    newErrors.email = '请输入有效的邮箱地址'
+  }
+
+  if (!password.value) {
+    newErrors.password = '请输入密码'
+  }
+
+  errors.value = newErrors
+}, 300)
+
+watch([email, password], () => {
+  validate()
+}, { flush: 'post' })
+
+const validateImmediate = () => {
   const newErrors: { email?: string; password?: string } = {}
 
   if (!email.value) {
@@ -28,7 +48,7 @@ const validate = () => {
 }
 
 const handleSubmit = async () => {
-  if (!validate()) return
+  if (!validateImmediate()) return
 
   try {
     await authStore.login({

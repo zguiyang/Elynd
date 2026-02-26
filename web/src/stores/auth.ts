@@ -52,71 +52,84 @@ function clearTokenCookie() {
   document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
 }
 
-export const useAuthStore = defineStore('auth', {
-  state: () => ({
-    user: null as User | null,
-    isLoading: false,
-  }),
+export const useAuthStore = defineStore('auth', () => {
+  const user = ref<User | null>(null)
+  const isLoading = ref(false)
+  const isAuthenticated = computed(() => !!user.value)
 
-  getters: {
-    isAuthenticated: (state) => !!state.user,
-  },
+  function setTokenCookie(token: string, rememberMe?: boolean) {
+    const maxAge = rememberMe ? 60 * 60 * 24 * 7 : 60 * 60 * 24
+    document.cookie = `auth_token=${token}; path=/; max-age=${maxAge}; SameSite=Lax`
+  }
 
-  actions: {
-    async login(data: LoginData): Promise<AuthResponse> {
-      this.isLoading = true
-      try {
-        const response = await api.post<AuthResponse>('/api/auth/login', data)
-        const authResponse = response.data
-        setTokenCookie(authResponse.token, data.rememberMe)
-        this.user = authResponse.user
-        return authResponse
-      } finally {
-        this.isLoading = false
-      }
-    },
+  function clearTokenCookie() {
+    document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+  }
 
-    async register(data: RegisterData): Promise<AuthResponse> {
-      this.isLoading = true
-      try {
-        const response = await api.post<AuthResponse>('/api/auth/register', data)
-        const authResponse = response.data
-        setTokenCookie(authResponse.token, true)
-        this.user = authResponse.user
-        return authResponse
-      } finally {
-        this.isLoading = false
-      }
-    },
+  const login = async (data: LoginData): Promise<AuthResponse> => {
+    isLoading.value = true
+    try {
+      const response = await api.post<AuthResponse>('/api/auth/login', data)
+      const authResponse = response.data
+      setTokenCookie(authResponse.token, data.rememberMe)
+      user.value = authResponse.user
+      return authResponse
+    } finally {
+      isLoading.value = false
+    }
+  }
 
-    async logout(): Promise<void> {
-      this.isLoading = true
-      try {
-        await api.post('/api/auth/logout')
-      } finally {
-        clearTokenCookie()
-        this.user = null
-        this.isLoading = false
-      }
-    },
+  const register = async (data: RegisterData): Promise<AuthResponse> => {
+    isLoading.value = true
+    try {
+      const response = await api.post<AuthResponse>('/api/auth/register', data)
+      const authResponse = response.data
+      setTokenCookie(authResponse.token, true)
+      user.value = authResponse.user
+      return authResponse
+    } finally {
+      isLoading.value = false
+    }
+  }
 
-    async forgotPassword(email: string): Promise<ForgotPasswordResponse> {
-      this.isLoading = true
-      try {
-        const response = await api.post<ForgotPasswordResponse>('/api/auth/forgot-password', { email })
-        return response.data
-      } finally {
-        this.isLoading = false
-      }
-    },
+  const logout = async (): Promise<void> => {
+    isLoading.value = true
+    try {
+      await api.post('/api/auth/logout')
+    } finally {
+      clearTokenCookie()
+      user.value = null
+      isLoading.value = false
+    }
+  }
 
-    async resetPassword(data: ResetPasswordData): Promise<void> {
-      this.isLoading = true
-      try {
-        await api.post('/api/auth/reset-password', data)
-      } finally {
-        this.isLoading = false
-      }
-    },
-  },
+  const forgotPassword = async (email: string): Promise<ForgotPasswordResponse> => {
+    isLoading.value = true
+    try {
+      const response = await api.post<ForgotPasswordResponse>('/api/auth/forgot-password', { email })
+      return response.data
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const resetPassword = async (data: ResetPasswordData): Promise<void> => {
+    isLoading.value = true
+    try {
+      await api.post('/api/auth/reset-password', data)
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  return {
+    user,
+    isAuthenticated,
+    isLoading,
+    login,
+    register,
+    logout,
+    forgotPassword,
+    resetPassword,
+  }
 })

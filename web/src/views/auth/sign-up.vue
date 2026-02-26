@@ -17,7 +17,41 @@ const errors = ref<{
   confirmPassword?: string
 }>({})
 
-const validate = () => {
+const validate = useDebounceFn(() => {
+  const newErrors: typeof errors.value = {}
+
+  if (!name.value) {
+    newErrors.name = '请输入用户名'
+  } else if (name.value.length < 2) {
+    newErrors.name = '用户名至少需要2个字符'
+  }
+
+  if (!email.value) {
+    newErrors.email = '请输入邮箱地址'
+  } else if (!/\S+@\S+\.\S+/.test(email.value)) {
+    newErrors.email = '请输入有效的邮箱地址'
+  }
+
+  if (!password.value) {
+    newErrors.password = '请输入密码'
+  } else if (password.value.length < 6) {
+    newErrors.password = '密码至少需要6个字符'
+  }
+
+  if (!confirmPassword.value) {
+    newErrors.confirmPassword = '请确认密码'
+  } else if (password.value !== confirmPassword.value) {
+    newErrors.confirmPassword = '两次输入的密码不一致'
+  }
+
+  errors.value = newErrors
+}, 300)
+
+watch([name, email, password, confirmPassword], () => {
+  validate()
+}, { flush: 'post' })
+
+const validateImmediate = () => {
   const newErrors: typeof errors.value = {}
 
   if (!name.value) {
@@ -49,7 +83,7 @@ const validate = () => {
 }
 
 const handleSubmit = async () => {
-  if (!validate()) return
+  if (!validateImmediate()) return
 
   try {
     await authStore.register({ name: name.value, email: email.value, password: password.value })

@@ -8,7 +8,23 @@ const email = ref('')
 const errors = ref<{ email?: string }>({})
 const isSubmitted = ref(false)
 
-const validate = () => {
+const validate = useDebounceFn(() => {
+  const newErrors: { email?: string } = {}
+
+  if (!email.value) {
+    newErrors.email = '请输入邮箱地址'
+  } else if (!/\S+@\S+\.\S+/.test(email.value)) {
+    newErrors.email = '请输入有效的邮箱地址'
+  }
+
+  errors.value = newErrors
+}, 300)
+
+watch(email, () => {
+  validate()
+}, { flush: 'post' })
+
+const validateImmediate = () => {
   const newErrors: { email?: string } = {}
 
   if (!email.value) {
@@ -22,7 +38,7 @@ const validate = () => {
 }
 
 const handleSubmit = async () => {
-  if (!validate()) return
+  if (!validateImmediate()) return
 
   try {
     await authStore.forgotPassword(email.value)

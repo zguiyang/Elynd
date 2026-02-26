@@ -15,14 +15,6 @@ export default defineConfig({
         'vue',
         'vue-router',
         'pinia',
-        {
-          '@vueuse/core': [
-            'useMouse',
-            'useStorage',
-            'useDark',
-            'useToggle',
-          ],
-        },
       ],
       dts: 'src/auto-imports.d.ts',
       dirs: ['src/composables'],

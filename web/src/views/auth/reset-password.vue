@@ -16,7 +16,29 @@ const errors = ref<{
 }>({})
 const isSuccess = ref(false)
 
-const validate = () => {
+const validate = useDebounceFn(() => {
+  const newErrors: typeof errors.value = {}
+
+  if (!password.value) {
+    newErrors.password = '请输入新密码'
+  } else if (password.value.length < 8) {
+    newErrors.password = '密码至少需要8个字符'
+  }
+
+  if (!confirmPassword.value) {
+    newErrors.confirmPassword = '请确认密码'
+  } else if (password.value !== confirmPassword.value) {
+    newErrors.confirmPassword = '两次输入的密码不一致'
+  }
+
+  errors.value = newErrors
+}, 300)
+
+watch([password, confirmPassword], () => {
+  validate()
+}, { flush: 'post' })
+
+const validateImmediate = () => {
   const newErrors: typeof errors.value = {}
 
   if (!password.value) {
@@ -36,7 +58,7 @@ const validate = () => {
 }
 
 const handleSubmit = async () => {
-  if (!validate()) return
+  if (!validateImmediate()) return
 
   if (!token) {
     toast.error('无效的重置令牌')

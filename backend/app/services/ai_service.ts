@@ -247,7 +247,11 @@ export class AiService {
     let hasError = false
 
     const encoder = new TextEncoder()
-    const sendEvent = (controller: ReadableStreamDefaultController, event: string, eventData: unknown) => {
+    const sendEvent = (
+      controller: ReadableStreamDefaultController,
+      event: string,
+      eventData: unknown
+    ) => {
       const message = `event: ${event}\ndata: ${JSON.stringify(eventData)}\n\n`
       controller.enqueue(encoder.encode(message))
     }
@@ -301,7 +305,11 @@ export class AiService {
     }
 
     if (error.status === 404) {
-      return this.formatError('MODEL_NOT_FOUND', `AI model not found: ${error.message}`, 'invalid_request_error')
+      return this.formatError(
+        'MODEL_NOT_FOUND',
+        `AI model not found: ${error.message}`,
+        'invalid_request_error'
+      )
     }
 
     if (error.status) {

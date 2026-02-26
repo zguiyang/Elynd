@@ -20,7 +20,16 @@ export default class UserConfig extends BaseModel {
   declare aiModelName: string | null
 
   @column()
-  declare aiEnabled: boolean
+  declare nativeLanguage: string | null
+
+  @column()
+  declare targetLanguage: string | null
+
+  @column()
+  declare vocabularyLevel: string | null
+
+  @column()
+  declare learningInitCompleted: boolean
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

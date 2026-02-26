@@ -1,9 +1,7 @@
 import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
 import { UserService } from '#services/user_service'
-import {
-  updateProfileValidator,
-} from '#validators/user_validator'
+import { updateProfileValidator } from '#validators/user_validator'
 
 @inject()
 export default class UsersController {
@@ -24,5 +22,4 @@ export default class UsersController {
 
     return updatedUser.serialize()
   }
-
 }

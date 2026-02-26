@@ -114,10 +114,7 @@ export class UserService {
     logger.info({ userId: user.id }, 'Password reset email sent')
   }
 
-  async storeEmailVerificationToken(
-    email: string,
-    type: 'reset_password'
-  ): Promise<string> {
+  async storeEmailVerificationToken(email: string, type: 'reset_password'): Promise<string> {
     const emailToken = randomUUID()
     const key = `verify:${emailToken}`
     const data = JSON.stringify({ email, type })
@@ -138,5 +135,4 @@ export class UserService {
     const rateKey = `verify:rate:${email}`
     await redis.set(rateKey, '1', 'EX', EMAIL_VERIFICATION.COOLDOWN_MINUTES * 60)
   }
-
 }

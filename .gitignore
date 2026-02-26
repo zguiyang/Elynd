@@ -38,6 +38,7 @@ openspec/
 .ai/
 .sisyphus/
 AGENTS.md
+.output.txt
 
 docs/
 # docker files

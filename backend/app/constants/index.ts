@@ -51,22 +51,22 @@ const AI = {
 type Ai = (typeof AI)[keyof typeof AI]
 
 const VOCABULARY_LEVEL = {
-  BEGINNER: 'beginner',       // 0-500 词
-  ELEMENTARY: 'elementary',   // 500-1500 词
+  BEGINNER: 'beginner', // 0-500 词
+  ELEMENTARY: 'elementary', // 500-1500 词
   INTERMEDIATE: 'intermediate', // 1500-3000 词
-  UPPER: 'upper',            // 3000+ 词
+  UPPER: 'upper', // 3000+ 词
 } as const
 
 type VocabularyLevel = (typeof VOCABULARY_LEVEL)[keyof typeof VOCABULARY_LEVEL]
 
 const LANGUAGE = {
-  ZH: 'zh',  // 中文
-  EN: 'en',  // English
-  JA: 'ja',  // 日本語
-  KO: 'ko',  // 한국어
-  FR: 'fr',  // Français
-  DE: 'de',  // Deutsch
-  ES: 'es',  // Español
+  ZH: 'zh', // 中文
+  EN: 'en', // English
+  JA: 'ja', // 日本語
+  KO: 'ko', // 한국어
+  FR: 'fr', // Français
+  DE: 'de', // Deutsch
+  ES: 'es', // Español
 } as const
 
 type Language = (typeof LANGUAGE)[keyof typeof LANGUAGE]

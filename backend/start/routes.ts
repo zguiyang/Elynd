@@ -35,6 +35,8 @@ router
     router.get('/user/me', [UsersController, 'me'])
     router.put('/user', [UsersController, 'update'])
     router.post('/user/change-password', [UsersController, 'changePassword'])
+    router.get('/user/config', [UsersController, 'getConfig'])
+    router.put('/user/config', [UsersController, 'updateConfig'])
   })
   .prefix('api')
   .middleware(middleware.auth())

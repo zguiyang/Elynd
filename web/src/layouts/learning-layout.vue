@@ -56,9 +56,11 @@ const navigation = [
                 <span>个人资料</span>
               </RouterLink>
             </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Settings class="mr-2 size-4" />
-              <span>设置</span>
+            <DropdownMenuItem as-child>
+              <RouterLink to="/learning/settings" class="flex items-center cursor-pointer">
+                <Settings class="mr-2 size-4" />
+                <span>设置</span>
+              </RouterLink>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem @click="authStore.logout()">

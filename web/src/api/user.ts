@@ -8,6 +8,24 @@ export interface User {
   createdAt: string
 }
 
+export interface UserConfig {
+  id: number
+  userId: number
+  nativeLanguage: string | null
+  targetLanguage: string | null
+  vocabularyLevel: string | null
+  learningInitCompleted: boolean
+  createdAt: string
+  updatedAt: string | null
+}
+
+export interface UpdateUserConfigData {
+  nativeLanguage?: string | null
+  targetLanguage?: string | null
+  vocabularyLevel?: string | null
+  learningInitCompleted?: boolean
+}
+
 export interface ChangePasswordData {
   currentPassword: string
   newPassword: string
@@ -21,4 +39,7 @@ export const userApi = {
   me: () => request.get<User>('/api/user/me'),
   changePassword: (data: ChangePasswordData) =>
     request.post<ChangePasswordResponse>('/api/user/change-password', data),
+  getConfig: () => request.get<UserConfig>('/api/user/config'),
+  updateConfig: (data: UpdateUserConfigData) =>
+    request.put<UserConfig>('/api/user/config', data),
 }

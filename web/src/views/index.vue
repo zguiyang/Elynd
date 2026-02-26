@@ -114,7 +114,7 @@ const STEPS = [
   <div class="min-h-screen bg-background">
     <!-- Navigation -->
     <header class="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-md">
-      <nav class="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <nav class="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
         <div class="flex items-center gap-2">
           <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <BookOpen class="size-5 text-primary-foreground" />
@@ -163,7 +163,7 @@ const STEPS = [
         />
       </div>
 
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8">
         <div class="mx-auto max-w-3xl text-center">
           <Badge variant="secondary" class="mb-6">
             <Sparkles class="size-3.5 mr-1" />
@@ -202,7 +202,7 @@ const STEPS = [
         <div class="absolute left-0 top-0 w-125 h-125 bg-primary/5 rounded-full blur-3xl" />
         <div class="absolute right-0 bottom-0 w-100 h-100 bg-secondary/5 rounded-full blur-3xl" />
       </div>
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
           <Badge variant="outline" class="mb-4"> 真实痛点 </Badge>
           <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">我们在英语学习中遇到的困境</h2>
@@ -240,7 +240,7 @@ const STEPS = [
 
     <!-- Solution Section -->
     <section id="solution" class="py-20 lg:py-28 bg-muted/30">
-      <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
           <Badge variant="outline" class="mb-4"> 解决方案 </Badge>
           <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">以输入材料为核心的闭环学习</h2>
@@ -277,7 +277,7 @@ const STEPS = [
 
     <!-- Features Section -->
     <section id="features" class="py-20 lg:py-28">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
           <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">一站式英语学习体验</h2>
           <p class="mt-4 text-lg text-muted-foreground">
@@ -311,7 +311,7 @@ const STEPS = [
 
     <!-- How It Works Section -->
     <section id="how-it-works" class="py-20 lg:py-28">
-      <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
           <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">三步开启学习之旅</h2>
           <p class="mt-4 text-lg text-muted-foreground">简单易上手，快速进入学习状态</p>
@@ -340,7 +340,7 @@ const STEPS = [
 
     <!-- Footer -->
     <footer class="border-t bg-muted/20">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex flex-col md:flex-row items-center justify-between gap-4 py-8">
           <div class="flex items-center gap-2">
             <div class="flex h-6 w-6 items-center justify-center rounded-md bg-primary">

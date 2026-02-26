@@ -13,7 +13,7 @@ const navigation = [
   <div class="h-dvh flex flex-col bg-background">
     <!-- Header -->
     <header class="flex-none border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-      <div class="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div class="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
         <!-- Logo -->
         <RouterLink to="/learning" class="flex items-center gap-2">
           <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">

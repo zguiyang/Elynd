@@ -70,7 +70,7 @@ const getDifficultyVariant = (difficulty: string) => {
 </script>
 
 <template>
-  <div class="space-y-8 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+  <div class="space-y-8 container mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <!-- Welcome Area -->
     <div class="space-y-2">
       <h1 class="text-3xl font-bold">你好，{{ mockUser.name }}</h1>

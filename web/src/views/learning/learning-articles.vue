@@ -1,78 +1,57 @@
 <script setup lang="ts">
-import { BookOpen, ArrowLeft } from 'lucide-vue-next'
+import { BookOpen, ArrowLeft, Loader2 } from 'lucide-vue-next'
+import { useArticles } from '@/composables/useArticle'
+import { toast } from 'vue-sonner'
 
-const difficulties = ['全部', 'L1', 'L2', 'L3'] as const
-type Difficulty = typeof difficulties[number]
+const difficulties = [
+  { value: undefined, label: '全部' },
+  { value: 'L1', label: 'L1' },
+  { value: 'L2', label: 'L2' },
+  { value: 'L3', label: 'L3' },
+] as const
+type Difficulty = typeof difficulties[number]['value']
 
-const selectedDifficulty = ref<Difficulty>('全部')
+const selectedDifficulty = ref<Difficulty>(undefined)
+const selectedTagId = ref<number | undefined>(undefined)
 
-const mockArticles = [
-  {
-    id: 1,
-    title: 'The Future of AI in Education',
-    difficulty: 'L2',
-    category: '科技',
-    description: 'Exploring how artificial intelligence is transforming the way we learn and teach.',
-  },
-  {
-    id: 2,
-    title: 'Tips for Remote Work Success',
-    difficulty: 'L1',
-    category: '职场',
-    description: 'Practical advice for staying productive and connected while working from home.',
-  },
-  {
-    id: 3,
-    title: 'Daily Conversation Phrases',
-    difficulty: 'L1',
-    category: '日常',
-    description: 'Learn common phrases for everyday conversations with native speakers.',
-  },
-  {
-    id: 4,
-    title: 'Understanding Business Meetings',
-    difficulty: 'L2',
-    category: '职场',
-    description: 'Essential vocabulary and phrases for participating in business meetings.',
-  },
-  {
-    id: 5,
-    title: 'Advanced Technical Writing',
-    difficulty: 'L3',
-    category: '科技',
-    description: 'Improve your technical writing skills for documentation and reports.',
-  },
-  {
-    id: 6,
-    title: 'Travel English Essentials',
-    difficulty: 'L1',
-    category: '日常',
-    description: 'Must-know phrases for traveling abroad and communicating with locals.',
-  },
-  {
-    id: 7,
-    title: 'The Science of Climate Change',
-    difficulty: 'L3',
-    category: '科技',
-    description: 'Understanding the scientific basis of climate change and its impacts.',
-  },
-  {
-    id: 8,
-    title: 'Networking for Professionals',
-    difficulty: 'L2',
-    category: '职场',
-    description: 'Build meaningful professional relationships in your industry.',
-  },
-]
+const { articles, tags, isLoading, error, pagination, fetchArticles, fetchTags, goToPage } =
+  useArticles()
 
-const filteredArticles = computed(() => {
-  if (selectedDifficulty.value === '全部') {
-    return mockArticles
-  }
-  return mockArticles.filter(article => article.difficulty === selectedDifficulty.value)
+const loadData = () => {
+  fetchArticles({
+    difficulty: selectedDifficulty.value,
+    tagId: selectedTagId.value,
+    page: 1,
+  })
+}
+
+const onDifficultyChange = (difficulty: Difficulty) => {
+  selectedDifficulty.value = difficulty
+  selectedTagId.value = undefined
+  loadData()
+}
+
+const onTagChange = (tagId: number | undefined) => {
+  selectedTagId.value = tagId
+  loadData()
+}
+
+const onPageChange = (page: number) => {
+  goToPage(page)
+}
+
+onMounted(() => {
+  fetchTags()
+  loadData()
 })
 
-const getDifficultyVariant = (difficulty: string) => {
+watch(error, (err) => {
+  if (err) {
+    toast.error(err)
+  }
+})
+
+const getDifficultyVariant = (difficulty: string): 'default' | 'secondary' | 'outline' => {
   const variants: Record<string, 'default' | 'secondary' | 'outline'> = {
     L1: 'secondary',
     L2: 'default',
@@ -95,55 +74,121 @@ const getDifficultyVariant = (difficulty: string) => {
     </div>
 
     <!-- Filters -->
-    <div class="flex items-center gap-2">
-      <span class="text-sm text-muted-foreground">难度筛选：</span>
-      <div class="flex gap-2">
-        <Button
-          v-for="difficulty in difficulties"
-          :key="difficulty"
-          :variant="selectedDifficulty === difficulty ? 'default' : 'outline'"
-          size="sm"
-          @click="selectedDifficulty = difficulty"
+    <div class="flex flex-col sm:flex-row gap-4">
+      <!-- Difficulty Filter -->
+      <div class="flex items-center gap-2">
+        <span class="text-sm text-muted-foreground">难度筛选：</span>
+        <div class="flex gap-2">
+          <Button
+            v-for="difficulty in difficulties"
+            :key="difficulty.label"
+            :variant="selectedDifficulty === difficulty.value ? 'default' : 'outline'"
+            size="sm"
+            @click="onDifficultyChange(difficulty.value)"
+          >
+            {{ difficulty.label }}
+          </Button>
+        </div>
+      </div>
+
+      <!-- Tag Filter -->
+      <div v-if="tags.length > 0" class="flex items-center gap-2">
+        <span class="text-sm text-muted-foreground">标签筛选：</span>
+        <Select
+          :model-value="selectedTagId"
+          @update:model-value="onTagChange"
         >
-          {{ difficulty }}
-        </Button>
+          <SelectTrigger class="w-40">
+            <SelectValue placeholder="选择标签" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem :value="undefined">全部</SelectItem>
+            <SelectItem
+              v-for="tag in tags"
+              :key="tag.id"
+              :value="tag.id"
+            >
+              {{ tag.name }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
       </div>
     </div>
 
-    <!-- Articles Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <RouterLink
-        v-for="article in filteredArticles"
-        :key="article.id"
-        :to="`/learning/article/${article.id}`"
-      >
-        <Card class="h-full hover:shadow-md transition-all cursor-pointer group">
-          <CardHeader>
-            <div class="flex items-start justify-between">
-              <CardTitle class="text-lg group-hover:text-primary transition-colors line-clamp-2">
-                {{ article.title }}
-              </CardTitle>
-            </div>
-            <div class="flex items-center gap-2 mt-2">
-              <Badge :variant="getDifficultyVariant(article.difficulty)">
-                {{ article.difficulty }}
-              </Badge>
-              <Badge variant="outline">{{ article.category }}</Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <CardDescription class="text-base line-clamp-3">
-              {{ article.description }}
-            </CardDescription>
-          </CardContent>
-        </Card>
-      </RouterLink>
+    <!-- Loading State -->
+    <div v-if="isLoading" class="flex justify-center py-12">
+      <Loader2 class="size-8 animate-spin text-muted-foreground" />
     </div>
 
-    <!-- Empty State -->
-    <div v-if="filteredArticles.length === 0" class="text-center py-12">
-      <BookOpen class="size-12 mx-auto text-muted-foreground mb-4" />
-      <p class="text-muted-foreground">暂无文章</p>
-    </div>
+    <!-- Articles Grid -->
+    <template v-else>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <RouterLink
+          v-for="article in articles"
+          :key="article.id"
+          :to="`/learning/article/${article.id}`"
+        >
+          <Card class="h-full hover:shadow-md transition-all cursor-pointer group">
+            <CardHeader>
+              <div class="flex items-start justify-between">
+                <CardTitle class="text-lg group-hover:text-primary transition-colors line-clamp-2">
+                  {{ article.title }}
+                </CardTitle>
+              </div>
+              <div class="flex items-center gap-2 mt-2 flex-wrap">
+                <Badge :variant="getDifficultyVariant(article.difficultyLevel)">
+                  {{ article.difficultyLevel }}
+                </Badge>
+                <Badge
+                  v-for="tag in article.tags"
+                  :key="tag.id"
+                  variant="outline"
+                >
+                  {{ tag.name }}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div class="text-sm text-muted-foreground">
+                {{ article.readingTime ? `${article.readingTime} 分钟阅读` : '' }}
+                {{ article.wordCount ? `· ${article.wordCount} 词` : '' }}
+              </div>
+            </CardContent>
+          </Card>
+        </RouterLink>
+      </div>
+
+      <!-- Empty State -->
+      <div v-if="articles.length === 0" class="text-center py-12">
+        <BookOpen class="size-12 mx-auto text-muted-foreground mb-4" />
+        <p class="text-muted-foreground">暂无文章</p>
+      </div>
+
+      <!-- Pagination -->
+      <div
+        v-if="pagination.lastPage > 1"
+        class="flex justify-center items-center gap-2"
+      >
+        <Button
+          variant="outline"
+          size="sm"
+          :disabled="pagination.currentPage <= 1"
+          @click="onPageChange(pagination.currentPage - 1)"
+        >
+          上一页
+        </Button>
+        <span class="text-sm text-muted-foreground">
+          {{ pagination.currentPage }} / {{ pagination.lastPage }}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          :disabled="pagination.currentPage >= pagination.lastPage"
+          @click="onPageChange(pagination.currentPage + 1)"
+        >
+          下一页
+        </Button>
+      </div>
+    </template>
   </div>
 </template>

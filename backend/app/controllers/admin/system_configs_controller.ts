@@ -6,35 +6,47 @@ import { updateSystemConfigValidator } from '#validators/system_config'
 @inject()
 export default class SystemConfigsController {
   async index({}: HttpContext) {
-    const configs = await SystemConfig.all()
-    return configs.map((config) => config.serialize())
+    let config = await SystemConfig.first()
+
+    if (!config) {
+      config = await SystemConfig.create({
+        aiBaseUrl: null,
+        aiApiKey: null,
+        aiModelName: null,
+      })
+    }
+
+    return {
+      aiBaseUrl: config.aiBaseUrl,
+      aiApiKey: config.aiApiKey,
+      aiModelName: config.aiModelName,
+    }
   }
 
   async update({ request }: HttpContext) {
     const data = await request.validateUsing(updateSystemConfigValidator)
 
-    const results = await Promise.all(
-      data.map(async (config) => {
-        const existing = await SystemConfig.findBy('key', config.key)
+    let config = await SystemConfig.first()
 
-        if (existing) {
-          existing.value = config.value ?? existing.value
-          if (config.description !== undefined) {
-            existing.description = config.description
-          }
-          await existing.save()
-          return existing.serialize()
-        } else {
-          const newConfig = await SystemConfig.create({
-            key: config.key,
-            value: config.value ?? null,
-            description: config.description ?? null,
-          })
-          return newConfig.serialize()
-        }
+    if (!config) {
+      config = await SystemConfig.create({
+        aiBaseUrl: data.aiBaseUrl ?? null,
+        aiApiKey: data.aiApiKey ?? null,
+        aiModelName: data.aiModelName ?? null,
       })
-    )
+    } else {
+      config.merge({
+        aiBaseUrl: data.aiBaseUrl ?? config.aiBaseUrl,
+        aiApiKey: data.aiApiKey ?? config.aiApiKey,
+        aiModelName: data.aiModelName ?? config.aiModelName,
+      })
+      await config.save()
+    }
 
-    return results
+    return {
+      aiBaseUrl: config.aiBaseUrl,
+      aiApiKey: config.aiApiKey,
+      aiModelName: config.aiModelName,
+    }
   }
 }

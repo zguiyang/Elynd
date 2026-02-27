@@ -54,7 +54,7 @@ const handlePasswordChange = async () => {
   }
 }
 
-const formatDate = (dateString: string) => {
+const formatDate = (dateString: string | undefined) => {
   if (!dateString) return '-'
   return new Date(dateString).toLocaleDateString('zh-CN', {
     year: 'numeric',

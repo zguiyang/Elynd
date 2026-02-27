@@ -29,6 +29,8 @@ interface VocabularyItem {
 
 interface AiArticleResponse {
   title: string
+  tableOfContents: string[]
+  chapterCount: number
   content: string
   wordCount: number
   tags: Array<{ name: string; isNew: boolean }>
@@ -72,7 +74,7 @@ export class ArticleService {
       englishVariant: languageConfig.englishVariant,
     })
 
-    const articleData = await this.callAiWithRetry(userConfig, prompt, config.maxTokens)
+    const articleData = await this.callAi(userConfig, prompt, config.maxTokens)
 
     if (!articleData.content) {
       logger.error({ articleData }, 'AI response missing content field')
@@ -91,6 +93,8 @@ export class ArticleService {
       difficultyLevel: params.difficultyLevel,
       wordCount: articleData.wordCount,
       readingTime: Math.ceil(articleData.wordCount / ARTICLE_CONTENT.READING_SPEED),
+      tableOfContents: articleData.tableOfContents || null,
+      chapterCount: articleData.chapterCount || null,
       isPublished: true,
       createdBy: userId,
     })
@@ -161,123 +165,99 @@ export class ArticleService {
     return tags
   }
 
-  private async callAiWithRetry(
+  private async callAi(
     userConfig: any,
     prompt: string,
     maxTokens: number
   ): Promise<AiArticleResponse> {
-    const maxRetries = 2
-    let lastError: Error | null = null
+    logger.info('[Article Generation] Starting AI request', {
+      model: userConfig.modelName || 'gpt-4o-mini',
+      maxTokens,
+    })
 
-    for (let i = 0; i < maxRetries; i++) {
-      try {
-        logger.info('[Article Generation] Starting AI request', {
-          model: userConfig.modelName || 'gpt-4o-mini',
-          maxTokens,
-          attempt: i + 1,
-        })
+    const response = await this.aiService.chat(userConfig, {
+      model: userConfig.modelName || 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are a JSON-only response generator.' },
+        { role: 'user', content: prompt },
+      ],
+      max_tokens: maxTokens,
+      temperature: 0.7,
+      response_format: { type: 'json_object' },
+    })
 
-        const response = await this.aiService.chat(userConfig, {
-          model: userConfig.modelName || 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: 'You are a JSON-only response generator.' },
-            { role: 'user', content: prompt },
-          ],
-          max_tokens: maxTokens,
-          temperature: 0.7,
-          response_format: { type: 'json_object' },
-        })
+    logger.info('[Article Generation] AI response received', {
+      success: response.success,
+      hasData: 'data' in response,
+      hasChoices: !!(response as any).choices,
+      responseType:
+        typeof (response as any).data || typeof (response as any).choices?.[0]?.message?.content,
+    })
 
-        logger.info('[Article Generation] AI response received', {
-          success: response.success,
-          hasData: 'data' in response,
-          hasChoices: !!(response as any).choices,
-          responseType:
-            typeof (response as any).data ||
-            typeof (response as any).choices?.[0]?.message?.content,
-        })
-
-        let articleData: string
-        if (response.success && 'data' in response) {
-          const openaiResponse = (response as any).data
-          articleData = openaiResponse.choices?.[0]?.message?.content || ''
-        } else {
-          articleData = (response as any).choices?.[0]?.message?.content || ''
-        }
-
-        if (!articleData) {
-          logger.error({ response }, 'No content in AI response')
-          throw new ArticleGenerationFailedException('AI response has no content')
-        }
-
-        const rawContent =
-          articleData.length > 500 ? articleData.substring(0, 500) + '...(truncated)' : articleData
-        logger.debug('[Article Generation] Raw response content', {
-          content: rawContent,
-        })
-
-        logger.debug('[Article Generation] Extracted article data', {
-          dataLength: articleData.length,
-          dataPreview: articleData.substring(0, 200),
-        })
-
-        const parsedArticleData = JSON.parse(articleData) as AiArticleResponse
-
-        logger.info('[Article Generation] JSON parsed successfully', {
-          hasTitle: !!parsedArticleData.title,
-          hasContent: !!parsedArticleData.content,
-          contentLength: parsedArticleData.content?.length || 0,
-          hasWordCount: !!parsedArticleData.wordCount,
-          tagsCount: parsedArticleData.tags?.length || 0,
-          vocabularyCount: parsedArticleData.vocabulary?.length || 0,
-        })
-
-        if (!parsedArticleData.content) {
-          logger.error({ parsedArticleData }, 'AI response missing content field')
-          throw new ArticleGenerationFailedException('AI response missing content field')
-        }
-
-        logger.info('AI generation successful', {
-          title: parsedArticleData.title,
-          wordCount: parsedArticleData.wordCount,
-          tagCount: parsedArticleData.tags?.length || 0,
-          vocabularyCount: parsedArticleData.vocabulary?.length || 0,
-        })
-
-        return parsedArticleData
-      } catch (error) {
-        lastError = error as Error
-
-        if (error instanceof SyntaxError) {
-          logger.error('[Article Generation] JSON parse failed', {
-            errorType: 'JSON_PARSE_ERROR',
-            errorMessage: error.message,
-            attempt: i + 1,
-          })
-        } else if (error instanceof TypeError) {
-          logger.error('[Article Generation] Data validation failed', {
-            errorType: 'VALIDATION_ERROR',
-            errorMessage: error.message,
-            attempt: i + 1,
-          })
-        } else {
-          logger.error('[Article Generation] Unknown error occurred', {
-            errorType: 'UNKNOWN_ERROR',
-            errorMessage: error.message,
-            attempt: i + 1,
-          })
-        }
-
-        if (i < maxRetries - 1) {
-          logger.info('[Article Generation] Retrying in 1 second...', { nextAttempt: i + 2 })
-          await this.sleep(1000)
-        }
-      }
+    let articleData: string
+    if (response.success && 'data' in response) {
+      const openaiResponse = (response as any).data
+      articleData = openaiResponse.choices?.[0]?.message?.content || ''
+    } else {
+      articleData = (response as any).choices?.[0]?.message?.content || ''
     }
 
-    throw new ArticleGenerationFailedException(
-      `Failed after ${maxRetries} attempts: ${lastError?.message}`
-    )
+    if (!articleData) {
+      logger.error({ response }, 'No content in AI response')
+      throw new ArticleGenerationFailedException('AI response has no content')
+    }
+
+    const rawContent =
+      articleData.length > 500 ? articleData.substring(0, 500) + '...(truncated)' : articleData
+    logger.debug('[Article Generation] Raw response content', {
+      content: rawContent,
+    })
+
+    logger.debug('[Article Generation] Extracted article data', {
+      dataLength: articleData.length,
+      dataPreview: articleData.substring(0, 500),
+    })
+
+    let parsedArticleData: AiArticleResponse
+    try {
+      parsedArticleData = JSON.parse(articleData) as AiArticleResponse
+    } catch (parseError) {
+      logger.error(
+        {
+          parseError: (parseError as Error).message,
+          rawResponse: articleData.substring(0, 1000),
+        },
+        '[Article Generation] JSON parse failed, raw response above'
+      )
+      throw new ArticleGenerationFailedException('AI response is not valid JSON')
+    }
+
+    logger.info('[Article Generation] JSON parsed successfully', {
+      keys: Object.keys(parsedArticleData),
+      hasTitle: !!parsedArticleData.title,
+      hasTableOfContents: !!parsedArticleData.tableOfContents,
+      hasChapterCount: !!parsedArticleData.chapterCount,
+      hasContent: !!parsedArticleData.content,
+      contentLength: parsedArticleData.content?.length || 0,
+      hasWordCount: parsedArticleData.wordCount !== undefined,
+      wordCount: parsedArticleData.wordCount,
+      tagsCount: parsedArticleData.tags?.length || 0,
+      vocabularyCount: parsedArticleData.vocabulary?.length || 0,
+    })
+
+    if (!parsedArticleData.content) {
+      logger.error({ parsedArticleData }, 'AI response missing content field')
+      throw new ArticleGenerationFailedException('AI response missing content field')
+    }
+
+    logger.info('AI generation successful', {
+      title: parsedArticleData.title,
+      wordCount: parsedArticleData.wordCount,
+      tagCount: parsedArticleData.tags?.length || 0,
+      vocabularyCount: parsedArticleData.vocabulary?.length || 0,
+    })
+
+    return parsedArticleData
   }
 
   async listPublished(params: ListPublishedParams) {
@@ -340,24 +320,24 @@ export class ArticleService {
   }
 
   private getDifficultyConfig(level: string) {
-    const configs: Record<string, { maxWords: number; maxTokens: number; description: string }> = {
-      [ARTICLE_DIFFICULTY.L1]: {
-        maxWords: ARTICLE_CONTENT.MAX_WORDS_L1,
-        maxTokens: ARTICLE_CONTENT.MAX_TOKENS_L1,
-        description: 'Beginner - Simple sentences, basic vocabulary (500-800 words)',
-      },
-      [ARTICLE_DIFFICULTY.L2]: {
-        maxWords: ARTICLE_CONTENT.MAX_WORDS_L2,
-        maxTokens: ARTICLE_CONTENT.MAX_TOKENS_L2,
-        description: 'Intermediate - Moderate complexity (800-1500 words)',
-      },
-      [ARTICLE_DIFFICULTY.L3]: {
-        maxWords: ARTICLE_CONTENT.MAX_WORDS_L3,
-        maxTokens: ARTICLE_CONTENT.MAX_TOKENS_L3,
-        description: 'Advanced - Complex structures (1500-2500 words)',
-      },
+    const unifiedConfig = {
+      maxWords: ARTICLE_CONTENT.MAX_WORDS,
+      maxTokens: ARTICLE_CONTENT.MAX_TOKENS,
+      description: this.getLevelDescription(level),
     }
-    return configs[level] || configs[ARTICLE_DIFFICULTY.L2]
+    return unifiedConfig
+  }
+
+  private getLevelDescription(level: string): string {
+    const descriptions: Record<string, string> = {
+      [ARTICLE_DIFFICULTY.L1]:
+        'L1 - Beginner (Grade 1 / Primary 1): Approximately 500 basic everyday words, simple sentences, short phrases, basic grammar',
+      [ARTICLE_DIFFICULTY.L2]:
+        'L2 - Intermediate (Grade 2-3 / Primary 2-3): Approximately 1000 common words, compound sentences, moderate length, past/future tense',
+      [ARTICLE_DIFFICULTY.L3]:
+        'L3 - Advanced (Grade 4-5 / Primary 4-5): Approximately 2000 words with diverse expressions, complex sentences, various tenses',
+    }
+    return descriptions[level] || descriptions[ARTICLE_DIFFICULTY.L2]
   }
 
   private countWords(text: string): number {
@@ -377,9 +357,5 @@ export class ArticleService {
       baseUrl,
       modelName,
     }
-  }
-
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms))
   }
 }

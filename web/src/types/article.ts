@@ -11,6 +11,8 @@ export interface Article {
   difficultyLevel: string
   wordCount: number | null
   readingTime: number | null
+  tableOfContents: string[] | null
+  chapterCount: number | null
   isPublished: boolean
   createdBy: number
   createdAt: string
@@ -24,6 +26,8 @@ export interface ArticleListItem {
   difficultyLevel: string
   wordCount: number | null
   readingTime: number | null
+  tableOfContents: string[] | null
+  chapterCount: number | null
   createdAt: string
   tags: Tag[]
 }

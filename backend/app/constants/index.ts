@@ -44,7 +44,7 @@ const EMAIL_VERIFICATION = {
 type EmailVerification = (typeof EMAIL_VERIFICATION)[keyof typeof EMAIL_VERIFICATION]
 
 const AI = {
-  DEFAULT_TIMEOUT: 60000,
+  DEFAULT_TIMEOUT: 120000,
   DEFAULT_MAX_RETRIES: 2,
 } as const
 
@@ -81,6 +81,8 @@ type ArticleDifficulty = (typeof ARTICLE_DIFFICULTY)[keyof typeof ARTICLE_DIFFIC
 
 const ARTICLE_CONTENT = {
   MAX_CHARS: 100000,
+  MAX_WORDS: 3000,
+  MAX_TOKENS: 8000,
   MAX_WORDS_L1: 800,
   MAX_WORDS_L2: 1500,
   MAX_WORDS_L3: 2500,

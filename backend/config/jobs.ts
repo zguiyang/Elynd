@@ -13,7 +13,7 @@ const jobsConfig = defineConfig({
   queues: [env.get('REDIS_QUEUE', 'elynd_jobs')],
 
   options: {
-    attempts: 3,
+    attempts: 0,
     backoff: {
       type: 'exponential',
       delay: 2000,

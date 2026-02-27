@@ -24,6 +24,12 @@ export default class Article extends BaseModel {
   @column()
   declare readingTime: number | null
 
+  @column({ serializeAs: null })
+  declare tableOfContents: string[] | null
+
+  @column()
+  declare chapterCount: number | null
+
   @column()
   declare isPublished: boolean
 

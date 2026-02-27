@@ -139,6 +139,12 @@ onMounted(async () => {
             <span class="text-sm font-medium">{{ user?.email }}</span>
           </div>
           <div class="flex justify-between py-3">
+            <span class="text-sm text-muted-foreground">角色</span>
+            <Badge :variant="user?.isAdmin ? 'default' : 'secondary'">
+              {{ user?.isAdmin ? '管理员' : '普通用户' }}
+            </Badge>
+          </div>
+          <div class="flex justify-between py-3">
             <span class="text-sm text-muted-foreground">注册时间</span>
             <span class="text-sm font-medium">{{ formatDate(user?.createdAt) }}</span>
           </div>

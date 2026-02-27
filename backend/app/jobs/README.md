@@ -51,18 +51,18 @@ Using `app.container.make()` ensures that:
 
 ## Service Usage Examples
 
-### ImportBookmark Job
+### GenerateArticle Job
 
 ```typescript
 import { Job } from 'adonisjs-jobs'
 import app from '@adonisjs/core/services/app'
 import logger from '@adonisjs/core/services/logger'
-import { BookmarkParserService } from '#services/bookmark_parser_service'
+import { ArticleService } from '#services/article_service'
 import { TransmitService } from '#services/transmit_service'
 
-export default class ImportBookmark extends Job {
-  async handle(payload: ImportBookmarkPayload) {
-    const bookmarkParserService = await app.container.make(BookmarkParserService)
+export default class GenerateArticle extends Job {
+  async handle(payload: GenerateArticlePayload) {
+    const articleService = await app.container.make(ArticleService)
     const transmitService = await app.container.make(TransmitService)
     
     // ... job logic

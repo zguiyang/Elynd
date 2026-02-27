@@ -8,9 +8,9 @@ const jobsConfig = defineConfig({
     password: env.get('REDIS_PASSWORD'),
   },
 
-  queue: env.get('REDIS_QUEUE', 'linky_jobs'),
+  queue: env.get('REDIS_QUEUE', 'elynd_jobs'),
 
-  queues: [env.get('REDIS_QUEUE', 'linky_jobs')],
+  queues: [env.get('REDIS_QUEUE', 'elynd_jobs')],
 
   options: {
     attempts: 3,

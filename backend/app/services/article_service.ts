@@ -245,16 +245,11 @@ export class ArticleService {
   }
 
   private async getUserAiConfig() {
-    const systemConfigs = await SystemConfig.query()
-      .whereIn('key', ['ai_api_key', 'ai_base_url', 'ai_model_name'])
-      .exec()
+    const config = await SystemConfig.first()
 
-    const configMap = new Map(systemConfigs.map((c) => [c.key, c.value]))
-
-    const apiKey = configMap.get('ai_api_key') || process.env.OPENAI_API_KEY
-    const baseUrl = configMap.get('ai_base_url') || process.env.OPENAI_BASE_URL
-    const modelName =
-      configMap.get('ai_model_name') || process.env.OPENAI_MODEL_NAME || 'gpt-4o-mini'
+    const apiKey = config?.aiApiKey || process.env.OPENAI_API_KEY
+    const baseUrl = config?.aiBaseUrl || process.env.OPENAI_BASE_URL
+    const modelName = config?.aiModelName || process.env.OPENAI_MODEL_NAME || 'gpt-4o-mini'
 
     return {
       enabled: true,

@@ -92,7 +92,7 @@ transmit.registerRoutes()
 
 // Configure channel authorization
 // TODO: Replace with actual channel authorization when needed
-transmit.authorize('placeholder:userId', (ctx, { userId }) => {
+transmit.authorize('user:userId:article', (ctx, { userId }) => {
   if (!ctx.auth.isAuthenticated) {
     return false
   }

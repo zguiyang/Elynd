@@ -40,8 +40,11 @@ export function useArticleSse(userId: number) {
     await channel.create()
     console.log('[SSE] 频道已创建, isCreated:', channel.isCreated)
 
-    unsubscribeFn = channel.onMessage((event: ArticleStatusEvent) => {
-      console.log('[SSE] 收到消息:', event)
+    unsubscribeFn = channel.onMessage((message: ArticleStatusEvent & { event?: string; data?: ArticleStatusEvent }) => {
+      console.log('[SSE] 收到原始消息:', message)
+
+      const event = message.data || message
+      console.log('[SSE] 解析后消息:', event)
 
       status.value = event.status
 

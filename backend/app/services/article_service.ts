@@ -145,20 +145,25 @@ export class ArticleService {
             { role: 'system', content: 'You are a JSON-only response generator.' },
             { role: 'user', content: prompt },
           ],
-          max_completion_tokens: maxTokens,
+          max_tokens: maxTokens,
           temperature: 0.7,
           response_format: { type: 'json_object' },
         })
 
-        const articleData = JSON.parse(response.data.choices[0].message.content)
+        const articleData = (response.success && 'data' in response
+          ? response.data
+          : (response as any).choices?.[0]?.message?.content
+          ) as string
+
+        const parsedArticleData = JSON.parse(articleData) as AiArticleResponse
 
         logger.info('AI generation successful', {
-          title: articleData.title,
-          wordCount: articleData.wordCount,
-          tagCount: articleData.tags?.length || 0,
+          title: parsedArticleData.title,
+          wordCount: parsedArticleData.wordCount,
+          tagCount: parsedArticleData.tags?.length || 0,
         })
 
-        return articleData
+        return parsedArticleData
       } catch (error) {
         lastError = error as Error
         logger.warn(`Article generation attempt ${i + 1} failed`, { error })
@@ -181,8 +186,9 @@ export class ArticleService {
     }
 
     if (params.tagId) {
+      const tagId = params.tagId
       query.whereHas('tags', (tagQuery) => {
-        tagQuery.where('id', params.tagId)
+        tagQuery.where('id', tagId)
       })
     }
 

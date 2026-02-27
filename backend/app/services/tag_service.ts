@@ -14,9 +14,7 @@ export class TagService {
   async findOrCreate(name: string): Promise<Tag> {
     const slug = this.generateSlug(name)
 
-    const tag = await Tag.firstOrCreate({ slug }, { name, slug })
-
-    return tag
+    return await Tag.firstOrCreate({ slug }, { name, slug })
   }
 
   async listAll(): Promise<Tag[]> {

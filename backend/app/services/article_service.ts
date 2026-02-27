@@ -58,6 +58,11 @@ export class ArticleService {
 
     const articleData = await this.callAiWithRetry(userConfig, prompt, config.maxTokens)
 
+    if (!articleData.content) {
+      logger.error({ articleData }, 'AI response missing content field')
+      throw new ArticleGenerationFailedException('AI response is missing content field')
+    }
+
     if (articleData.content.length > ARTICLE_CONTENT.MAX_CHARS) {
       logger.warn('Article content exceeds limit, truncating...')
       articleData.content = articleData.content.substring(0, ARTICLE_CONTENT.MAX_CHARS)
@@ -138,6 +143,12 @@ export class ArticleService {
 
     for (let i = 0; i < maxRetries; i++) {
       try {
+        logger.info('[Article Generation] Starting AI request', {
+          model: userConfig.modelName || 'gpt-4o-mini',
+          maxTokens,
+          attempt: i + 1,
+        })
+
         const response = await this.aiService.chat(userConfig, {
           model: userConfig.modelName || 'gpt-4o-mini',
           messages: [
@@ -149,13 +160,53 @@ export class ArticleService {
           response_format: { type: 'json_object' },
         })
 
-        const articleData = (
-          response.success && 'data' in response
-            ? response.data
-            : (response as any).choices?.[0]?.message?.content
-        ) as string
+        logger.info('[Article Generation] AI response received', {
+          success: response.success,
+          hasData: 'data' in response,
+          hasChoices: !!(response as any).choices,
+          responseType:
+            typeof (response as any).data ||
+            typeof (response as any).choices?.[0]?.message?.content,
+        })
+
+        let articleData: string
+        if (response.success && 'data' in response) {
+          const openaiResponse = (response as any).data
+          articleData = openaiResponse.choices?.[0]?.message?.content || ''
+        } else {
+          articleData = (response as any).choices?.[0]?.message?.content || ''
+        }
+
+        if (!articleData) {
+          logger.error({ response }, 'No content in AI response')
+          throw new ArticleGenerationFailedException('AI response has no content')
+        }
+
+        const rawContent =
+          articleData.length > 500 ? articleData.substring(0, 500) + '...(truncated)' : articleData
+        logger.debug('[Article Generation] Raw response content', {
+          content: rawContent,
+        })
+
+        logger.debug('[Article Generation] Extracted article data', {
+          dataLength: articleData.length,
+          dataPreview: articleData.substring(0, 200),
+        })
 
         const parsedArticleData = JSON.parse(articleData) as AiArticleResponse
+
+        logger.info('[Article Generation] JSON parsed successfully', {
+          hasTitle: !!parsedArticleData.title,
+          hasContent: !!parsedArticleData.content,
+          contentLength: parsedArticleData.content?.length || 0,
+          hasWordCount: !!parsedArticleData.wordCount,
+          tagsCount: parsedArticleData.tags?.length || 0,
+        })
+
+        if (!parsedArticleData.content) {
+          logger.error({ parsedArticleData }, 'AI response missing content field')
+          throw new ArticleGenerationFailedException('AI response missing content field')
+        }
 
         logger.info('AI generation successful', {
           title: parsedArticleData.title,
@@ -166,8 +217,29 @@ export class ArticleService {
         return parsedArticleData
       } catch (error) {
         lastError = error as Error
-        logger.warn(`Article generation attempt ${i + 1} failed`, { error })
+
+        if (error instanceof SyntaxError) {
+          logger.error('[Article Generation] JSON parse failed', {
+            errorType: 'JSON_PARSE_ERROR',
+            errorMessage: error.message,
+            attempt: i + 1,
+          })
+        } else if (error instanceof TypeError) {
+          logger.error('[Article Generation] Data validation failed', {
+            errorType: 'VALIDATION_ERROR',
+            errorMessage: error.message,
+            attempt: i + 1,
+          })
+        } else {
+          logger.error('[Article Generation] Unknown error occurred', {
+            errorType: 'UNKNOWN_ERROR',
+            errorMessage: error.message,
+            attempt: i + 1,
+          })
+        }
+
         if (i < maxRetries - 1) {
+          logger.info('[Article Generation] Retrying in 1 second...', { nextAttempt: i + 2 })
           await this.sleep(1000)
         }
       }

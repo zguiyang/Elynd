@@ -38,6 +38,6 @@ export default class Article extends BaseModel {
   @belongsTo(() => User, { foreignKey: 'createdBy' })
   declare author: BelongsTo<typeof User>
 
-  @manyToMany(() => Tag, { pivotTable: 'article_tags' })
+  @manyToMany(() => Tag, { pivotTable: 'article_tags', pivotTimestamps: true })
   declare tags: ManyToMany<typeof Tag>
 }

@@ -16,6 +16,7 @@ const AuthController = () => import('#controllers/auth_controller')
 const UsersController = () => import('#controllers/users_controller')
 const ArticlesController = () => import('#controllers/articles_controller')
 const AdminArticlesController = () => import('#controllers/admin/articles_controller')
+const AdminSystemConfigsController = () => import('#controllers/admin/system_configs_controller')
 
 // 公开认证路 由组（不需要认证）- 更严格的限流
 router
@@ -57,6 +58,8 @@ router
 router
   .group(() => {
     router.post('/admin/articles/generate', [AdminArticlesController, 'generate'])
+    router.get('/admin/system-config', [AdminSystemConfigsController, 'index'])
+    router.put('/admin/system-config', [AdminSystemConfigsController, 'update'])
   })
   .prefix('api')
   .middleware([middleware.auth(), middleware.admin()])

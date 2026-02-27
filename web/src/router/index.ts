@@ -44,6 +44,7 @@ const router = createRouter({
       name: 'learning',
       component: () => import('@/layouts/learning-layout.vue'),
       redirect: '/learning',
+      meta: { requiresAuth: true },
       children: [
         {
           path: '',
@@ -69,6 +70,20 @@ const router = createRouter({
           path: 'settings',
           name: 'settings',
           component: () => import('@/views/settings/settings-view.vue'),
+        },
+      ],
+    },
+    {
+      path: '/admin',
+      name: 'admin',
+      component: () => import('@/layouts/admin-layout.vue'),
+      redirect: '/admin/articles/generate',
+      meta: { requiresAuth: true, requiresAdmin: true },
+      children: [
+        {
+          path: 'articles/generate',
+          name: 'admin-articles-generate',
+          component: () => import('@/views/admin/articles-generate-view.vue'),
         },
       ],
     },

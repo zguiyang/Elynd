@@ -4,7 +4,7 @@ import PromptService from '#services/prompt_service'
 import { TagService } from '#services/tag_service'
 import Article from '#models/article'
 import Tag from '#models/tag'
-import User from '#models/user'
+import SystemConfig from '#models/system_config'
 import logger from '@adonisjs/core/services/logger'
 import { ARTICLE_CONTENT, ARTICLE_DIFFICULTY } from '#constants'
 import {
@@ -41,8 +41,7 @@ export class ArticleService {
 
   async generateArticle(userId: number, params: GenerateArticleParams): Promise<Article> {
     const config = this.getDifficultyConfig(params.difficultyLevel)
-    const user = await User.findOrFail(userId)
-    const userConfig = await this.getUserAiConfig(user)
+    const userConfig = await this.getUserAiConfig()
 
     const existingTags = await Tag.query().select('id', 'name', 'slug')
     const existingTagsText = existingTags.map((t) => t.name).join(', ')
@@ -150,10 +149,11 @@ export class ArticleService {
           response_format: { type: 'json_object' },
         })
 
-        const articleData = (response.success && 'data' in response
-          ? response.data
-          : (response as any).choices?.[0]?.message?.content
-          ) as string
+        const articleData = (
+          response.success && 'data' in response
+            ? response.data
+            : (response as any).choices?.[0]?.message?.content
+        ) as string
 
         const parsedArticleData = JSON.parse(articleData) as AiArticleResponse
 
@@ -244,15 +244,23 @@ export class ArticleService {
     return text.split(/\s+/).filter((word) => word.length > 0).length
   }
 
-  private async getUserAiConfig(user: User) {
-    await user.load('config')
-    const config = user.config
+  private async getUserAiConfig() {
+    const systemConfigs = await SystemConfig.query()
+      .whereIn('key', ['ai_api_key', 'ai_base_url', 'ai_model_name'])
+      .exec()
+
+    const configMap = new Map(systemConfigs.map((c) => [c.key, c.value]))
+
+    const apiKey = configMap.get('ai_api_key') || process.env.OPENAI_API_KEY
+    const baseUrl = configMap.get('ai_base_url') || process.env.OPENAI_BASE_URL
+    const modelName =
+      configMap.get('ai_model_name') || process.env.OPENAI_MODEL_NAME || 'gpt-4o-mini'
 
     return {
       enabled: true,
-      apiKey: process.env.OPENAI_API_KEY,
-      baseUrl: process.env.OPENAI_BASE_URL,
-      modelName: config?.aiModelName || 'gpt-4o-mini',
+      apiKey,
+      baseUrl,
+      modelName,
     }
   }
 

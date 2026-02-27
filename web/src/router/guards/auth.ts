@@ -24,6 +24,12 @@ export async function setupAuthGuard(
         return '/auth/sign-in'
       }
     }
+
+    // 检查管理员权限
+    const requiresAdmin = to.meta.requiresAdmin === true
+    if (requiresAdmin && !authStore.user?.isAdmin) {
+      return '/learning'
+    }
   } else if (to.path.startsWith('/auth') && authStore.isAuthenticated) {
     // 如果访问的是 auth 相关页面（如登录/注册），且已登录，则跳转到学习页
     return '/learning'

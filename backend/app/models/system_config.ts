@@ -6,13 +6,13 @@ export default class SystemConfig extends BaseModel {
   declare id: number
 
   @column()
-  declare key: string
+  declare aiBaseUrl: string | null
 
   @column()
-  declare value: string | null
+  declare aiApiKey: string | null
 
   @column()
-  declare description: string | null
+  declare aiModelName: string | null
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

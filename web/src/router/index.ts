@@ -85,6 +85,11 @@ const router = createRouter({
           name: 'admin-articles-generate',
           component: () => import('@/views/admin/articles-generate-view.vue'),
         },
+        {
+          path: 'settings',
+          name: 'admin-settings',
+          component: () => import('@/views/admin/settings-view.vue'),
+        },
       ],
     },
   ],

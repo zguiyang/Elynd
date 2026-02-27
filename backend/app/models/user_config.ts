@@ -26,6 +26,9 @@ export default class UserConfig extends BaseModel {
   declare targetLanguage: string | null
 
   @column()
+  declare englishVariant: string | null
+
+  @column()
   declare vocabularyLevel: string | null
 
   @column()

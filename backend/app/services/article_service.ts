@@ -5,6 +5,8 @@ import { TagService } from '#services/tag_service'
 import Article from '#models/article'
 import Tag from '#models/tag'
 import SystemConfig from '#models/system_config'
+import UserConfig from '#models/user_config'
+import ArticleVocabulary from '#models/article_vocabulary'
 import logger from '@adonisjs/core/services/logger'
 import { ARTICLE_CONTENT, ARTICLE_DIFFICULTY } from '#constants'
 import {
@@ -18,11 +20,19 @@ interface GenerateArticleParams {
   extraInstructions?: string
 }
 
+interface VocabularyItem {
+  word: string
+  meaning: string
+  sentence: string
+  phonetic?: string
+}
+
 interface AiArticleResponse {
   title: string
   content: string
   wordCount: number
   tags: Array<{ name: string; isNew: boolean }>
+  vocabulary: VocabularyItem[]
 }
 
 interface ListPublishedParams {
@@ -43,6 +53,7 @@ export class ArticleService {
   async generateArticle(userId: number, params: GenerateArticleParams): Promise<Article> {
     const config = this.getDifficultyConfig(params.difficultyLevel)
     const userConfig = await this.getUserAiConfig()
+    const languageConfig = await this.getLanguageConfig(userId)
 
     const existingTags = await Tag.query().select('id', 'name', 'slug')
     const existingTagsText = existingTags.map((t) => t.name).join(', ')
@@ -56,6 +67,9 @@ export class ArticleService {
       maxWords: config.maxWords,
       existingTags: existingTagsText || 'No existing tags',
       extraInstructions: params.extraInstructions || '',
+      nativeLanguage: languageConfig.nativeLanguage,
+      targetLanguage: languageConfig.targetLanguage,
+      englishVariant: languageConfig.englishVariant,
     })
 
     const articleData = await this.callAiWithRetry(userConfig, prompt, config.maxTokens)
@@ -84,6 +98,18 @@ export class ArticleService {
     const tags = await this.processTags(articleData.tags, existingTags)
 
     await article.related('tags').attach(tags.map((t) => t.id))
+
+    if (articleData.vocabulary && articleData.vocabulary.length > 0) {
+      const vocabularyData = articleData.vocabulary.map((item) => ({
+        articleId: article.id,
+        word: item.word,
+        meaning: item.meaning,
+        sentence: item.sentence,
+        phonetic: item.phonetic || null,
+      }))
+      await ArticleVocabulary.createMany(vocabularyData)
+      logger.info(`Saved ${vocabularyData.length} vocabulary items for article ${article.id}`)
+    }
 
     await article.load('tags')
 
@@ -203,6 +229,7 @@ export class ArticleService {
           contentLength: parsedArticleData.content?.length || 0,
           hasWordCount: !!parsedArticleData.wordCount,
           tagsCount: parsedArticleData.tags?.length || 0,
+          vocabularyCount: parsedArticleData.vocabulary?.length || 0,
         })
 
         if (!parsedArticleData.content) {
@@ -214,6 +241,7 @@ export class ArticleService {
           title: parsedArticleData.title,
           wordCount: parsedArticleData.wordCount,
           tagCount: parsedArticleData.tags?.length || 0,
+          vocabularyCount: parsedArticleData.vocabulary?.length || 0,
         })
 
         return parsedArticleData
@@ -291,6 +319,24 @@ export class ArticleService {
     }
 
     return article
+  }
+
+  async getVocabularyByArticleId(articleId: number) {
+    const vocabularies = await ArticleVocabulary.query()
+      .where('articleId', articleId)
+      .orderBy('id', 'asc')
+
+    return vocabularies
+  }
+
+  private async getLanguageConfig(userId: number) {
+    const userConfig = await UserConfig.query().where('userId', userId).first()
+
+    return {
+      nativeLanguage: userConfig?.nativeLanguage || 'zh',
+      targetLanguage: userConfig?.targetLanguage || 'en',
+      englishVariant: userConfig?.englishVariant || 'en-US',
+    }
   }
 
   private getDifficultyConfig(level: string) {

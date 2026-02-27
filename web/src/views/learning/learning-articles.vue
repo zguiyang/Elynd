@@ -3,6 +3,8 @@ import { BookOpen, ArrowLeft, Loader2 } from 'lucide-vue-next'
 import { useArticles } from '@/composables/useArticle'
 import { toast } from 'vue-sonner'
 
+const { articles, tags, isLoading, error, pagination, fetchArticles, fetchTags, goToPage } = useArticles()
+
 const difficulties = [
   { value: undefined, label: '全部' },
   { value: 'L1', label: 'L1' },
@@ -12,27 +14,25 @@ const difficulties = [
 type Difficulty = typeof difficulties[number]['value']
 
 const selectedDifficulty = ref<Difficulty>(undefined)
-const selectedTagId = ref<number | undefined>(undefined)
-
-const { articles, tags, isLoading, error, pagination, fetchArticles, fetchTags, goToPage } =
-  useArticles()
+const selectedTagId = ref<number | 'all' | undefined>('all')
 
 const loadData = () => {
+  const tagId = selectedTagId.value === 'all' ? undefined : selectedTagId.value
   fetchArticles({
     difficulty: selectedDifficulty.value,
-    tagId: selectedTagId.value,
+    tagId: tagId,
     page: 1,
   })
+}
+
+const onTagChange = (tagId: number | 'all' | undefined) => {
+  selectedTagId.value = tagId
+  loadData()
 }
 
 const onDifficultyChange = (difficulty: Difficulty) => {
   selectedDifficulty.value = difficulty
   selectedTagId.value = undefined
-  loadData()
-}
-
-const onTagChange = (tagId: number | undefined) => {
-  selectedTagId.value = tagId
   loadData()
 }
 
@@ -102,7 +102,7 @@ const getDifficultyVariant = (difficulty: string): 'default' | 'secondary' | 'ou
             <SelectValue placeholder="选择标签" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem :value="undefined">全部</SelectItem>
+            <SelectItem value="all">全部</SelectItem>
             <SelectItem
               v-for="tag in tags"
               :key="tag.id"

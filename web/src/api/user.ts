@@ -15,6 +15,7 @@ export interface UserConfig {
   nativeLanguage: string | null
   targetLanguage: string | null
   vocabularyLevel: string | null
+  englishVariant: string | null
   learningInitCompleted: boolean
   createdAt: string
   updatedAt: string | null
@@ -24,6 +25,7 @@ export interface UpdateUserConfigData {
   nativeLanguage?: string | null
   targetLanguage?: string | null
   vocabularyLevel?: string | null
+  englishVariant?: 'en-US' | 'en-GB'
   learningInitCompleted?: boolean
 }
 

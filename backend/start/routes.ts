@@ -50,6 +50,7 @@ router
   .group(() => {
     router.get('/articles', [ArticlesController, 'index'])
     router.get('/articles/:id', [ArticlesController, 'show'])
+    router.get('/articles/:id/vocabulary', [ArticlesController, 'vocabulary'])
     router.get('/tags', [ArticlesController, 'tags'])
   })
   .prefix('api')

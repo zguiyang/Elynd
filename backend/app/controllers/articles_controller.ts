@@ -30,6 +30,16 @@ export default class ArticlesController {
     return article.serialize()
   }
 
+  async vocabulary({ params }: HttpContext) {
+    const articleId = params.id
+
+    await this.articleService.findPublishedById(articleId)
+
+    const vocabularies = await this.articleService.getVocabularyByArticleId(articleId)
+
+    return vocabularies.map((v) => v.serialize())
+  }
+
   async tags({}: HttpContext) {
     const tags = await this.tagService.listAll()
 

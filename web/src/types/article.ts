@@ -46,3 +46,12 @@ export interface ArticleListParams {
   page?: number
   perPage?: number
 }
+
+export interface VocabularyItem {
+  id: number
+  articleId: number
+  word: string
+  meaning: string
+  sentence: string
+  phonetic: string | null
+}

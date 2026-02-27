@@ -23,6 +23,7 @@ const formData = ref({
   nativeLanguage: 'zh',
   targetLanguage: 'en',
   vocabularyLevel: 'beginner',
+  englishVariant: 'en-US',
   learningInitCompleted: false,
 })
 
@@ -45,6 +46,11 @@ const targetLanguages = [
   { value: 'en', label: '英语 (English)' },
 ]
 
+const englishVariants = [
+  { value: 'en-US', label: '美式英语 (American)', description: 'KK 音标' },
+  { value: 'en-GB', label: '英式英语 (British)', description: 'DJ 音标' },
+]
+
 const formatDate = (dateString: string | undefined) => {
   if (!dateString) return '-'
   return new Date(dateString).toLocaleDateString('zh-CN', {
@@ -62,6 +68,7 @@ const fetchConfig = async () => {
     formData.value.nativeLanguage = response.data.nativeLanguage || 'zh'
     formData.value.targetLanguage = response.data.targetLanguage || 'en'
     formData.value.vocabularyLevel = response.data.vocabularyLevel || 'beginner'
+    formData.value.englishVariant = response.data.englishVariant || 'en-US'
     formData.value.learningInitCompleted = response.data.learningInitCompleted
   } catch (error) {
     console.error('Failed to fetch config:', error)
@@ -77,6 +84,7 @@ const handleSaveConfig = async () => {
       nativeLanguage: formData.value.nativeLanguage,
       targetLanguage: formData.value.targetLanguage,
       vocabularyLevel: formData.value.vocabularyLevel,
+      englishVariant: formData.value.englishVariant as 'en-US' | 'en-GB',
       learningInitCompleted: formData.value.learningInitCompleted,
     }
     await userApi.updateConfig(data)
@@ -201,6 +209,24 @@ onMounted(async () => {
               </SelectContent>
             </Select>
             <p class="text-xs text-muted-foreground">帮助我们为您推荐适合的文章难度</p>
+          </div>
+
+          <div class="space-y-1.5">
+            <Label for="englishVariant" class="text-sm font-medium">英语变体</Label>
+            <Select v-model="formData.englishVariant">
+              <SelectTrigger id="englishVariant" class="h-10 w-full">
+                <SelectValue placeholder="选择英语变体" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem v-for="variant in englishVariants" :key="variant.value" :value="variant.value">
+                  <div class="flex flex-col">
+                    <span>{{ variant.label }}</span>
+                    <span class="text-xs text-muted-foreground">{{ variant.description }}</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p class="text-xs text-muted-foreground">影响词汇表音标显示</p>
           </div>
         </div>
 

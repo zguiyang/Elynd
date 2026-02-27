@@ -12,10 +12,14 @@ import {
   ChevronRight,
   ChevronDown,
   Loader2,
+  BookOpen,
 } from 'lucide-vue-next'
 import { useReadingSettingsStore } from '@/stores/reading-settings'
 import { useArticle } from '@/composables/useArticle'
+import { articleApi } from '@/api/article'
 import type { LineHeight, ContentWidth } from '@/stores/reading-settings'
+import type { VocabularyItem } from '@/types/article'
+import VocabularyPreview from '@/components/shared/VocabularyPreview.vue'
 import { toast } from 'vue-sonner'
 
 const route = useRoute()
@@ -31,6 +35,10 @@ const currentPage = ref(1)
 const totalPages = ref(1)
 
 const isAiDrawerOpen = ref(false)
+
+const showVocabulary = ref(false)
+const vocabularies = ref<VocabularyItem[]>([])
+const isLoadingVocabulary = ref(false)
 
 const readingSettings = useReadingSettingsStore()
 
@@ -93,6 +101,24 @@ const handleWordClick = (word: string) => {
 
 const openAiDrawer = () => {
   isAiDrawerOpen.value = true
+}
+
+const fetchVocabulary = async () => {
+  if (vocabularies.value.length > 0) {
+    showVocabulary.value = true
+    return
+  }
+  
+  isLoadingVocabulary.value = true
+  try {
+    const data = await articleApi.getVocabulary(articleId)
+    vocabularies.value = data
+    showVocabulary.value = true
+  } catch {
+    toast.error('获取词汇失败')
+  } finally {
+    isLoadingVocabulary.value = false
+  }
 }
 
 onMounted(() => {
@@ -159,10 +185,23 @@ const getDifficultyVariant = (difficulty: string): 'default' | 'secondary' | 'ou
               {{ tag.name }}
             </Badge>
           </div>
-          <Button variant="outline" size="sm" class="gap-2 shrink-0" @click="openAiDrawer">
-            <MessageSquare class="size-4" />
-            AI 问答
-          </Button>
+          <div class="flex items-center gap-2 shrink-0">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              class="gap-2" 
+              @click="fetchVocabulary"
+              :disabled="isLoadingVocabulary"
+            >
+              <BookOpen class="size-4" />
+              预习关键词
+              <span v-if="vocabularies.length > 0">({{ vocabularies.length }})</span>
+            </Button>
+            <Button variant="outline" size="sm" class="gap-2" @click="openAiDrawer">
+              <MessageSquare class="size-4" />
+              AI 问答
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -294,5 +333,14 @@ const getDifficultyVariant = (difficulty: string): 'default' | 'secondary' | 'ou
     </template>
 
     <AiChatDrawer v-model:open="isAiDrawerOpen" />
+    
+    <Dialog v-model:open="showVocabulary">
+      <DialogContent class="max-w-lg">
+        <VocabularyPreview
+          :vocabularies="vocabularies"
+          @close="showVocabulary = false"
+        />
+      </DialogContent>
+    </Dialog>
   </div>
 </template>

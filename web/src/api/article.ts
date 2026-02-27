@@ -5,6 +5,7 @@ import type {
   ArticleListParams,
   PaginatedResponse,
   Tag,
+  VocabularyItem,
 } from '@/types/article'
 
 export const articleApi = {
@@ -14,4 +15,7 @@ export const articleApi = {
   getById: (id: number) => request.get<Article>(`/api/articles/${id}`),
 
   getTags: () => request.get<Tag[]>('/api/tags'),
+
+  getVocabulary: (articleId: number) =>
+    request.get<VocabularyItem[]>(`/api/articles/${articleId}/vocabulary`),
 }

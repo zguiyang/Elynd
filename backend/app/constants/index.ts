@@ -92,6 +92,13 @@ const ARTICLE_CONTENT = {
 
 type ArticleContent = (typeof ARTICLE_CONTENT)[keyof typeof ARTICLE_CONTENT]
 
+const ENGLISH_VARIANT = {
+  US: 'en-US',
+  GB: 'en-GB',
+} as const
+
+type EnglishVariant = (typeof ENGLISH_VARIANT)[keyof typeof ENGLISH_VARIANT]
+
 export {
   ORDER_BY,
   PAGINATION,
@@ -103,6 +110,7 @@ export {
   LANGUAGE,
   ARTICLE_DIFFICULTY,
   ARTICLE_CONTENT,
+  ENGLISH_VARIANT,
 }
 export type {
   OrderBy,
@@ -115,4 +123,5 @@ export type {
   Language,
   ArticleDifficulty,
   ArticleContent,
+  EnglishVariant,
 }

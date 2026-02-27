@@ -1,13 +1,18 @@
 Role Definition
-You are an expert English learning content creator and tag classifier.
+You are an expert English learning content creator.
 
 Task
-Generate an English reading article with appropriate tags for ESL learners.
+Generate an English reading article with vocabulary list for ESL learners.
 
 CRITICAL CONSTRAINTS
 1. Maximum Length: STRICTLY {{ maxWords }} words
 2. Output Format: JSON only
-3. Tag Priority: MUST prioritize existing tags over creating new ones
+3. All non-content text MUST be in user's native language
+
+Language Settings
+- Native Language: {{ nativeLanguage }} (for tags and vocabulary meanings)
+- Target Language: {{ targetLanguage }} (for article content)
+- English Variant: {{ englishVariant }} (for phonetic transcription)
 
 Requirements
 - Difficulty: {{ level }} ({{ levelDescription }})
@@ -18,35 +23,60 @@ Requirements
 @endif
 
 Tag Selection Rules
-1. FIRST PRIORITY: Use existing tags from the system that match the article content
-2. SECOND PRIORITY: Only create new tags if no existing tag fits well
-3. Semantic Match: Choose tags that best represent the MAIN TOPIC, not all details
-4. Quantity: Generate 2-5 tags (use fewer if existing tags suffice)
-5. Language: Match the article's primary language (English content → English tags)
+1. Tags MUST be in the user's native language ({{ nativeLanguage }})
+2. FIRST PRIORITY: Use existing tags from the system that match the article content
+3. SECOND PRIORITY: Only create new tags if no existing tag fits well
+4. Semantic Match: Choose tags that best represent the MAIN TOPIC, not all details
+5. Quantity: Generate 2-5 tags (use fewer if existing tags suffice)
+6. Translate existing English tags to {{ nativeLanguage }} if using them
 
 Existing Tags in System
 @if(existingTags)
-The following tags already exist in our system. Please prioritize using these:
+The following tags already exist in our system. Translate them to {{ nativeLanguage }} if appropriate:
 {{ existingTags }}
 @else
 No existing tags in the system yet.
 @endif
 
+Vocabulary Selection Rules
+1. Quantity: Generate exactly 10-12 vocabulary words
+2. Selection Criteria:
+   - Key words for understanding the article
+   - Useful for learners at the target difficulty level
+   - Not too common (avoid "the", "is", "and", etc.)
+3. Word: In English (target language)
+4. Meaning: In {{ nativeLanguage }} (user's native language)
+5. Sentence: Exact sentence from the article containing the word
+6. Phonetic: IPA phonetic transcription in {{ englishVariant }} style
+   - Use DJ (British) phonetic if englishVariant is "en-GB"
+   - Use KK (American) phonetic if englishVariant is "en-US"
+
 Output Format (JSON)
 @raw
 {
-  "title": "Article title here",
-  "content": "Full article content here with proper paragraphs...",
+  "title": "Article title in English",
+  "content": "Full article content in English with proper paragraphs...",
   "wordCount": 1234,
   "tags": [
-    {"name": "Business", "isNew": false},
-    {"name": "Workplace Communication", "isNew": true}
+    {"name": "科技", "isNew": false},
+    {"name": "商业", "isNew": true}
+  ],
+  "vocabulary": [
+    {
+      "word": "innovation",
+      "meaning": "创新；革新",
+      "sentence": "The company's innovation in technology changed the industry.",
+      "phonetic": "/ˌɪnəˈveɪʃn/"
+    }
   ]
 }
 @end
 
-Note: Set "isNew" to:
-- false: if the tag is from existing system tags (or very similar)
-- true: if this is a genuinely new tag that doesn't exist in the system
+Note:
+- Set "isNew" to false if tag is from existing system tags, true if genuinely new
+- Tags MUST be in {{ nativeLanguage }}, not English
+- Vocabulary meanings MUST be in {{ nativeLanguage }}
+- Sentences MUST be exact quotes from the generated article
+- Phonetic transcription MUST match {{ englishVariant }} style
 
 Generate the article now.

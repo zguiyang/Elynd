@@ -85,9 +85,12 @@ onMounted(async () => {
           {{ user?.fullName?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() }}
         </div>
       </div>
-      <div class="space-y-1">
+      <div class="space-y-2">
         <h1 class="text-2xl font-semibold tracking-tight">{{ user?.fullName || '用户' }}</h1>
         <p class="text-muted-foreground text-sm">{{ user?.email }}</p>
+        <Badge :variant="user?.isAdmin ? 'default' : 'secondary'">
+          {{ user?.isAdmin ? '管理员' : '普通用户' }}
+        </Badge>
       </div>
     </header>
 

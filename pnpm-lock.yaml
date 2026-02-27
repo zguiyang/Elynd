@@ -132,6 +132,9 @@ importers:
 
   web:
     dependencies:
+      '@adonisjs/transmit-client':
+        specifier: ^1.1.0
+        version: 1.1.0
       '@tailwindcss/vite':
         specifier: ^4.2.1
         version: 4.2.1(vite@7.3.1(@types/node@24.10.13)(jiti@2.6.1)(lightningcss@1.31.1)(stylus@0.57.0)(terser@5.46.0)(tsx@4.21.0)(yaml@2.8.2))
@@ -444,6 +447,10 @@ packages:
 
   '@adonisjs/repl@4.1.2':
     resolution: {integrity: sha512-NnczRJusl0082GOjEFYwObW/yBGJtpfJFnkFCQdQ6eykgBHVNYaY6qstfob+l1bedetRj0hrDY6YfsWMkA0MCg==}
+    engines: {node: '>=18.16.0'}
+
+  '@adonisjs/transmit-client@1.1.0':
+    resolution: {integrity: sha512-4U3DJ4V2X7S0Js04aX7P3SJOq+3RWmCLZep5aRsB1Eo3S9xgRAlWu5gLFrIM/XVRG3DKjvOckeeGNwPPxXhGEQ==}
     engines: {node: '>=18.16.0'}
 
   '@adonisjs/transmit@2.0.2':
@@ -5652,6 +5659,8 @@ snapshots:
     dependencies:
       '@poppinss/colors': 4.1.6
       string-width: 7.2.0
+
+  '@adonisjs/transmit-client@1.1.0': {}
 
   '@adonisjs/transmit@2.0.2(@adonisjs/core@6.20.0(@adonisjs/assembler@7.8.2(typescript@5.8.3))(@vinejs/vine@3.0.1)(edge.js@6.5.0))(ioredis@5.9.3)':
     dependencies:

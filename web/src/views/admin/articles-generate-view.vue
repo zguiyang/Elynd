@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
 import { adminApi, type GenerateArticleData } from '@/api/admin'
+import { useAuthStore } from '@/stores/auth'
+import { useArticleSse } from '@/composables/useArticleSse'
+import { Progress } from '@/components/ui/progress'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const isLoading = ref(false)
 const difficultyLevel = ref<'L1' | 'L2' | 'L3'>('L2')
@@ -11,6 +15,35 @@ const extraInstructions = ref('')
 
 const topicError = ref('')
 const extraInstructionsError = ref('')
+
+const { status, error: sseError, subscribe, unsubscribe } = useArticleSse(authStore.user!.id)
+const progress = ref(0)
+const statusMessage = ref('')
+
+watch(status, (newStatus) => {
+  if (newStatus === 'completed') {
+    progress.value = 100
+    statusMessage.value = '生成完成'
+    toast.success('文章生成成功')
+    setTimeout(() => {
+      router.push('/learning/articles')
+    }, 500)
+  } else if (newStatus === 'failed') {
+    progress.value = 0
+    statusMessage.value = ''
+    toast.error(sseError.value || '文章生成失败')
+    isLoading.value = false
+  } else if (newStatus === 'queued') {
+    progress.value = 10
+    statusMessage.value = '已加入生成队列...'
+  } else if (newStatus === 'processing') {
+    progress.value = 50
+    statusMessage.value = '正在生成文章...'
+  }
+})
+
+onMounted(() => subscribe())
+onUnmounted(() => unsubscribe())
 
 const difficulties = [
   { value: 'L1', label: 'L1 - 初级' },
@@ -63,13 +96,11 @@ const handleSubmit = async () => {
     }
 
     await adminApi.generateArticle(data)
-    toast.success('文章生成成功')
-    await router.push('/learning/articles')
+    // 等待 SSE 事件通知完成，不要立即跳转
   } catch (error) {
     const err = error as { message?: string }
     const message = err?.message || '生成失败，请稍后重试'
     toast.error(message)
-  } finally {
     isLoading.value = false
   }
 }
@@ -133,8 +164,17 @@ const handleSubmit = async () => {
             </p>
           </div>
 
-          <Button type="submit" class="w-full" :disabled="isLoading">
-            {{ isLoading ? '生成中...' : '生成文章' }}
+          <div v-if="status !== 'idle' && status !== 'completed'" class="space-y-2">
+            <Progress :model-value="progress" />
+            <p class="text-sm text-muted-foreground text-center">{{ statusMessage }}</p>
+          </div>
+
+          <Button
+            type="submit"
+            class="w-full"
+            :disabled="isLoading || status !== 'idle'"
+          >
+            {{ isLoading || status !== 'idle' ? '生成中...' : '生成文章' }}
           </Button>
         </form>
       </CardContent>

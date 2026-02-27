@@ -10,6 +10,7 @@ export const generateArticleValidator = vine.compile(
       ARTICLE_DIFFICULTY.L3,
     ]),
     topic: vine.string().trim().minLength(5).maxLength(200),
+    extraInstructions: vine.string().trim().maxLength(500).optional(),
   })
 )
 

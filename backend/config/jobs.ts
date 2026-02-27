@@ -13,7 +13,11 @@ const jobsConfig = defineConfig({
   queues: [env.get('REDIS_QUEUE', 'linky_jobs')],
 
   options: {
-    attempts: 1,
+    attempts: 3,
+    backoff: {
+      type: 'exponential',
+      delay: 2000,
+    },
     removeOnComplete: 1000,
     removeOnFail: 1000,
   },

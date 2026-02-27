@@ -15,6 +15,7 @@ import {
 interface GenerateArticleParams {
   difficultyLevel: string
   topic: string
+  extraInstructions?: string
 }
 
 interface AiArticleResponse {
@@ -54,6 +55,7 @@ export class ArticleService {
       topic: params.topic,
       maxWords: config.maxWords,
       existingTags: existingTagsText || 'No existing tags',
+      extraInstructions: params.extraInstructions || '',
     })
 
     const articleData = await this.callAiWithRetry(userConfig, prompt, config.maxTokens)

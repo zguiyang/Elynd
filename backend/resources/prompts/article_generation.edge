@@ -13,6 +13,9 @@ Requirements
 - Difficulty: {{ level }} ({{ levelDescription }})
 - Topic: {{ topic }}
 - Target Length: {{ maxWords }} words
+@if(extraInstructions)
+- Additional Instructions: {{ extraInstructions }}
+@endif
 
 Tag Selection Rules
 1. FIRST PRIORITY: Use existing tags from the system that match the article content

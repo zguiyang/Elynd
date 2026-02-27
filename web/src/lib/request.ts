@@ -3,8 +3,8 @@ import { useAuthStore } from '@/stores/auth'
 import { toast } from 'vue-sonner'
 
 const request = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3333',
-  timeout: 300000,
+  baseURL: import.meta.env.VITE_API_BASE_URL,
+  timeout: 1000 * 60,
   headers: {
     'Content-Type': 'application/json',
   },

@@ -6,12 +6,9 @@ export interface GenerateArticleData {
   extraInstructions?: string
 }
 
-export interface Article {
-  id: number
-  title: string
-  content: string
-  difficultyLevel: string
-  createdAt: string
+export interface GenerateArticleResponse {
+  jobId: string
+  status: 'queued'
 }
 
 export interface SystemConfig {
@@ -22,7 +19,7 @@ export interface SystemConfig {
 
 export const adminApi = {
   generateArticle: (data: GenerateArticleData) =>
-    request.post<Article>('/api/admin/articles/generate', data).then(res => res.data),
+    request.post<GenerateArticleResponse>('/api/admin/articles/generate', data).then(res => res.data),
 
   getSystemConfig: () =>
     request.get<SystemConfig>('/api/admin/system-config').then(res => res.data),

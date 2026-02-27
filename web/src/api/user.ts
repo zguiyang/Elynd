@@ -5,6 +5,7 @@ export interface User {
   fullName: string | null
   email: string
   avatar: string | null
+  isAdmin: boolean
   createdAt: string
 }
 

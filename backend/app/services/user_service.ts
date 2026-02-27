@@ -13,19 +13,21 @@ export class UserService {
   async create(data: { email: string; name: string; password: string }) {
     logger.info({ email: data.email }, 'Creating user')
 
-    // 使用 DiceBear 生成随机卡通头像
-    // adventurer 风格非常适合作为卡通头像，seed 使用随机 UUID 保证唯一性
     const avatarSeed = randomUUID()
     const avatarUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=${avatarSeed}`
+
+    const userCount = await User.query().count('* as total').first()
+    const isFirstUser = Number(userCount?.$extras.total) === 0
 
     const user = await User.create({
       email: data.email,
       fullName: data.name,
       password: data.password,
       avatar: avatarUrl,
+      isAdmin: isFirstUser,
     })
 
-    logger.info({ userId: user.id }, 'User created')
+    logger.info({ userId: user.id, isFirstUser }, 'User created')
 
     return user
   }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BookOpen, User, Settings, BookMarked } from 'lucide-vue-next'
+import { BookOpen, User, Settings, BookMarked, Shield } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
@@ -50,6 +50,13 @@ const navigation = [
           <DropdownMenuContent align="end" class="w-56">
             <DropdownMenuLabel>我的账户</DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem v-if="authStore.user?.isAdmin" as-child>
+              <RouterLink to="/admin/articles/generate" class="flex items-center cursor-pointer">
+                <Shield class="mr-2 size-4" />
+                <span>管理后台</span>
+              </RouterLink>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator v-if="authStore.user?.isAdmin" />
             <DropdownMenuItem as-child>
               <RouterLink to="/learning/profile" class="flex items-center cursor-pointer">
                 <User class="mr-2 size-4" />

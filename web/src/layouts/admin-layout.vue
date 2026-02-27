@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { FileText, User, LogOut } from 'lucide-vue-next'
+import { FileText, User, LogOut, Settings } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
 const navigation = [
   { name: '生成文章', path: '/admin/articles/generate', icon: FileText },
+  { name: '系统设置', path: '/admin/settings', icon: Settings },
 ]
 </script>
 

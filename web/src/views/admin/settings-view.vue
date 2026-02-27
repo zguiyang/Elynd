@@ -97,7 +97,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="container max-w-2xl py-8">
+  <div class="container mx-auto max-w-2xl px-4 sm:px-6 lg:px-8 py-8">
     <Card>
       <CardHeader>
         <CardTitle>AI 模型配置</CardTitle>

@@ -71,6 +71,27 @@ const LANGUAGE = {
 
 type Language = (typeof LANGUAGE)[keyof typeof LANGUAGE]
 
+const ARTICLE_DIFFICULTY = {
+  L1: 'L1', // Beginner
+  L2: 'L2', // Intermediate
+  L3: 'L3', // Advanced
+} as const
+
+type ArticleDifficulty = (typeof ARTICLE_DIFFICULTY)[keyof typeof ARTICLE_DIFFICULTY]
+
+const ARTICLE_CONTENT = {
+  MAX_CHARS: 100000,
+  MAX_WORDS_L1: 800,
+  MAX_WORDS_L2: 1500,
+  MAX_WORDS_L3: 2500,
+  MAX_TOKENS_L1: 2000,
+  MAX_TOKENS_L2: 4000,
+  MAX_TOKENS_L3: 6000,
+  READING_SPEED: 200,
+} as const
+
+type ArticleContent = (typeof ARTICLE_CONTENT)[keyof typeof ARTICLE_CONTENT]
+
 export {
   ORDER_BY,
   PAGINATION,
@@ -80,6 +101,8 @@ export {
   AI,
   VOCABULARY_LEVEL,
   LANGUAGE,
+  ARTICLE_DIFFICULTY,
+  ARTICLE_CONTENT,
 }
 export type {
   OrderBy,
@@ -90,4 +113,6 @@ export type {
   Ai,
   VocabularyLevel,
   Language,
+  ArticleDifficulty,
+  ArticleContent,
 }

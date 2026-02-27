@@ -14,6 +14,8 @@ import { apiLimiter, authLimiter } from '#start/limiter'
 
 const AuthController = () => import('#controllers/auth_controller')
 const UsersController = () => import('#controllers/users_controller')
+const ArticlesController = () => import('#controllers/articles_controller')
+const AdminArticlesController = () => import('#controllers/admin/articles_controller')
 
 // 公开认证路 由组（不需要认证）- 更严格的限流
 router
@@ -40,6 +42,24 @@ router
   })
   .prefix('api')
   .middleware(middleware.auth())
+  .use(apiLimiter)
+
+// 用户端文章路由（公开）
+router
+  .group(() => {
+    router.get('/articles', [ArticlesController, 'index'])
+    router.get('/articles/:id', [ArticlesController, 'show'])
+    router.get('/tags', [ArticlesController, 'tags'])
+  })
+  .prefix('api')
+
+// 管理员文章路由（需要认证 + 管理员权限）
+router
+  .group(() => {
+    router.post('/admin/articles/generate', [AdminArticlesController, 'generate'])
+  })
+  .prefix('api')
+  .middleware([middleware.auth(), middleware.admin()])
   .use(apiLimiter)
 
 // Jobs Dashboard（GUI 界面）- 仅管理员可访问

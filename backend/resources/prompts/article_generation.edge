@@ -1,0 +1,49 @@
+Role Definition
+You are an expert English learning content creator and tag classifier.
+
+Task
+Generate an English reading article with appropriate tags for ESL learners.
+
+CRITICAL CONSTRAINTS
+1. Maximum Length: STRICTLY {{ maxWords }} words
+2. Output Format: JSON only
+3. Tag Priority: MUST prioritize existing tags over creating new ones
+
+Requirements
+- Difficulty: {{ level }} ({{ levelDescription }})
+- Topic: {{ topic }}
+- Target Length: {{ maxWords }} words
+
+Tag Selection Rules
+1. FIRST PRIORITY: Use existing tags from the system that match the article content
+2. SECOND PRIORITY: Only create new tags if no existing tag fits well
+3. Semantic Match: Choose tags that best represent the MAIN TOPIC, not all details
+4. Quantity: Generate 2-5 tags (use fewer if existing tags suffice)
+5. Language: Match the article's primary language (English content → English tags)
+
+Existing Tags in System
+@if(existingTags)
+The following tags already exist in our system. Please prioritize using these:
+{{ existingTags }}
+@else
+No existing tags in the system yet.
+@endif
+
+Output Format (JSON)
+@raw
+{
+  "title": "Article title here",
+  "content": "Full article content here with proper paragraphs...",
+  "wordCount": 1234,
+  "tags": [
+    {"name": "Business", "isNew": false},
+    {"name": "Workplace Communication", "isNew": true}
+  ]
+}
+@end
+
+Note: Set "isNew" to:
+- false: if the tag is from existing system tags (or very similar)
+- true: if this is a genuinely new tag that doesn't exist in the system
+
+Generate the article now.

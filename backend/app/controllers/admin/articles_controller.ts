@@ -22,7 +22,7 @@ export default class AdminArticlesController {
 
     const resolvedJobId = jobId || `manual-${Date.now()}`
 
-    this.transmitService.toUser(`user:${user.id}:article`, 'article:status', {
+    await this.transmitService.toUser(`user:${user.id}:article`, 'article:status', {
       jobId: resolvedJobId,
       status: 'queued',
       progress: 0,

@@ -29,7 +29,7 @@ interface VocabularyItem {
 
 interface AiArticleResponse {
   title: string
-  tableOfContents: string[]
+  tableOfContents: string[] | null
   chapterCount: number
   content: string
   wordCount: number
@@ -51,6 +51,64 @@ export class ArticleService {
     private promptService: PromptService,
     private tagService: TagService
   ) {}
+
+  // Normalize TOC into string[] or null
+  private normalizeToc(input: unknown): string[] | null {
+    if (input == null) return null
+    // Already array
+    if (Array.isArray(input)) {
+      const arr = input.map((v) => String(v).trim()).filter((s) => s.length > 0)
+      return arr.length ? arr : []
+    }
+
+    // Object -> take values
+    if (typeof input === 'object') {
+      try {
+        const values = Object.values(input as Record<string, unknown>)
+        const arr = values.map((v) => String(v).trim()).filter((s) => s.length > 0)
+        return arr.length ? arr : []
+      } catch {
+        return null
+      }
+    }
+
+    // String -> try to parse and repair common patterns
+    if (typeof input === 'string') {
+      const raw = input.trim()
+      if (!raw) return null
+      // If it's a JSON array string
+      if (raw.startsWith('[')) {
+        try {
+          const arr = JSON.parse(raw)
+          if (Array.isArray(arr)) {
+            const fixed = arr.map((v) => String(v).trim()).filter((s) => s.length > 0)
+            return fixed.length ? fixed : []
+          }
+        } catch {}
+      }
+      // Common AI mistake: {"a", "b"} should be ["a", "b"]
+      if (raw.startsWith('{') && raw.includes('"')) {
+        const fixedCandidate = raw
+          .replace(/\s+/g, ' ')
+          .replace(/^\{\s*((?:"[^"]*"\s*,\s*)*"[^"]*")\s*\}$/g, '[$1]')
+        try {
+          const arr = JSON.parse(fixedCandidate)
+          if (Array.isArray(arr)) {
+            const fixed = arr.map((v) => String(v).trim()).filter((s) => s.length > 0)
+            return fixed.length ? fixed : []
+          }
+        } catch {}
+      }
+      // Fallback: split by common delimiters
+      const list = raw
+        .split(/[\n,，、;；]+/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+      return list.length ? list : []
+    }
+
+    return null
+  }
 
   async generateArticle(userId: number, params: GenerateArticleParams): Promise<Article> {
     const config = this.getDifficultyConfig(params.difficultyLevel)
@@ -87,16 +145,35 @@ export class ArticleService {
       articleData.wordCount = this.countWords(articleData.content)
     }
 
+    // Final guard/normalization for TOC before persisting
+    const normalizedToc = this.normalizeToc(articleData.tableOfContents as unknown)
+
+    if (!Array.isArray(normalizedToc)) {
+      logger.warn('[Article Generation] Invalid TOC before insert, coercing to []', {
+        tocType: typeof (articleData as any).tableOfContents,
+        tocPreview: String((articleData as any).tableOfContents ?? '').slice(0, 200),
+      })
+    }
+
     const article = await Article.create({
       title: articleData.title,
       content: articleData.content,
       difficultyLevel: params.difficultyLevel,
       wordCount: articleData.wordCount,
       readingTime: Math.ceil(articleData.wordCount / ARTICLE_CONTENT.READING_SPEED),
-      tableOfContents: articleData.tableOfContents || null,
+      // IMPORTANT: always pass JS array (or empty array) to JSON column
+      tableOfContents: Array.isArray(normalizedToc) ? normalizedToc : [],
       chapterCount: articleData.chapterCount || null,
       isPublished: true,
       createdBy: userId,
+    })
+
+    logger.debug('[Article Generation] Article created', {
+      id: article.id,
+      title: article.title,
+      tableOfContentsType: typeof articleData.tableOfContents,
+      tableOfContentsIsArray: Array.isArray(articleData.tableOfContents),
+      tableOfContentsValue: JSON.stringify(articleData.tableOfContents)?.substring(0, 500),
     })
 
     const tags = await this.processTags(articleData.tags, existingTags)
@@ -171,20 +248,27 @@ export class ArticleService {
     maxTokens: number
   ): Promise<AiArticleResponse> {
     logger.info('[Article Generation] Starting AI request', {
-      model: userConfig.modelName || 'gpt-4o-mini',
+      model: userConfig.modelName,
       maxTokens,
     })
 
+    const systemPrompt = this.promptService.render('system', {})
+
     const response = await this.aiService.chat(userConfig, {
-      model: userConfig.modelName || 'gpt-4o-mini',
+      model: userConfig.modelName,
       messages: [
-        { role: 'system', content: 'You are a JSON-only response generator.' },
+        {
+          role: 'system',
+          content: systemPrompt,
+        },
         { role: 'user', content: prompt },
       ],
       max_tokens: maxTokens,
       temperature: 0.7,
       response_format: { type: 'json_object' },
     })
+
+    console.log('ai article response', JSON.stringify(response))
 
     logger.info('[Article Generation] AI response received', {
       success: response.success,
@@ -220,7 +304,24 @@ export class ArticleService {
 
     let parsedArticleData: AiArticleResponse
     try {
-      parsedArticleData = JSON.parse(articleData) as AiArticleResponse
+      // Pre-process for a specific common AI error: tableOfContents written as {"val1", "val2"}
+      // which looks like an object but lacks keys. This is technically invalid JSON but
+      // might be partially "fixed" by some JSON parsers or cause parse errors.
+      // Based on logs: "detail": "Expected \":\", but found \",\"."
+      // where: "JSON data, line 1: {\"Chapter 1: A Happy Morning\",...
+
+      let processedArticleData = articleData
+      // Fix both camelCase and snake_case keys, allow multiline and various spacing
+      processedArticleData = processedArticleData.replace(
+        /"tableOfContents"\s*:\s*\{((?:\s*"[^"]*"\s*,?)*)\}/gs,
+        '"tableOfContents": [$1]'
+      )
+      processedArticleData = processedArticleData.replace(
+        /"table_of_contents"\s*:\s*\{((?:\s*"[^"]*"\s*,?)*)\}/gs,
+        '"table_of_contents": [$1]'
+      )
+
+      parsedArticleData = JSON.parse(processedArticleData) as AiArticleResponse
     } catch (parseError) {
       logger.error(
         {
@@ -230,6 +331,61 @@ export class ArticleService {
         '[Article Generation] JSON parse failed, raw response above'
       )
       throw new ArticleGenerationFailedException('AI response is not valid JSON')
+    }
+
+    // Validate and fix tableOfContents format (post-parse)
+    if (parsedArticleData.tableOfContents) {
+      logger.debug('[Article Generation] tableOfContents before validation', {
+        type: typeof parsedArticleData.tableOfContents,
+        isArray: Array.isArray(parsedArticleData.tableOfContents),
+        value: JSON.stringify(parsedArticleData.tableOfContents).substring(0, 500),
+      })
+
+      // If it's not an array, normalize using helper
+      if (!Array.isArray(parsedArticleData.tableOfContents)) {
+        const before = parsedArticleData.tableOfContents as unknown
+        parsedArticleData.tableOfContents = this.normalizeToc(before)
+        logger.info('[Article Generation] tableOfContents normalized', {
+          wasType: typeof before,
+          nowIsArray: Array.isArray(parsedArticleData.tableOfContents),
+          length: Array.isArray(parsedArticleData.tableOfContents)
+            ? parsedArticleData.tableOfContents.length
+            : 0,
+        })
+      }
+    }
+
+    // Ensure it's array (possibly empty) at this point
+    if (!Array.isArray(parsedArticleData.tableOfContents)) {
+      parsedArticleData.tableOfContents = []
+    }
+
+    // Validate and fix tags format
+    if (parsedArticleData.tags) {
+      if (!Array.isArray(parsedArticleData.tags)) {
+        logger.warn('[Article Generation] tags is not an array, setting to empty array')
+        parsedArticleData.tags = []
+      } else {
+        parsedArticleData.tags = parsedArticleData.tags.filter(
+          (t) => t && typeof t === 'object' && typeof t.name === 'string'
+        )
+      }
+    } else {
+      parsedArticleData.tags = []
+    }
+
+    // Validate and fix vocabulary format
+    if (parsedArticleData.vocabulary) {
+      if (!Array.isArray(parsedArticleData.vocabulary)) {
+        logger.warn('[Article Generation] vocabulary is not an array, setting to empty array')
+        parsedArticleData.vocabulary = []
+      } else {
+        parsedArticleData.vocabulary = parsedArticleData.vocabulary.filter(
+          (v) => v && typeof v === 'object' && typeof v.word === 'string'
+        )
+      }
+    } else {
+      parsedArticleData.vocabulary = []
     }
 
     logger.info('[Article Generation] JSON parsed successfully', {
@@ -347,9 +503,9 @@ export class ArticleService {
   private async getUserAiConfig() {
     const config = await SystemConfig.first()
 
-    const apiKey = config?.aiApiKey || process.env.OPENAI_API_KEY
-    const baseUrl = config?.aiBaseUrl || process.env.OPENAI_BASE_URL
-    const modelName = config?.aiModelName || process.env.OPENAI_MODEL_NAME || 'gpt-4o-mini'
+    const apiKey = config?.aiApiKey
+    const baseUrl = config?.aiBaseUrl
+    const modelName = config?.aiModelName
 
     return {
       enabled: true,

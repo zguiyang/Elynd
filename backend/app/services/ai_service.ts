@@ -81,6 +81,7 @@ export class AiService {
 
       const data = response
 
+      console.log('AI chat response:', JSON.stringify(data))
       logger.info(
         'AI chat request completed: model=%s, tokens=%d',
         params.model,

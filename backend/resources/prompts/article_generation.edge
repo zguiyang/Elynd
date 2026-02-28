@@ -132,36 +132,63 @@ VOCABULARY SELECTION RULES
 
 ===
 
+CRITICAL JSON FORMAT REQUIREMENTS
+
+The output MUST be valid, parseable JSON. Pay special attention to:
+
+1. **tableOfContents** MUST be a JSON ARRAY of strings (use square brackets):
+   ✅ CORRECT: "tableOfContents": ["Chapter 1", "Chapter 2"]
+   ❌ WRONG: "tableOfContents": {"Chapter 1", "Chapter 2"}
+   ❌ WRONG: "tableOfContents": {"0": "Chapter 1", "1": "Chapter 2"}
+
+2. **tags** MUST be a JSON ARRAY of objects:
+   ✅ CORRECT: "tags": [{"name": "tag1", "isNew": false}]
+   ❌ WRONG: "tags": {"tag1": false}
+
+3. **vocabulary** MUST be a JSON ARRAY of objects:
+   ✅ CORRECT: "vocabulary": [{"word": "word1", ...}]
+   ❌ WRONG: "vocabulary": {"word1": {...}}
+
+4. **Strict JSON compliance**:
+   - Use double quotes for all keys and string values.
+   - No trailing commas.
+   - No markdown code blocks (e.g., ```json) in your response, just the raw JSON object.
+   - No preamble or post-amble text.
+
+===
+
 OUTPUT FORMAT (JSON)
 @raw
 {
-  "title": "Article title in English",
-  "tableOfContents": ["Chapter 1: The Beginning", "Chapter 2: The Adventure", "Chapter 3: The Resolution"],
-  "chapterCount": 3,
-  "content": "Chapter 1: The Beginning\n\n[Content here...]\n\nChapter 2: The Adventure\n\n[Content here...]",
-  "wordCount": 1234,
+  "title": "Article Title",
+  "tableOfContents": [
+    "Chapter 1: [Title]",
+    "Chapter 2: [Title]"
+  ],
+  "chapterCount": 2,
+  "content": "Chapter 1: [Title]\n\n[Content...]\n\nChapter 2: [Title]\n\n[Content...]",
+  "wordCount": 500,
   "tags": [
-    {"name": "科技", "isNew": false},
-    {"name": "新标签", "isNew": true}
+    {
+      "name": "Tag Name",
+      "isNew": false
+    }
   ],
   "vocabulary": [
     {
-      "word": "innovation",
-      "meaning": "创新；革新",
-      "sentence": "The company's innovation in technology changed the industry.",
-      "phonetic": "/ˌɪnəˈveɪʃn/"
+      "word": "word",
+      "meaning": "meaning",
+      "sentence": "Exact sentence from article.",
+      "phonetic": "/.../"
     }
   ]
 }
 @end
 
-IMPORTANT:
-- "tableOfContents" MUST be an array of chapter title strings
-- "chapterCount" MUST be the number of chapters (length of tableOfContents array)
-- Content MUST include chapter titles as section headers
-- Set "isNew" to false for existing system tags, true for new tags
-- Tags and vocabulary meanings MUST be in {{ nativeLanguage }}
-- Vocabulary sentences MUST be exact quotes from the article
-- Word count MUST be accurate (count all words in content)
+CRITICAL FORMAT RULES:
+- DO NOT use curly braces {} for fields that should be arrays (tableOfContents, tags, vocabulary).
+- Ensure "chapterCount" is exactly the number of elements in "tableOfContents".
+- Ensure "wordCount" is an integer representing the total word count of "content".
+- All strings in tags and vocabulary meanings MUST be in {{ nativeLanguage }}.
 
 Generate the article now following the structured process and quality requirements.

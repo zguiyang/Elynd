@@ -87,13 +87,22 @@ export default class GenerateArticleJob extends Job {
     } catch (error) {
       logger.error({ err: error, jobId }, 'GenerateArticleJob failed')
 
-      await sendStatus({
-        jobId,
-        status: 'failed',
-        progress: 0,
-        message: '生成失败',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      })
+      // Attempt to send failure notification, ensure SSE errors don't swallow the original error
+      try {
+        await sendStatus({
+          jobId,
+          status: 'failed',
+          progress: 0,
+          message: '生成失败',
+          error: error instanceof Error ? error.message : 'Unknown error',
+        })
+      } catch (sseError) {
+        // Log SSE send failure but don't block original error from being thrown
+        logger.error(
+          { err: sseError, jobId, originalError: error },
+          'Failed to send SSE failure notification'
+        )
+      }
 
       throw error
     }

@@ -1,0 +1,35 @@
+{{--
+  Step 0: Strategy Analysis
+  Purpose: Analyze topic, determine content type, tone, themes
+--}}
+Role: You are an expert English learning content strategist. Analyze the topic and create a generation strategy.
+
+Topic: {{ topic }}
+Difficulty Level: {{ level }}
+{{ levelDescription }}
+
+Extra Instructions: {{ extraInstructions }}
+
+TASK: Create a strategy for generating this article. Analyze:
+1. What content type fits best (narrative, expository, dialogue, mixed)
+2. What tone is appropriate
+3. How many chapters suggested
+4. What cultural context to include
+5. What are the key themes
+6. Any generation hints
+
+Respond with JSON in this format:
+{
+  "contentType": "narrative|expository|dialogue|mixed",
+  "tone": "tone description",
+  "suggestedChapterCount": 3-5,
+  "culturalContext": "cultural context for the article",
+  "keyThemes": ["theme1", "theme2"],
+  "generationHints": "hints for writing the article",
+  "estimatedWordCount": number
+}
+
+Remember:
+- All text in keys/values must use double quotes
+- No trailing commas
+- Output valid JSON only

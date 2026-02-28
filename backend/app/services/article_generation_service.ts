@@ -5,14 +5,19 @@ import { AiService } from '#services/ai_service'
 import PromptService from '#services/prompt_service'
 import { ConfigService } from '#services/config_service'
 import { TagService } from '#services/tag_service'
-import { ArticleResponseParser } from '#services/article_response_parser'
 import Article from '#models/article'
 import ArticleChapter from '#models/article_chapter'
 import Tag from '#models/tag'
 import ArticleVocabulary from '#models/article_vocabulary'
 import { ARTICLE_CONTENT, ARTICLE_DIFFICULTY } from '#constants'
 import type { AiClientConfig } from '#types/ai'
-import type { GenerateArticleParams, ParsedArticleResponse, DifficultyConfig } from '#types/article'
+import type {
+  ArticleStrategy,
+  ArticleOutline,
+  ChapterContent,
+  VocabularyAndTags,
+  GenerateArticleParams,
+} from '#types/article_generation'
 
 type TransactionClient = Awaited<ReturnType<typeof db.transaction>>
 
@@ -22,8 +27,7 @@ export class ArticleGenerationService {
     private aiService: AiService,
     private promptService: PromptService,
     private configService: ConfigService,
-    private tagService: TagService,
-    private articleResponseParser: ArticleResponseParser
+    private tagService: TagService
   ) {}
 
   async generateArticle(userId: number, params: GenerateArticleParams): Promise<Article> {
@@ -31,43 +35,162 @@ export class ArticleGenerationService {
     const aiConfig = await this.configService.getAiConfig()
     const languageConfig = await this.configService.getUserLanguageConfig(userId)
 
-    const existingTags = await Tag.query().select('id', 'name', 'slug')
-    logger.info(`Found ${existingTags.length} existing tags in system`)
+    const strategy = await this.executeStep0(params, config, aiConfig)
 
-    const prompt = this.promptService.render('article_generation', {
+    const outline = await this.executeStep1(strategy, aiConfig)
+
+    const chapters = await this.executeStep2(outline, config, aiConfig)
+
+    const { vocabulary, tags } = await this.executeStep3(chapters, languageConfig, aiConfig)
+
+    return await this.saveArticle(userId, params, {
+      title: outline.title,
+      chapters,
+      vocabulary,
+      tags,
+    })
+  }
+
+  private async executeStep0(
+    params: GenerateArticleParams,
+    config: DifficultyConfig,
+    aiConfig: AiClientConfig
+  ): Promise<ArticleStrategy> {
+    const systemPrompt = this.promptService.render('system', {})
+    const prompt = this.promptService.render('article/00-strategy', {
+      topic: params.topic,
       level: params.difficultyLevel,
       levelDescription: config.description,
-      topic: params.topic,
-      maxWords: config.maxWords,
-      existingTags: existingTags.map((t) => t.name).join(', ') || 'No existing tags',
       extraInstructions: params.extraInstructions || '',
-      nativeLanguage: languageConfig.nativeLanguage,
-      targetLanguage: languageConfig.targetLanguage,
-      englishVariant: languageConfig.englishVariant,
     })
 
-    const parsedData = await this.callAi(aiConfig, prompt, config.maxTokens)
+    logger.info({ step: 0, topic: params.topic }, 'Step 0: Strategy analysis')
 
-    if (!parsedData.chapters || parsedData.chapters.length === 0) {
-      throw new Error('AI response is missing chapters field or chapters array is empty')
+    const response = await this.aiService.chatJson<ArticleStrategy>(aiConfig, {
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt },
+      ],
+      maxTokens: 1000,
+      temperature: 0.7,
+      responseFormat: { type: 'json_object' },
+    })
+
+    logger.info({ step: 0, strategy: response }, 'Step 0 completed')
+
+    return response
+  }
+
+  private async executeStep1(
+    strategy: ArticleStrategy,
+    aiConfig: AiClientConfig
+  ): Promise<ArticleOutline> {
+    const systemPrompt = this.promptService.render('system', {})
+    const prompt = this.promptService.render('article/01-outline', {
+      strategy: JSON.stringify(strategy),
+    })
+
+    logger.info({ step: 1, strategy: strategy.contentType }, 'Step 1: Outline generation')
+
+    const response = await this.aiService.chatJson<ArticleOutline>(aiConfig, {
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt },
+      ],
+      maxTokens: 1500,
+      temperature: 0.7,
+      responseFormat: { type: 'json_object' },
+    })
+
+    logger.info({ step: 1, outline: response }, 'Step 1 completed')
+
+    return response
+  }
+
+  private async executeStep2(
+    outline: ArticleOutline,
+    config: DifficultyConfig,
+    aiConfig: AiClientConfig
+  ): Promise<ChapterContent[]> {
+    const systemPrompt = this.promptService.render('system', {})
+    const chapters: ChapterContent[] = []
+
+    for (const chapter of outline.chapters) {
+      const prompt = this.promptService.render('article/02-content', {
+        outline: JSON.stringify(outline),
+        chapterIndex: chapter.index,
+      })
+
+      logger.info({ step: 2, chapter: chapter.index }, 'Step 2: Content generation')
+
+      const response = await this.aiService.chatJson<ChapterContent>(aiConfig, {
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: prompt },
+        ],
+        maxTokens: config.maxTokens,
+        temperature: 0.7,
+        responseFormat: { type: 'json_object' },
+      })
+
+      chapters.push(response)
+      logger.info(
+        { step: 2, chapter: chapter.index, wordCount: response.wordCount },
+        'Step 2 chapter completed'
+      )
     }
 
-    const totalContent = parsedData.chapters.map((c) => c.content).join(' ')
-    let wordCount = parsedData.wordCount
-    if (wordCount === 0) {
-      wordCount = this.countWords(totalContent)
-    }
+    return chapters
+  }
 
-    if (totalContent.length > ARTICLE_CONTENT.MAX_CHARS) {
-      logger.warn('Article content exceeds limit, truncating...')
+  private async executeStep3(
+    chapters: ChapterContent[],
+    _languageConfig: { nativeLanguage: string },
+    aiConfig: AiClientConfig
+  ): Promise<VocabularyAndTags> {
+    const systemPrompt = this.promptService.render('system', {})
+    const prompt = this.promptService.render('article/03-vocabulary', {
+      chapters: JSON.stringify(chapters),
+    })
+
+    logger.info({ step: 3, chapterCount: chapters.length }, 'Step 3: Vocabulary extraction')
+
+    const response = await this.aiService.chatJson<VocabularyAndTags>(aiConfig, {
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt },
+      ],
+      maxTokens: 1500,
+      temperature: 0.7,
+      responseFormat: { type: 'json_object' },
+    })
+
+    logger.info(
+      { step: 3, vocabulary: response.vocabulary.length, tags: response.tags.length },
+      'Step 3 completed'
+    )
+
+    return response
+  }
+
+  private async saveArticle(
+    userId: number,
+    params: GenerateArticleParams,
+    data: {
+      title: string
+      chapters: ChapterContent[]
+      vocabulary: VocabularyAndTags['vocabulary']
+      tags: VocabularyAndTags['tags']
     }
+  ): Promise<Article> {
+    const wordCount = data.chapters.reduce((sum, c) => sum + c.wordCount, 0)
 
     return await db.transaction(async (trx) => {
       const article = await Article.create(
         {
-          title: parsedData.title,
+          title: data.title,
           difficultyLevel: params.difficultyLevel,
-          wordCount: wordCount,
+          wordCount,
           readingTime: Math.ceil(wordCount / ARTICLE_CONTENT.READING_SPEED),
           isPublished: true,
           createdBy: userId,
@@ -75,28 +198,25 @@ export class ArticleGenerationService {
         { client: trx as any }
       )
 
-      logger.debug('[Article Generation] Article created', {
-        id: article.id,
-        title: article.title,
-      })
+      logger.debug('[Article Generation] Article created', { id: article.id, title: article.title })
 
-      const chaptersData = parsedData.chapters.map((chapter, index) => ({
+      const chaptersData = data.chapters.map((chapter) => ({
         articleId: article.id,
-        chapterIndex: typeof chapter.index === 'number' ? chapter.index : index,
+        chapterIndex: chapter.index,
         title: chapter.title,
         content: chapter.content,
       }))
       await ArticleChapter.createMany(chaptersData, { client: trx as any })
       logger.info(`Saved ${chaptersData.length} chapters for article ${article.id}`)
 
-      const tags = await this.processTags(parsedData.tags, trx)
+      const tags = await this.processTags(data.tags, trx)
       await article.related('tags').attach(
         tags.map((t) => t.id),
         trx as any
       )
 
-      if (parsedData.vocabulary && parsedData.vocabulary.length > 0) {
-        const vocabularyData = parsedData.vocabulary.map((item) => ({
+      if (data.vocabulary && data.vocabulary.length > 0) {
+        const vocabularyData = data.vocabulary.map((item) => ({
           articleId: article.id,
           word: item.word,
           meaning: item.meaning,
@@ -120,49 +240,21 @@ export class ArticleGenerationService {
     trx: TransactionClient
   ): Promise<Tag[]> {
     const tags: Tag[] = []
-
     for (const aiTag of aiTags) {
       const tag = await this.tagService.findOrCreateByName(aiTag.name, trx as any)
       tags.push(tag)
     }
-
     return tags
-  }
-
-  private async callAi(
-    config: AiClientConfig,
-    prompt: string,
-    maxTokens: number
-  ): Promise<ParsedArticleResponse> {
-    logger.info('[Article Generation] Starting AI request', {
-      model: config.model,
-      maxTokens,
-    })
-
-    const systemPrompt = this.promptService.render('system', {})
-
-    const rawJson = await this.aiService.chatJson<RawAiResponse>(config, {
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt,
-        },
-        { role: 'user', content: prompt },
-      ],
-      maxTokens,
-      temperature: 0.7,
-      responseFormat: { type: 'json_object' },
-    })
-
-    logger.info('[Article Generation] AI response received')
-
-    return this.articleResponseParser.parse(rawJson as any)
   }
 
   private getDifficultyConfig(level: string): DifficultyConfig {
     return {
-      maxWords: ARTICLE_CONTENT.MAX_WORDS,
-      maxTokens: ARTICLE_CONTENT.MAX_TOKENS,
+      maxWords:
+        ARTICLE_CONTENT[`MAX_WORDS_${level}` as keyof typeof ARTICLE_CONTENT] ||
+        ARTICLE_CONTENT.MAX_WORDS,
+      maxTokens:
+        ARTICLE_CONTENT[`MAX_TOKENS_${level}` as keyof typeof ARTICLE_CONTENT] ||
+        ARTICLE_CONTENT.MAX_TOKENS,
       description: this.getLevelDescription(level),
     }
   }
@@ -178,16 +270,10 @@ export class ArticleGenerationService {
     }
     return descriptions[level] || descriptions[ARTICLE_DIFFICULTY.L2]
   }
-
-  private countWords(text: string): number {
-    return text.split(/\s+/).filter((word) => word.length > 0).length
-  }
 }
 
-interface RawAiResponse {
-  title: string
-  chapters: unknown
-  wordCount: number
-  tags: unknown
-  vocabulary: unknown
+interface DifficultyConfig {
+  maxWords: number
+  maxTokens: number
+  description: string
 }

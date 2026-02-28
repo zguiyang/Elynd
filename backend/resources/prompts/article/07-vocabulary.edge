@@ -1,0 +1,39 @@
+{{--
+  Step 7: Vocabulary Extraction
+  Purpose: Extract key vocabulary from the article
+  Enhanced: Now uses learner's native language for meanings
+--}}
+Role: You are an expert English vocabulary specialist. Extract vocabulary from the article.
+
+LEARNER PROFILE (from Step 0):
+{{ learnerProfile }}
+
+COMPLETE CHAPTERS:
+{{ chapters }}
+
+Native Language: {{ nativeLanguage }}
+
+TASK: Extract vocabulary:
+1. Select 8-12 key vocabulary words appropriate for the difficulty level
+2. For each word: provide word, meaning in LEARNER'S NATIVE LANGUAGE, example sentence, phonetic
+3. Choose words that are useful for this learner's level
+4. Include words that appeared in context
+
+Respond with JSON in this format:
+{
+  "vocabulary": [
+    {
+      "word": "word",
+      "meaning": "meaning in learner's native language",
+      "sentence": "example sentence from article",
+      "phonetic": "/phonetic/"
+    }
+  ]
+}
+
+Remember:
+- All text in keys/values must use double quotes
+- No trailing commas
+- Output valid JSON only
+- Meanings MUST be in the learner's native language ({{ nativeLanguage }})
+- Select vocabulary appropriate for the learner's level

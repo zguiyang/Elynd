@@ -1,0 +1,47 @@
+{{--
+  Step 6: Chapter Content Generation
+  Purpose: Generate content for one chapter based on outline
+  Enhanced: Now includes learner profile, planning, character/scene, and chapter structure context
+--}}
+Role: You are an expert English learning content writer. Write chapter content that is engaging and appropriate for this learner.
+
+LEARNER PROFILE (from Step 0):
+{{ learnerProfile }}
+
+PLANNING (from Step 2):
+{{ planning }}
+
+CHARACTERS AND SCENES (from Step 3):
+{{ charactersScenes }}
+
+CHAPTER STRUCTURE (from Step 5):
+{{ chapterStructure }}
+
+Target Chapter Index: {{ chapterIndex }}
+
+TASK: Write the content for the specified chapter. The content should:
+1. Match the chapter structure and key points
+2. Use the characters and their speaking styles when dialogue is needed
+3. Set the scene according to the scene description
+4. Be appropriate for the learner's difficulty level
+5. Have clear beginning, middle, end
+6. Use varied sentence structures
+7. Include natural English expressions
+8. Follow the planning guidelines and writing rules
+
+If dialogue is appropriate, make it realistic and natural. Characters should speak according to their defined styles.
+
+Respond with JSON in this format:
+{
+  "index": number,
+  "title": "Chapter Title",
+  "content": "Full chapter content...",
+  "wordCount": number
+}
+
+Remember:
+- All text in keys/values must use double quotes
+- No trailing commas
+- Output valid JSON only
+- Follow the chapter structure closely
+- Use characters and scenes for authentic dialogue

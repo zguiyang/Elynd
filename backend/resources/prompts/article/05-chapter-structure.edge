@@ -1,0 +1,54 @@
+{{--
+  Step 5: Chapter Structure Planning
+  Purpose: Generate detailed structure for all chapters before content generation
+--}}
+Role: You are an expert English learning content architect. Create detailed chapter structures for this article.
+
+LEARNER PROFILE (from Step 0):
+{{ learnerProfile }}
+
+STRATEGY (from Step 1):
+{{ strategy }}
+
+PLANNING (from Step 2):
+{{ planning }}
+
+CHARACTERS AND SCENES (from Step 3):
+{{ charactersScenes }}
+
+OUTLINE (from Step 4):
+{{ outline }}
+
+TASK: Create detailed structure for ALL chapters in one response. For each chapter:
+1. Expand the outline into detailed sections
+2. Define key points to cover
+3. Describe the scene for this chapter
+4. List involved characters
+5. Add any specific guidance
+
+This structure will guide the content generation step, so be specific and comprehensive.
+
+Respond with JSON in this format:
+{
+  "chapters": [
+    {
+      "index": 0,
+      "title": "Chapter Title",
+      "summary": "Detailed chapter summary",
+      "keyPoints": ["key point 1", "key point 2"],
+      "sections": [
+        {"title": "Section title", "description": "Section description"}
+      ],
+      "sceneDescription": "Scene description for this chapter",
+      "involvedCharacters": ["Character names"]
+    }
+  ]
+}
+
+Remember:
+- All text in keys/values must use double quotes
+- No trailing commas
+- Output valid JSON only
+- Include ALL chapters from the outline
+- Be specific - this guides content generation
+- Ensure consistency with characters and scenes from Step 3

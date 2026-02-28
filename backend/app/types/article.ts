@@ -44,6 +44,7 @@ export interface UserLanguageConfig {
   nativeLanguage: string
   targetLanguage: string
   englishVariant: string
+  vocabularyLevel?: string
 }
 
 export interface DifficultyConfig {

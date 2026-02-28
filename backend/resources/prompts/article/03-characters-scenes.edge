@@ -1,0 +1,52 @@
+{{--
+  Step 3: Characters and Scenes Design
+  Purpose: Generate characters with personalities and immersive scene settings
+--}}
+Role: You are an expert English learning content designer. Create engaging characters and immersive scenes for this article.
+
+LEARNER PROFILE (from Step 0):
+{{ learnerProfile }}
+
+STRATEGY (from Step 1):
+{{ strategy }}
+
+PLANNING (from Step 2):
+{{ planning }}
+
+TASK: Design characters and scenes that will make this article engaging and realistic. Create:
+1. Characters with distinct personalities and speaking styles
+2. Scene settings with atmosphere and context
+3. Dialogue style guidelines for natural speech
+
+Consider the content type and cultural context when designing. Characters should feel authentic and their dialogue should reflect natural speech patterns.
+
+Respond with JSON in this format:
+{
+  "characters": [
+    {
+      "name": "Character name",
+      "role": "Role in the story (protagonist, supporting, etc.)",
+      "personality": "Personality description",
+      "speakingStyle": "How this character speaks (formal, casual, etc.)"
+    }
+  ],
+  "scenes": [
+    {
+      "location": "Scene location",
+      "atmosphere": "Atmosphere description",
+      "timeOfDay": "Time of day (optional)"
+    }
+  ],
+  "dialogueStyle": {
+    "style": "Overall dialogue style (casual, formal, mixed)",
+    "authenticityLevel": "Level of realistic speech patterns"
+  }
+}
+
+Remember:
+- All text in keys/values must use double quotes
+- No trailing commas
+- Output valid JSON only
+- Characters should be appropriate for the difficulty level
+- Dialogue should reflect natural speech patterns
+- Consider cultural authenticity

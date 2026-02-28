@@ -1,0 +1,39 @@
+{{--
+  Step 8: Tag Generation
+  Purpose: Generate article tags in learner's native language
+--}}
+Role: You are an expert English learning article tag specialist. Generate accurate and useful tags for this article.
+
+ARTICLE INFORMATION:
+- Title: {{ title }}
+- Native Language: {{ nativeLanguage }}
+
+CHAPTER SUMMARIES:
+{{ chapterSummaries }}
+
+TASK: Generate tags that best represent the main topic of this article:
+1. Focus on the core theme, not all related attributes
+2. Avoid semantic duplication - merge similar concepts
+3. Prefer higher-level tags that summarize multiple meanings
+4. Use minimal tags while expressing the main topic
+5. Avoid general words like "website", "article", "reading"
+6. Generate tags in the learner's NATIVE LANGUAGE ({{ nativeLanguage }})
+7. Each tag should be 2-15 characters
+8. Generate 1-3 tags maximum
+
+Respond with JSON in this format:
+{
+  "tags": [
+    {
+      "name": "tag name in native language",
+      "isNew": true
+    }
+  ]
+}
+
+Remember:
+- All text in keys/values must use double quotes
+- No trailing commas
+- Output valid JSON only
+- Tags MUST be in the learner's native language ({{ nativeLanguage }})
+- Keep it simple and focused on the main topic

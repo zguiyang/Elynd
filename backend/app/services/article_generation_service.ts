@@ -12,10 +12,17 @@ import ArticleVocabulary from '#models/article_vocabulary'
 import { ARTICLE_CONTENT, ARTICLE_DIFFICULTY } from '#constants'
 import type { AiClientConfig } from '#types/ai'
 import type {
+  FullUserConfig,
+  LearnerProfile,
   ArticleStrategy,
+  AiPlanning,
+  CharactersAndScenes,
   ArticleOutline,
+  AllChapterStructures,
+  ChapterStructure,
   ChapterContent,
-  VocabularyAndTags,
+  Vocabulary,
+  ArticleTags,
   GenerateArticleParams,
 } from '#types/article_generation'
 
@@ -31,40 +38,112 @@ export class ArticleGenerationService {
   ) {}
 
   async generateArticle(userId: number, params: GenerateArticleParams): Promise<Article> {
-    const config = this.getDifficultyConfig(params.difficultyLevel)
+    const userConfig = await this.configService.getFullUserConfig(userId)
+    const difficultyConfig = this.getDifficultyConfig(params.difficultyLevel)
     const aiConfig = await this.configService.getAiConfig()
-    const languageConfig = await this.configService.getUserLanguageConfig(userId)
 
-    const strategy = await this.executeStep0(params, config, aiConfig)
+    logger.info({ userId, topic: params.topic }, 'Starting article generation with 9-step pipeline')
 
-    const outline = await this.executeStep1(strategy, aiConfig)
+    const learnerProfile = await this.executeStep0(userConfig, params, difficultyConfig, aiConfig)
 
-    const chapters = await this.executeStep2(outline, config, aiConfig)
+    const strategy = await this.executeStep1(learnerProfile, params, difficultyConfig, aiConfig)
 
-    const { vocabulary, tags } = await this.executeStep3(chapters, languageConfig, aiConfig)
+    const planning = await this.executeStep2(learnerProfile, strategy, aiConfig)
+
+    const charactersScenes = await this.executeStep3(learnerProfile, strategy, planning, aiConfig)
+
+    const outline = await this.executeStep4(
+      learnerProfile,
+      strategy,
+      planning,
+      charactersScenes,
+      aiConfig
+    )
+
+    const chapterStructures = await this.executeStep5(
+      learnerProfile,
+      strategy,
+      planning,
+      charactersScenes,
+      outline,
+      aiConfig
+    )
+
+    const chapters = await this.executeStep6(
+      learnerProfile,
+      planning,
+      charactersScenes,
+      chapterStructures,
+      difficultyConfig,
+      aiConfig
+    )
+
+    const vocabulary = await this.executeStep7(learnerProfile, chapters, userConfig, aiConfig)
+
+    const tags = await this.executeStep8(
+      userConfig.nativeLanguage,
+      outline.title,
+      chapters,
+      aiConfig
+    )
 
     return await this.saveArticle(userId, params, {
       title: outline.title,
       chapters,
-      vocabulary,
-      tags,
+      vocabulary: vocabulary.vocabulary,
+      tags: tags.tags,
     })
   }
 
   private async executeStep0(
+    userConfig: FullUserConfig,
+    params: GenerateArticleParams,
+    config: DifficultyConfig,
+    aiConfig: AiClientConfig
+  ): Promise<LearnerProfile> {
+    const systemPrompt = this.promptService.render('system', {})
+    const prompt = this.promptService.render('article/00-learner-profile', {
+      nativeLanguage: userConfig.nativeLanguage,
+      targetLanguage: userConfig.targetLanguage,
+      englishVariant: userConfig.englishVariant,
+      vocabularyLevel: userConfig.vocabularyLevel,
+      difficultyLevel: params.difficultyLevel,
+      difficultyDescription: config.description,
+    })
+
+    logger.info({ step: 0 }, 'Step 0: Learner profile generation')
+
+    const response = await this.aiService.chatJson<LearnerProfile>(aiConfig, {
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt },
+      ],
+      maxTokens: 800,
+      temperature: 0.7,
+      responseFormat: { type: 'json_object' },
+    })
+
+    logger.info({ step: 0, background: response.background }, 'Step 0 completed')
+
+    return response
+  }
+
+  private async executeStep1(
+    learnerProfile: LearnerProfile,
     params: GenerateArticleParams,
     config: DifficultyConfig,
     aiConfig: AiClientConfig
   ): Promise<ArticleStrategy> {
     const systemPrompt = this.promptService.render('system', {})
-    const prompt = this.promptService.render('article/00-strategy', {
+    const prompt = this.promptService.render('article/01-strategy', {
+      learnerProfile: JSON.stringify(learnerProfile),
       topic: params.topic,
       level: params.difficultyLevel,
       levelDescription: config.description,
       extraInstructions: params.extraInstructions || '',
     })
 
-    logger.info({ step: 0, topic: params.topic }, 'Step 0: Strategy analysis')
+    logger.info({ step: 1, topic: params.topic }, 'Step 1: Strategy analysis')
 
     const response = await this.aiService.chatJson<ArticleStrategy>(aiConfig, {
       messages: [
@@ -76,21 +155,88 @@ export class ArticleGenerationService {
       responseFormat: { type: 'json_object' },
     })
 
-    logger.info({ step: 0, strategy: response }, 'Step 0 completed')
+    logger.info({ step: 1, strategy: response }, 'Step 1 completed')
 
     return response
   }
 
-  private async executeStep1(
+  private async executeStep2(
+    learnerProfile: LearnerProfile,
     strategy: ArticleStrategy,
     aiConfig: AiClientConfig
-  ): Promise<ArticleOutline> {
+  ): Promise<AiPlanning> {
     const systemPrompt = this.promptService.render('system', {})
-    const prompt = this.promptService.render('article/01-outline', {
+    const prompt = this.promptService.render('article/02-planning', {
+      learnerProfile: JSON.stringify(learnerProfile),
       strategy: JSON.stringify(strategy),
     })
 
-    logger.info({ step: 1, strategy: strategy.contentType }, 'Step 1: Outline generation')
+    logger.info({ step: 2, strategy: strategy.contentType }, 'Step 2: AI self-planning')
+
+    const response = await this.aiService.chatJson<AiPlanning>(aiConfig, {
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt },
+      ],
+      maxTokens: 1000,
+      temperature: 0.7,
+      responseFormat: { type: 'json_object' },
+    })
+
+    logger.info({ step: 2, boundaries: response.writingBoundaries.length }, 'Step 2 completed')
+
+    return response
+  }
+
+  private async executeStep3(
+    learnerProfile: LearnerProfile,
+    strategy: ArticleStrategy,
+    planning: AiPlanning,
+    aiConfig: AiClientConfig
+  ): Promise<CharactersAndScenes> {
+    const systemPrompt = this.promptService.render('system', {})
+    const prompt = this.promptService.render('article/03-characters-scenes', {
+      learnerProfile: JSON.stringify(learnerProfile),
+      strategy: JSON.stringify(strategy),
+      planning: JSON.stringify(planning),
+    })
+
+    logger.info({ step: 3 }, 'Step 3: Characters and scenes design')
+
+    const response = await this.aiService.chatJson<CharactersAndScenes>(aiConfig, {
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt },
+      ],
+      maxTokens: 1200,
+      temperature: 0.7,
+      responseFormat: { type: 'json_object' },
+    })
+
+    logger.info(
+      { step: 3, characters: response.characters.length, scenes: response.scenes.length },
+      'Step 3 completed'
+    )
+
+    return response
+  }
+
+  private async executeStep4(
+    learnerProfile: LearnerProfile,
+    strategy: ArticleStrategy,
+    planning: AiPlanning,
+    charactersScenes: CharactersAndScenes,
+    aiConfig: AiClientConfig
+  ): Promise<ArticleOutline> {
+    const systemPrompt = this.promptService.render('system', {})
+    const prompt = this.promptService.render('article/04-outline', {
+      learnerProfile: JSON.stringify(learnerProfile),
+      strategy: JSON.stringify(strategy),
+      planning: JSON.stringify(planning),
+      charactersScenes: JSON.stringify(charactersScenes),
+    })
+
+    logger.info({ step: 4, strategy: strategy.contentType }, 'Step 4: Outline generation')
 
     const response = await this.aiService.chatJson<ArticleOutline>(aiConfig, {
       messages: [
@@ -102,27 +248,71 @@ export class ArticleGenerationService {
       responseFormat: { type: 'json_object' },
     })
 
-    logger.info({ step: 1, outline: response }, 'Step 1 completed')
+    logger.info(
+      { step: 4, outline: response.title, chapters: response.chapters.length },
+      'Step 4 completed'
+    )
 
     return response
   }
 
-  private async executeStep2(
+  private async executeStep5(
+    learnerProfile: LearnerProfile,
+    strategy: ArticleStrategy,
+    planning: AiPlanning,
+    charactersScenes: CharactersAndScenes,
     outline: ArticleOutline,
+    aiConfig: AiClientConfig
+  ): Promise<AllChapterStructures> {
+    const systemPrompt = this.promptService.render('system', {})
+    const prompt = this.promptService.render('article/05-chapter-structure', {
+      learnerProfile: JSON.stringify(learnerProfile),
+      strategy: JSON.stringify(strategy),
+      planning: JSON.stringify(planning),
+      charactersScenes: JSON.stringify(charactersScenes),
+      outline: JSON.stringify(outline),
+    })
+
+    logger.info(
+      { step: 5, chapterCount: outline.chapters.length },
+      'Step 5: Chapter structure planning'
+    )
+
+    const response = await this.aiService.chatJson<AllChapterStructures>(aiConfig, {
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt },
+      ],
+      maxTokens: 2000,
+      temperature: 0.7,
+      responseFormat: { type: 'json_object' },
+    })
+
+    logger.info({ step: 5, chapters: response.chapters.length }, 'Step 5 completed')
+
+    return response
+  }
+
+  private async executeStep6(
+    learnerProfile: LearnerProfile,
+    planning: AiPlanning,
+    charactersScenes: CharactersAndScenes,
+    chapterStructures: AllChapterStructures,
     config: DifficultyConfig,
     aiConfig: AiClientConfig
   ): Promise<ChapterContent[]> {
     const systemPrompt = this.promptService.render('system', {})
 
-    const generateChapter = async (
-      chapter: ArticleOutline['chapters'][0]
-    ): Promise<ChapterContent> => {
-      const prompt = this.promptService.render('article/02-content', {
-        outline: JSON.stringify(outline),
-        chapterIndex: chapter.index,
+    const generateChapter = async (chapterStructure: ChapterStructure): Promise<ChapterContent> => {
+      const prompt = this.promptService.render('article/06-content', {
+        learnerProfile: JSON.stringify(learnerProfile),
+        planning: JSON.stringify(planning),
+        charactersScenes: JSON.stringify(charactersScenes),
+        chapterStructure: JSON.stringify(chapterStructure),
+        chapterIndex: chapterStructure.index,
       })
 
-      logger.info({ step: 2, chapter: chapter.index }, 'Step 2: Content generation')
+      logger.info({ step: 6, chapter: chapterStructure.index }, 'Step 6: Content generation')
 
       const response = await this.aiService.chatJson<ChapterContent>(aiConfig, {
         messages: [
@@ -135,31 +325,34 @@ export class ArticleGenerationService {
       })
 
       logger.info(
-        { step: 2, chapter: chapter.index, wordCount: response.wordCount },
-        'Step 2 chapter completed'
+        { step: 6, chapter: chapterStructure.index, wordCount: response.wordCount },
+        'Step 6 chapter completed'
       )
 
       return response
     }
 
-    const chapters = await Promise.all(outline.chapters.map(generateChapter))
+    const chapters = await Promise.all(chapterStructures.chapters.map(generateChapter))
 
     return chapters.sort((a, b) => a.index - b.index)
   }
 
-  private async executeStep3(
+  private async executeStep7(
+    learnerProfile: LearnerProfile,
     chapters: ChapterContent[],
-    _languageConfig: { nativeLanguage: string },
+    userConfig: FullUserConfig,
     aiConfig: AiClientConfig
-  ): Promise<VocabularyAndTags> {
+  ): Promise<Vocabulary> {
     const systemPrompt = this.promptService.render('system', {})
-    const prompt = this.promptService.render('article/03-vocabulary', {
+    const prompt = this.promptService.render('article/07-vocabulary', {
+      learnerProfile: JSON.stringify(learnerProfile),
       chapters: JSON.stringify(chapters),
+      nativeLanguage: userConfig.nativeLanguage,
     })
 
-    logger.info({ step: 3, chapterCount: chapters.length }, 'Step 3: Vocabulary extraction')
+    logger.info({ step: 7, chapterCount: chapters.length }, 'Step 7: Vocabulary extraction')
 
-    const response = await this.aiService.chatJson<VocabularyAndTags>(aiConfig, {
+    const response = await this.aiService.chatJson<Vocabulary>(aiConfig, {
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt },
@@ -169,10 +362,42 @@ export class ArticleGenerationService {
       responseFormat: { type: 'json_object' },
     })
 
-    logger.info(
-      { step: 3, vocabulary: response.vocabulary.length, tags: response.tags.length },
-      'Step 3 completed'
-    )
+    logger.info({ step: 7, vocabulary: response.vocabulary.length }, 'Step 7 completed')
+
+    return response
+  }
+
+  private async executeStep8(
+    nativeLanguage: string,
+    title: string,
+    chapters: ChapterContent[],
+    aiConfig: AiClientConfig
+  ): Promise<ArticleTags> {
+    const systemPrompt = this.promptService.render('system', {})
+
+    const chapterSummaries = chapters
+      .map((c) => `${c.title}: ${c.content.substring(0, 200)}...`)
+      .join('\n')
+
+    const prompt = this.promptService.render('article/08-tags', {
+      title,
+      nativeLanguage,
+      chapterSummaries,
+    })
+
+    logger.info({ step: 8, title }, 'Step 8: Tag generation')
+
+    const response = await this.aiService.chatJson<ArticleTags>(aiConfig, {
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt },
+      ],
+      maxTokens: 500,
+      temperature: 0.7,
+      responseFormat: { type: 'json_object' },
+    })
+
+    logger.info({ step: 8, tags: response.tags.length }, 'Step 8 completed')
 
     return response
   }
@@ -183,8 +408,8 @@ export class ArticleGenerationService {
     data: {
       title: string
       chapters: ChapterContent[]
-      vocabulary: VocabularyAndTags['vocabulary']
-      tags: VocabularyAndTags['tags']
+      vocabulary: Vocabulary['vocabulary']
+      tags: ArticleTags['tags']
     }
   ): Promise<Article> {
     const wordCount = data.chapters.reduce((sum, c) => sum + c.wordCount, 0)

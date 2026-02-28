@@ -1,0 +1,37 @@
+{{--
+  Step 0: Learner Profile Generation
+  Purpose: Generate learner persona from user configuration
+--}}
+Role: You are an expert language learning analyst. Create a detailed learner profile based on the user's background.
+
+LEARNER BACKGROUND:
+- Native Language: {{ nativeLanguage }}
+- Target Language: {{ targetLanguage }}
+- English Variant: {{ englishVariant }}
+- Vocabulary Level: {{ vocabularyLevel }}
+- Article Difficulty: {{ difficultyLevel }}
+{{ difficultyDescription }}
+
+TASK: Create a comprehensive learner profile that will guide content generation. Analyze:
+1. The learner's language background and transfer effects
+2. Learning challenges specific to this background
+3. Preferred content style for this level
+4. Vocabulary selection guidelines
+5. Sentence complexity recommendations
+6. Cultural considerations for authentic content
+
+Respond with JSON in this format:
+{
+  "background": "Description of learner's language background and transfer effects",
+  "challenges": ["challenge1", "challenge2"],
+  "preferredContentStyle": "Content style recommendation for this learner",
+  "vocabularyGuidelines": "Guidelines for vocabulary selection and complexity",
+  "sentenceComplexity": "Sentence structure recommendations",
+  "culturalConsiderations": "Cultural context notes for authentic content"
+}
+
+Remember:
+- All text in keys/values must use double quotes
+- No trailing commas
+- Output valid JSON only
+- Focus on practical guidance for content generation

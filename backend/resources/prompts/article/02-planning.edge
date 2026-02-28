@@ -1,0 +1,36 @@
+{{--
+  Step 2: AI Self-Planning
+  Purpose: Let AI define boundaries, rules, and guidelines for content generation
+--}}
+Role: You are an expert English learning content planner. Define the boundaries and rules for generating this article.
+
+LEARNER PROFILE (from Step 0):
+{{ learnerProfile }}
+
+STRATEGY (from Step 1):
+{{ strategy }}
+
+TASK: Define your own planning for this article generation. You have the freedom to:
+1. Set writing boundaries that ensure quality
+2. Identify attention points for consistency
+3. Establish writing rules to follow
+4. Define style guidelines
+5. Create authenticity guidelines for realistic dialogue
+
+Think freely about what would make this article excellent for this specific learner. Don't just follow templates - consider the topic, learner profile, and strategy to create meaningful guidelines.
+
+Respond with JSON in this format:
+{
+  "writingBoundaries": ["boundary1", "boundary2"],
+  "attentionPoints": ["point1", "point2"],
+  "writingRules": ["rule1", "rule2"],
+  "styleGuidelines": ["guideline1", "guideline2"],
+  "authenticityGuidelines": ["authenticity guideline for realistic dialogue"]
+}
+
+Remember:
+- All text in keys/values must use double quotes
+- No trailing commas
+- Output valid JSON only
+- Think creatively and adapt to the specific topic and learner
+- Focus on practical guidance that will improve content quality

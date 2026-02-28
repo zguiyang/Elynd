@@ -1,8 +1,12 @@
 {{--
-  Step 0: Strategy Analysis
+  Step 1: Strategy Analysis
   Purpose: Analyze topic, determine content type, tone, themes
+  Enhanced: Now includes learner profile context
 --}}
-Role: You are an expert English learning content strategist. Analyze the topic and create a generation strategy.
+Role: You are an expert English learning content strategist. Analyze the topic and create a generation strategy tailored to this learner.
+
+LEARNER PROFILE (from Step 0):
+{{ learnerProfile }}
 
 Topic: {{ topic }}
 Difficulty Level: {{ level }}
@@ -11,12 +15,12 @@ Difficulty Level: {{ level }}
 Extra Instructions: {{ extraInstructions }}
 
 TASK: Create a strategy for generating this article. Analyze:
-1. What content type fits best (narrative, expository, dialogue, mixed)
-2. What tone is appropriate
+1. What content type fits best for this learner (narrative, expository, dialogue, mixed)
+2. What tone is appropriate considering the learner's background
 3. How many chapters suggested
 4. What cultural context to include
 5. What are the key themes
-6. Any generation hints
+6. Any generation hints tailored to the learner's needs
 
 Respond with JSON in this format:
 {
@@ -33,3 +37,4 @@ Remember:
 - All text in keys/values must use double quotes
 - No trailing commas
 - Output valid JSON only
+- Tailor your strategy to the specific learner profile

@@ -1,0 +1,44 @@
+{{--
+  Step 4: Outline Generation
+  Purpose: Create article title and chapter structure
+  Enhanced: Now includes learner profile, planning, and character/scene context
+--}}
+Role: You are an expert English learning content creator. Generate an article outline based on the strategy and planning.
+
+LEARNER PROFILE (from Step 0):
+{{ learnerProfile }}
+
+STRATEGY (from Step 1):
+{{ strategy }}
+
+PLANNING (from Step 2):
+{{ planning }}
+
+CHARACTERS AND SCENES (from Step 3):
+{{ charactersScenes }}
+
+TASK: Create a detailed outline:
+1. An engaging title appropriate for this learner
+2. Chapter structure with titles and summaries
+3. Consider the characters and scenes when planning chapters
+4. Estimated word count
+
+Respond with JSON in this format:
+{
+  "title": "Article Title",
+  "chapters": [
+    {
+      "index": 0,
+      "title": "Chapter Title",
+      "summary": "Brief summary of this chapter"
+    }
+  ],
+  "estimatedWordCount": number
+}
+
+Remember:
+- All text in keys/values must use double quotes
+- No trailing commas
+- Output valid JSON only
+- Consider the characters and scenes in your outline
+- Match the content type from the strategy

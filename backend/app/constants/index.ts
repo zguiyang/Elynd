@@ -45,6 +45,7 @@ type EmailVerification = (typeof EMAIL_VERIFICATION)[keyof typeof EMAIL_VERIFICA
 
 const AI = {
   DEFAULT_TIMEOUT: 120000,
+  ARTICLE_GENERATION_TIMEOUT: 600000,
   DEFAULT_MAX_RETRIES: 2,
 } as const
 

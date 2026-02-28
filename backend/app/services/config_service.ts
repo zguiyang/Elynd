@@ -1,6 +1,7 @@
 import { inject } from '@adonisjs/core'
 import SystemConfig from '#models/system_config'
 import UserConfig from '#models/user_config'
+import { AI } from '#constants'
 import type { AiClientConfig } from '#types/ai'
 import type { UserLanguageConfig } from '#types/article'
 
@@ -13,6 +14,7 @@ export class ConfigService {
       baseUrl: config?.aiBaseUrl || '',
       apiKey: config?.aiApiKey || '',
       model: config?.aiModelName || '',
+      timeout: AI.ARTICLE_GENERATION_TIMEOUT,
     }
   }
 

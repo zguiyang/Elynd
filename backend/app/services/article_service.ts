@@ -9,6 +9,7 @@ import UserConfig from '#models/user_config'
 import ArticleVocabulary from '#models/article_vocabulary'
 import logger from '@adonisjs/core/services/logger'
 import { ARTICLE_CONTENT, ARTICLE_DIFFICULTY } from '#constants'
+import type { AiClientConfig } from '#types/ai'
 import {
   ArticleGenerationFailedException,
   ArticleNotFoundException,
@@ -54,7 +55,7 @@ export class ArticleService {
 
   // Normalize TOC into string[] or null
   private normalizeToc(input: unknown): string[] | null {
-    if (input == null) return null
+    if (input === null || input === undefined) return null
     // Already array
     if (Array.isArray(input)) {
       const arr = input.map((v) => String(v).trim()).filter((s) => s.length > 0)
@@ -112,7 +113,7 @@ export class ArticleService {
 
   async generateArticle(userId: number, params: GenerateArticleParams): Promise<Article> {
     const config = this.getDifficultyConfig(params.difficultyLevel)
-    const userConfig = await this.getUserAiConfig()
+    const aiConfig = await this.getAiConfig()
     const languageConfig = await this.getLanguageConfig(userId)
 
     const existingTags = await Tag.query().select('id', 'name', 'slug')
@@ -132,7 +133,7 @@ export class ArticleService {
       englishVariant: languageConfig.englishVariant,
     })
 
-    const articleData = await this.callAi(userConfig, prompt, config.maxTokens)
+    const articleData = await this.callAi(aiConfig, prompt, config.maxTokens)
 
     if (!articleData.content) {
       logger.error({ articleData }, 'AI response missing content field')
@@ -243,19 +244,18 @@ export class ArticleService {
   }
 
   private async callAi(
-    userConfig: any,
+    config: AiClientConfig,
     prompt: string,
     maxTokens: number
   ): Promise<AiArticleResponse> {
     logger.info('[Article Generation] Starting AI request', {
-      model: userConfig.modelName,
+      model: config.model,
       maxTokens,
     })
 
     const systemPrompt = this.promptService.render('system', {})
 
-    const response = await this.aiService.chat(userConfig, {
-      model: userConfig.modelName,
+    const rawJson = await this.aiService.chatJson<AiArticleResponse>(config, {
       messages: [
         {
           role: 'system',
@@ -263,107 +263,54 @@ export class ArticleService {
         },
         { role: 'user', content: prompt },
       ],
-      max_tokens: maxTokens,
+      maxTokens,
       temperature: 0.7,
-      response_format: { type: 'json_object' },
+      responseFormat: { type: 'json_object' },
     })
 
-    console.log('ai article response', JSON.stringify(response))
+    logger.info('[Article Generation] AI response received')
 
-    logger.info('[Article Generation] AI response received', {
-      success: response.success,
-      hasData: 'data' in response,
-      hasChoices: !!(response as any).choices,
-      responseType:
-        typeof (response as any).data || typeof (response as any).choices?.[0]?.message?.content,
-    })
+    return this.parseArticleResponse(rawJson)
+  }
 
-    let articleData: string
-    if (response.success && 'data' in response) {
-      const openaiResponse = (response as any).data
-      articleData = openaiResponse.choices?.[0]?.message?.content || ''
-    } else {
-      articleData = (response as any).choices?.[0]?.message?.content || ''
-    }
+  private parseArticleResponse(raw: AiArticleResponse): AiArticleResponse {
+    let processedData = JSON.stringify(raw)
 
-    if (!articleData) {
-      logger.error({ response }, 'No content in AI response')
-      throw new ArticleGenerationFailedException('AI response has no content')
-    }
-
-    const rawContent =
-      articleData.length > 500 ? articleData.substring(0, 500) + '...(truncated)' : articleData
-    logger.debug('[Article Generation] Raw response content', {
-      content: rawContent,
-    })
-
-    logger.debug('[Article Generation] Extracted article data', {
-      dataLength: articleData.length,
-      dataPreview: articleData.substring(0, 500),
-    })
+    processedData = processedData.replace(
+      /"tableOfContents"\s*:\s*\{((?:\s*"[^"]*"\s*,?)*)\}/gs,
+      '"tableOfContents": [$1]'
+    )
+    processedData = processedData.replace(
+      /"table_of_contents"\s*:\s*\{((?:\s*"[^"]*"\s*,?)*)\}/gs,
+      '"table_of_contents": [$1]'
+    )
 
     let parsedArticleData: AiArticleResponse
     try {
-      // Pre-process for a specific common AI error: tableOfContents written as {"val1", "val2"}
-      // which looks like an object but lacks keys. This is technically invalid JSON but
-      // might be partially "fixed" by some JSON parsers or cause parse errors.
-      // Based on logs: "detail": "Expected \":\", but found \",\"."
-      // where: "JSON data, line 1: {\"Chapter 1: A Happy Morning\",...
-
-      let processedArticleData = articleData
-      // Fix both camelCase and snake_case keys, allow multiline and various spacing
-      processedArticleData = processedArticleData.replace(
-        /"tableOfContents"\s*:\s*\{((?:\s*"[^"]*"\s*,?)*)\}/gs,
-        '"tableOfContents": [$1]'
-      )
-      processedArticleData = processedArticleData.replace(
-        /"table_of_contents"\s*:\s*\{((?:\s*"[^"]*"\s*,?)*)\}/gs,
-        '"table_of_contents": [$1]'
-      )
-
-      parsedArticleData = JSON.parse(processedArticleData) as AiArticleResponse
+      parsedArticleData = JSON.parse(processedData) as AiArticleResponse
     } catch (parseError) {
       logger.error(
         {
           parseError: (parseError as Error).message,
-          rawResponse: articleData.substring(0, 1000),
+          rawResponse: JSON.stringify(raw).substring(0, 1000),
         },
-        '[Article Generation] JSON parse failed, raw response above'
+        '[Article Generation] JSON parse failed'
       )
       throw new ArticleGenerationFailedException('AI response is not valid JSON')
     }
 
-    // Validate and fix tableOfContents format (post-parse)
     if (parsedArticleData.tableOfContents) {
-      logger.debug('[Article Generation] tableOfContents before validation', {
-        type: typeof parsedArticleData.tableOfContents,
-        isArray: Array.isArray(parsedArticleData.tableOfContents),
-        value: JSON.stringify(parsedArticleData.tableOfContents).substring(0, 500),
-      })
-
-      // If it's not an array, normalize using helper
       if (!Array.isArray(parsedArticleData.tableOfContents)) {
-        const before = parsedArticleData.tableOfContents as unknown
-        parsedArticleData.tableOfContents = this.normalizeToc(before)
-        logger.info('[Article Generation] tableOfContents normalized', {
-          wasType: typeof before,
-          nowIsArray: Array.isArray(parsedArticleData.tableOfContents),
-          length: Array.isArray(parsedArticleData.tableOfContents)
-            ? parsedArticleData.tableOfContents.length
-            : 0,
-        })
+        parsedArticleData.tableOfContents = this.normalizeToc(parsedArticleData.tableOfContents)
       }
     }
 
-    // Ensure it's array (possibly empty) at this point
     if (!Array.isArray(parsedArticleData.tableOfContents)) {
       parsedArticleData.tableOfContents = []
     }
 
-    // Validate and fix tags format
     if (parsedArticleData.tags) {
       if (!Array.isArray(parsedArticleData.tags)) {
-        logger.warn('[Article Generation] tags is not an array, setting to empty array')
         parsedArticleData.tags = []
       } else {
         parsedArticleData.tags = parsedArticleData.tags.filter(
@@ -374,10 +321,8 @@ export class ArticleService {
       parsedArticleData.tags = []
     }
 
-    // Validate and fix vocabulary format
     if (parsedArticleData.vocabulary) {
       if (!Array.isArray(parsedArticleData.vocabulary)) {
-        logger.warn('[Article Generation] vocabulary is not an array, setting to empty array')
         parsedArticleData.vocabulary = []
       } else {
         parsedArticleData.vocabulary = parsedArticleData.vocabulary.filter(
@@ -388,28 +333,13 @@ export class ArticleService {
       parsedArticleData.vocabulary = []
     }
 
-    logger.info('[Article Generation] JSON parsed successfully', {
-      keys: Object.keys(parsedArticleData),
-      hasTitle: !!parsedArticleData.title,
-      hasTableOfContents: !!parsedArticleData.tableOfContents,
-      hasChapterCount: !!parsedArticleData.chapterCount,
-      hasContent: !!parsedArticleData.content,
-      contentLength: parsedArticleData.content?.length || 0,
-      hasWordCount: parsedArticleData.wordCount !== undefined,
-      wordCount: parsedArticleData.wordCount,
-      tagsCount: parsedArticleData.tags?.length || 0,
-      vocabularyCount: parsedArticleData.vocabulary?.length || 0,
-    })
-
     if (!parsedArticleData.content) {
-      logger.error({ parsedArticleData }, 'AI response missing content field')
       throw new ArticleGenerationFailedException('AI response missing content field')
     }
 
-    logger.info('AI generation successful', {
+    logger.info('[Article Generation] JSON parsed successfully', {
       title: parsedArticleData.title,
-      wordCount: parsedArticleData.wordCount,
-      tagCount: parsedArticleData.tags?.length || 0,
+      tagsCount: parsedArticleData.tags?.length || 0,
       vocabularyCount: parsedArticleData.vocabulary?.length || 0,
     })
 
@@ -500,18 +430,13 @@ export class ArticleService {
     return text.split(/\s+/).filter((word) => word.length > 0).length
   }
 
-  private async getUserAiConfig() {
+  private async getAiConfig(): Promise<AiClientConfig> {
     const config = await SystemConfig.first()
 
-    const apiKey = config?.aiApiKey
-    const baseUrl = config?.aiBaseUrl
-    const modelName = config?.aiModelName
-
     return {
-      enabled: true,
-      apiKey,
-      baseUrl,
-      modelName,
+      baseUrl: config?.aiBaseUrl || '',
+      apiKey: config?.aiApiKey || '',
+      model: config?.aiModelName || '',
     }
   }
 }

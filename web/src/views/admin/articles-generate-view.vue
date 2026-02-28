@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
+import { CheckCircle2, FileText, Clock, Calendar } from 'lucide-vue-next'
 import { adminApi, type GenerateArticleData } from '@/api/admin'
 import { useAuthStore } from '@/stores/auth'
 import { useArticleSse } from '@/composables/useArticleSse'
@@ -10,14 +11,14 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const isLoading = ref(false)
-const difficultyLevel = ref<'L1' | 'L2' | 'L3'>('L2')
+const difficultyLevel = ref<'L1' | 'L2' | 'L3'>('L1')
 const topic = ref('')
 const extraInstructions = ref('')
 
 const topicError = ref('')
 const extraInstructionsError = ref('')
 
-const { status, error: sseError, subscribe, unsubscribe, reset } = useArticleSse(authStore.user!.id)
+const { status, article, error: sseError, subscribe, unsubscribe, reset } = useArticleSse(authStore.user!.id)
 const progress = ref(0)
 const statusMessage = ref('')
 
@@ -26,10 +27,6 @@ watch(status, (newStatus) => {
   if (newStatus === 'completed') {
     progress.value = 100
     statusMessage.value = '生成完成'
-    toast.success('文章生成成功')
-    setTimeout(() => {
-      router.push('/learning/articles')
-    }, 500)
   } else if (newStatus === 'failed') {
     progress.value = 0
     statusMessage.value = ''
@@ -109,11 +106,87 @@ const handleSubmit = async () => {
     isLoading.value = false
   }
 }
+
+const handleContinue = () => {
+  reset()
+  difficultyLevel.value = 'L1'
+  topic.value = ''
+  extraInstructions.value = ''
+  progress.value = 0
+  statusMessage.value = ''
+  isLoading.value = false
+}
+
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+}
 </script>
 
 <template>
   <div class="container mx-auto max-w-2xl px-4 sm:px-6 lg:px-8 py-8">
-    <Card>
+    <!-- 成功卡片 -->
+    <Card v-if="status === 'completed' && article" class="overflow-hidden">
+      <CardHeader class="text-center pb-4">
+        <div class="flex justify-center mb-4">
+          <CheckCircle2 class="w-16 h-16 text-success" />
+        </div>
+        <CardTitle class="text-2xl">文章生成成功</CardTitle>
+      </CardHeader>
+
+      <CardContent class="space-y-6">
+        <!-- 文章标题 -->
+        <div class="text-center">
+          <h3
+            class="text-lg font-semibold cursor-pointer hover:text-primary transition-colors duration-150"
+            @click="router.push(`/learning/article/${article.id}`)"
+          >
+            {{ article.title }}
+          </h3>
+        </div>
+
+        <!-- 元信息 -->
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <div class="flex items-center gap-2 text-muted-foreground">
+            <span>难度等级:</span>
+            <Badge>{{ article.difficultyLevel }}</Badge>
+          </div>
+          <div class="flex items-center gap-2 text-muted-foreground">
+            <FileText class="w-4 h-4" />
+            <span>{{ article.wordCount }} 字</span>
+          </div>
+          <div class="flex items-center gap-2 text-muted-foreground">
+            <Clock class="w-4 h-4" />
+            <span>{{ article.readingTime }} 分钟</span>
+          </div>
+          <div class="flex items-center gap-2 text-muted-foreground">
+            <Calendar class="w-4 h-4" />
+            <span>{{ formatDate(article.createdAt) }}</span>
+          </div>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="flex gap-3 pt-2">
+          <Button class="flex-1" @click="handleContinue">
+            继续生成
+          </Button>
+          <Button
+            variant="secondary"
+            class="flex-1"
+            @click="router.push(`/learning/article/${article.id}`)"
+          >
+            查看文章
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+
+    <!-- 表单 -->
+    <Card v-else>
       <CardHeader>
         <CardTitle>生成文章</CardTitle>
       </CardHeader>

@@ -4,6 +4,7 @@ import { adminApi, type GenerateArticleData } from '@/api/admin'
 import { useAuthStore } from '@/stores/auth'
 import { useArticleSse } from '@/composables/useArticleSse'
 import { Progress } from '@/components/ui/progress'
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -16,11 +17,12 @@ const extraInstructions = ref('')
 const topicError = ref('')
 const extraInstructionsError = ref('')
 
-const { status, error: sseError, subscribe, unsubscribe } = useArticleSse(authStore.user!.id)
+const { status, error: sseError, subscribe, unsubscribe, reset } = useArticleSse(authStore.user!.id)
 const progress = ref(0)
 const statusMessage = ref('')
 
 watch(status, (newStatus) => {
+  console.log('[ArticlesGenerate] Watch 触发, newStatus:', newStatus, 'sseError:', sseError.value)
   if (newStatus === 'completed') {
     progress.value = 100
     statusMessage.value = '生成完成'
@@ -31,8 +33,10 @@ watch(status, (newStatus) => {
   } else if (newStatus === 'failed') {
     progress.value = 0
     statusMessage.value = ''
-    toast.error(sseError.value || '文章生成失败')
     isLoading.value = false
+    const errorMsg = sseError.value || '文章生成失败'
+    console.log('[ArticlesGenerate] 显示失败 toast:', errorMsg)
+    toast.error(errorMsg)
   } else if (newStatus === 'queued') {
     progress.value = 10
     statusMessage.value = '已加入生成队列...'
@@ -83,6 +87,7 @@ const handleSubmit = async () => {
     return
   }
 
+  reset()
   isLoading.value = true
 
   try {
@@ -164,17 +169,24 @@ const handleSubmit = async () => {
             </p>
           </div>
 
-          <div v-if="status !== 'idle' && status !== 'completed'" class="space-y-2">
+          <div v-if="status !== 'idle' && status !== 'completed' && status !== 'failed'" class="space-y-2">
             <Progress :model-value="progress" />
             <p class="text-sm text-muted-foreground text-center">{{ statusMessage }}</p>
+          </div>
+
+          <div v-if="status === 'failed' && sseError" class="space-y-2">
+            <Alert variant="destructive">
+              <AlertTitle>生成失败</AlertTitle>
+              <AlertDescription class="text-sm">{{ sseError }}</AlertDescription>
+            </Alert>
           </div>
 
           <Button
             type="submit"
             class="w-full"
-            :disabled="isLoading || status !== 'idle'"
+            :disabled="isLoading || (status !== 'idle' && status !== 'failed')"
           >
-            {{ isLoading || status !== 'idle' ? '生成中...' : '生成文章' }}
+            {{ isLoading || (status !== 'idle' && status !== 'failed') ? '生成中...' : '生成文章' }}
           </Button>
         </form>
       </CardContent>

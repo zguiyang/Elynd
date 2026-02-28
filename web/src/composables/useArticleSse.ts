@@ -64,6 +64,13 @@ export function useArticleSse(userId: number) {
     console.log('[SSE] 消息监听器已注册, handlerCount:', channel.handlerCount)
   }
 
+  function reset() {
+    status.value = 'idle'
+    article.value = null
+    error.value = null
+    console.log('[SSE] 状态已重置')
+  }
+
   async function unsubscribe() {
     console.log('[SSE] 开始取消订阅')
     if (unsubscribeFn) {
@@ -76,9 +83,7 @@ export function useArticleSse(userId: number) {
       channel = null
     }
 
-    status.value = 'idle'
-    article.value = null
-    error.value = null
+    reset()
     console.log('[SSE] 已取消订阅')
   }
 
@@ -93,5 +98,6 @@ export function useArticleSse(userId: number) {
     error,
     subscribe,
     unsubscribe,
+    reset,
   }
 }

@@ -15,7 +15,7 @@ import {
   BookOpen,
 } from 'lucide-vue-next'
 import { useReadingSettingsStore } from '@/stores/reading-settings'
-import { useArticle } from '@/composables/useArticle'
+import { useArticle, useChapter } from '@/composables/useArticle'
 import { articleApi } from '@/api/article'
 import type { LineHeight, ContentWidth } from '@/stores/reading-settings'
 import type { VocabularyItem } from '@/types/article'
@@ -26,13 +26,14 @@ const route = useRoute()
 const articleId = Number(route.params.id)
 
 const { article, isLoading, error, fetchArticle } = useArticle()
+const { chapter, isLoading: isLoadingChapter, error: chapterError, fetchChapter } = useChapter()
 
 const isPlaying = ref(false)
 const currentTime = ref(0)
 const duration = ref(180)
 
-const currentPage = ref(1)
-const totalPages = ref(1)
+const currentChapterIndex = ref(0)
+const totalChapters = computed(() => article.value?.chapters.length ?? 0)
 
 const isAiDrawerOpen = ref(false)
 
@@ -63,9 +64,11 @@ const contentWidthLabel = computed(
   () => contentWidthOptions.find((opt) => opt.value === readingSettings.contentWidth)?.label ?? '充满'
 )
 
+const currentChapter = computed(() => chapter.value)
+
 const paragraphs = computed(() => {
-  if (!article.value?.content) return []
-  return article.value.content.split('\n\n').filter((p) => p.trim())
+  if (!currentChapter.value?.content) return []
+  return currentChapter.value.content.split('\n\n').filter((p) => p.trim())
 })
 
 const togglePlay = () => {
@@ -83,15 +86,21 @@ const formatTime = (seconds: number) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
-const goToPreviousPage = () => {
-  if (currentPage.value > 1) {
-    currentPage.value--
+const loadChapter = async (index: number) => {
+  if (!article.value) return
+  currentChapterIndex.value = index
+  await fetchChapter(articleId, index)
+}
+
+const goToPreviousChapter = async () => {
+  if (currentChapterIndex.value > 0) {
+    await loadChapter(currentChapterIndex.value - 1)
   }
 }
 
-const goToNextPage = () => {
-  if (currentPage.value < totalPages.value) {
-    currentPage.value++
+const goToNextChapter = async () => {
+  if (currentChapterIndex.value < totalChapters.value - 1) {
+    await loadChapter(currentChapterIndex.value + 1)
   }
 }
 
@@ -112,7 +121,7 @@ const fetchVocabulary = async () => {
   isLoadingVocabulary.value = true
   try {
     const data = await articleApi.getVocabulary(articleId)
-    vocabularies.value = data
+    vocabularies.value = data.data
     showVocabulary.value = true
   } catch {
     toast.error('获取词汇失败')
@@ -121,11 +130,23 @@ const fetchVocabulary = async () => {
   }
 }
 
-onMounted(() => {
-  fetchArticle(articleId)
+onMounted(async () => {
+  await fetchArticle(articleId)
+})
+
+watch(article, async (newArticle) => {
+  if (newArticle && newArticle.chapters.length > 0) {
+    await loadChapter(0)
+  }
 })
 
 watch(error, (err) => {
+  if (err) {
+    toast.error(err)
+  }
+})
+
+watch(chapterError, (err) => {
   if (err) {
     toast.error(err)
   }
@@ -270,19 +291,19 @@ const getDifficultyVariant = (difficulty: string): 'default' | 'secondary' | 'ou
             <Button
               variant="outline"
               size="sm"
-              :disabled="currentPage <= 1"
-              @click="goToPreviousPage"
+              :disabled="currentChapterIndex <= 0"
+              @click="goToPreviousChapter"
             >
               <ChevronLeft class="size-4" />
             </Button>
             <span class="text-sm text-muted-foreground min-w-(60px) text-center">
-              {{ currentPage }} / {{ totalPages }}
+              {{ currentChapterIndex + 1 }} / {{ totalChapters }}
             </span>
             <Button
               variant="outline"
               size="sm"
-              :disabled="currentPage >= totalPages"
-              @click="goToNextPage"
+              :disabled="currentChapterIndex >= totalChapters - 1"
+              @click="goToNextChapter"
             >
               <ChevronRight class="size-4" />
             </Button>
@@ -292,7 +313,28 @@ const getDifficultyVariant = (difficulty: string): 'default' | 'secondary' | 'ou
 
       <!-- 内容区域：flex-1 填充剩余空间，内部可滚动 -->
       <main class="flex-1 min-h-0 flex flex-col px-4 pb-6 mt-4 w-full">
+        <!-- Chapter Loading State -->
+        <div
+          v-if="isLoadingChapter"
+          class="flex-1 flex items-center justify-center"
+        >
+          <Loader2 class="size-8 animate-spin text-muted-foreground" />
+        </div>
+        
+        <!-- Chapter Error State -->
+        <div
+          v-else-if="chapterError"
+          class="flex-1 flex items-center justify-center"
+        >
+          <div class="text-center">
+            <p class="text-destructive mb-4">{{ chapterError }}</p>
+            <Button @click="loadChapter(currentChapterIndex)">重试</Button>
+          </div>
+        </div>
+        
+        <!-- Chapter Content -->
         <ArticleReader
+          v-else-if="currentChapter"
           :paragraphs="paragraphs"
           :word-definitions="{}"
           @word-click="handleWordClick"

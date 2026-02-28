@@ -65,6 +65,9 @@ export default class GenerateArticleJob extends Job {
       })
 
       await article.load('tags')
+      await article.load('chapters', (chapterQuery) => {
+        chapterQuery.select('id', 'articleId', 'chapterIndex', 'title')
+      })
 
       await sendStatus({
         jobId,
@@ -74,11 +77,15 @@ export default class GenerateArticleJob extends Job {
         article: {
           id: article.id,
           title: article.title,
-          content: article.content,
           difficultyLevel: article.difficultyLevel,
           wordCount: article.wordCount,
           readingTime: article.readingTime,
           tags: article.tags.map((t) => ({ id: t.id, name: t.name, slug: t.slug })),
+          chapters: article.chapters.map((c) => ({
+            id: c.id,
+            chapterIndex: c.chapterIndex,
+            title: c.title,
+          })),
           createdAt: article.createdAt,
         },
       })

@@ -1,20 +1,16 @@
 import { inject } from '@adonisjs/core'
 import logger from '@adonisjs/core/services/logger'
-import type { AiArticleResponse, ParsedArticleResponse, VocabularyItem } from '#types/article'
+import type {
+  AiArticleResponse,
+  ParsedArticleResponse,
+  VocabularyItem,
+  ChapterItem,
+} from '#types/article'
 
 @inject()
 export class ArticleResponseParser {
   parse(raw: AiArticleResponse): ParsedArticleResponse {
     let processedData = JSON.stringify(raw)
-
-    processedData = processedData.replace(
-      /"tableOfContents"\s*:\s*\{((?:\s*"[^"]*"\s*,?)*)\}/gs,
-      '"tableOfContents": [$1]'
-    )
-    processedData = processedData.replace(
-      /"table_of_contents"\s*:\s*\{((?:\s*"[^"]*"\s*,?)*)\}/gs,
-      '"table_of_contents": [$1]'
-    )
 
     let parsedArticleData: ParsedArticleData
     try {
@@ -30,78 +26,33 @@ export class ArticleResponseParser {
       throw new Error('AI response is not valid JSON')
     }
 
-    const normalizedToc = this.normalizeToc(parsedArticleData.tableOfContents)
+    const normalizedChapters = this.normalizeChapters(parsedArticleData.chapters)
     const normalizedTags = this.normalizeTags(parsedArticleData.tags)
     const normalizedVocabulary = this.normalizeVocabulary(parsedArticleData.vocabulary)
 
     return {
       title: parsedArticleData.title || '',
-      tableOfContents: normalizedToc,
-      chapterCount: parsedArticleData.chapterCount || 0,
-      content: parsedArticleData.content || '',
+      chapters: normalizedChapters,
       wordCount: parsedArticleData.wordCount || 0,
       tags: normalizedTags,
       vocabulary: normalizedVocabulary,
     }
   }
 
-  normalizeToc(input: unknown): string[] {
-    if (input === null || input === undefined) return []
+  normalizeChapters(input: unknown): ChapterItem[] {
+    if (!input || !Array.isArray(input)) return []
 
-    if (Array.isArray(input)) {
-      const arr = input.map((v) => String(v).trim()).filter((s) => s.length > 0)
-      return arr.length ? arr : []
-    }
-
-    if (typeof input === 'object') {
-      try {
-        const values = Object.values(input as Record<string, unknown>)
-        const arr = values.map((v) => String(v).trim()).filter((s) => s.length > 0)
-        return arr.length ? arr : []
-      } catch {
-        return []
-      }
-    }
-
-    if (typeof input === 'string') {
-      const raw = input.trim()
-      if (!raw) return []
-
-      if (raw.startsWith('[')) {
-        try {
-          const arr = JSON.parse(raw)
-          if (Array.isArray(arr)) {
-            const fixed = arr
-              .map((v: unknown) => String(v).trim())
-              .filter((s: string) => s.length > 0)
-            return fixed.length ? fixed : []
-          }
-        } catch {}
-      }
-
-      if (raw.startsWith('{') && raw.includes('"')) {
-        const fixedCandidate = raw
-          .replace(/\s+/g, ' ')
-          .replace(/^\{\s*((?:"[^"]*"\s*,\s*)*"[^"]*")\s*\}$/g, '[$1]')
-        try {
-          const arr = JSON.parse(fixedCandidate)
-          if (Array.isArray(arr)) {
-            const fixed = arr
-              .map((v: unknown) => String(v).trim())
-              .filter((s: string) => s.length > 0)
-            return fixed.length ? fixed : []
-          }
-        } catch {}
-      }
-
-      const list = raw
-        .split(/[\n,，、;；]+/)
-        .map((s) => s.trim())
-        .filter(Boolean)
-      return list.length ? list : []
-    }
-
-    return []
+    return input
+      .filter(
+        (chapter): chapter is ChapterItemRaw =>
+          chapter && typeof chapter === 'object' && typeof chapter.title === 'string'
+      )
+      .map((chapter, index) => ({
+        index: typeof chapter.index === 'number' ? chapter.index : index,
+        title: chapter.title,
+        content: typeof chapter.content === 'string' ? chapter.content : '',
+      }))
+      .filter((chapter) => chapter.content.length > 0)
   }
 
   normalizeTags(input: unknown): Array<{ name: string; isNew: boolean }> {
@@ -123,10 +74,14 @@ export class ArticleResponseParser {
 
 interface ParsedArticleData {
   title: string
-  tableOfContents: unknown
-  chapterCount: number
-  content: string
+  chapters: unknown
   wordCount: number
   tags: unknown
   vocabulary: unknown
+}
+
+interface ChapterItemRaw {
+  index?: number
+  title: string
+  content?: string
 }

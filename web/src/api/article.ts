@@ -3,6 +3,7 @@ import type {
   Article,
   ArticleListItem,
   ArticleListParams,
+  Chapter,
   PaginatedResponse,
   Tag,
   VocabularyItem,
@@ -13,6 +14,9 @@ export const articleApi = {
     request.get<PaginatedResponse<ArticleListItem>>('/api/articles', { params }),
 
   getById: (id: number) => request.get<Article>(`/api/articles/${id}`),
+
+  getChapter: (articleId: number, chapterIndex: number) =>
+    request.get<Chapter>(`/api/articles/${articleId}/chapters/${chapterIndex}`),
 
   getTags: () => request.get<Tag[]>('/api/tags'),
 

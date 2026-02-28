@@ -11,11 +11,15 @@ export interface VocabularyItem {
   phonetic?: string
 }
 
+export interface ChapterItem {
+  index: number
+  title: string
+  content: string
+}
+
 export interface AiArticleResponse {
   title: string
-  tableOfContents: string[] | null
-  chapterCount: number
-  content: string
+  chapters: ChapterItem[]
   wordCount: number
   tags: Array<{ name: string; isNew: boolean }>
   vocabulary: VocabularyItem[]
@@ -23,9 +27,7 @@ export interface AiArticleResponse {
 
 export interface ParsedArticleResponse {
   title: string
-  tableOfContents: string[]
-  chapterCount: number
-  content: string
+  chapters: ChapterItem[]
   wordCount: number
   tags: Array<{ name: string; isNew: boolean }>
   vocabulary: VocabularyItem[]

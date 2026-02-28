@@ -7,6 +7,7 @@ import { ConfigService } from '#services/config_service'
 import { TagService } from '#services/tag_service'
 import { ArticleResponseParser } from '#services/article_response_parser'
 import Article from '#models/article'
+import ArticleChapter from '#models/article_chapter'
 import Tag from '#models/tag'
 import ArticleVocabulary from '#models/article_vocabulary'
 import { ARTICLE_CONTENT, ARTICLE_DIFFICULTY } from '#constants'
@@ -47,29 +48,27 @@ export class ArticleGenerationService {
 
     const parsedData = await this.callAi(aiConfig, prompt, config.maxTokens)
 
-    if (!parsedData.content) {
-      throw new Error('AI response is missing content field')
+    if (!parsedData.chapters || parsedData.chapters.length === 0) {
+      throw new Error('AI response is missing chapters field or chapters array is empty')
     }
 
-    let content = parsedData.content
-    if (content.length > ARTICLE_CONTENT.MAX_CHARS) {
+    const totalContent = parsedData.chapters.map((c) => c.content).join(' ')
+    let wordCount = parsedData.wordCount
+    if (wordCount === 0) {
+      wordCount = this.countWords(totalContent)
+    }
+
+    if (totalContent.length > ARTICLE_CONTENT.MAX_CHARS) {
       logger.warn('Article content exceeds limit, truncating...')
-      content = content.substring(0, ARTICLE_CONTENT.MAX_CHARS)
-      parsedData.wordCount = this.countWords(content)
     }
-
-    const normalizedToc = this.articleResponseParser.normalizeToc(parsedData.tableOfContents)
 
     return await db.transaction(async (trx) => {
       const article = await Article.create(
         {
           title: parsedData.title,
-          content: content,
           difficultyLevel: params.difficultyLevel,
-          wordCount: parsedData.wordCount,
-          readingTime: Math.ceil(parsedData.wordCount / ARTICLE_CONTENT.READING_SPEED),
-          tableOfContents: normalizedToc,
-          chapterCount: parsedData.chapterCount || null,
+          wordCount: wordCount,
+          readingTime: Math.ceil(wordCount / ARTICLE_CONTENT.READING_SPEED),
           isPublished: true,
           createdBy: userId,
         },
@@ -80,6 +79,15 @@ export class ArticleGenerationService {
         id: article.id,
         title: article.title,
       })
+
+      const chaptersData = parsedData.chapters.map((chapter, index) => ({
+        articleId: article.id,
+        chapterIndex: typeof chapter.index === 'number' ? chapter.index : index,
+        title: chapter.title,
+        content: chapter.content,
+      }))
+      await ArticleChapter.createMany(chaptersData, { client: trx as any })
+      logger.info(`Saved ${chaptersData.length} chapters for article ${article.id}`)
 
       const tags = await this.processTags(parsedData.tags, trx)
       await article.related('tags').attach(
@@ -178,9 +186,7 @@ export class ArticleGenerationService {
 
 interface RawAiResponse {
   title: string
-  tableOfContents: unknown
-  chapterCount: number
-  content: string
+  chapters: unknown
   wordCount: number
   tags: unknown
   vocabulary: unknown

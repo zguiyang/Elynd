@@ -136,20 +136,23 @@ CRITICAL JSON FORMAT REQUIREMENTS
 
 The output MUST be valid, parseable JSON. Pay special attention to:
 
-1. **tableOfContents** MUST be a JSON ARRAY of strings (use square brackets):
-   ✅ CORRECT: "tableOfContents": ["Chapter 1", "Chapter 2"]
-   ❌ WRONG: "tableOfContents": {"Chapter 1", "Chapter 2"}
-   ❌ WRONG: "tableOfContents": {"0": "Chapter 1", "1": "Chapter 2"}
+1. **chapters** MUST be a JSON ARRAY of objects:
+   ✅ CORRECT: "chapters": [{"index": 0, "title": "Chapter 1", "content": "..."}]
+   ❌ WRONG: "chapters": {"0": {...}}
 
-2. **tags** MUST be a JSON ARRAY of objects:
+2. **chapters[].index** MUST start from 0 (zero):
+   ✅ CORRECT: "index": 0, "index": 1, "index": 2
+   ❌ WRONG: "index": 1, "index": 2
+
+3. **tags** MUST be a JSON ARRAY of objects:
    ✅ CORRECT: "tags": [{"name": "tag1", "isNew": false}]
    ❌ WRONG: "tags": {"tag1": false}
 
-3. **vocabulary** MUST be a JSON ARRAY of objects:
+4. **vocabulary** MUST be a JSON ARRAY of objects:
    ✅ CORRECT: "vocabulary": [{"word": "word1", ...}]
    ❌ WRONG: "vocabulary": {"word1": {...}}
 
-4. **Strict JSON compliance**:
+5. **Strict JSON compliance**:
    - Use double quotes for all keys and string values.
    - No trailing commas.
    - No markdown code blocks (e.g., ```json) in your response, just the raw JSON object.
@@ -161,12 +164,18 @@ OUTPUT FORMAT (JSON)
 @raw
 {
   "title": "Article Title",
-  "tableOfContents": [
-    "Chapter 1: [Title]",
-    "Chapter 2: [Title]"
+  "chapters": [
+    {
+      "index": 0,
+      "title": "Chapter 1: Title",
+      "content": "Full content of chapter 1..."
+    },
+    {
+      "index": 1,
+      "title": "Chapter 2: Title",
+      "content": "Full content of chapter 2..."
+    }
   ],
-  "chapterCount": 2,
-  "content": "Chapter 1: [Title]\n\n[Content...]\n\nChapter 2: [Title]\n\n[Content...]",
   "wordCount": 500,
   "tags": [
     {
@@ -186,9 +195,9 @@ OUTPUT FORMAT (JSON)
 @end
 
 CRITICAL FORMAT RULES:
-- DO NOT use curly braces {} for fields that should be arrays (tableOfContents, tags, vocabulary).
-- Ensure "chapterCount" is exactly the number of elements in "tableOfContents".
-- Ensure "wordCount" is an integer representing the total word count of "content".
+- DO NOT use curly braces {} for fields that should be arrays (chapters, tags, vocabulary).
+- Ensure "chapters[].index" starts from 0.
+- Ensure "wordCount" is an integer representing the total word count of all chapters combined.
 - All strings in tags and vocabulary meanings MUST be in {{ nativeLanguage }}.
 
 Generate the article now following the structured process and quality requirements.

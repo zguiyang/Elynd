@@ -4,6 +4,7 @@ import { type ManyToMany, type BelongsTo, type HasMany } from '@adonisjs/lucid/t
 import Tag from '#models/tag'
 import User from '#models/user'
 import ArticleVocabulary from '#models/article_vocabulary'
+import ArticleChapter from '#models/article_chapter'
 
 export default class Article extends BaseModel {
   @column({ isPrimary: true })
@@ -13,22 +14,13 @@ export default class Article extends BaseModel {
   declare title: string
 
   @column()
-  declare content: string
-
-  @column()
   declare difficultyLevel: string
 
   @column()
-  declare wordCount: number | null
+  declare wordCount: number
 
   @column()
-  declare readingTime: number | null
-
-  @column({ serializeAs: null })
-  declare tableOfContents: string[] | null
-
-  @column()
-  declare chapterCount: number | null
+  declare readingTime: number
 
   @column()
   declare isPublished: boolean
@@ -50,4 +42,7 @@ export default class Article extends BaseModel {
 
   @hasMany(() => ArticleVocabulary)
   declare vocabularies: HasMany<typeof ArticleVocabulary>
+
+  @hasMany(() => ArticleChapter)
+  declare chapters: HasMany<typeof ArticleChapter>
 }

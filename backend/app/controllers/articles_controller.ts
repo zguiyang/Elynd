@@ -30,6 +30,17 @@ export default class ArticlesController {
     return article.serialize()
   }
 
+  async chapter({ params }: HttpContext) {
+    const articleId = params.id
+    const chapterIndex = params.chapterIndex
+
+    await this.articleService.findPublishedById(articleId)
+
+    const chapter = await this.articleService.getChapterByIndex(articleId, chapterIndex)
+
+    return chapter.serialize()
+  }
+
   async vocabulary({ params }: HttpContext) {
     const articleId = params.id
 

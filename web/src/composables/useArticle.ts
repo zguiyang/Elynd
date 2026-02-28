@@ -1,5 +1,5 @@
 import { articleApi } from '@/api/article'
-import type { Article, ArticleListItem, ArticleListParams, Tag } from '@/types/article'
+import type { Article, ArticleListItem, ArticleListParams, Chapter, Tag } from '@/types/article'
 
 export function useArticles() {
   const articles = ref<ArticleListItem[]>([])
@@ -79,5 +79,33 @@ export function useArticle() {
     isLoading,
     error,
     fetchArticle,
+  }
+}
+
+export function useChapter() {
+  const chapter = ref<Chapter | null>(null)
+  const isLoading = ref(false)
+  const error = ref<string | null>(null)
+
+  const fetchChapter = async (articleId: number, chapterIndex: number) => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const response = await articleApi.getChapter(articleId, chapterIndex)
+      chapter.value = response.data
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : '获取章节内容失败'
+      error.value = message
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  return {
+    chapter,
+    isLoading,
+    error,
+    fetchChapter,
   }
 }

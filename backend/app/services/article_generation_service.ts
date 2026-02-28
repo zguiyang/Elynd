@@ -113,9 +113,10 @@ export class ArticleGenerationService {
     aiConfig: AiClientConfig
   ): Promise<ChapterContent[]> {
     const systemPrompt = this.promptService.render('system', {})
-    const chapters: ChapterContent[] = []
 
-    for (const chapter of outline.chapters) {
+    const generateChapter = async (
+      chapter: ArticleOutline['chapters'][0]
+    ): Promise<ChapterContent> => {
       const prompt = this.promptService.render('article/02-content', {
         outline: JSON.stringify(outline),
         chapterIndex: chapter.index,
@@ -133,14 +134,17 @@ export class ArticleGenerationService {
         responseFormat: { type: 'json_object' },
       })
 
-      chapters.push(response)
       logger.info(
         { step: 2, chapter: chapter.index, wordCount: response.wordCount },
         'Step 2 chapter completed'
       )
+
+      return response
     }
 
-    return chapters
+    const chapters = await Promise.all(outline.chapters.map(generateChapter))
+
+    return chapters.sort((a, b) => a.index - b.index)
   }
 
   private async executeStep3(

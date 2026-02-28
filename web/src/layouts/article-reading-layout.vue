@@ -4,6 +4,7 @@ import { useArticle } from '@/composables/useArticle'
 import { articleApi } from '@/api/article'
 import type { ChapterListItem, VocabularyItem } from '@/types/article'
 import VocabularyPreview from '@/components/shared/VocabularyPreview.vue'
+import AiChatPanel from '@/components/shared/AiChatPanel.vue'
 import { toast } from 'vue-sonner'
 
 const route = useRoute()
@@ -18,6 +19,7 @@ const duration = ref(180)
 
 const isMobileTocOpen = ref(false)
 const showVocabulary = ref(false)
+const showAiChat = ref(false)
 const vocabularies = ref<VocabularyItem[]>([])
 const isLoadingVocabulary = ref(false)
 
@@ -116,7 +118,7 @@ onMounted(() => {
           <BookOpen class="size-4" />
           词汇
         </Button>
-        <Button variant="outline" size="sm" class="gap-2">
+        <Button variant="outline" size="sm" class="gap-2" @click="showAiChat = true">
           <MessageSquare class="size-4" />
           <span class="hidden sm:inline">AI</span>
         </Button>
@@ -186,5 +188,12 @@ onMounted(() => {
         <VocabularyPreview :vocabularies="vocabularies" @close="showVocabulary = false" />
       </DialogContent>
     </Dialog>
+
+    <AiChatPanel
+      v-model:open="showAiChat"
+      :article-id="articleId"
+      :article-title="article?.title ?? ''"
+      :chapter-content="chapters[currentChapterIndex]?.content"
+    />
   </div>
 </template>

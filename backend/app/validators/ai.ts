@@ -46,3 +46,13 @@ export const chatValidator = vine.compile(
 )
 
 export type ChatValidator = Infer<typeof chatValidator>
+
+export const articleChatValidator = vine.compile(
+  vine.object({
+    message: vine.string().trim().minLength(1),
+    articleTitle: vine.string().trim().optional(),
+    chapterContent: vine.string().trim().optional(),
+  })
+)
+
+export type ArticleChatValidator = Infer<typeof articleChatValidator>

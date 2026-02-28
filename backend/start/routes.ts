@@ -53,8 +53,10 @@ router
     router.get('/articles/:id/chapters/:chapterIndex', [ArticlesController, 'chapter'])
     router.get('/articles/:id/vocabulary', [ArticlesController, 'vocabulary'])
     router.get('/tags', [ArticlesController, 'tags'])
+    router.post('/articles/:id/ai-chat', [ArticlesController, 'aiChat'])
   })
   .prefix('api')
+  .use(middleware.auth())
 
 // 管理员文章路由（需要认证 + 管理员权限）
 router

@@ -57,11 +57,6 @@ const router = createRouter({
           component: () => import('@/views/learning/learning-articles.vue'),
         },
         {
-          path: 'article/:id',
-          name: 'learning-article',
-          component: () => import('@/views/learning/learning-article.vue'),
-        },
-        {
           path: 'profile',
           name: 'profile',
           component: () => import('@/views/profile/profile-view.vue'),
@@ -70,6 +65,19 @@ const router = createRouter({
           path: 'settings',
           name: 'settings',
           component: () => import('@/views/settings/settings-view.vue'),
+        },
+      ],
+    },
+    {
+      path: '/learning/article/:id',
+      name: 'learning-article',
+      component: () => import('@/layouts/article-reading-layout.vue'),
+      meta: { requiresAuth: true },
+      children: [
+        {
+          path: '',
+          name: 'learning-article-content',
+          component: () => import('@/views/learning/learning-article.vue'),
         },
       ],
     },

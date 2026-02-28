@@ -5,6 +5,7 @@ import { useReadingSettingsStore } from '@/stores/reading-settings'
 interface Props {
   paragraphs: string[]
   wordDefinitions?: Record<string, { en: string; zh: string }>
+  chapterTitle?: string
 }
 
 interface Emits {
@@ -13,6 +14,7 @@ interface Emits {
 
 const props = withDefaults(defineProps<Props>(), {
   wordDefinitions: () => ({}),
+  chapterTitle: undefined,
 })
 
 const emit = defineEmits<Emits>()
@@ -58,6 +60,11 @@ const splitIntoWords = (paragraph: string) => {
             ...contentStyle,
           }"
         >
+          <div v-if="props.chapterTitle" class="mb-6 pb-4 border-b">
+            <h2 class="text-2xl font-bold text-foreground">{{ props.chapterTitle }}</h2>
+            <div class="w-16 h-1 bg-primary/20 rounded mt-2"></div>
+          </div>
+
           <p
             v-for="(paragraph, index) in paragraphs"
             :key="index"

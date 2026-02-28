@@ -1,7 +1,7 @@
 import { Job } from 'adonisjs-jobs'
 import app from '@adonisjs/core/services/app'
 import logger from '@adonisjs/core/services/logger'
-import { ArticleService } from '#services/article_service'
+import { ArticleGenerationService } from '#services/article_generation_service'
 import { TransmitService } from '#services/transmit_service'
 
 interface GenerateArticlePayload {
@@ -30,7 +30,7 @@ export default class GenerateArticleJob extends Job {
     const { userId, difficultyLevel, topic } = payload
     const channel = `user:${userId}:article`
 
-    const articleService = await app.container.make(ArticleService)
+    const articleService = await app.container.make(ArticleGenerationService)
     const transmitService = await app.container.make(TransmitService)
 
     const sendStatus = async (data: ArticleStatusData) => {

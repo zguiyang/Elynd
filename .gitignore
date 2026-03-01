@@ -100,5 +100,5 @@ __screenshots__/
 # Vite
 *.timestamp-*-*.mjs
 
-# Generated audio files
-storage/article/voices/
+# backend local storage
+backend/storage

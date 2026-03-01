@@ -31,8 +31,8 @@ const chapters = computed<ChapterListItem[]>(() => article.value?.chapters ?? []
 
 const audioSrc = computed(() => {
   if (!article.value?.audioUrl) return null
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3333'
-  return `${baseUrl}${article.value.audioUrl}`
+  const baseUrl = import.meta.env.VITE_TTS_BASE_URL
+  return `${baseUrl}/${article.value.audioUrl}`
 })
 
 const canPlayAudio = computed(() => {

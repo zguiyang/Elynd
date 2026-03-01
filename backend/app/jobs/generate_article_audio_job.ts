@@ -35,7 +35,6 @@ export default class GenerateArticleAudioJob extends Job {
 
       const fullText = chapters.map((chapter) => chapter.content).join('\n\n')
 
-      console.log('article text:', fullText)
       const ttsService = await app.container.make(TtsService)
 
       const result = await ttsService.generateAudio(fullText, articleId)

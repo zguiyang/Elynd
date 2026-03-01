@@ -1,30 +1,33 @@
 export type AudioStatus = 'pending' | 'processing' | 'completed' | 'failed'
 
-export interface TtsRequest {
-  text: string
-  responseFormat?: string
-  lengthScale?: number
+export interface WordTiming {
+  word: string
+  audioOffset: number
+  duration: number
+  textOffset: number
+  wordLength: number
 }
 
-export interface PiperTtsResponse {
-  success: boolean
-  data?: {
-    filename: string
-    url: string
-  }
-  error?: string
+export interface ChapterTiming {
+  chapterIndex: number
+  title: string
+  startTime: number
+  endTime: number
 }
 
 export interface AudioTiming {
-  chapters: Array<{
-    startTime: number
-    endTime: number
-    chapterIndex: number
-    title: string
-  }>
+  words: WordTiming[]
+  chapters: ChapterTiming[]
+  duration: number
 }
 
 export interface TtsResult {
   audioUrl: string
-  timing: AudioTiming | null
+  timing: AudioTiming
+}
+
+export interface ChapterInput {
+  chapterIndex: number
+  title: string
+  content: string
 }

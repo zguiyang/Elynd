@@ -2,104 +2,127 @@ import { inject } from '@adonisjs/core'
 import logger from '@adonisjs/core/services/logger'
 import env from '#start/env'
 import drive from '@adonisjs/drive/services/main'
-import type { PiperTtsResponse, TtsResult } from '#types/tts'
-
-const TTS_TIMEOUT = 60000
+import * as sdk from 'microsoft-cognitiveservices-speech-sdk'
+import type { TtsResult, AudioTiming, WordTiming, ChapterTiming, ChapterInput } from '#types/tts'
 
 @inject()
 export class TtsService {
-  private readonly apiUrl: string
-  private readonly apiKey: string | undefined
+  private speechConfig: sdk.SpeechConfig
   private readonly audioUrl: string = 'article/voices'
 
   constructor() {
-    this.apiUrl = env.get('TTS_API_URL')!
-    this.apiKey = env.get('TTS_API_KEY')
+    this.speechConfig = sdk.SpeechConfig.fromSubscription(
+      env.get('TTS_API_KEY'),
+      env.get('TTS_REGION')
+    )
+    this.speechConfig.speechSynthesisOutputFormat =
+      sdk.SpeechSynthesisOutputFormat.Audio16Khz32KBitRateMonoMp3
+    this.speechConfig.speechSynthesisVoiceName = 'en-US-Ava:DragonHDLatestNeural'
+    this.speechConfig.setProperty(
+      sdk.PropertyId.SpeechServiceResponse_RequestSentenceBoundary,
+      'true'
+    )
   }
 
-  async generateAudio(text: string, articleId: number): Promise<TtsResult> {
-    logger.info(`Generating audio for article ${articleId}`)
+  async generateAudio(chapters: ChapterInput[], articleId: number): Promise<TtsResult> {
+    logger.info(`Generating audio for article ${articleId}, ${chapters.length} chapters`)
 
-    const response = await this.callPiperApi(text)
-    await this.downloadAndSave(response.data!.url, articleId)
+    const allWordTimings: WordTiming[] = []
+    const chapterTimings: ChapterTiming[] = []
+    const audioBuffers: Buffer[] = []
+    let cumulativeOffset = 0
 
-    const audioUrl = `${this.audioUrl}/${articleId}.mp3`
+    for (const chapter of chapters) {
+      logger.info(`Synthesizing chapter ${chapter.chapterIndex}: ${chapter.title}`)
 
-    return {
-      audioUrl,
-      timing: null,
-    }
-  }
+      const text = `${chapter.title}\n\n${chapter.content}`
+      const result = await this.synthesizeChapter(text)
 
-  async callPiperApi(text: string): Promise<PiperTtsResponse> {
-    const url = `${this.apiUrl}/synthesize`
+      const adjustedWords = result.wordTimings.map((w) => ({
+        ...w,
+        audioOffset: w.audioOffset + cumulativeOffset,
+      }))
+      allWordTimings.push(...adjustedWords)
 
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    }
-
-    if (this.apiKey) {
-      headers['Authorization'] = `Bearer ${this.apiKey}`
-    }
-
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), TTS_TIMEOUT)
-
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          text,
-          response_format: 'mp3',
-          length_scale: 1.0,
-        }),
-        signal: controller.signal,
+      chapterTimings.push({
+        chapterIndex: chapter.chapterIndex,
+        title: chapter.title,
+        startTime: cumulativeOffset,
+        endTime: cumulativeOffset + result.duration,
       })
 
-      clearTimeout(timeoutId)
+      cumulativeOffset += result.duration
+      audioBuffers.push(result.audioBuffer)
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`TTS API error: ${response.status} ${errorText}`)
-      }
-
-      const data = (await response.json()) as PiperTtsResponse
-
-      if (!data.success || !data.data) {
-        throw new Error(data.error || 'TTS API returned unsuccessful response')
-      }
-
-      return data
-    } catch (error) {
-      clearTimeout(timeoutId)
-
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error(`TTS API timeout after ${TTS_TIMEOUT / 1000} seconds`)
-      }
-
-      throw error
+      logger.info(`Chapter ${chapter.chapterIndex} completed, duration: ${result.duration}ms`)
     }
+
+    const finalBuffer = Buffer.concat(audioBuffers)
+    const key = `${this.audioUrl}/${articleId}.mp3`
+    await drive.use().put(key, finalBuffer)
+
+    const timing: AudioTiming = {
+      words: allWordTimings,
+      chapters: chapterTimings,
+      duration: cumulativeOffset,
+    }
+
+    logger.info(`Audio generated for article ${articleId}, total duration: ${cumulativeOffset}ms`)
+
+    return { audioUrl: key, timing }
   }
 
-  async downloadAndSave(url: string, articleId: number): Promise<string> {
-    const key = `${this.audioUrl}/${articleId}.mp3`
+  private async synthesizeChapter(text: string): Promise<{
+    audioBuffer: Buffer
+    wordTimings: WordTiming[]
+    duration: number
+  }> {
+    return new Promise((resolve, reject) => {
+      const wordTimings: WordTiming[] = []
+      const synthesizer = new sdk.SpeechSynthesizer(
+        this.speechConfig,
+        null as unknown as sdk.AudioConfig
+      )
 
-    logger.info(`Downloading audio from ${url} to ${key}`)
+      synthesizer.wordBoundary = (
+        _s: sdk.SpeechSynthesizer,
+        e: sdk.SpeechSynthesisWordBoundaryEventArgs
+      ) => {
+        if (e.boundaryType === sdk.SpeechSynthesisBoundaryType.Word) {
+          wordTimings.push({
+            word: e.text,
+            audioOffset: Math.round((e.audioOffset + 5000) / 10000),
+            duration: e.duration,
+            textOffset: e.textOffset,
+            wordLength: e.wordLength,
+          })
+        }
+      }
 
-    const response = await fetch(url)
+      synthesizer.speakTextAsync(
+        text,
+        (result: sdk.SpeechSynthesisResult) => {
+          synthesizer.close()
 
-    if (!response.ok) {
-      throw new Error(`Failed to download audio: ${response.status} ${response.statusText}`)
-    }
-
-    const arrayBuffer = await response.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
-
-    await drive.use().put(key, buffer)
-
-    logger.info(`Audio saved to ${key}`)
-
-    return key
+          if (result.reason === sdk.ResultReason.SynthesizingAudioCompleted) {
+            resolve({
+              audioBuffer: Buffer.from(result.audioData),
+              wordTimings,
+              duration: Math.round(result.audioDuration * 1000),
+            })
+          } else {
+            const errorDetails =
+              result.reason === sdk.ResultReason.Canceled
+                ? 'Speech synthesis canceled'
+                : 'Speech synthesis failed'
+            reject(new Error(errorDetails))
+          }
+        },
+        (err: string) => {
+          synthesizer.close()
+          reject(new Error(err))
+        }
+      )
+    })
   }
 }

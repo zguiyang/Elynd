@@ -5,6 +5,7 @@ import logger from '@adonisjs/core/services/logger'
 import { TtsService } from '#services/tts_service'
 import Article from '#models/article'
 import ArticleChapter from '#models/article_chapter'
+import type { ChapterInput } from '#types/tts'
 
 interface GenerateArticleAudioPayload {
   articleId: number
@@ -32,18 +33,23 @@ export default class GenerateArticleAudioJob extends Job {
       const chapters = await ArticleChapter.query()
         .where('articleId', articleId)
         .orderBy('chapterIndex', 'asc')
+        .select(['chapterIndex', 'title', 'content'])
 
-      const fullText = chapters.map((chapter) => chapter.content).join('\n\n')
+      const chapterInputs: ChapterInput[] = chapters.map((chapter) => ({
+        chapterIndex: chapter.chapterIndex,
+        title: chapter.title,
+        content: chapter.content,
+      }))
 
       const ttsService = await app.container.make(TtsService)
 
-      const result = await ttsService.generateAudio(fullText, articleId)
+      const result = await ttsService.generateAudio(chapterInputs, articleId)
 
       await article
         .merge({
           audioUrl: result.audioUrl,
           audioStatus: 'completed',
-          audioTiming: result.timing as Record<string, unknown> | null,
+          audioTiming: result.timing as unknown as Record<string, unknown> | null,
           audioGeneratedAt: DateTime.now(),
         })
         .save()

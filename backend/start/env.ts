@@ -60,9 +60,9 @@ export default await Env.create(new URL('../', import.meta.url), {
 
   /*
   |----------------------------------------------------------
-  | Variables for configuring TTS service
+  | Variables for configuring TTS service (Azure Speech)
   |----------------------------------------------------------
   */
-  TTS_API_URL: Env.schema.string(),
-  TTS_API_KEY: Env.schema.string.optional(),
+  TTS_API_KEY: Env.schema.string(),
+  TTS_REGION: Env.schema.string(),
 })

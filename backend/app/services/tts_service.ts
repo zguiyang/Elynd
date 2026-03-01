@@ -10,6 +10,7 @@ const TTS_TIMEOUT = 60000
 export class TtsService {
   private readonly apiUrl: string
   private readonly apiKey: string | undefined
+  private readonly audioUrl: string = 'article/voices'
 
   constructor() {
     this.apiUrl = env.get('TTS_API_URL')!
@@ -22,7 +23,7 @@ export class TtsService {
     const response = await this.callPiperApi(text)
     await this.downloadAndSave(response.data!.url, articleId)
 
-    const audioUrl = `articles/${articleId}.mp3`
+    const audioUrl = `${this.audioUrl}/${articleId}.mp3`
 
     return {
       audioUrl,
@@ -82,7 +83,7 @@ export class TtsService {
   }
 
   async downloadAndSave(url: string, articleId: number): Promise<string> {
-    const key = `articles/${articleId}.mp3`
+    const key = `${this.audioUrl}/${articleId}.mp3`
 
     logger.info(`Downloading audio from ${url} to ${key}`)
 

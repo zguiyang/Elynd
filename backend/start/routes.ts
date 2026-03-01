@@ -64,6 +64,7 @@ router
 router
   .group(() => {
     router.post('/admin/articles/generate', [AdminArticlesController, 'generate'])
+    router.post('/admin/articles/:id/retry-audio', [AdminArticlesController, 'retryAudio'])
     router.get('/admin/system-config', [AdminSystemConfigsController, 'index'])
     router.put('/admin/system-config', [AdminSystemConfigsController, 'update'])
   })

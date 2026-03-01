@@ -15,7 +15,11 @@ const { article, fetchArticle } = useArticle()
 const currentChapterIndex = ref(0)
 const isPlaying = ref(false)
 const currentTime = ref(0)
-const duration = ref(180)
+const duration = ref(0)
+
+const audioRef = ref<HTMLAudioElement | null>(null)
+const isAudioLoading = ref(false)
+const audioError = ref<string | null>(null)
 
 const isMobileTocOpen = ref(false)
 const showVocabulary = ref(false)
@@ -24,6 +28,16 @@ const vocabularies = ref<VocabularyItem[]>([])
 const isLoadingVocabulary = ref(false)
 
 const chapters = computed<ChapterListItem[]>(() => article.value?.chapters ?? [])
+
+const audioSrc = computed(() => {
+  if (!article.value?.audioUrl) return null
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3333'
+  return `${baseUrl}${article.value.audioUrl}`
+})
+
+const canPlayAudio = computed(() => {
+  return article.value?.audioStatus === 'completed' && article.value?.audioUrl
+})
 
 const handleChapterSelect = (index: number) => {
   currentChapterIndex.value = index
@@ -35,19 +49,62 @@ const handleMobileChapterSelect = (index: number) => {
 }
 
 const handlePlay = () => {
-  isPlaying.value = true
+  if (audioRef.value && canPlayAudio.value) {
+    audioRef.value.play()
+    isPlaying.value = true
+  }
 }
 
 const handlePause = () => {
-  isPlaying.value = false
+  if (audioRef.value) {
+    audioRef.value.pause()
+    isPlaying.value = false
+  }
 }
 
 const handleReplay = () => {
-  currentTime.value = 0
+  if (audioRef.value) {
+    audioRef.value.currentTime = 0
+    audioRef.value.play()
+    isPlaying.value = true
+  }
 }
 
 const handleSeek = (time: number) => {
-  currentTime.value = time
+  if (audioRef.value) {
+    audioRef.value.currentTime = time
+    currentTime.value = time
+  }
+}
+
+const handleTimeUpdate = () => {
+  if (audioRef.value) {
+    currentTime.value = audioRef.value.currentTime
+  }
+}
+
+const handleLoadedMetadata = () => {
+  if (audioRef.value) {
+    duration.value = audioRef.value.duration
+    isAudioLoading.value = false
+  }
+}
+
+const handleAudioError = () => {
+  if (audioRef.value?.error) {
+    audioError.value = '音频加载失败'
+    toast.error('音频加载失败')
+  }
+  isAudioLoading.value = false
+  isPlaying.value = false
+}
+
+const handleAudioEnded = () => {
+  isPlaying.value = false
+}
+
+const handleAudioCanPlay = () => {
+  isAudioLoading.value = false
 }
 
 const fetchVocabulary = async () => {
@@ -142,6 +199,7 @@ onMounted(() => {
           :is-playing="isPlaying"
           :current-time="currentTime"
           :duration="duration"
+          :audio-status="article.audioStatus"
           @select="handleChapterSelect"
           @play="handlePlay"
           @pause="handlePause"
@@ -166,6 +224,17 @@ onMounted(() => {
           @seek="handleSeek"
         />
       </main>
+
+      <audio
+        ref="audioRef"
+        :src="audioSrc ?? undefined"
+        preload="metadata"
+        @timeupdate="handleTimeUpdate"
+        @loadedmetadata="handleLoadedMetadata"
+        @error="handleAudioError"
+        @ended="handleAudioEnded"
+        @canplay="handleAudioCanPlay"
+      />
     </div>
 
     <Sheet :open="isMobileTocOpen" @update:open="isMobileTocOpen = $event">

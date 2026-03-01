@@ -1,6 +1,7 @@
 import { DateTime } from 'luxon'
 import { BaseModel, column, manyToMany, belongsTo, hasMany } from '@adonisjs/lucid/orm'
 import { type ManyToMany, type BelongsTo, type HasMany } from '@adonisjs/lucid/types/relations'
+import type { AudioStatus } from '#types/tts'
 import Tag from '#models/tag'
 import User from '#models/user'
 import ArticleVocabulary from '#models/article_vocabulary'
@@ -33,6 +34,18 @@ export default class Article extends BaseModel {
 
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
+
+  @column()
+  declare audioUrl: string | null
+
+  @column()
+  declare audioStatus: AudioStatus | null
+
+  @column()
+  declare audioTiming: Record<string, unknown> | null
+
+  @column.dateTime()
+  declare audioGeneratedAt: DateTime | null
 
   @belongsTo(() => User, { foreignKey: 'createdBy' })
   declare author: BelongsTo<typeof User>

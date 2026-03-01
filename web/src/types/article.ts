@@ -17,6 +17,8 @@ export interface ChapterListItem {
   title: string
 }
 
+export type AudioStatus = 'pending' | 'processing' | 'completed' | 'failed'
+
 export interface Article {
   id: number
   title: string
@@ -29,6 +31,8 @@ export interface Article {
   updatedAt: string
   tags: Tag[]
   chapters: ChapterListItem[]
+  audioUrl: string | null
+  audioStatus: AudioStatus | null
 }
 
 export interface ArticleListItem {

@@ -11,6 +11,8 @@ import { middleware } from '#start/kernel'
 import env from '#start/env'
 import transmit from '@adonisjs/transmit/services/main'
 import { apiLimiter, authLimiter } from '#start/limiter'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 
 const AuthController = () => import('#controllers/auth_controller')
 const UsersController = () => import('#controllers/users_controller')
@@ -101,4 +103,19 @@ transmit.authorize('user:userId:article', (ctx, { userId }) => {
     return false
   }
   return Number(ctx.auth.user?.id) === Number(userId)
+})
+
+router.get('/audio/articles/:id', async ({ params, response }) => {
+  const articleId = params.id
+  const storageDir = join(process.cwd(), 'storage', 'article', 'voices')
+  const filePath = join(storageDir, `${articleId}.mp3`)
+
+  try {
+    const fileBuffer = await readFile(filePath)
+    response.header('Content-Type', 'audio/mpeg')
+    response.header('Content-Disposition', `inline; filename="article-${articleId}.mp3"`)
+    return response.send(fileBuffer)
+  } catch {
+    return response.notFound({ error: 'Audio file not found' })
+  }
 })

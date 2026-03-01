@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ChapterListItem } from '@/types/article'
+import type { ChapterListItem, AudioStatus } from '@/types/article'
 
 interface Props {
   chapters: ChapterListItem[]
@@ -7,6 +7,7 @@ interface Props {
   isPlaying?: boolean
   currentTime?: number
   duration?: number
+  audioStatus?: AudioStatus | null
 }
 
 interface Emits {
@@ -21,6 +22,7 @@ const props = withDefaults(defineProps<Props>(), {
   isPlaying: false,
   currentTime: 0,
   duration: 180,
+  audioStatus: null,
 })
 
 const emit = defineEmits<Emits>()
@@ -63,6 +65,7 @@ const handleSeek = (time: number) => {
         :is-playing="props.isPlaying"
         :current-time="props.currentTime"
         :duration="props.duration"
+        :audio-status="props.audioStatus"
         @play="handlePlay"
         @pause="handlePause"
         @replay="handleReplay"

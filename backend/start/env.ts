@@ -57,4 +57,12 @@ export default await Env.create(new URL('../', import.meta.url), {
   REDIS_DB: Env.schema.number(),
   REDIS_PASSWORD: Env.schema.string.optional(),
   REDIS_QUEUE: Env.schema.string.optional(),
+
+  /*
+  |----------------------------------------------------------
+  | Variables for configuring TTS service
+  |----------------------------------------------------------
+  */
+  TTS_API_URL: Env.schema.string(),
+  TTS_API_KEY: Env.schema.string.optional(),
 })

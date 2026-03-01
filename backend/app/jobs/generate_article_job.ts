@@ -3,6 +3,7 @@ import app from '@adonisjs/core/services/app'
 import logger from '@adonisjs/core/services/logger'
 import { ArticleGenerationService } from '#services/article_generation_service'
 import { TransmitService } from '#services/transmit_service'
+import GenerateArticleAudioJob from '#jobs/generate_article_audio_job'
 
 interface GenerateArticlePayload {
   userId: number
@@ -68,6 +69,10 @@ export default class GenerateArticleJob extends Job {
       await article.load('chapters', (chapterQuery) => {
         chapterQuery.select('id', 'articleId', 'chapterIndex', 'title')
       })
+
+      await article.merge({ audioStatus: 'pending' }).save()
+
+      await GenerateArticleAudioJob.dispatch({ articleId: article.id })
 
       await sendStatus({
         jobId,

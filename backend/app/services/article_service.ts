@@ -1,5 +1,6 @@
 import { inject } from '@adonisjs/core'
 import { Exception } from '@adonisjs/core/exceptions'
+import db from '@adonisjs/lucid/services/db'
 import Article from '#models/article'
 import ArticleChapter from '#models/article_chapter'
 import ArticleVocabulary from '#models/article_vocabulary'
@@ -95,9 +96,10 @@ export class ArticleService {
       throw new Exception('Can only retry articles with failed audio status', { status: 400 })
     }
 
-    await article.merge({ audioStatus: 'pending' }).save()
-
-    await GenerateArticleAudioJob.dispatch({ articleId: article.id })
+    await db.transaction(async (trx) => {
+      await article.useTransaction(trx).merge({ audioStatus: 'pending' }).save()
+      await GenerateArticleAudioJob.dispatch({ articleId: article.id })
+    })
 
     return {
       articleId: article.id,

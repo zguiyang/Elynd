@@ -6,6 +6,7 @@ import Tag from '#models/tag'
 import User from '#models/user'
 import ArticleVocabulary from '#models/article_vocabulary'
 import ArticleChapter from '#models/article_chapter'
+import ArticleChat from '#models/article_chat'
 
 export default class Article extends BaseModel {
   @column({ isPrimary: true })
@@ -58,4 +59,7 @@ export default class Article extends BaseModel {
 
   @hasMany(() => ArticleChapter)
   declare chapters: HasMany<typeof ArticleChapter>
+
+  @hasMany(() => ArticleChat)
+  declare chats: HasMany<typeof ArticleChat>
 }

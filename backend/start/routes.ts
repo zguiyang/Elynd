@@ -17,6 +17,7 @@ import { join } from 'node:path'
 const AuthController = () => import('#controllers/auth_controller')
 const UsersController = () => import('#controllers/users_controller')
 const ArticlesController = () => import('#controllers/articles_controller')
+const ArticleChatController = () => import('#controllers/article_chat_controller')
 const AdminArticlesController = () => import('#controllers/admin/articles_controller')
 const AdminSystemConfigsController = () => import('#controllers/admin/system_configs_controller')
 
@@ -56,6 +57,7 @@ router
     router.get('/articles/:id/vocabulary', [ArticlesController, 'vocabulary'])
     router.get('/tags', [ArticlesController, 'tags'])
     router.post('/articles/:id/ai-chat', [ArticlesController, 'aiChat'])
+    router.get('/articles/:id/chats', [ArticleChatController, 'chat'])
   })
   .prefix('api')
   .use(middleware.auth())

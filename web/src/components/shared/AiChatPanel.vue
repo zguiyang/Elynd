@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { Send, Loader2, Bot, User } from 'lucide-vue-next'
+import { Send, Loader2, Bot, User, Sparkles } from 'lucide-vue-next'
+import { useArticleChat } from '@/composables/useArticleChat'
 
 interface Props {
   open: boolean
   articleId: number
   articleTitle: string
   chapterContent?: string
+  chapterIndex?: number
 }
 
 const props = defineProps<Props>()
@@ -13,17 +15,16 @@ const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
 }>()
 
-interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  isLoading?: boolean
-}
-
-const messages = ref<Message[]>([])
 const inputMessage = ref('')
-const isLoading = ref(false)
 const messagesContainer = ref<HTMLElement | null>(null)
+
+const { messages, isLoading, sendMessage, clearMessages } = useArticleChat(props.articleId)
+
+const quickActions = [
+  { label: '解释', prompt: '请解释这篇文章的主要内容' },
+  { label: '翻译', prompt: '请翻译这段文章' },
+  { label: '总结', prompt: '请总结这篇文章的重点' },
+]
 
 const scrollToBottom = () => {
   nextTick(() => {
@@ -33,61 +34,39 @@ const scrollToBottom = () => {
   })
 }
 
-const sendMessage = async () => {
+watch(
+  () => props.open,
+  (isOpen) => {
+    if (!isOpen) {
+      clearMessages()
+    }
+  }
+)
+
+watch(
+  () => props.articleId,
+  () => {
+    clearMessages()
+  }
+)
+
+const sendMessageHandler = () => {
   const message = inputMessage.value.trim()
   if (!message || isLoading.value) return
 
-  const userMessage: Message = {
-    id: Date.now().toString(),
-    role: 'user',
-    content: message,
-  }
-  messages.value.push(userMessage)
+  sendMessage(message, props.chapterIndex)
   inputMessage.value = ''
-
-  const assistantMessage: Message = {
-    id: (Date.now() + 1).toString(),
-    role: 'assistant',
-    content: '',
-    isLoading: true,
-  }
-  messages.value.push(assistantMessage)
-  isLoading.value = true
   scrollToBottom()
+}
 
-  try {
-    const response = await fetch(`/api/articles/${props.articleId}/ai-chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message,
-        articleTitle: props.articleTitle,
-        chapterContent: props.chapterContent,
-      }),
-    })
-
-    if (!response.ok) {
-      throw new Error('请求失败')
-    }
-
-    const data = await response.json()
-    assistantMessage.content = data.response
-    assistantMessage.isLoading = false
-  } catch {
-    assistantMessage.content = '抱歉，请稍后重试'
-    assistantMessage.isLoading = false
-  } finally {
-    isLoading.value = false
-    scrollToBottom()
-  }
+const fillInput = (prompt: string) => {
+  inputMessage.value = prompt
 }
 
 const handleKeydown = (e: KeyboardEvent) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
-    sendMessage()
+    sendMessageHandler()
   }
 }
 </script>
@@ -113,11 +92,25 @@ const handleKeydown = (e: KeyboardEvent) => {
           <Bot class="size-12 mb-3 opacity-50" />
           <p class="text-sm">有什么可以帮助您的？</p>
           <p class="text-xs mt-1">可以关于文章内容提问</p>
+
+          <div class="flex flex-wrap gap-2 mt-4 justify-center">
+            <Button
+              v-for="action in quickActions"
+              :key="action.label"
+              variant="outline"
+              size="sm"
+              class="text-xs"
+              @click="fillInput(action.prompt)"
+            >
+              <Sparkles class="size-3 mr-1" />
+              {{ action.label }}
+            </Button>
+          </div>
         </div>
 
         <div
-          v-for="msg in messages"
-          :key="msg.id"
+          v-for="(msg, index) in messages"
+          :key="index"
           class="flex gap-3"
           :class="msg.role === 'user' ? 'flex-row-reverse' : ''"
         >
@@ -132,7 +125,7 @@ const handleKeydown = (e: KeyboardEvent) => {
             class="max-w-[80%] rounded-lg px-3 py-2 text-sm"
             :class="msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'"
           >
-            <div v-if="msg.isLoading" class="flex items-center gap-1">
+            <div v-if="isLoading && index === messages.length - 1 && msg.role === 'assistant'" class="flex items-center gap-1">
               <span class="size-1.5 rounded-full bg-current animate-bounce" style="animation-delay: 0ms" />
               <span class="size-1.5 rounded-full bg-current animate-bounce" style="animation-delay: 150ms" />
               <span class="size-1.5 rounded-full bg-current animate-bounce" style="animation-delay: 300ms" />
@@ -143,6 +136,20 @@ const handleKeydown = (e: KeyboardEvent) => {
       </div>
 
       <div class="p-4 border-t shrink-0">
+        <div v-if="messages.length > 0" class="flex flex-wrap gap-2 mb-2">
+          <Button
+            v-for="action in quickActions"
+            :key="action.label"
+            variant="outline"
+            size="sm"
+            class="text-xs h-7"
+            :disabled="isLoading"
+            @click="fillInput(action.prompt)"
+          >
+            <Sparkles class="size-3 mr-1" />
+            {{ action.label }}
+          </Button>
+        </div>
         <div class="flex gap-2">
           <Textarea
             v-model="inputMessage"
@@ -151,7 +158,7 @@ const handleKeydown = (e: KeyboardEvent) => {
             :disabled="isLoading"
             @keydown="handleKeydown"
           />
-          <Button size="icon" class="shrink-0" :disabled="isLoading || !inputMessage.trim()" @click="sendMessage">
+          <Button size="icon" class="shrink-0" :disabled="isLoading || !inputMessage.trim()" @click="sendMessageHandler">
             <Loader2 v-if="isLoading" class="size-4 animate-spin" />
             <Send v-else class="size-4" />
           </Button>

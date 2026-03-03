@@ -10,6 +10,7 @@ import {
   ChevronRight,
   ChevronDown,
   Loader2,
+  Bot,
 } from 'lucide-vue-next'
 import { useReadingSettingsStore } from '@/stores/reading-settings'
 import { useChapter } from '@/composables/useArticle'
@@ -17,6 +18,7 @@ import { articleApi } from '@/api/article'
 import type { LineHeight, ContentWidth } from '@/stores/reading-settings'
 import type { Article, VocabularyItem } from '@/types/article'
 import VocabularyPreview from '@/components/shared/VocabularyPreview.vue'
+import AiChatPanel from '@/components/shared/AiChatPanel.vue'
 import { toast } from 'vue-sonner'
 
 interface Props {
@@ -53,6 +55,7 @@ const { chapter, isLoading, error: chapterError, fetchChapter } = useChapter()
 const readingSettings = useReadingSettingsStore()
 
 const showVocabulary = ref(false)
+const showAiChat = ref(false)
 const vocabularies = ref<VocabularyItem[]>([])
 const isLoadingVocabulary = ref(false)
 
@@ -75,10 +78,6 @@ const paragraphs = computed(() => {
   if (!chapter.value?.content) return []
   return chapter.value.content.split('\n\n').filter((p) => p.trim())
 })
-
-const handleWordClick = (word: string) => {
-  console.log('Word clicked:', word)
-}
 
 const loadChapter = async (index: number) => {
   await fetchChapter(articleId, index)
@@ -174,7 +173,7 @@ defineExpose({
 </script>
 
 <template>
-  <div class="h-full flex flex-col">
+  <div class="h-full flex flex-col relative">
     <div class="flex-1 min-h-0 overflow-auto px-4 py-6">
       <div v-if="isLoading" class="flex items-center justify-center h-full">
         <Loader2 class="size-8 animate-spin text-muted-foreground" />
@@ -191,7 +190,6 @@ defineExpose({
         v-else-if="chapter"
         :paragraphs="paragraphs"
         :chapter-title="chapter?.title"
-        @word-click="handleWordClick"
       />
     </div>
 
@@ -291,5 +289,20 @@ defineExpose({
         <VocabularyPreview :vocabularies="vocabularies" @close="showVocabulary = false" />
       </DialogContent>
     </Dialog>
+
+    <Button
+      class="fixed bottom-20 right-4 md:bottom-4 size-12 rounded-full shadow-lg"
+      @click="showAiChat = true"
+    >
+      <Bot class="size-6" />
+    </Button>
+
+    <AiChatPanel
+      v-model:open="showAiChat"
+      :article-id="articleId"
+      :article-title="props.article?.title ?? ''"
+      :chapter-content="chapter?.content"
+      :chapter-index="props.currentChapterIndex"
+    />
   </div>
 </template>

@@ -103,71 +103,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-:deep(.markdown-body) {
-  @apply text-sm leading-relaxed;
-}
-
-:deep(.markdown-body p) {
-  @apply mb-3 last:mb-0;
-}
-
-:deep(.markdown-body h1) {
-  @apply text-xl font-bold mb-3 mt-4 first:mt-0;
-}
-
-:deep(.markdown-body h2) {
-  @apply text-lg font-semibold mb-2 mt-3 first:mt-0;
-}
-
-:deep(.markdown-body h3) {
-  @apply text-base font-semibold mb-2 mt-3 first:mt-0;
-}
-
-:deep(.markdown-body ul, .markdown-body ol) {
-  @apply mb-3 pl-5;
-}
-
-:deep(.markdown-body li) {
-  @apply mb-1;
-}
-
-:deep(.markdown-body ul) {
-  @apply list-disc;
-}
-
-:deep(.markdown-body ol) {
-  @apply list-decimal;
-}
-
-:deep(.markdown-body blockquote) {
-  @apply border-l-2 border-muted pl-3 italic text-muted-foreground my-3;
-}
-
-:deep(.markdown-body code:not(pre code)) {
-  @apply px-1.5 py-0.5 bg-muted rounded text-xs font-mono;
-}
-
-:deep(.markdown-body pre) {
-  @apply bg-muted rounded-lg p-3 overflow-x-auto my-3;
-}
-
-:deep(.markdown-body pre code) {
-  @apply bg-transparent p-0 text-xs leading-relaxed;
-}
-
-:deep(.markdown-body a) {
-  @apply text-primary underline underline-offset-2 hover:text-primary/80;
-}
-
-:deep(.markdown-body table) {
-  @apply w-full border-collapse my-3;
-}
-
-:deep(.markdown-body th, .markdown-body td) {
-  @apply border border-border px-3 py-2 text-left text-xs;
-}
-
-:deep(.markdown-body th) {
-  @apply bg-muted font-medium;
+.markdown-body {
+  /* Styles moved to global styles.css */
 }
 </style>

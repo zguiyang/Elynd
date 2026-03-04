@@ -23,7 +23,6 @@ const progress = ref(0)
 const statusMessage = ref('')
 
 watch(status, (newStatus) => {
-  console.log('[ArticlesGenerate] Watch 触发, newStatus:', newStatus, 'sseError:', sseError.value)
   if (newStatus === 'completed') {
     progress.value = 100
     statusMessage.value = '生成完成'
@@ -32,7 +31,6 @@ watch(status, (newStatus) => {
     statusMessage.value = ''
     isLoading.value = false
     const errorMsg = sseError.value || '文章生成失败'
-    console.log('[ArticlesGenerate] 显示失败 toast:', errorMsg)
     toast.error(errorMsg)
   } else if (newStatus === 'queued') {
     progress.value = 10

@@ -2,8 +2,6 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
-import hljs from 'highlight.js'
-import 'highlight.js/styles/github-dark.css'
 
 interface Props {
   content: string
@@ -27,28 +25,8 @@ marked.setOptions({
   mangle: false,
 })
 
-const renderer = new marked.Renderer()
-renderer.code = (code: string, language?: string) => {
-  const validLanguage = language && hljs.getLanguage(language) ? language : 'plaintext'
-  const highlighted = hljs.highlight(code, { language: validLanguage }).value
-  return `
-    <div class="relative group">
-      <div class="flex items-center justify-between px-4 py-2 bg-muted/80 border-b border-border rounded-t-lg">
-        <span class="text-xs font-mono text-muted-foreground">${validLanguage}</span>
-        <button 
-          class="copy-btn flex items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground hover:text-foreground bg-background/50 hover:bg-background rounded transition-colors"
-          data-code="${encodeURIComponent(code)}"
-        >
-          <span class="copy-icon">复制</span>
-        </button>
-      </div>
-      <pre class="m-0 rounded-t-none rounded-b-lg"><code class="hljs language-${validLanguage}">${highlighted}</code></pre>
-    </div>
-  `
-}
-
 const renderedHtml = computed(() => {
-  const rawHtml = marked(displayedContent.value, { renderer })
+  const rawHtml = marked.parse(displayedContent.value)
   return DOMPurify.sanitize(rawHtml, {
     ALLOWED_TAGS: [
       'p', 'br', 'strong', 'em', 'u', 's', 'del', 'ins',
@@ -63,7 +41,7 @@ const renderedHtml = computed(() => {
     ALLOWED_ATTR: [
       'href', 'title', 'target', 'rel',
       'src', 'alt', 'title',
-      'class', 'data-code',
+      'class',
     ],
   })
 })
@@ -110,53 +88,15 @@ watch(
   { immediate: true }
 )
 
-const contentRef = ref<HTMLElement>()
-
-const handleCopyClick = async (event: Event) => {
-  const target = event.target as HTMLElement
-  const button = target.closest('.copy-btn') as HTMLButtonElement
-  if (!button) return
-
-  const code = decodeURIComponent(button.dataset.code || '')
-  if (!code) return
-
-  try {
-    await navigator.clipboard.writeText(code)
-    
-    const icon = button.querySelector('.copy-icon')
-    if (icon) {
-      icon.textContent = '已复制'
-      button.classList.add('text-green-600')
-      
-      setTimeout(() => {
-        icon.textContent = '复制'
-        button.classList.remove('text-green-600')
-      }, 2000)
-    }
-  } catch (err) {
-    console.error('Failed to copy code:', err)
-  }
-}
-
-onMounted(() => {
-  if (contentRef.value) {
-    contentRef.value.addEventListener('click', handleCopyClick)
-  }
-})
-
 onUnmounted(() => {
   if (typewriterTimer) {
     clearTimeout(typewriterTimer)
-  }
-  if (contentRef.value) {
-    contentRef.value.removeEventListener('click', handleCopyClick)
   }
 })
 </script>
 
 <template>
-  <div 
-    ref="contentRef"
+  <div
     class="markdown-body prose prose-sm dark:prose-invert max-w-none"
     v-html="renderedHtml"
   />
@@ -229,19 +169,5 @@ onUnmounted(() => {
 
 :deep(.markdown-body th) {
   @apply bg-muted font-medium;
-}
-
-:deep(.markdown-body .group:hover .copy-btn) {
-  @apply opacity-100;
-}
-
-:deep(.markdown-body .copy-btn) {
-  @apply opacity-0 transition-opacity duration-200;
-}
-
-@media (max-width: 640px) {
-  :deep(.markdown-body .copy-btn) {
-    @apply opacity-100;
-  }
 }
 </style>

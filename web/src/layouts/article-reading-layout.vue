@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Menu, BookOpen, MessageSquare } from 'lucide-vue-next'
+import { ArrowLeft, Menu, BookOpen } from 'lucide-vue-next'
 import { useArticle } from '@/composables/useArticle'
 import { articleApi } from '@/api/article'
 import type { ChapterListItem, VocabularyItem } from '@/types/article'
@@ -174,10 +174,6 @@ onMounted(() => {
         >
           <BookOpen class="size-4" />
           词汇
-        </Button>
-        <Button variant="outline" size="sm" class="gap-2" @click="showAiChat = true">
-          <MessageSquare class="size-4" />
-          <span class="hidden sm:inline">AI</span>
         </Button>
       </template>
 

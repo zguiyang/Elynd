@@ -82,7 +82,7 @@ const handleKeydown = (e: KeyboardEvent) => {
 
 <template>
   <Sheet :open="open" @update:open="emit('update:open', $event)">
-    <SheetContent side="right" class="w-full sm:w-[480px] p-0 flex flex-col">
+    <SheetContent side="right" class="w-[85%] sm:w-[60%] lg:w-[50%] p-0 flex flex-col" style="max-width: 700px">
       <SheetHeader class="px-4 py-3 border-b shrink-0">
         <div class="flex items-center justify-between">
           <SheetTitle class="flex items-center gap-2">

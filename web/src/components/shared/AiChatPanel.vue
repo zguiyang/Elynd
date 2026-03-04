@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Send, Loader2, Bot, User, Sparkles } from 'lucide-vue-next'
 import { useArticleChat } from '@/composables/useArticleChat'
+import MarkdownRenderer from './MarkdownRenderer.vue'
 
 interface Props {
   open: boolean
@@ -18,7 +19,7 @@ const emit = defineEmits<{
 const inputMessage = ref('')
 const messagesContainer = ref<HTMLElement | null>(null)
 
-const { messages, isLoading, sendMessage, clearMessages } = useArticleChat(props.articleId)
+const { messages, isLoading, isWaitingForResponse, sendMessage, clearMessages } = useArticleChat(props.articleId)
 
 const quickActions = [
   { label: '解释', prompt: '请解释这篇文章的主要内容' },
@@ -48,6 +49,14 @@ watch(
   () => {
     clearMessages()
   }
+)
+
+watch(
+  () => messages.value,
+  () => {
+    scrollToBottom()
+  },
+  { deep: true }
 )
 
 const sendMessageHandler = () => {
@@ -125,12 +134,33 @@ const handleKeydown = (e: KeyboardEvent) => {
             class="max-w-[80%] rounded-lg px-3 py-2 text-sm"
             :class="msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'"
           >
-            <div v-if="isLoading && index === messages.length - 1 && msg.role === 'assistant'" class="flex items-center gap-1">
-              <span class="size-1.5 rounded-full bg-current animate-bounce" style="animation-delay: 0ms" />
-              <span class="size-1.5 rounded-full bg-current animate-bounce" style="animation-delay: 150ms" />
-              <span class="size-1.5 rounded-full bg-current animate-bounce" style="animation-delay: 300ms" />
-            </div>
-            <p v-else class="whitespace-pre-wrap">{{ msg.content }}</p>
+            <!-- User Message - Plain Text -->
+            <p v-if="msg.role === 'user'" class="whitespace-pre-wrap">{{ msg.content }}</p>
+            
+            <!-- Assistant Message -->
+            <template v-else>
+              <!-- Waiting State - Show Skeleton -->
+              <div v-if="isWaitingForResponse && index === messages.length - 1 && !msg.content" class="space-y-2 w-48">
+                <Skeleton class="h-3 w-full" />
+                <Skeleton class="h-3 w-4/5" />
+                <Skeleton class="h-3 w-3/5" />
+              </div>
+              
+              <!-- Streaming/Typing State - Show Markdown with Typewriter -->
+              <MarkdownRenderer
+                v-else-if="isLoading && index === messages.length - 1"
+                :content="msg.content"
+                :is-streaming="true"
+                :streaming-speed="30"
+              />
+              
+              <!-- Completed State - Show Markdown -->
+              <MarkdownRenderer
+                v-else
+                :content="msg.content"
+                :is-streaming="false"
+              />
+            </template>
           </div>
         </div>
       </div>

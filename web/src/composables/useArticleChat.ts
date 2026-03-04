@@ -5,6 +5,7 @@ const TYPEWRITER_DELAY = 30
 export function useArticleChat(articleId: number) {
   const messages = ref<ChatMessage[]>([])
   const isLoading = ref(false)
+  const isWaitingForResponse = ref(false)
   const currentStreamingContent = ref('')
   let currentEventSource: { close: () => void } | null = null
   let typewriterTimer: ReturnType<typeof setTimeout> | null = null
@@ -25,22 +26,29 @@ export function useArticleChat(articleId: number) {
     messages.value.push(assistantMessage)
 
     isLoading.value = true
+    isWaitingForResponse.value = true
     currentStreamingContent.value = ''
 
     currentEventSource = createArticleChat(articleId, {
       message: content,
       chapterIndex,
       onChunk: (chunk) => {
+        if (isWaitingForResponse.value) {
+          isWaitingForResponse.value = false
+        }
         currentStreamingContent.value += chunk
+        assistantMessage.content = currentStreamingContent.value
       },
       onComplete: (fullContent) => {
         assistantMessage.content = fullContent
         isLoading.value = false
+        isWaitingForResponse.value = false
         currentStreamingContent.value = ''
       },
       onError: (error) => {
         assistantMessage.content = '抱歉，请稍后重试'
         isLoading.value = false
+        isWaitingForResponse.value = false
         currentStreamingContent.value = ''
         console.error('Chat error:', error)
       },
@@ -84,6 +92,7 @@ export function useArticleChat(articleId: number) {
   const clearMessages = () => {
     messages.value = []
     currentStreamingContent.value = ''
+    isWaitingForResponse.value = false
     if (currentEventSource) {
       currentEventSource.close()
       currentEventSource = null
@@ -106,6 +115,7 @@ export function useArticleChat(articleId: number) {
   return {
     messages,
     isLoading,
+    isWaitingForResponse,
     sendMessage,
     clearMessages,
   }

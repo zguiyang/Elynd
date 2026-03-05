@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronDown, ChevronUp, X } from 'lucide-vue-next'
+import { ChevronDown, ChevronUp, Volume2, X } from 'lucide-vue-next'
 import type { VocabularyItem } from '@/types/article'
 
 defineProps<{
@@ -21,6 +21,21 @@ const toggleItem = (id: number) => {
 }
 
 const isExpanded = (id: number) => expandedItems.value.has(id)
+
+const playAudio = (audioUrl: string | null) => {
+  if (!audioUrl) return
+  
+  const audio = new Audio(audioUrl)
+  audio.play().catch(console.error)
+}
+
+const hasDetails = (item: VocabularyItem) => {
+  return item.details?.meanings && item.details.meanings.length > 0
+}
+
+const getPhoneticText = (item: VocabularyItem) => {
+  return item.phoneticText || item.phonetic || null
+}
 </script>
 
 <template>
@@ -44,17 +59,44 @@ const isExpanded = (id: number) => expandedItems.value.has(id)
         >
           <div class="flex items-center gap-3">
             <span class="font-medium">{{ item.word }}</span>
-            <span v-if="item.phonetic" class="text-sm text-muted-foreground">
-              {{ item.phonetic }}
+            <span v-if="getPhoneticText(item)" class="text-sm text-muted-foreground">
+              {{ getPhoneticText(item) }}
             </span>
           </div>
-          <ChevronDown v-if="!isExpanded(item.id)" class="size-4 text-muted-foreground shrink-0" />
-          <ChevronUp v-else class="size-4 text-muted-foreground shrink-0" />
+          <div class="flex items-center gap-2">
+            <Button
+              v-if="item.phoneticAudio"
+              variant="ghost"
+              size="icon"
+              class="size-7"
+              @click.stop="playAudio(item.phoneticAudio)"
+            >
+              <Volume2 class="size-4" />
+            </Button>
+            <ChevronDown v-if="!isExpanded(item.id)" class="size-4 text-muted-foreground shrink-0" />
+            <ChevronUp v-else class="size-4 text-muted-foreground shrink-0" />
+          </div>
         </button>
         
         <div v-if="isExpanded(item.id)" class="px-3 pb-3 border-t bg-muted/30">
           <p class="text-sm font-medium mt-2">{{ item.meaning }}</p>
-          <p class="text-sm text-muted-foreground mt-2 italic">
+          
+          <template v-if="hasDetails(item)">
+            <div v-for="(meaning, mIndex) in item.details!.meanings" :key="mIndex" class="mt-3">
+              <p class="text-xs font-semibold text-primary">{{ meaning.partOfSpeech }}</p>
+              <ul class="mt-1 space-y-1">
+                <li v-for="(def, dIndex) in meaning.definitions" :key="dIndex" class="text-sm">
+                  <span class="text-muted-foreground">{{ dIndex + 1 }}.</span>
+                  <span class="ml-1">{{ def.definition }}</span>
+                  <p v-if="def.example" class="text-xs text-muted-foreground italic ml-3 mt-0.5">
+                    "{{ def.example }}"
+                  </p>
+                </li>
+              </ul>
+            </div>
+          </template>
+          
+          <p v-if="item.sentence" class="text-sm text-muted-foreground mt-2 italic">
             "{{ item.sentence }}"
           </p>
         </div>

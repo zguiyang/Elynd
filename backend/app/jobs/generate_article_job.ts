@@ -4,6 +4,7 @@ import logger from '@adonisjs/core/services/logger'
 import { ArticleGenerationService } from '#services/article_generation_service'
 import { TransmitService } from '#services/transmit_service'
 import GenerateArticleAudioJob from '#jobs/generate_article_audio_job'
+import GenerateVocabularyJob from '#jobs/generate_vocabulary_job'
 
 interface GenerateArticlePayload {
   userId: number
@@ -73,6 +74,7 @@ export default class GenerateArticleJob extends Job {
       await article.merge({ audioStatus: 'pending' }).save()
 
       await GenerateArticleAudioJob.dispatch({ articleId: article.id })
+      await GenerateVocabularyJob.dispatch({ articleId: article.id })
 
       await sendStatus({
         jobId,

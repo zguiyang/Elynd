@@ -72,4 +72,15 @@ export interface VocabularyItem {
   meaning: string
   sentence: string
   phonetic: string | null
+  phoneticText: string | null
+  phoneticAudio: string | null
+  details: {
+    meanings: Array<{
+      partOfSpeech: string
+      definitions: Array<{
+        definition: string
+        example?: string
+      }>
+    }>
+  } | null
 }

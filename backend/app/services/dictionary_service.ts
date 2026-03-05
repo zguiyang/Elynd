@@ -168,6 +168,41 @@ export class DictionaryService {
     logger.info({ word }, 'Dictionary cache refreshed')
   }
 
+  async lookupBatch(
+    words: string[],
+    concurrency: number = 5
+  ): Promise<Map<string, DictionaryEntry | null>> {
+    const results = new Map<string, DictionaryEntry | null>()
+
+    const processWord = async (word: string): Promise<[string, DictionaryEntry | null]> => {
+      const entry = await this.lookup(word)
+      return [word, entry]
+    }
+
+    for (let i = 0; i < words.length; i += concurrency) {
+      const batch = words.slice(i, i + concurrency)
+      const batchResults = await Promise.all(batch.map(processWord))
+
+      for (const [word, entry] of batchResults) {
+        results.set(word, entry)
+      }
+
+      if (i + concurrency < words.length) {
+        await new Promise((resolve) => setTimeout(resolve, 200))
+      }
+    }
+
+    logger.info(
+      {
+        total: words.length,
+        successful: Array.from(results.values()).filter((v) => v !== null).length,
+      },
+      'Batch lookup completed'
+    )
+
+    return results
+  }
+
   async getExpiringKeys(days: number = DICTIONARY.EXPIRING_DAYS): Promise<string[]> {
     try {
       const pattern = `${DICTIONARY.CACHE_PREFIX}*`

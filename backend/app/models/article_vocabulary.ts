@@ -22,6 +22,15 @@ export default class ArticleVocabulary extends BaseModel {
   @column()
   declare phonetic: string | null
 
+  @column()
+  declare phoneticText: string | null
+
+  @column()
+  declare phoneticAudio: string | null
+
+  @column()
+  declare details: any | null
+
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 

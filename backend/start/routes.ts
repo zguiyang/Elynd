@@ -18,6 +18,7 @@ const AuthController = () => import('#controllers/auth_controller')
 const UsersController = () => import('#controllers/users_controller')
 const ArticlesController = () => import('#controllers/articles_controller')
 const ArticleChatController = () => import('#controllers/article_chat_controller')
+const DictionaryController = () => import('#controllers/dictionary_controller')
 const AdminArticlesController = () => import('#controllers/admin/articles_controller')
 const AdminSystemConfigsController = () => import('#controllers/admin/system_configs_controller')
 
@@ -61,6 +62,14 @@ router
   })
   .prefix('api')
   .use(middleware.auth())
+
+// Dictionary 路由（需要登录）
+router
+  .group(() => {
+    router.get('/dictionary/:word', [DictionaryController, 'lookup'])
+  })
+  .prefix('api')
+  .middleware(middleware.auth())
 
 // 管理员文章路由（需要认证 + 管理员权限）
 router

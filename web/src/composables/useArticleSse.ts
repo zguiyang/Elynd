@@ -5,6 +5,7 @@ import type { Article } from '@/types/article'
 interface ArticleStatusEvent {
   jobId: string
   status: 'queued' | 'processing' | 'completed' | 'failed'
+
   progress?: number
   message?: string
   article?: Article

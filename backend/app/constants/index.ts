@@ -104,6 +104,14 @@ const ENGLISH_VARIANT = {
 
 type EnglishVariant = (typeof ENGLISH_VARIANT)[keyof typeof ENGLISH_VARIANT]
 
+const DICTIONARY = {
+  CACHE_PREFIX: 'dictionary:',
+  DEFAULT_TTL_DAYS: 7,
+  EXPIRING_DAYS: 1,
+} as const
+
+type Dictionary = (typeof DICTIONARY)[keyof typeof DICTIONARY]
+
 export {
   ORDER_BY,
   PAGINATION,
@@ -116,6 +124,7 @@ export {
   ARTICLE_DIFFICULTY,
   ARTICLE_CONTENT,
   ENGLISH_VARIANT,
+  DICTIONARY,
 }
 export type {
   OrderBy,
@@ -129,4 +138,5 @@ export type {
   ArticleDifficulty,
   ArticleContent,
   EnglishVariant,
+  Dictionary,
 }

@@ -79,6 +79,11 @@ const router = createRouter({
           name: 'learning-article-content',
           component: () => import('@/views/learning/learning-article.vue'),
         },
+        {
+          path: 'vocabulary',
+          name: 'learning-article-vocabulary',
+          component: () => import('@/views/learning/article-vocabulary.vue'),
+        },
       ],
     },
     {

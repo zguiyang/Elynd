@@ -1,11 +1,7 @@
 <script setup lang="ts">
 import { ArrowLeft, Menu, BookOpen } from 'lucide-vue-next'
 import { useArticle } from '@/composables/useArticle'
-import { articleApi } from '@/api/article'
-import type { ChapterListItem, VocabularyItem } from '@/types/article'
-import VocabularyPreview from '@/components/shared/VocabularyPreview.vue'
 import AiChatPanel from '@/components/shared/AiChatPanel.vue'
-import { toast } from 'vue-sonner'
 
 const route = useRoute()
 const articleId = Number(route.params.id)
@@ -22,10 +18,7 @@ const isAudioLoading = ref(false)
 const audioError = ref<string | null>(null)
 
 const isMobileTocOpen = ref(false)
-const showVocabulary = ref(false)
 const showAiChat = ref(false)
-const vocabularies = ref<VocabularyItem[]>([])
-const isLoadingVocabulary = ref(false)
 
 const chapters = computed<ChapterListItem[]>(() => article.value?.chapters ?? [])
 
@@ -107,24 +100,6 @@ const handleAudioCanPlay = () => {
   isAudioLoading.value = false
 }
 
-const fetchVocabulary = async () => {
-  if (vocabularies.value.length > 0) {
-    showVocabulary.value = true
-    return
-  }
-
-  isLoadingVocabulary.value = true
-  try {
-    const response = await articleApi.getVocabulary(articleId)
-    vocabularies.value = response.data
-    showVocabulary.value = true
-  } catch {
-    toast.error('获取词汇失败')
-  } finally {
-    isLoadingVocabulary.value = false
-  }
-}
-
 const getDifficultyVariant = (difficulty: string): 'default' | 'secondary' | 'outline' => {
   const variants: Record<string, 'default' | 'secondary' | 'outline'> = {
     L1: 'secondary',
@@ -169,11 +144,12 @@ onMounted(() => {
           variant="outline"
           size="sm"
           class="gap-2 hidden md:inline-flex"
-          :disabled="isLoadingVocabulary"
-          @click="fetchVocabulary"
+          as-child
         >
-          <BookOpen class="size-4" />
-          词汇
+          <RouterLink :to="`/learning/article/${articleId}/vocabulary`">
+            <BookOpen class="size-4" />
+            词汇
+          </RouterLink>
         </Button>
       </template>
 
@@ -247,12 +223,6 @@ onMounted(() => {
         </div>
       </SheetContent>
     </Sheet>
-
-    <Dialog v-model:open="showVocabulary">
-      <DialogContent class="max-w-lg">
-        <VocabularyPreview :vocabularies="vocabularies" @close="showVocabulary = false" />
-      </DialogContent>
-    </Dialog>
 
     <AiChatPanel
       v-model:open="showAiChat"

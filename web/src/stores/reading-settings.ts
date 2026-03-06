@@ -1,4 +1,4 @@
-export type FontSize = 'sm' | 'base' | 'lg' | 'xl'
+export type FontSize = 14 | 16 | 18 | 20
 export type LineHeight = 'compact' | 'normal' | 'relaxed'
 export type ContentWidth = 'medium' | 'full'
 
@@ -8,12 +8,12 @@ export interface ReadingSettingsState {
   contentWidth: ContentWidth
 }
 
-const FONT_SIZE_ORDER: FontSize[] = ['sm', 'base', 'lg', 'xl']
+const FONT_SIZE_ORDER: FontSize[] = [14, 16, 18, 20]
 const FONT_SIZE_CSS: Record<FontSize, string> = {
-  sm: '16px',
-  base: '18px',
-  lg: '20px',
-  xl: '22px',
+  14: '14px',
+  16: '16px',
+  18: '18px',
+  20: '20px',
 }
 const LINE_HEIGHT_CSS: Record<LineHeight, string> = {
   compact: '1.6',
@@ -26,13 +26,20 @@ const CONTENT_WIDTH_CSS: Record<ContentWidth, string> = {
 }
 
 export const useReadingSettingsStore = defineStore('reading-settings', () => {
-  const fontSize = ref<FontSize>('base')
+  const fontSize = ref<FontSize>(16)
   const lineHeight = ref<LineHeight>('normal')
   const contentWidth = ref<ContentWidth>('medium')
 
   const fontSizeCss = computed(() => FONT_SIZE_CSS[fontSize.value])
   const lineHeightCss = computed(() => LINE_HEIGHT_CSS[lineHeight.value])
   const contentWidthCss = computed(() => CONTENT_WIDTH_CSS[contentWidth.value])
+
+  const fontSizeOptions: { value: FontSize; label: string }[] = [
+    { value: 14, label: '14' },
+    { value: 16, label: '16' },
+    { value: 18, label: '18' },
+    { value: 20, label: '20' },
+  ]
 
   const setFontSize = (size: FontSize) => {
     fontSize.value = size
@@ -67,6 +74,7 @@ export const useReadingSettingsStore = defineStore('reading-settings', () => {
     fontSizeCss,
     lineHeightCss,
     contentWidthCss,
+    fontSizeOptions,
     setFontSize,
     incrementFontSize,
     decrementFontSize,

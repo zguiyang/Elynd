@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ArrowLeft, Menu, BookOpen, Minus, Plus, ChevronDown } from 'lucide-vue-next'
+import { ArrowLeft, Menu, BookOpen, ChevronDown } from 'lucide-vue-next'
 import { useArticle } from '@/composables/useArticle'
 import { useReadingSettingsStore } from '@/stores/reading-settings'
 import { learningApi } from '@/api/learning'
 import AiChatPanel from '@/components/shared/AiChatPanel.vue'
-import type { ChapterListItem } from '@/types/article'
+import type { Chapter, ChapterListItem } from '@/types/article'
 import { toast } from 'vue-sonner'
 
 const route = useRoute()
@@ -225,14 +225,23 @@ watch(article, (newArticle) => {
         </Badge>
 
         <div class="hidden md:flex items-center gap-2">
-          <div class="flex items-center gap-1">
-            <Button variant="ghost" size="icon" class="size-8" @click="readingSettings.decrementFontSize">
-              <Minus class="size-4" />
-            </Button>
-            <Button variant="ghost" size="icon" class="size-8" @click="readingSettings.incrementFontSize">
-              <Plus class="size-4" />
-            </Button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger as-child>
+              <Button variant="outline" size="sm" class="h-8 gap-1 text-xs">
+                字号 {{ readingSettings.fontSize }}
+                <ChevronDown class="size-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                v-for="opt in readingSettings.fontSizeOptions"
+                :key="opt.value"
+                @click="readingSettings.setFontSize(opt.value)"
+              >
+                {{ opt.label }}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
@@ -360,7 +369,7 @@ watch(article, (newArticle) => {
       v-model:open="showAiChat"
       :article-id="articleId"
       :article-title="article?.title ?? ''"
-      :chapter-content="(chapters[currentChapterIndex] as ChapterListItem & { content?: string })?.content"
+      :chapter-content="(chapters[currentChapterIndex] as Chapter)?.content"
     />
   </div>
 </template>

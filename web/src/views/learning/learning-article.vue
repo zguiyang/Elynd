@@ -4,8 +4,6 @@ import {
   Pause,
   RotateCcw,
   Volume2,
-  Minus,
-  Plus,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -193,14 +191,23 @@ defineExpose({
 
     <div class="md:hidden flex-none border-t bg-background">
       <div class="flex items-center justify-between px-3 py-2 border-b">
-        <div class="flex items-center gap-1">
-          <Button variant="outline" size="icon" class="size-8" @click="readingSettings.decrementFontSize">
-            <Minus class="size-4" />
-          </Button>
-          <Button variant="outline" size="icon" class="size-8" @click="readingSettings.incrementFontSize">
-            <Plus class="size-4" />
-          </Button>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button variant="outline" size="sm" class="h-8 gap-1 text-xs">
+              字号 {{ readingSettings.fontSize }}
+              <ChevronDown class="size-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem
+              v-for="opt in readingSettings.fontSizeOptions"
+              :key="opt.value"
+              @click="readingSettings.setFontSize(opt.value)"
+            >
+              {{ opt.label }}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <DropdownMenu>
           <DropdownMenuTrigger as-child>

@@ -1,7 +1,7 @@
 import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
 import SystemConfig from '#models/system_config'
-import { updateSystemConfigValidator } from '#validators/system_config'
+import { updateSystemConfigValidator } from '#validators/system_config_validator'
 
 @inject()
 export default class SystemConfigsController {

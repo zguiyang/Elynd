@@ -3,8 +3,8 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { UserService } from '#services/user_service'
 import { UserConfigService } from '#services/user_config_service'
 import { updateProfileValidator } from '#validators/user_validator'
-import { changePasswordValidator } from '#validators/change_password'
-import { updateUserConfigValidator } from '#validators/user_config'
+import { changePasswordValidator } from '#validators/change_password_validator'
+import { updateUserConfigValidator } from '#validators/user_config_validator'
 
 @inject()
 export default class UsersController {

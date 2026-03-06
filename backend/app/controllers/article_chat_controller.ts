@@ -2,7 +2,7 @@ import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
 import { PassThrough } from 'node:stream'
 import { ArticleChatService } from '#services/article_chat_service'
-import { articleChatValidator } from '#validators/article_chat'
+import { articleChatValidator } from '#validators/article_chat_validator'
 
 @inject()
 export default class ArticleChatController {

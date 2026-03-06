@@ -1,7 +1,7 @@
 import { inject } from '@adonisjs/core'
 import logger from '@adonisjs/core/services/logger'
 import UserConfig from '#models/user_config'
-import type { UpdateUserConfigData } from '#validators/user_config'
+import type { UpdateUserConfigData } from '#validators/user_config_validator'
 
 @inject()
 export class UserConfigService {

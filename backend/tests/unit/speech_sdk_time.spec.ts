@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { speechSdkTicksToMs } from '#services/speech_sdk_time'
+import { speechSdkTicksToMs } from '#utils/speech_sdk_time'
 
 test.group('speechSdkTicksToMs', () => {
   test('converts 100ns ticks to milliseconds', ({ assert }) => {

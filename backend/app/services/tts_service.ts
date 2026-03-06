@@ -3,7 +3,7 @@ import logger from '@adonisjs/core/services/logger'
 import env from '#start/env'
 import drive from '@adonisjs/drive/services/main'
 import * as sdk from 'microsoft-cognitiveservices-speech-sdk'
-import { speechSdkTicksToMs } from '#services/speech_sdk_time'
+import { speechSdkTicksToMs } from '#utils/speech_sdk_time'
 import type { TtsResult, AudioTiming, WordTiming, ChapterTiming, ChapterInput } from '#types/tts'
 
 @inject()

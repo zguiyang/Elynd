@@ -5,7 +5,7 @@ import { TagService } from '#services/tag_service'
 import { ConfigService } from '#services/config_service'
 import { AiService } from '#services/ai_service'
 import { listArticleValidator } from '#validators/article_validator'
-import { articleChatValidator } from '#validators/ai'
+import { articleChatValidator } from '#validators/ai_validator'
 
 @inject()
 export default class ArticlesController {

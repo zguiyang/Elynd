@@ -8,7 +8,6 @@ import {
   ChevronRight,
   ChevronDown,
   Loader2,
-  Bot,
 } from 'lucide-vue-next'
 import { useReadingSettingsStore } from '@/stores/reading-settings'
 import { useChapter } from '@/composables/useArticle'
@@ -16,7 +15,6 @@ import { articleApi } from '@/api/article'
 import type { LineHeight, ContentWidth } from '@/stores/reading-settings'
 import type { Article, VocabularyItem } from '@/types/article'
 import VocabularyPreview from '@/components/shared/VocabularyPreview.vue'
-import AiChatPanel from '@/components/shared/AiChatPanel.vue'
 import { toast } from 'vue-sonner'
 
 interface Props {
@@ -53,7 +51,6 @@ const { chapter, isLoading, error: chapterError, fetchChapter } = useChapter()
 const readingSettings = useReadingSettingsStore()
 
 const showVocabulary = ref(false)
-const showAiChat = ref(false)
 const vocabularies = ref<VocabularyItem[]>([])
 const isLoadingVocabulary = ref(false)
 
@@ -294,20 +291,5 @@ defineExpose({
         <VocabularyPreview :vocabularies="vocabularies" @close="showVocabulary = false" />
       </DialogContent>
     </Dialog>
-
-    <Button
-      class="fixed bottom-20 right-4 md:bottom-4 size-12 rounded-full shadow-lg"
-      @click="showAiChat = true"
-    >
-      <Bot class="size-6" />
-    </Button>
-
-    <AiChatPanel
-      v-model:open="showAiChat"
-      :article-id="articleId"
-      :article-title="props.article?.title ?? ''"
-      :chapter-content="chapter?.content"
-      :chapter-index="props.currentChapterIndex"
-    />
   </div>
 </template>

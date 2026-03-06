@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowLeft, Menu, BookOpen, ChevronDown } from 'lucide-vue-next'
+import { ArrowLeft, Menu, BookOpen, ChevronDown, Bot } from 'lucide-vue-next'
 import { useArticle } from '@/composables/useArticle'
 import { useReadingSettingsStore } from '@/stores/reading-settings'
 import { learningApi } from '@/api/learning'
@@ -292,7 +292,26 @@ watch(article, (newArticle) => {
             词汇
           </RouterLink>
         </Button>
+
+        <Button
+          variant="default"
+          size="sm"
+          class="gap-2 hidden md:inline-flex"
+          @click="showAiChat = true"
+        >
+          <Bot class="size-4" />
+          AI 助手
+        </Button>
       </template>
+
+      <Button
+        variant="ghost"
+        size="icon"
+        class="md:hidden shrink-0"
+        @click="showAiChat = true"
+      >
+        <Bot class="size-5" />
+      </Button>
 
       <Button
         variant="ghost"
@@ -370,6 +389,7 @@ watch(article, (newArticle) => {
       :article-id="articleId"
       :article-title="article?.title ?? ''"
       :chapter-content="(chapters[currentChapterIndex] as Chapter)?.content"
+      :chapter-index="currentChapterIndex"
     />
   </div>
 </template>

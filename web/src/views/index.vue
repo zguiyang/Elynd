@@ -10,6 +10,8 @@ import {
   Link,
   Video,
   HelpCircle,
+  Mail,
+  MessageSquare,
 } from 'lucide-vue-next'
 
 const PAIN_POINTS = [
@@ -91,29 +93,23 @@ const FEATURES = [
   },
 ]
 
-const STEPS = [
-  {
-    number: '01',
-    title: '选择文章',
-    description: '从难度分级的内容库中选择适合自己的文章',
-  },
-  {
-    number: '02',
-    title: '开始阅读',
-    description: '阅读文章内容，点击生词查看释义，听读结合',
-  },
-  {
-    number: '03',
-    title: '向 AI 提问',
-    description: '针对不理解的内容向 AI 提问，获得即时解答',
-  },
-]
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card'
 </script>
 
 <template>
   <div class="min-h-screen bg-background">
+    <!-- Preview Banner -->
+    <div class="fixed top-0 left-0 right-0 z-[60] bg-primary px-4 py-2 text-primary-foreground">
+      <div class="container mx-auto flex items-center justify-center gap-2 text-center text-sm font-medium">
+        <Sparkles class="size-4 shrink-0" />
+        <span>Elynd 目前处于预览版本，核心功能持续迭代完善中，敬请期待！</span>
+      </div>
+    </div>
+
     <!-- Navigation -->
-    <header class="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-md">
+    <header class="fixed top-9 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-md">
       <nav class="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
         <div class="flex items-center gap-2">
           <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
@@ -338,6 +334,33 @@ const STEPS = [
       </div>
     </section>
 
+    <!-- Feedback Section -->
+    <section class="py-24 border-t border-muted/30">
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="mx-auto max-w-2xl text-center">
+          <div class="mb-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
+            <MessageSquare class="size-4" />
+            <span>联系开发者</span>
+          </div>
+          <h2 class="text-3xl font-bold tracking-tight">期待您的反馈</h2>
+          <p class="mt-4 text-lg text-muted-foreground">
+            您的每一条建议对我都至关重要。
+            如有任何问题，欢迎随时联系。
+          </p>
+          <div class="mt-8 flex items-center justify-center">
+            <a
+              href="mailto:zhaoguiyang18@outlook.com"
+              class="group relative inline-flex items-center gap-2 text-lg font-medium text-foreground hover:text-primary transition-colors"
+            >
+              <Mail class="size-5 text-primary" />
+              <span>zhaoguiyang18@outlook.com</span>
+              <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all group-hover:w-full"></span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Footer -->
     <footer class="border-t bg-muted/20">
       <div class="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -352,5 +375,6 @@ const STEPS = [
         </div>
       </div>
     </footer>
+
   </div>
 </template>

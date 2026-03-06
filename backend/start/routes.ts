@@ -22,7 +22,7 @@ const DictionaryController = () => import('#controllers/dictionary_controller')
 const AdminArticlesController = () => import('#controllers/admin/articles_controller')
 const AdminSystemConfigsController = () => import('#controllers/admin/system_configs_controller')
 
-// 公开认证路 由组（不需要认证）- 更严格的限流
+// ===== 公开路由组 (需要限流) =====
 router
   .group(() => {
     router.post('/auth/register', [AuthController, 'register'])
@@ -33,24 +33,20 @@ router
   .prefix('api')
   .use(authLimiter)
 
-// 受保护 API 路由组（需要认证）
+// ===== 受保护路由组 (需要认证 + 通用限流) =====
 router
   .group(() => {
+    // Auth
     router.post('/auth/logout', [AuthController, 'logout'])
 
-    // 用户 API
+    // User
     router.get('/user/me', [UsersController, 'me'])
     router.put('/user', [UsersController, 'update'])
     router.post('/user/change-password', [UsersController, 'changePassword'])
     router.get('/user/config', [UsersController, 'getConfig'])
     router.put('/user/config', [UsersController, 'updateConfig'])
-  })
-  .prefix('api')
-  .middleware(middleware.auth())
-  .use(apiLimiter)
 
-router
-  .group(() => {
+    // Articles
     router.get('/articles', [ArticlesController, 'index'])
     router.get('/articles/:id', [ArticlesController, 'show'])
     router.get('/articles/:id/chapters/:chapterIndex', [ArticlesController, 'chapter'])
@@ -58,19 +54,15 @@ router
     router.get('/tags', [ArticlesController, 'tags'])
     router.post('/articles/:id/ai-chat', [ArticlesController, 'aiChat']).use(aiChatLimiter)
     router.get('/articles/:id/chats', [ArticleChatController, 'chat'])
-  })
-  .prefix('api')
-  .use(middleware.auth())
 
-// Dictionary 路由（需要登录）
-router
-  .group(() => {
+    // Dictionary
     router.get('/dictionary/:word', [DictionaryController, 'lookup'])
   })
   .prefix('api')
   .middleware(middleware.auth())
+  .use(apiLimiter)
 
-// 管理员文章路由（需要认证 + 管理员权限）
+// ===== 管理员路由组 (需要认证 + 管理员权限) =====
 router
   .group(() => {
     router.post('/admin/articles/generate', [AdminArticlesController, 'generate'])
@@ -80,9 +72,8 @@ router
   })
   .prefix('api')
   .middleware([middleware.auth(), middleware.admin()])
-  .use(apiLimiter)
 
-// Jobs Dashboard（GUI 界面）- 仅管理员可访问
+// ===== Jobs Dashboard (仅开发环境或需要密钥) =====
 router.jobs('/jobs').use(async (ctx, next) => {
   if (env.get('NODE_ENV') === 'development') {
     return next()
@@ -103,12 +94,9 @@ router.jobs('/jobs').use(async (ctx, next) => {
   return next()
 })
 
-// Register Transmit routes (no auth middleware needed for events endpoint)
-// Authorization is handled by transmit.authorize() for each channel
+// ===== Transmit WebSocket 路由 =====
 transmit.registerRoutes()
 
-// Configure channel authorization
-// TODO: Replace with actual channel authorization when needed
 transmit.authorize('user:userId:article', (ctx, { userId }) => {
   if (!ctx.auth.isAuthenticated) {
     return false
@@ -116,6 +104,7 @@ transmit.authorize('user:userId:article', (ctx, { userId }) => {
   return Number(ctx.auth.user?.id) === Number(userId)
 })
 
+// ===== 静态资源路由 =====
 router.get('/audio/articles/:id', async ({ params, response }) => {
   const articleId = params.id
   const storageDir = join(process.cwd(), 'storage', 'article', 'voices')

@@ -49,7 +49,6 @@ router
   .middleware(middleware.auth())
   .use(apiLimiter)
 
-// 用户端文章路由（公开）
 router
   .group(() => {
     router.get('/articles', [ArticlesController, 'index'])

@@ -3,6 +3,7 @@ import logger from '@adonisjs/core/services/logger'
 import env from '#start/env'
 import drive from '@adonisjs/drive/services/main'
 import * as sdk from 'microsoft-cognitiveservices-speech-sdk'
+import { speechSdkTicksToMs } from '#services/speech_sdk_time'
 import type { TtsResult, AudioTiming, WordTiming, ChapterTiming, ChapterInput } from '#types/tts'
 
 @inject()
@@ -91,8 +92,8 @@ export class TtsService {
         if (e.boundaryType === sdk.SpeechSynthesisBoundaryType.Word) {
           wordTimings.push({
             word: e.text,
-            audioOffset: Math.round((e.audioOffset + 5000) / 10000),
-            duration: e.duration,
+            audioOffset: speechSdkTicksToMs(e.audioOffset),
+            duration: speechSdkTicksToMs(e.duration),
             textOffset: e.textOffset,
             wordLength: e.wordLength,
           })
@@ -108,7 +109,7 @@ export class TtsService {
             resolve({
               audioBuffer: Buffer.from(result.audioData),
               wordTimings,
-              duration: Math.round(result.audioDuration * 1000),
+              duration: speechSdkTicksToMs(result.audioDuration),
             })
           } else {
             const errorDetails =

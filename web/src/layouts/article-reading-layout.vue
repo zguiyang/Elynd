@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ArrowLeft, Menu, BookOpen } from 'lucide-vue-next'
+import { ArrowLeft, Menu, BookOpen, Minus, Plus, ChevronDown } from 'lucide-vue-next'
 import { useArticle } from '@/composables/useArticle'
+import { useReadingSettingsStore } from '@/stores/reading-settings'
 import { learningApi } from '@/api/learning'
 import AiChatPanel from '@/components/shared/AiChatPanel.vue'
 import type { ChapterListItem } from '@/types/article'
@@ -10,6 +11,7 @@ const route = useRoute()
 const articleId = Number(route.params.id)
 
 const { article, fetchArticle } = useArticle()
+const readingSettings = useReadingSettingsStore()
 
 const currentChapterIndex = ref(0)
 const isPlaying = ref(false)
@@ -221,6 +223,54 @@ watch(article, (newArticle) => {
         >
           {{ tag.name }}
         </Badge>
+
+        <div class="hidden md:flex items-center gap-2">
+          <div class="flex items-center gap-1">
+            <Button variant="ghost" size="icon" class="size-8" @click="readingSettings.decrementFontSize">
+              <Minus class="size-4" />
+            </Button>
+            <Button variant="ghost" size="icon" class="size-8" @click="readingSettings.incrementFontSize">
+              <Plus class="size-4" />
+            </Button>
+          </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger as-child>
+              <Button variant="outline" size="sm" class="h-8 gap-1 text-xs">
+                行高
+                <ChevronDown class="size-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem @click="readingSettings.setLineHeight('compact')">
+                紧凑
+              </DropdownMenuItem>
+              <DropdownMenuItem @click="readingSettings.setLineHeight('normal')">
+                标准
+              </DropdownMenuItem>
+              <DropdownMenuItem @click="readingSettings.setLineHeight('relaxed')">
+                宽松
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger as-child>
+              <Button variant="outline" size="sm" class="h-8 gap-1 text-xs">
+                宽度
+                <ChevronDown class="size-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem @click="readingSettings.setContentWidth('full')">
+                充满
+              </DropdownMenuItem>
+              <DropdownMenuItem @click="readingSettings.setContentWidth('medium')">
+                居中
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
 
         <Button
           variant="outline"

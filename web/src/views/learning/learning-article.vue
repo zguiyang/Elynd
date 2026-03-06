@@ -66,10 +66,8 @@ const lineHeightOptions: { value: LineHeight; label: string }[] = [
 ]
 
 const contentWidthOptions: { value: ContentWidth; label: string }[] = [
-  { value: 'narrow', label: '窄' },
-  { value: 'medium', label: '中' },
-  { value: 'wide', label: '宽' },
   { value: 'full', label: '充满' },
+  { value: 'medium', label: '居中' },
 ]
 
 const totalChapters = computed(() => props.article?.chapters.length ?? 0)

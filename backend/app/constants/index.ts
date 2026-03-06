@@ -39,7 +39,7 @@ const VALIDATION = {
 type Validation = (typeof VALIDATION)[keyof typeof VALIDATION]
 
 const EMAIL_VERIFICATION = {
-  KEY_PREFIX: 'email_verify:',
+  KEY_PREFIX: 'verify:',
   EXPIRY_MINUTES: 30,
   COOLDOWN_MINUTES: 1,
 } as const

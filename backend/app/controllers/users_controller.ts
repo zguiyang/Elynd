@@ -35,7 +35,7 @@ export default class UsersController {
 
     await this.userService.changePassword(user.id, data.currentPassword, data.newPassword)
 
-    return { message: '密码修改成功' }
+    return { message: 'Password changed successfully' }
   }
 
   async getConfig({ auth }: HttpContext) {

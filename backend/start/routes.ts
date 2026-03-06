@@ -10,7 +10,7 @@ import router from '@adonisjs/core/services/router'
 import { middleware } from '#start/kernel'
 import env from '#start/env'
 import transmit from '@adonisjs/transmit/services/main'
-import { apiLimiter, authLimiter } from '#start/limiter'
+import { apiLimiter, authLimiter, aiChatLimiter } from '#start/limiter'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
@@ -57,7 +57,7 @@ router
     router.get('/articles/:id/chapters/:chapterIndex', [ArticlesController, 'chapter'])
     router.get('/articles/:id/vocabulary', [ArticlesController, 'vocabulary'])
     router.get('/tags', [ArticlesController, 'tags'])
-    router.post('/articles/:id/ai-chat', [ArticlesController, 'aiChat'])
+    router.post('/articles/:id/ai-chat', [ArticlesController, 'aiChat']).use(aiChatLimiter)
     router.get('/articles/:id/chats', [ArticleChatController, 'chat'])
   })
   .prefix('api')

@@ -424,7 +424,7 @@ export class ArticleGenerationService {
           isPublished: true,
           createdBy: userId,
         },
-        { client: trx as any }
+        { client: trx }
       )
 
       logger.debug('[Article Generation] Article created', { id: article.id, title: article.title })
@@ -435,13 +435,13 @@ export class ArticleGenerationService {
         title: chapter.title,
         content: chapter.content,
       }))
-      await ArticleChapter.createMany(chaptersData, { client: trx as any })
+      await ArticleChapter.createMany(chaptersData, { client: trx })
       logger.info(`Saved ${chaptersData.length} chapters for article ${article.id}`)
 
       const tags = await this.processTags(data.tags, trx)
       await article.related('tags').attach(
         tags.map((t) => t.id),
-        trx as any
+        trx
       )
 
       if (data.vocabulary && data.vocabulary.length > 0) {
@@ -452,7 +452,7 @@ export class ArticleGenerationService {
           sentence: item.sentence,
           phonetic: item.phonetic || null,
         }))
-        await ArticleVocabulary.createMany(vocabularyData, { client: trx as any })
+        await ArticleVocabulary.createMany(vocabularyData, { client: trx })
         logger.info(`Saved ${vocabularyData.length} vocabulary items for article ${article.id}`)
       }
 

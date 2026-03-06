@@ -28,7 +28,7 @@ export const registerValidator = vine.compile(
 export const resetPasswordValidator = vine.compile(
   vine.object({
     token: vine.string(),
-    password: vine.string().minLength(8),
+    password: vine.string().minLength(VALIDATION.PASSWORD_MIN),
     passwordConfirmation: vine.string().sameAs('password'),
   })
 )

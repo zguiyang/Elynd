@@ -30,7 +30,7 @@ export default class AdminArticlesController {
       jobId: resolvedJobId,
       status: 'queued',
       progress: 0,
-      message: '已加入生成队列',
+      message: 'Added to generation queue',
     })
 
     return { jobId: resolvedJobId, status: 'queued' }
@@ -41,7 +41,7 @@ export default class AdminArticlesController {
 
     return {
       success: true,
-      message: '音频重试任务已加入队列',
+      message: 'Audio retry task added to queue',
       ...result,
     }
   }

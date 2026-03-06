@@ -37,12 +37,12 @@ export class UserService {
 
     const data = await this.getDataFromToken(token)
     if (!data || data.type !== 'reset_password') {
-      throw new Exception('验证链接已失效或已过期', { status: 403 })
+      throw new Exception('Invalid or expired reset token', { status: 403 })
     }
 
     const user = await User.findBy('email', data.email)
     if (!user) {
-      throw new Exception('用户不存在', { status: 404 })
+      throw new Exception('User not found', { status: 404 })
     }
 
     user.password = newPassword
@@ -54,7 +54,7 @@ export class UserService {
   }
 
   async getDataFromToken(token: string): Promise<{ email: string; type: string } | null> {
-    const key = `verify:${token}`
+    const key = `${EMAIL_VERIFICATION.KEY_PREFIX}${token}`
     const rawData = await redis.getdel(key)
     if (!rawData) {
       return null
@@ -104,7 +104,7 @@ export class UserService {
     const canSend = await this.checkCanSend(email)
     if (!canSend) {
       logger.warn({ email }, 'Password reset rate limited')
-      throw new Exception('邮件发送过于频繁，请稍后再试', {
+      throw new Exception('Too many requests, please try again later', {
         status: 429,
       })
     }
@@ -122,7 +122,7 @@ export class UserService {
 
   async storeEmailVerificationToken(email: string, type: 'reset_password'): Promise<string> {
     const emailToken = randomUUID()
-    const key = `verify:${emailToken}`
+    const key = `${EMAIL_VERIFICATION.KEY_PREFIX}${emailToken}`
     const data = JSON.stringify({ email, type })
 
     await redis.set(key, data, 'EX', EMAIL_VERIFICATION.EXPIRY_MINUTES * 60)
@@ -133,12 +133,12 @@ export class UserService {
   }
 
   private async checkCanSend(email: string): Promise<boolean> {
-    const rateKey = `verify:rate:${email}`
+    const rateKey = `${EMAIL_VERIFICATION.KEY_PREFIX}rate:${email}`
     return !(await redis.exists(rateKey))
   }
 
   private async setSendRate(email: string): Promise<void> {
-    const rateKey = `verify:rate:${email}`
+    const rateKey = `${EMAIL_VERIFICATION.KEY_PREFIX}rate:${email}`
     await redis.set(rateKey, '1', 'EX', EMAIL_VERIFICATION.COOLDOWN_MINUTES * 60)
   }
 
@@ -149,7 +149,7 @@ export class UserService {
 
     const isValid = await user.verifyPassword(currentPassword)
     if (!isValid) {
-      throw new Exception('当前密码错误', { status: 400 })
+      throw new Exception('Current password is incorrect', { status: 400 })
     }
 
     user.password = newPassword

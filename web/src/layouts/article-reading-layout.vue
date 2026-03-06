@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ArrowLeft, Menu, BookOpen } from 'lucide-vue-next'
 import { useArticle } from '@/composables/useArticle'
+import { learningApi } from '@/api/learning'
 import AiChatPanel from '@/components/shared/AiChatPanel.vue'
+import type { ChapterListItem } from '@/types/article'
+import { toast } from 'vue-sonner'
 
 const route = useRoute()
 const articleId = Number(route.params.id)
@@ -20,7 +23,21 @@ const audioError = ref<string | null>(null)
 const isMobileTocOpen = ref(false)
 const showAiChat = ref(false)
 
+const startTime = ref<number | null>(null)
+const lastSavedProgress = ref(0)
+const isProgressUpdatePending = ref(false)
+
+const PROGRESS_UPDATE_INTERVAL = 30000
+
 const chapters = computed<ChapterListItem[]>(() => article.value?.chapters ?? [])
+const totalChapters = computed(() => chapters.value.length)
+
+const currentProgress = computed(() => {
+  if (!totalChapters.value) return 0
+  const chapterProgress = (currentChapterIndex.value / totalChapters.value) * 100
+  const timeProgress = duration.value > 0 ? (currentTime.value / duration.value) * (1 / totalChapters.value) * 100 : 0
+  return Math.min(Math.round(chapterProgress + timeProgress), 100)
+})
 
 const audioSrc = computed(() => {
   if (!article.value?.audioUrl) return null
@@ -31,6 +48,57 @@ const audioSrc = computed(() => {
 const canPlayAudio = computed(() => {
   return article.value?.audioStatus === 'completed' && article.value?.audioUrl
 })
+
+const updateReadingProgress = async (progress: number) => {
+  if (progress === lastSavedProgress.value || isProgressUpdatePending.value) return
+
+  isProgressUpdatePending.value = true
+  try {
+    await learningApi.updateProgress(articleId, progress)
+    lastSavedProgress.value = progress
+  } catch (e) {
+    console.error('Failed to update reading progress:', e)
+  } finally {
+    isProgressUpdatePending.value = false
+  }
+}
+
+let progressTimer: ReturnType<typeof setInterval> | null = null
+
+const startProgressTracking = () => {
+  if (progressTimer) return
+
+  startTime.value = Date.now()
+  progressTimer = setInterval(() => {
+    const progress = currentProgress.value
+    if (progress > lastSavedProgress.value) {
+      updateReadingProgress(progress)
+    }
+  }, PROGRESS_UPDATE_INTERVAL)
+}
+
+const stopProgressTracking = () => {
+  if (progressTimer) {
+    clearInterval(progressTimer)
+    progressTimer = null
+  }
+
+  const finalProgress = currentProgress.value
+  if (finalProgress > lastSavedProgress.value) {
+    updateReadingProgress(finalProgress)
+  }
+}
+
+const handleVisibilityChange = () => {
+  if (document.hidden) {
+    const progress = currentProgress.value
+    if (progress > lastSavedProgress.value) {
+      updateReadingProgress(progress)
+    }
+  } else {
+    startProgressTracking()
+  }
+}
 
 const handleChapterSelect = (index: number) => {
   currentChapterIndex.value = index
@@ -111,7 +179,21 @@ const getDifficultyVariant = (difficulty: string): 'default' | 'secondary' | 'ou
 
 onMounted(() => {
   fetchArticle(articleId)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+  window.addEventListener('beforeunload', stopProgressTracking)
 })
+
+onUnmounted(() => {
+  stopProgressTracking()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+  window.removeEventListener('beforeunload', stopProgressTracking)
+})
+
+watch(article, (newArticle) => {
+  if (newArticle && newArticle.chapters) {
+    startProgressTracking()
+  }
+}, { immediate: true })
 </script>
 
 <template>
@@ -228,7 +310,7 @@ onMounted(() => {
       v-model:open="showAiChat"
       :article-id="articleId"
       :article-title="article?.title ?? ''"
-      :chapter-content="chapters[currentChapterIndex]?.content"
+      :chapter-content="(chapters[currentChapterIndex] as ChapterListItem & { content?: string })?.content"
     />
   </div>
 </template>

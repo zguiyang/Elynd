@@ -25,7 +25,8 @@ const loadData = () => {
   })
 }
 
-const onTagChange = (tagId: number | 'all' | undefined) => {
+const onTagChange = (value: unknown) => {
+  const tagId = value as number | 'all' | undefined
   selectedTagId.value = tagId
   loadData()
 }

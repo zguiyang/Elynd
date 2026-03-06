@@ -21,6 +21,7 @@ const ArticleChatController = () => import('#controllers/article_chat_controller
 const DictionaryController = () => import('#controllers/dictionary_controller')
 const AdminArticlesController = () => import('#controllers/admin/articles_controller')
 const AdminSystemConfigsController = () => import('#controllers/admin/system_configs_controller')
+const LearningsController = () => import('#controllers/learnings_controller')
 
 // ===== 公开路由组 (需要限流) =====
 router
@@ -57,6 +58,12 @@ router
 
     // Dictionary
     router.get('/dictionary/:word', [DictionaryController, 'lookup'])
+
+    // Learning
+    router.post('/learning/login', [LearningsController, 'login'])
+    router.put('/learning/progress', [LearningsController, 'updateProgress'])
+    router.get('/learning/index', [LearningsController, 'index'])
+    router.get('/learning/recommend', [LearningsController, 'recommend'])
   })
   .prefix('api')
   .middleware(middleware.auth())

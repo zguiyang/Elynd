@@ -4,6 +4,7 @@ import {
   loginValidator,
   registerValidator,
   resetPasswordValidator,
+  forgotPasswordValidator,
 } from '#validators/auth_validator'
 import { AuthService } from '#services/auth_service'
 
@@ -36,7 +37,7 @@ export default class AuthController {
   }
 
   async forgotPassword({ request }: HttpContext) {
-    const data = request.only(['email'])
+    const data = await request.validateUsing(forgotPasswordValidator)
 
     return await this.authService.requestPasswordReset(data.email)
   }

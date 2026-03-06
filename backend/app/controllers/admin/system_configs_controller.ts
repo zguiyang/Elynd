@@ -35,12 +35,22 @@ export default class SystemConfigsController {
         aiModelName: data.aiModelName ?? null,
       })
     } else {
-      config.merge({
-        aiBaseUrl: data.aiBaseUrl ?? config.aiBaseUrl,
-        aiApiKey: data.aiApiKey ?? config.aiApiKey,
-        aiModelName: data.aiModelName ?? config.aiModelName,
-      })
-      await config.save()
+      const updates: Record<string, any> = {}
+
+      if (data.aiBaseUrl !== undefined) {
+        updates.aiBaseUrl = data.aiBaseUrl || null
+      }
+      if (data.aiApiKey !== undefined) {
+        updates.aiApiKey = data.aiApiKey || null
+      }
+      if (data.aiModelName !== undefined) {
+        updates.aiModelName = data.aiModelName || null
+      }
+
+      if (Object.keys(updates).length > 0) {
+        config.merge(updates)
+        await config.save()
+      }
     }
 
     return {

@@ -1,12 +1,12 @@
 import vine from '@vinejs/vine'
 import { Infer } from '@vinejs/vine/types'
-import { ENGLISH_VARIANT } from '#constants'
+import { ENGLISH_VARIANT, VOCABULARY_LEVEL, LANGUAGE } from '#constants'
 
 export const updateUserConfigValidator = vine.compile(
   vine.object({
-    nativeLanguage: vine.string().maxLength(50).optional(),
-    targetLanguage: vine.string().maxLength(50).optional(),
-    vocabularyLevel: vine.string().maxLength(20).optional(),
+    nativeLanguage: vine.enum(Object.values(LANGUAGE)).optional(),
+    targetLanguage: vine.enum(Object.values(LANGUAGE)).optional(),
+    vocabularyLevel: vine.enum(Object.values(VOCABULARY_LEVEL)).optional(),
     englishVariant: vine.enum([ENGLISH_VARIANT.US, ENGLISH_VARIANT.GB]).optional(),
     learningInitCompleted: vine.boolean().optional(),
   })

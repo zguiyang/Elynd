@@ -33,6 +33,13 @@ export const resetPasswordValidator = vine.compile(
   })
 )
 
+export const forgotPasswordValidator = vine.compile(
+  vine.object({
+    email: vine.string().email().trim(),
+  })
+)
+
 export type LoginValidator = Infer<typeof loginValidator>
 export type RegisterValidator = Infer<typeof registerValidator>
 export type ResetPasswordValidator = Infer<typeof resetPasswordValidator>
+export type ForgotPasswordValidator = Infer<typeof forgotPasswordValidator>

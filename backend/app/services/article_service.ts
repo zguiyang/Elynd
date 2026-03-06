@@ -98,8 +98,9 @@ export class ArticleService {
 
     await db.transaction(async (trx) => {
       await article.useTransaction(trx).merge({ audioStatus: 'pending' }).save()
-      await GenerateArticleAudioJob.dispatch({ articleId: article.id })
     })
+
+    await GenerateArticleAudioJob.dispatch({ articleId: article.id })
 
     return {
       articleId: article.id,

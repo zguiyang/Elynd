@@ -8,7 +8,7 @@ export default class AdminMiddleware {
       throw new Exception('Unauthenticated', { status: 401 })
     }
 
-    if (!ctx.auth.user?.isAdmin) {
+    if (ctx.auth.user?.isAdmin !== true) {
       throw new Exception('Forbidden: Admin access required', { status: 403 })
     }
 

@@ -1,4 +1,5 @@
 import { inject } from '@adonisjs/core'
+import logger from '@adonisjs/core/services/logger'
 import type { HttpContext } from '@adonisjs/core/http'
 import { dispatch } from 'adonisjs-jobs/services/main'
 import GenerateArticleJob from '#jobs/generate_article_job'
@@ -16,6 +17,11 @@ export default class AdminArticlesController {
   async generate({ auth, request }: HttpContext) {
     const user = auth.user!
     const data = await request.validateUsing(generateArticleValidator)
+
+    logger.info(
+      { userId: user.id, difficultyLevel: data.difficultyLevel, topic: data.topic },
+      'Article generation requested'
+    )
 
     const jobId = (await dispatch(GenerateArticleJob, {
       userId: user.id,
@@ -37,6 +43,8 @@ export default class AdminArticlesController {
   }
 
   async retryAudio({ params }: HttpContext) {
+    logger.info({ articleId: params.id }, 'Audio retry requested')
+
     const result = await this.articleService.retryAudioGeneration(params.id)
 
     return {

@@ -187,7 +187,6 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
               </a>
             </Button>
           </div>
-          <p class="mt-4 text-sm text-muted-foreground">无需信用卡，立即开始</p>
         </div>
       </div>
     </section>

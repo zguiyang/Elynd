@@ -2,8 +2,7 @@ import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
 import { ArticleService } from '#services/article_service'
 import { TagService } from '#services/tag_service'
-import { ConfigService } from '#services/config_service'
-import { AiService } from '#services/ai_service'
+import { ArticleChatService } from '#services/article_chat_service'
 import { listArticleValidator } from '#validators/article_validator'
 import { articleChatValidator } from '#validators/ai_validator'
 
@@ -12,8 +11,7 @@ export default class ArticlesController {
   constructor(
     private articleService: ArticleService,
     private tagService: TagService,
-    private configService: ConfigService,
-    private aiService: AiService
+    private articleChatService: ArticleChatService
   ) {}
 
   async index({ request }: HttpContext) {
@@ -62,26 +60,18 @@ export default class ArticlesController {
     return tags.map((tag) => tag.serialize())
   }
 
-  async aiChat({ params, request }: HttpContext) {
+  async aiChat({ auth, params, request }: HttpContext) {
     const data = await request.validateUsing(articleChatValidator)
+    const user = auth.getUserOrFail()
 
-    const article = await this.articleService.findPublishedById(params.id)
+    await this.articleService.findPublishedById(params.id)
 
-    const aiConfig = await this.configService.getAiConfig()
-
-    const systemPrompt = `你是一个专业的英语阅读助手，专门帮助用户学习英语文章。请根据用户的问题，结合提供的文章内容给出回答。
-
-文章标题: ${data.articleTitle || article.title}
-${data.chapterContent ? `文章内容:\n${data.chapterContent}` : ''}
-
-请用简洁易懂的语言回答用户的问题，如果涉及文章内容，请引用原文。`
-
-    const response = await this.aiService.chat(aiConfig, {
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: data.message },
-      ],
-      maxTokens: 1000,
+    const response = await this.articleChatService.chat({
+      userId: user.id,
+      articleId: params.id,
+      message: data.message,
+      articleTitle: data.articleTitle,
+      chapterContent: data.chapterContent,
     })
 
     return { response }

@@ -30,19 +30,7 @@ export class UserConfigService {
 
     const config = await UserConfig.findByOrFail('user_id', userId)
 
-    if (data.nativeLanguage !== undefined) {
-      config.nativeLanguage = data.nativeLanguage
-    }
-    if (data.targetLanguage !== undefined) {
-      config.targetLanguage = data.targetLanguage
-    }
-    if (data.vocabularyLevel !== undefined) {
-      config.vocabularyLevel = data.vocabularyLevel
-    }
-    if (data.learningInitCompleted !== undefined) {
-      config.learningInitCompleted = data.learningInitCompleted
-    }
-
+    config.merge(data)
     await config.save()
 
     logger.info({ userId }, 'User config updated')

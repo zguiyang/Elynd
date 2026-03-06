@@ -32,14 +32,7 @@ export class ArticleService {
   }
 
   async findPublishedById(id: number) {
-    const article = await Article.query()
-      .where('id', id)
-      .where('isPublished', true)
-      .preload('tags')
-      .preload('chapters', (chapterQuery) => {
-        chapterQuery.select('id', 'articleId', 'chapterIndex', 'title')
-      })
-      .first()
+    const article = await this.buildArticleQuery(true).where('id', id).first()
 
     if (!article) {
       throw new Exception('Article not found', { status: 404 })
@@ -49,19 +42,27 @@ export class ArticleService {
   }
 
   async findById(id: number) {
-    const article = await Article.query()
-      .where('id', id)
-      .preload('tags')
-      .preload('chapters', (chapterQuery) => {
-        chapterQuery.select('id', 'articleId', 'chapterIndex', 'title')
-      })
-      .first()
+    const article = await this.buildArticleQuery(false).where('id', id).first()
 
     if (!article) {
       throw new Exception('Article not found', { status: 404 })
     }
 
     return article
+  }
+
+  private buildArticleQuery(requirePublished: boolean) {
+    const query = Article.query()
+      .preload('tags')
+      .preload('chapters', (chapterQuery) => {
+        chapterQuery.select('id', 'articleId', 'chapterIndex', 'title')
+      })
+
+    if (requirePublished) {
+      query.where('isPublished', true)
+    }
+
+    return query
   }
 
   async getChapterByIndex(articleId: number, chapterIndex: number) {

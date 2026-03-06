@@ -24,6 +24,14 @@ export interface StreamHandlers {
   onError: (error: Error) => void
 }
 
+export interface SimpleChatParams {
+  userId: number
+  articleId: number
+  message: string
+  articleTitle?: string
+  chapterContent?: string
+}
+
 @inject()
 export class ArticleChatService {
   constructor(
@@ -33,7 +41,38 @@ export class ArticleChatService {
     private promptService: PromptService
   ) {}
 
-  async chat(params: ChatParams, handlers: StreamHandlers): Promise<void> {
+  async chat(params: SimpleChatParams): Promise<string> {
+    const { userId, articleId, message, articleTitle, chapterContent } = params
+
+    const [userConfig, article] = await Promise.all([
+      this.userConfigService.getConfigByUserId(userId),
+      Article.findOrFail(articleId),
+    ])
+
+    const nativeLanguage = userConfig?.nativeLanguage ?? 'zh'
+    const targetLanguage = userConfig?.targetLanguage ?? 'en'
+
+    const systemPrompt = this.promptService.render('article/chat', {
+      nativeLanguage,
+      targetLanguage,
+      articleTitle: articleTitle || article.title,
+      chapterTitle: undefined,
+      chapterContent: chapterContent || undefined,
+      userMessage: message,
+    })
+
+    const aiConfig = await this.configService.getAiConfig()
+
+    return await this.aiService.chat(aiConfig, {
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: message },
+      ],
+      maxTokens: 1000,
+    })
+  }
+
+  async streamChat(params: ChatParams, handlers: StreamHandlers): Promise<void> {
     const { userId, articleId, message, chapterIndex } = params
 
     const [userConfig, article] = await Promise.all([

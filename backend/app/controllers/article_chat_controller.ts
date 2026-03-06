@@ -25,7 +25,7 @@ export default class ArticleChatController {
     response.header('Connection', 'keep-alive')
     response.header('X-Accel-Buffering', 'no')
 
-    await this.articleChatService.chat(
+    await this.articleChatService.streamChat(
       {
         userId,
         articleId,

@@ -4,10 +4,6 @@ import { Exception } from '@adonisjs/core/exceptions'
 
 export default class AdminMiddleware {
   async handle(ctx: HttpContext, next: NextFn) {
-    if (!ctx.auth.isAuthenticated) {
-      throw new Exception('Unauthenticated', { status: 401 })
-    }
-
     if (ctx.auth.user?.isAdmin !== true) {
       throw new Exception('Forbidden: Admin access required', { status: 403 })
     }

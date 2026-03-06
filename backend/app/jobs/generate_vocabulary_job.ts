@@ -1,5 +1,6 @@
 import { Job } from 'adonisjs-jobs'
 import app from '@adonisjs/core/services/app'
+import { Exception } from '@adonisjs/core/exceptions'
 import logger from '@adonisjs/core/services/logger'
 import { DictionaryService } from '#services/dictionary_service'
 import Article from '#models/article'
@@ -17,18 +18,18 @@ export default class GenerateVocabularyJob extends Job {
   async handle(payload: GenerateVocabularyPayload) {
     const { articleId } = payload
 
-    logger.info(`Starting vocabulary details generation for article ${articleId}`)
+    logger.info({ articleId }, 'Starting vocabulary details generation')
 
     const article = await Article.find(articleId)
 
     if (!article) {
-      throw new Error(`Article ${articleId} not found`)
+      throw new Exception(`Article ${articleId} not found`, { status: 404 })
     }
 
     const vocabularies = await ArticleVocabulary.query().where('articleId', articleId)
 
     if (vocabularies.length === 0) {
-      logger.info(`No vocabulary found for article ${articleId}`)
+      logger.info({ articleId }, 'No vocabulary found for article')
       return
     }
 

@@ -1,8 +1,5 @@
 import { inject } from '@adonisjs/core'
-import db from '@adonisjs/lucid/services/db'
 import Tag from '#models/tag'
-
-type TransactionClient = Awaited<ReturnType<typeof db.transaction>>
 
 @inject()
 export class TagService {
@@ -20,7 +17,7 @@ export class TagService {
     return await Tag.firstOrCreate({ slug }, { name, slug })
   }
 
-  async findOrCreateByName(name: string, trx?: TransactionClient): Promise<Tag> {
+  async findOrCreateByName(name: string, trx?: unknown): Promise<Tag> {
     const slug = this.generateSlug(name)
 
     if (trx) {
@@ -30,6 +27,7 @@ export class TagService {
       if (existing) {
         return existing
       }
+
       return await Tag.create({ name, slug }, { client: trx as any })
     }
 

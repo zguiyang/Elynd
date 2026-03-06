@@ -26,7 +26,7 @@ export class TtsService {
   }
 
   async generateAudio(chapters: ChapterInput[], articleId: number): Promise<TtsResult> {
-    logger.info(`Generating audio for article ${articleId}, ${chapters.length} chapters`)
+    logger.info({ articleId, chapterCount: chapters.length }, 'Starting audio generation')
 
     const allWordTimings: WordTiming[] = []
     const chapterTimings: ChapterTiming[] = []
@@ -34,7 +34,10 @@ export class TtsService {
     let cumulativeOffset = 0
 
     for (const chapter of chapters) {
-      logger.info(`Synthesizing chapter ${chapter.chapterIndex}: ${chapter.title}`)
+      logger.info(
+        { chapterIndex: chapter.chapterIndex, title: chapter.title },
+        'Synthesizing chapter'
+      )
 
       const text = `${chapter.title}\n\n${chapter.content}`
       const result = await this.synthesizeChapter(text)
@@ -55,7 +58,10 @@ export class TtsService {
       cumulativeOffset += result.duration
       audioBuffers.push(result.audioBuffer)
 
-      logger.info(`Chapter ${chapter.chapterIndex} completed, duration: ${result.duration}ms`)
+      logger.info(
+        { chapterIndex: chapter.chapterIndex, duration: result.duration },
+        'Chapter completed'
+      )
     }
 
     const finalBuffer = Buffer.concat(audioBuffers)
@@ -68,7 +74,7 @@ export class TtsService {
       duration: cumulativeOffset,
     }
 
-    logger.info(`Audio generated for article ${articleId}, total duration: ${cumulativeOffset}ms`)
+    logger.info({ articleId, totalDuration: cumulativeOffset }, 'Audio generation completed')
 
     return { audioUrl: key, timing }
   }

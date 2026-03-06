@@ -1,4 +1,5 @@
 import { OpenAI } from 'openai'
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions'
 import logger from '@adonisjs/core/services/logger'
 import { inject } from '@adonisjs/core'
 import type { AiClientConfig, AiChatParams, AiResponse, AiStreamHandlers } from '#types/ai'
@@ -70,7 +71,7 @@ export class AiService {
         usage: usage ?? { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
       })
 
-      logger.info('AI stream completed: model=%s, tokens=%d', config.model, usage?.totalTokens ?? 0)
+      logger.info({ model: config.model, tokens: usage?.totalTokens ?? 0 }, 'AI stream completed')
     } catch (error) {
       handlers.onError(this.handleError(error))
     }
@@ -87,17 +88,21 @@ export class AiService {
     try {
       const response = await client.chat.completions.create({
         model: config.model,
-        messages: params.messages,
+        messages: params.messages as ChatCompletionMessageParam[],
         max_tokens: params.maxTokens,
         temperature: params.temperature ?? 0.7,
-        response_format: params.responseFormat as any,
+        response_format: params.responseFormat,
         stream,
       })
 
-      const content = (response as any).choices[0]?.message?.content || ''
-      const usage = this.parseUsage((response as any).usage)
+      const completionResponse = response as unknown as {
+        choices?: Array<{ message?: { content?: string } }>
+        usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number }
+      }
+      const content = completionResponse.choices?.[0]?.message?.content || ''
+      const usage = this.parseUsage(completionResponse.usage)
 
-      logger.info('AI chat completed: model=%s, tokens=%d', config.model, usage.totalTokens)
+      logger.info({ model: config.model, tokens: usage.totalTokens }, 'AI chat completed')
 
       return { content, usage }
     } catch (error) {
@@ -148,18 +153,41 @@ export class AiService {
       return error
     }
 
-    const err = error as any
-
-    if (err.status === 401) {
-      return new AiServiceError(AI_ERROR_CODES.AUTH_ERROR, 'Invalid API key', err)
-    }
-    if (err.status === 429) {
-      return new AiServiceError(AI_ERROR_CODES.RATE_LIMIT, 'Rate limit exceeded', err)
-    }
-    if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
-      return new AiServiceError(AI_ERROR_CODES.NETWORK_ERROR, 'Network error', err)
+    const getStatus = (err: unknown): number | undefined => {
+      if (err && typeof err === 'object' && 'status' in err) {
+        return (err as { status: number }).status
+      }
+      return undefined
     }
 
-    return new AiServiceError(AI_ERROR_CODES.REQUEST_FAILED, err.message || 'Request failed', err)
+    const getCode = (err: unknown): string | undefined => {
+      if (err && typeof err === 'object' && 'code' in err) {
+        return (err as { code: string }).code
+      }
+      return undefined
+    }
+
+    const getMessage = (err: unknown): string => {
+      if (err instanceof Error) {
+        return err.message
+      }
+      return 'Request failed'
+    }
+
+    const status = getStatus(error)
+    const code = getCode(error)
+    const message = getMessage(error)
+
+    if (status === 401) {
+      return new AiServiceError(AI_ERROR_CODES.AUTH_ERROR, 'Invalid API key', error as Error)
+    }
+    if (status === 429) {
+      return new AiServiceError(AI_ERROR_CODES.RATE_LIMIT, 'Rate limit exceeded', error as Error)
+    }
+    if (code === 'ECONNREFUSED' || code === 'ETIMEDOUT') {
+      return new AiServiceError(AI_ERROR_CODES.NETWORK_ERROR, 'Network error', error as Error)
+    }
+
+    return new AiServiceError(AI_ERROR_CODES.REQUEST_FAILED, message, error as Error)
   }
 }

@@ -13,7 +13,8 @@ export default class ArticleChatController {
       data: request.qs(),
     })
     const articleId = params.id
-    const userId = auth.user!.id
+    const user = auth.getUserOrFail()
+    const userId = user.id
     const message = data.message
     const chapterIndex = data.chapterIndex
 

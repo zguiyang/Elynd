@@ -15,7 +15,7 @@ export default class AdminArticlesController {
   ) {}
 
   async generate({ auth, request }: HttpContext) {
-    const user = auth.user!
+    const user = auth.getUserOrFail()
     const data = await request.validateUsing(generateArticleValidator)
 
     logger.info(

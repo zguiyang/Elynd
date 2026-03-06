@@ -1,6 +1,7 @@
 import { DateTime } from 'luxon'
 import { Job } from 'adonisjs-jobs'
 import app from '@adonisjs/core/services/app'
+import { Exception } from '@adonisjs/core/exceptions'
 import logger from '@adonisjs/core/services/logger'
 import { TtsService } from '#services/tts_service'
 import Article from '#models/article'
@@ -19,12 +20,12 @@ export default class GenerateArticleAudioJob extends Job {
   async handle(payload: GenerateArticleAudioPayload) {
     const { articleId } = payload
 
-    logger.info(`Starting audio generation for article ${articleId}`)
+    logger.info({ articleId }, 'Starting audio generation')
 
     const article = await Article.find(articleId)
 
     if (!article) {
-      throw new Error(`Article ${articleId} not found`)
+      throw new Exception(`Article ${articleId} not found`, { status: 404 })
     }
 
     try {
@@ -54,7 +55,7 @@ export default class GenerateArticleAudioJob extends Job {
         })
         .save()
 
-      logger.info(`Audio generation completed for article ${articleId}`)
+      logger.info({ articleId }, 'Audio generation completed')
     } catch (error) {
       logger.error({ err: error, articleId }, 'Audio generation failed')
 

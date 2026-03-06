@@ -97,7 +97,7 @@ export default class GenerateArticleJob extends Job {
         },
       })
 
-      logger.info(`GenerateArticleJob completed for user ${userId}, article ${article.id}`)
+      logger.info({ userId, articleId: article.id }, 'Article generation completed')
     } catch (error) {
       logger.error({ err: error, jobId }, 'GenerateArticleJob failed')
 

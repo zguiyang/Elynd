@@ -26,8 +26,6 @@ import type {
   GenerateArticleParams,
 } from '#types/article_generation'
 
-type TransactionClient = Awaited<ReturnType<typeof db.transaction>>
-
 @inject()
 export class ArticleGenerationService {
   constructor(
@@ -436,7 +434,7 @@ export class ArticleGenerationService {
         content: chapter.content,
       }))
       await ArticleChapter.createMany(chaptersData, { client: trx })
-      logger.info(`Saved ${chaptersData.length} chapters for article ${article.id}`)
+      logger.info({ articleId: article.id, chapterCount: chaptersData.length }, 'Chapters saved')
 
       const tags = await this.processTags(data.tags, trx)
       await article.related('tags').attach(
@@ -453,12 +451,18 @@ export class ArticleGenerationService {
           phonetic: item.phonetic || null,
         }))
         await ArticleVocabulary.createMany(vocabularyData, { client: trx })
-        logger.info(`Saved ${vocabularyData.length} vocabulary items for article ${article.id}`)
+        logger.info(
+          { articleId: article.id, vocabularyCount: vocabularyData.length },
+          'Vocabulary saved'
+        )
       }
 
       await article.load('tags')
 
-      logger.info(`Article generated successfully: ${article.id}, tags: ${tags.length}`)
+      logger.info(
+        { articleId: article.id, tagCount: tags.length },
+        'Article generated successfully'
+      )
 
       return article
     })
@@ -466,11 +470,11 @@ export class ArticleGenerationService {
 
   private async processTags(
     aiTags: Array<{ name: string; isNew: boolean }>,
-    trx: TransactionClient
+    trx: unknown
   ): Promise<Tag[]> {
     const tags: Tag[] = []
     for (const aiTag of aiTags) {
-      const tag = await this.tagService.findOrCreateByName(aiTag.name, trx as any)
+      const tag = await this.tagService.findOrCreateByName(aiTag.name, trx)
       tags.push(tag)
     }
     return tags

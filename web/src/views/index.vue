@@ -93,6 +93,24 @@ const FEATURES = [
   },
 ]
 
+const STEPS = [
+  {
+    number: '01',
+    title: '选择文章',
+    description: '从海量精选库中，选择适合你兴趣和水平的文章进行阅读。',
+  },
+  {
+    number: '02',
+    title: '沉浸阅读',
+    description: '在 AI 的辅助下，通过听读、查词等功能，深度理解文章内容。',
+  },
+  {
+    number: '03',
+    title: '巩固提升',
+    description: '针对难点进行 AI 提问，系统记录生词，在阅读中不断进步。',
+  },
+]
+
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card'

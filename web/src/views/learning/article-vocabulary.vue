@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { Volume2, BookOpen } from 'lucide-vue-next'
+import { Volume2, BookOpen, ArrowLeft } from 'lucide-vue-next'
 import { articleApi } from '@/api/article'
 import type { VocabularyItem } from '@/types/article'
 
 const route = useRoute()
+const router = useRouter()
 const articleId = Number(route.params.id)
 
 const vocabularies = ref<VocabularyItem[]>([])
@@ -35,6 +36,10 @@ const getPhoneticText = (item: VocabularyItem) => {
   return item.phoneticText || item.phonetic || null
 }
 
+const goBack = () => {
+  router.push(`/learning/article/${articleId}`)
+}
+
 const hasDetails = (item: VocabularyItem) => {
   return item.details?.meanings && item.details.meanings.length > 0
 }
@@ -45,7 +50,17 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="p-4 md:p-6">
+  <div class="container mx-auto px-4 py-6 md:px-6">
+    <!-- 返回按钮 -->
+    <Button
+      variant="ghost"
+      class="mb-4 -ml-2 cursor-pointer hover:bg-muted transition-colors duration-200"
+      @click="goBack"
+    >
+      <ArrowLeft class="mr-2 size-4" />
+      返回文章
+    </Button>
+
     <div v-if="isLoading" class="flex items-center justify-center py-20">
       <div class="flex flex-col items-center gap-3">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -65,13 +80,17 @@ onMounted(() => {
     </div>
 
     <div v-else>
-      <div class="flex items-center gap-2 mb-4">
-        <h2 class="text-lg font-semibold">词汇表</h2>
+      <div class="flex items-center gap-2 mb-6">
+        <h1 class="text-2xl font-semibold">词汇表</h1>
         <Badge variant="secondary">{{ vocabularies.length }}</Badge>
       </div>
 
-      <div class="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4">
-        <Card v-for="item in vocabularies" :key="item.id" class="overflow-hidden break-inside-avoid">
+      <div class="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
+        <Card
+          v-for="item in vocabularies"
+          :key="item.id"
+          class="overflow-hidden break-inside-avoid mb-4 cursor-pointer hover:shadow-lg transition-all duration-200"
+        >
           <CardHeader class="pb-2">
             <div class="flex items-start justify-between gap-2">
               <div class="flex-1 min-w-0">

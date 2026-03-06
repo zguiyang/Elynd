@@ -11,15 +11,6 @@ export default class UserConfig extends BaseModel {
   declare userId: number
 
   @column()
-  declare aiBaseUrl: string | null
-
-  @column()
-  declare aiApiKey: string | null
-
-  @column()
-  declare aiModelName: string | null
-
-  @column()
   declare nativeLanguage: string | null
 
   @column()

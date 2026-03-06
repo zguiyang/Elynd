@@ -1,5 +1,6 @@
 import vine from '@vinejs/vine'
 import { Infer } from '@vinejs/vine/types'
+import { VALIDATION } from '#constants'
 
 export const loginValidator = vine.compile(
   vine.object({
@@ -20,7 +21,7 @@ export const registerValidator = vine.compile(
         return !user
       }),
     name: vine.string().trim().minLength(2).maxLength(50),
-    password: vine.string().minLength(6).maxLength(100),
+    password: vine.string().minLength(VALIDATION.PASSWORD_MIN).maxLength(VALIDATION.PASSWORD_MAX),
   })
 )
 

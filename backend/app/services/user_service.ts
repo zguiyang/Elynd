@@ -92,14 +92,18 @@ export class UserService {
   }
 
   async sendPasswordResetEmail(email: string): Promise<void> {
+    logger.info({ email }, 'Password reset requested')
+
     const user = await this.findByEmail(email)
 
     if (!user) {
-      throw new Exception('用户不存在', { status: 404 })
+      logger.debug({ email }, 'Password reset requested for non-existent email')
+      return
     }
 
     const canSend = await this.checkCanSend(email)
     if (!canSend) {
+      logger.warn({ email }, 'Password reset rate limited')
       throw new Exception('邮件发送过于频繁，请稍后再试', {
         status: 429,
       })

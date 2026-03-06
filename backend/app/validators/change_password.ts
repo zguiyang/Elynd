@@ -1,10 +1,14 @@
 import vine from '@vinejs/vine'
 import { Infer } from '@vinejs/vine/types'
+import { VALIDATION } from '#constants'
 
 export const changePasswordValidator = vine.compile(
   vine.object({
     currentPassword: vine.string(),
-    newPassword: vine.string().minLength(8).maxLength(128),
+    newPassword: vine
+      .string()
+      .minLength(VALIDATION.PASSWORD_MIN)
+      .maxLength(VALIDATION.PASSWORD_MAX),
   })
 )
 

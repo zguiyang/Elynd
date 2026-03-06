@@ -18,8 +18,8 @@ export default class SystemConfigsController {
 
     return {
       aiBaseUrl: config.aiBaseUrl,
-      aiApiKey: config.aiApiKey,
       aiModelName: config.aiModelName,
+      hasApiKey: !!config.aiApiKey,
     }
   }
 
@@ -45,8 +45,8 @@ export default class SystemConfigsController {
 
     return {
       aiBaseUrl: config.aiBaseUrl,
-      aiApiKey: config.aiApiKey,
       aiModelName: config.aiModelName,
+      hasApiKey: !!config.aiApiKey,
     }
   }
 }

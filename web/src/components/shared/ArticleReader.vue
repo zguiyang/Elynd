@@ -21,7 +21,7 @@ const contentStyle = computed(() => ({
 <template>
   <div class="flex-1 min-h-0 flex flex-col">
     <div
-      class="mx-auto w-full transition-all duration-300 py-8 font-serif"
+      class="mx-auto w-full transition-all duration-300 py-8"
       :style="{
         maxWidth: readingSettings.contentWidthCss,
         ...contentStyle,

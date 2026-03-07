@@ -18,15 +18,13 @@ const displayedContent = ref('')
 const isTyping = ref(false)
 let typewriterTimer: ReturnType<typeof setTimeout> | null = null
 
-marked.setOptions({
+marked.use({
   gfm: true,
   breaks: true,
-  headerIds: false,
-  mangle: false,
 })
 
 const renderedHtml = computed(() => {
-  const rawHtml = marked.parse(displayedContent.value)
+  const rawHtml = marked.parse(displayedContent.value) as string
   return DOMPurify.sanitize(rawHtml, {
     ALLOWED_TAGS: [
       'p', 'br', 'strong', 'em', 'u', 's', 'del', 'ins',

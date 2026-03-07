@@ -2,8 +2,8 @@ module.exports = {
   apps: [
     {
       name: 'elynd-backend',
-      script: './backend/build/bin/server.js',
-      cwd: '.',
+      script: './bin/server.js',
+      cwd: './backend/build',
       instances: 1,
       exec_mode: 'fork',
       env: {
@@ -13,8 +13,20 @@ module.exports = {
       error_file: './logs/backend-error.log',
       out_file: './logs/backend-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss',
-      autorestart: true,
-      watch: false
-    }
+    },
+    {
+      name: 'elynd-jobs',
+      script: './ace.js',
+      args: 'jobs:listen',
+      cwd: './backend/build',
+      instances: 1,
+      exec_mode: 'fork',
+      env: {
+        NODE_ENV: 'production'
+      },
+      error_file: './logs/jobs-error.log',
+      out_file: './logs/jobs-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss'
+    },
   ]
 }

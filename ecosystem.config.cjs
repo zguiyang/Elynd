@@ -3,7 +3,7 @@ module.exports = {
     {
       name: 'elynd-backend',
       script: './backend/build/bin/server.js',
-      cwd: './backend',
+      cwd: '.',
       instances: 1,
       exec_mode: 'fork',
       env: {

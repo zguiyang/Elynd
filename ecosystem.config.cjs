@@ -28,5 +28,19 @@ module.exports = {
       out_file: './logs/jobs-out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss'
     },
+    {
+      name: 'elynd-web',
+      script: 'serve',
+      args: './web/dist --port 3336 --spa',
+      interpreter: 'none',
+      cwd: __dirname,
+      autorestart: true,
+      watch: false,
+      instances: 1,
+      exec_mode: 'fork',
+      env: {
+        NODE_ENV: 'production'
+      }
+    }
   ]
 }

@@ -23,7 +23,9 @@ axiosInstance.interceptors.request.use((config) => {
 })
 
 axiosInstance.interceptors.response.use(
-  (response) => response.data,
+  (response) => {
+    return response
+  },
   (error) => {
     const status = error.response?.status
     const message = error.response?.data?.message || error.message || '网络错误'

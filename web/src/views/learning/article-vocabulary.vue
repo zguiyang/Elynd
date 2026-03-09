@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Volume2, BookOpen, ArrowLeft } from 'lucide-vue-next'
+import { ArrowLeft, BookOpen, Volume2 } from 'lucide-vue-next'
 import { articleApi } from '@/api/article'
 import { useRequest } from '@/composables/useRequest'
 import { toast } from 'vue-sonner'
@@ -12,10 +12,7 @@ const articleId = Number(route.params.id)
 const vocabularies = ref<VocabularyItem[]>([])
 
 const fetchVocabularyRequest = useRequest<VocabularyItem[]>({
-  fetcher: async () => {
-    const response = await articleApi.getVocabulary(articleId)
-    return response
-  },
+  fetcher: () => articleApi.getVocabulary(articleId),
 })
 
 const playAudio = (audioUrl: string | null, event: Event) => {
@@ -44,11 +41,14 @@ const loadData = async () => {
   }
 }
 
-watch(() => fetchVocabularyRequest.error.value, (err) => {
-  if (err) {
-    toast.error('获取词汇失败，请稍后重试')
-  }
-})
+watch(
+  () => fetchVocabularyRequest.error.value,
+  (err) => {
+    if (err) {
+      toast.error('获取词汇失败，请稍后重试')
+    }
+  },
+)
 
 onMounted(() => {
   loadData()

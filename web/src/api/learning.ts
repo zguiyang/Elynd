@@ -1,4 +1,4 @@
-import request from '@/lib/request'
+import { request } from '@/lib/request'
 
 export interface LearningIndexData {
   learningDays: number
@@ -28,15 +28,19 @@ export interface RecommendedArticle {
 }
 
 export const learningApi = {
-  login: () => request.post<{ learningDays: number; isFirstLoginToday: boolean }>('/api/learning/login'),
+  login: () =>
+    request<{ learningDays: number; isFirstLoginToday: boolean }>({ method: 'POST', url: '/api/learning/login' }),
 
   updateProgress: (articleId: number, progress: number) =>
-    request.put<{ articleId: number; progress: number }>('/api/learning/progress', {
-      articleId,
-      progress,
+    request<{ articleId: number; progress: number }>({
+      method: 'PUT',
+      url: '/api/learning/progress',
+      data: { articleId, progress },
     }),
 
-  getIndex: () => request.get<LearningIndexData>('/api/learning/index'),
+  getIndex: () =>
+    request<LearningIndexData>({ method: 'GET', url: '/api/learning/index' }),
 
-  getRecommendations: () => request.get<RecommendedArticle[]>('/api/learning/recommend'),
+  getRecommendations: () =>
+    request<RecommendedArticle[]>({ method: 'GET', url: '/api/learning/recommend' }),
 }

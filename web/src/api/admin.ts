@@ -1,4 +1,4 @@
-import request from '@/lib/request'
+import { request } from '@/lib/request'
 
 export interface GenerateArticleData {
   difficultyLevel: 'L1' | 'L2' | 'L3'
@@ -19,11 +19,11 @@ export interface SystemConfig {
 
 export const adminApi = {
   generateArticle: (data: GenerateArticleData) =>
-    request.post<GenerateArticleResponse>('/api/admin/articles/generate', data),
+    request<GenerateArticleResponse>({ method: 'POST', url: '/api/admin/articles/generate', data }),
 
   getSystemConfig: () =>
-    request.get<SystemConfig>('/api/admin/system-config'),
+    request<SystemConfig>({ method: 'GET', url: '/api/admin/system-config' }),
 
   updateSystemConfig: (data: SystemConfig) =>
-    request.put<SystemConfig>('/api/admin/system-config', data),
+    request<SystemConfig>({ method: 'PUT', url: '/api/admin/system-config', data }),
 }

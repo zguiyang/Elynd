@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { PlayCircle, Search, ArrowRight, Clock, BookMarked, Loader2 } from 'lucide-vue-next'
-import { learningApi } from '@/api/learning'
+import { ArrowRight, BookMarked, Clock, Loader2, PlayCircle, Search } from 'lucide-vue-next'
 import type { LearningIndexData } from '@/api/learning'
+import { learningApi } from '@/api/learning'
 import { useAuthStore } from '@/stores/auth'
 import { useRequest } from '@/composables/useRequest'
 import { toast } from 'vue-sonner'
@@ -45,10 +45,7 @@ const getDifficultyVariant = (difficulty: string) => {
 }
 
 const fetchData = useRequest<LearningIndexData>({
-  fetcher: async () => {
-    const response = await learningApi.getIndex()
-    return response
-  },
+  fetcher: learningApi.getIndex,
 })
 
 onMounted(async () => {
@@ -66,11 +63,14 @@ onMounted(async () => {
   }
 })
 
-watch(() => fetchData.error.value, (err) => {
-  if (err) {
-    toast.error('加载数据失败')
-  }
-})
+watch(
+  () => fetchData.error.value,
+  (err) => {
+    if (err) {
+      toast.error('加载数据失败')
+    }
+  },
+)
 </script>
 
 <template>

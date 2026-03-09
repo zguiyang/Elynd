@@ -1,4 +1,4 @@
-import request from '@/lib/request'
+import { request } from '@/lib/request'
 import type {
   Article,
   ArticleListItem,
@@ -11,15 +11,17 @@ import type {
 
 export const articleApi = {
   list: (params?: ArticleListParams) =>
-    request.get<PaginatedResponse<ArticleListItem>>('/api/articles', { params }),
+    request<PaginatedResponse<ArticleListItem>>({ method: 'GET', url: '/api/articles', params }),
 
-  getById: (id: number) => request.get<Article>(`/api/articles/${id}`),
+  getById: (id: number) =>
+    request<Article>({ method: 'GET', url: `/api/articles/${id}` }),
 
   getChapter: (articleId: number, chapterIndex: number) =>
-    request.get<Chapter>(`/api/articles/${articleId}/chapters/${chapterIndex}`),
+    request<Chapter>({ method: 'GET', url: `/api/articles/${articleId}/chapters/${chapterIndex}` }),
 
-  getTags: () => request.get<Tag[]>('/api/tags'),
+  getTags: () =>
+    request<Tag[]>({ method: 'GET', url: '/api/tags' }),
 
   getVocabulary: (articleId: number) =>
-    request.get<VocabularyItem[]>(`/api/articles/${articleId}/vocabulary`),
+    request<VocabularyItem[]>({ method: 'GET', url: `/api/articles/${articleId}/vocabulary` }),
 }

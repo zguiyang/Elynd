@@ -1,4 +1,4 @@
-import request from '@/lib/request'
+import { request } from '@/lib/request'
 
 export interface User {
   id: number
@@ -39,10 +39,13 @@ export interface ChangePasswordResponse {
 }
 
 export const userApi = {
-  me: () => request.get<User>('/api/user/me'),
+  me: () => request<User>({ method: 'GET', url: '/api/user/me' }),
+
   changePassword: (data: ChangePasswordData) =>
-    request.post<ChangePasswordResponse>('/api/user/change-password', data),
-  getConfig: () => request.get<UserConfig>('/api/user/config'),
+    request<ChangePasswordResponse>({ method: 'POST', url: '/api/user/change-password', data }),
+
+  getConfig: () => request<UserConfig>({ method: 'GET', url: '/api/user/config' }),
+
   updateConfig: (data: UpdateUserConfigData) =>
-    request.put<UserConfig>('/api/user/config', data),
+    request<UserConfig>({ method: 'PUT', url: '/api/user/config', data }),
 }

@@ -1,8 +1,8 @@
-import axios from 'axios'
+import axios, { type AxiosRequestConfig } from 'axios'
 import { useAuthStore } from '@/stores/auth'
 import { toast } from 'vue-sonner'
 
-const request = axios.create({
+const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   timeout: 1000 * 60,
   headers: {
@@ -11,7 +11,7 @@ const request = axios.create({
   withCredentials: true,
 })
 
-request.interceptors.request.use((config) => {
+axiosInstance.interceptors.request.use((config) => {
   const authStore = useAuthStore()
   const token = authStore.token
 
@@ -22,7 +22,7 @@ request.interceptors.request.use((config) => {
   return config
 })
 
-request.interceptors.response.use(
+axiosInstance.interceptors.response.use(
   (response) => response.data,
   (error) => {
     const status = error.response?.status
@@ -32,8 +32,7 @@ request.interceptors.response.use(
       const authStore = useAuthStore()
       authStore.token = null
       authStore.user = null
-      
-      // 只有在非登录/注册等白名单页面时才执行强制跳转，防止无限重定向
+
       if (!window.location.pathname.startsWith('/auth/')) {
         window.location.href = '/auth/sign-in'
       }
@@ -43,4 +42,9 @@ request.interceptors.response.use(
   }
 )
 
-export default request
+export const request = async <T>(config: AxiosRequestConfig): Promise<T> => {
+  const res = await axiosInstance(config)
+  return res.data
+}
+
+export default axiosInstance

@@ -1,4 +1,4 @@
-import request from '@/lib/request'
+import { request } from '@/lib/request'
 
 export interface LoginData {
   email: string
@@ -33,9 +33,18 @@ export interface ResetPasswordData {
 }
 
 export const authApi = {
-  login: (data: LoginData) => request.post<AuthResponse>('/api/auth/login', data),
-  register: (data: RegisterData) => request.post<AuthResponse>('/api/auth/register', data),
-  logout: () => request.post('/api/auth/logout'),
-  forgotPassword: (email: string) => request.post<ForgotPasswordResponse>('/api/auth/forgot-password', { email }),
-  resetPassword: (data: ResetPasswordData) => request.post('/api/auth/reset-password', data),
+  login: (data: LoginData) =>
+    request<AuthResponse>({ method: 'POST', url: '/api/auth/login', data }),
+
+  register: (data: RegisterData) =>
+    request<AuthResponse>({ method: 'POST', url: '/api/auth/register', data }),
+
+  logout: () =>
+    request<void>({ method: 'POST', url: '/api/auth/logout' }),
+
+  forgotPassword: (email: string) =>
+    request<ForgotPasswordResponse>({ method: 'POST', url: '/api/auth/forgot-password', data: { email } }),
+
+  resetPassword: (data: ResetPasswordData) =>
+    request<void>({ method: 'POST', url: '/api/auth/reset-password', data }),
 }

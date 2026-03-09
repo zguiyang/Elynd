@@ -8,6 +8,9 @@ import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
 
 export default defineConfig({
+  server: {
+    port: 3336,
+  },
   plugins: [
     tailwindcss(),
     AutoImport({

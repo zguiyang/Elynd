@@ -20,4 +20,4 @@ EXPOSE ${PORT}
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "process.exit(0)"
 
-CMD ["node", "backend/bin/server.js"]
+CMD sh -c "echo '[SERVER] Starting...' && node backend/bin/server.js & echo '[JOBS] Starting...' && node ace jobs:listen & wait"

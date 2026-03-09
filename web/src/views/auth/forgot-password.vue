@@ -41,13 +41,10 @@ const validateImmediate = () => {
 const handleSubmit = async () => {
   if (!validateImmediate()) return
 
-  try {
-    await authStore.forgotPassword(email.value)
+  const result = await authStore.forgotPassword(email.value)
+  if (result) {
     isSubmitted.value = true
     toast.success('重置链接已发送到您的邮箱')
-  } catch (error: unknown) {
-    const err = error as { response?: { data?: { message?: string } } }
-    toast.error(err.response?.data?.message || '发送失败，请稍后重试')
   }
 }
 </script>

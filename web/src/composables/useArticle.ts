@@ -1,11 +1,12 @@
 import { articleApi } from '@/api/article'
+import { useRequest } from './useRequest'
 import type { Article, ArticleListItem, ArticleListParams, Chapter, Tag } from '@/types/article'
 
 export function useArticles() {
   const articles = ref<ArticleListItem[]>([])
   const tags = ref<Tag[]>([])
   const isLoading = ref(false)
-  const error = ref<string | null>(null)
+  const error = ref<unknown>(null)
   const pagination = ref({
     currentPage: 1,
     perPage: 20,
@@ -14,27 +15,30 @@ export function useArticles() {
   })
 
   const fetchArticles = async (params?: ArticleListParams) => {
-    isLoading.value = true
-    error.value = null
-
-    try {
-      const response = await articleApi.list(params)
-      articles.value = response.data.data
-      pagination.value = response.data.meta
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : '获取文章列表失败'
-      error.value = message
-    } finally {
-      isLoading.value = false
+    const request = useRequest<ArticleListItem[]>({
+      fetcher: async () => {
+        const response = await articleApi.list(params)
+        return response.data.data
+      },
+    })
+    const result = await request.execute()
+    if (result) {
+      articles.value = result
     }
+    isLoading.value = request.isLoading.value
+    error.value = request.error.value
   }
 
   const fetchTags = async () => {
-    try {
-      const response = await articleApi.getTags()
-      tags.value = response.data
-    } catch (e: unknown) {
-      console.error('Failed to fetch tags:', e)
+    const request = useRequest<Tag[]>({
+      fetcher: async () => {
+        const response = await articleApi.getTags()
+        return response.data
+      },
+    })
+    const result = await request.execute()
+    if (result) {
+      tags.value = result
     }
   }
 
@@ -57,21 +61,21 @@ export function useArticles() {
 export function useArticle() {
   const article = ref<Article | null>(null)
   const isLoading = ref(false)
-  const error = ref<string | null>(null)
+  const error = ref<unknown>(null)
 
   const fetchArticle = async (id: number) => {
-    isLoading.value = true
-    error.value = null
-
-    try {
-      const response = await articleApi.getById(id)
-      article.value = response.data
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : '获取文章详情失败'
-      error.value = message
-    } finally {
-      isLoading.value = false
+    const request = useRequest<Article>({
+      fetcher: async () => {
+        const response = await articleApi.getById(id)
+        return response.data
+      },
+    })
+    const result = await request.execute()
+    if (result) {
+      article.value = result
     }
+    isLoading.value = request.isLoading.value
+    error.value = request.error.value
   }
 
   return {
@@ -85,21 +89,21 @@ export function useArticle() {
 export function useChapter() {
   const chapter = ref<Chapter | null>(null)
   const isLoading = ref(false)
-  const error = ref<string | null>(null)
+  const error = ref<unknown>(null)
 
   const fetchChapter = async (articleId: number, chapterIndex: number) => {
-    isLoading.value = true
-    error.value = null
-
-    try {
-      const response = await articleApi.getChapter(articleId, chapterIndex)
-      chapter.value = response.data
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : '获取章节内容失败'
-      error.value = message
-    } finally {
-      isLoading.value = false
+    const request = useRequest<Chapter>({
+      fetcher: async () => {
+        const response = await articleApi.getChapter(articleId, chapterIndex)
+        return response.data
+      },
+    })
+    const result = await request.execute()
+    if (result) {
+      chapter.value = result
     }
+    isLoading.value = request.isLoading.value
+    error.value = request.error.value
   }
 
   return {

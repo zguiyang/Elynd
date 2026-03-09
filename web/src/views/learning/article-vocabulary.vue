@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Volume2, BookOpen, ArrowLeft } from 'lucide-vue-next'
 import { articleApi } from '@/api/article'
+import { useRequest } from '@/composables/useRequest'
+import { toast } from 'vue-sonner'
 import type { VocabularyItem } from '@/types/article'
 
 const route = useRoute()
@@ -8,22 +10,13 @@ const router = useRouter()
 const articleId = Number(route.params.id)
 
 const vocabularies = ref<VocabularyItem[]>([])
-const isLoading = ref(true)
-const error = ref<string | null>(null)
 
-const fetchVocabulary = async () => {
-  isLoading.value = true
-  error.value = null
-  try {
+const fetchVocabularyRequest = useRequest<VocabularyItem[]>({
+  fetcher: async () => {
     const response = await articleApi.getVocabulary(articleId)
-    vocabularies.value = response.data
-  } catch (e) {
-    error.value = '获取词汇失败，请稍后重试'
-    console.error(e)
-  } finally {
-    isLoading.value = false
-  }
-}
+    return response.data
+  },
+})
 
 const playAudio = (audioUrl: string | null, event: Event) => {
   event.stopPropagation()
@@ -44,8 +37,21 @@ const hasDetails = (item: VocabularyItem) => {
   return item.details?.meanings && item.details.meanings.length > 0
 }
 
+const loadData = async () => {
+  const result = await fetchVocabularyRequest.execute()
+  if (result) {
+    vocabularies.value = result
+  }
+}
+
+watch(() => fetchVocabularyRequest.error.value, (err) => {
+  if (err) {
+    toast.error('获取词汇失败，请稍后重试')
+  }
+})
+
 onMounted(() => {
-  fetchVocabulary()
+  loadData()
 })
 </script>
 
@@ -61,17 +67,17 @@ onMounted(() => {
       返回文章
     </Button>
 
-    <div v-if="isLoading" class="flex items-center justify-center py-20">
+    <div v-if="fetchVocabularyRequest.isLoading.value" class="flex items-center justify-center py-20">
       <div class="flex flex-col items-center gap-3">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         <p class="text-sm text-muted-foreground">加载词汇中...</p>
       </div>
     </div>
 
-    <div v-else-if="error" class="flex flex-col items-center justify-center py-20">
+    <div v-else-if="fetchVocabularyRequest.error.value" class="flex flex-col items-center justify-center py-20">
       <BookOpen class="size-12 text-muted-foreground mb-4" />
-      <p class="text-muted-foreground">{{ error }}</p>
-      <Button class="mt-4" @click="fetchVocabulary">重试</Button>
+      <p class="text-muted-foreground">获取词汇失败，请稍后重试</p>
+      <Button class="mt-4" @click="loadData">重试</Button>
     </div>
 
     <div v-else-if="vocabularies.length === 0" class="flex flex-col items-center justify-center py-20">

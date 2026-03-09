@@ -3,12 +3,13 @@ import { PlayCircle, Search, ArrowRight, Clock, BookMarked, Loader2 } from 'luci
 import { learningApi } from '@/api/learning'
 import type { LearningIndexData } from '@/api/learning'
 import { useAuthStore } from '@/stores/auth'
+import { useRequest } from '@/composables/useRequest'
+import { toast } from 'vue-sonner'
 
 const authStore = useAuthStore()
 
 const isLoading = ref(true)
 const userData = ref<LearningIndexData | null>(null)
-const error = ref<string | null>(null)
 
 const userName = computed(() => authStore.user?.fullName || '学习者')
 
@@ -43,23 +44,31 @@ const getDifficultyVariant = (difficulty: string) => {
   return variants[difficulty] || 'secondary'
 }
 
-onMounted(async () => {
-  try {
+const fetchData = useRequest<LearningIndexData>({
+  fetcher: async () => {
     const response = await learningApi.getIndex()
-    const data = response.data
-    userData.value = data
+    return response.data
+  },
+})
+
+onMounted(async () => {
+  const result = await fetchData.execute()
+  isLoading.value = false
+  if (result) {
+    userData.value = result
     stats.value = [
-      { icon: Clock, label: '累计学习天数', value: String(data.learningDays), color: 'text-blue-500' },
-      { icon: BookMarked, label: '阅读篇数', value: String(data.articlesReadCount), color: 'text-green-500' },
+      { icon: Clock, label: '累计学习天数', value: String(result.learningDays), color: 'text-blue-500' },
+      { icon: BookMarked, label: '阅读篇数', value: String(result.articlesReadCount), color: 'text-green-500' },
       { icon: Search, label: '查词次数', value: '0', color: 'text-purple-500' },
     ]
-    continueReading.value = data.continueReading
-    recommendedArticles.value = data.recommendedArticles
-  } catch (e) {
-    error.value = '加载数据失败'
-    console.error(e)
-  } finally {
-    isLoading.value = false
+    continueReading.value = result.continueReading
+    recommendedArticles.value = result.recommendedArticles
+  }
+})
+
+watch(() => fetchData.error.value, (err) => {
+  if (err) {
+    toast.error('加载数据失败')
   }
 })
 </script>
@@ -72,8 +81,8 @@ onMounted(async () => {
     </div>
 
     <!-- Error State -->
-    <div v-else-if="error" class="text-center py-20">
-      <p class="text-destructive">{{ error }}</p>
+    <div v-else-if="fetchData.error.value" class="text-center py-20">
+      <p class="text-destructive">加载数据失败</p>
     </div>
 
     <!-- Content -->

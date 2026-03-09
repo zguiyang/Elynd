@@ -2,21 +2,12 @@
 import { toast } from 'vue-sonner'
 import { userApi, type UserConfig, type UpdateUserConfigData } from '@/api/user'
 import { useAuthStore } from '@/stores/auth'
+import { useRequest } from '@/composables/useRequest'
 
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
 
-interface ApiError {
-  response?: {
-    data?: {
-      message?: string
-    }
-  }
-}
-
 const config = ref<UserConfig | null>(null)
-const isLoading = ref(false)
-const isSaving = ref(false)
 
 const formData = ref({
   fullName: '',
@@ -60,26 +51,27 @@ const formatDate = (dateString: string | undefined) => {
   })
 }
 
-const fetchConfig = async () => {
-  isLoading.value = true
-  try {
+const fetchConfigRequest = useRequest<UserConfig>({
+  fetcher: async () => {
     const response = await userApi.getConfig()
-    config.value = response.data
-    formData.value.nativeLanguage = response.data.nativeLanguage || 'zh'
-    formData.value.targetLanguage = response.data.targetLanguage || 'en'
-    formData.value.vocabularyLevel = response.data.vocabularyLevel || 'beginner'
-    formData.value.englishVariant = response.data.englishVariant || 'en-US'
-    formData.value.learningInitCompleted = response.data.learningInitCompleted
-  } catch (error) {
-    console.error('Failed to fetch config:', error)
-  } finally {
-    isLoading.value = false
+    return response as unknown as UserConfig
+  },
+})
+
+const fetchConfig = async () => {
+  const result = await fetchConfigRequest.execute()
+  if (result) {
+    config.value = result
+    formData.value.nativeLanguage = result.nativeLanguage || 'zh'
+    formData.value.targetLanguage = result.targetLanguage || 'en'
+    formData.value.vocabularyLevel = result.vocabularyLevel || 'beginner'
+    formData.value.englishVariant = result.englishVariant || 'en-US'
+    formData.value.learningInitCompleted = result.learningInitCompleted
   }
 }
 
-const handleSaveConfig = async () => {
-  isSaving.value = true
-  try {
+const saveConfigRequest = useRequest({
+  fetcher: async () => {
     const data: UpdateUserConfigData = {
       nativeLanguage: formData.value.nativeLanguage,
       targetLanguage: formData.value.targetLanguage,
@@ -88,15 +80,23 @@ const handleSaveConfig = async () => {
       learningInitCompleted: formData.value.learningInitCompleted,
     }
     await userApi.updateConfig(data)
+    return true
+  },
+})
+
+const handleSaveConfig = async () => {
+  const result = await saveConfigRequest.execute()
+
+  if (result) {
     toast.success('设置已保存')
-  } catch (error) {
-    const apiError = error as ApiError
-    const message = apiError.response?.data?.message || '保存设置失败'
-    toast.error(message)
-  } finally {
-    isSaving.value = false
   }
 }
+
+watch(() => fetchConfigRequest.error.value, (err) => {
+  if (err) {
+    console.error('Failed to fetch config:', err)
+  }
+})
 
 onMounted(async () => {
   await authStore.fetchUser()
@@ -130,7 +130,7 @@ onMounted(async () => {
       </div>
     </header>
 
-    <div v-if="isLoading" class="flex items-center justify-center py-12">
+    <div v-if="fetchConfigRequest.isLoading.value" class="flex items-center justify-center py-12">
       <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
     </div>
 
@@ -230,8 +230,8 @@ onMounted(async () => {
           </div>
         </div>
 
-        <Button @click="handleSaveConfig" :disabled="isSaving" class="w-full h-10 mt-2">
-          {{ isSaving ? '保存中...' : '保存设置' }}
+        <Button @click="handleSaveConfig" :disabled="saveConfigRequest.isLoading.value" class="w-full h-10 mt-2">
+          {{ saveConfigRequest.isLoading.value ? '保存中...' : '保存设置' }}
         </Button>
       </section>
 

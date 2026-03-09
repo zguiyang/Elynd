@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { isAxiosError } from 'axios'
 import { toast } from 'vue-sonner'
 import { useAuthStore } from '@/stores/auth'
 
@@ -12,16 +11,10 @@ const password = ref('')
 const confirmPassword = ref('')
 
 const handleSubmit = async () => {
-  try {
-    await authStore.register({ name: name.value, email: email.value, password: password.value })
+  const result = await authStore.register({ name: name.value, email: email.value, password: password.value })
+  if (result) {
     toast.success('注册成功')
     router.push('/learning')
-  } catch (error) {
-    let message = '注册失败，请稍后重试'
-    if (isAxiosError(error)) {
-      message = error.response?.data?.message || message
-    }
-    toast.error(message)
   }
 }
 </script>

@@ -119,15 +119,17 @@ const fetchVocabulary = async () => {
   }
 
   isLoadingVocabulary.value = true
-  try {
-    const data = await articleApi.getVocabulary(articleId)
-    vocabularies.value = data.data
-    showVocabulary.value = true
-  } catch {
-    toast.error('获取词汇失败')
-  } finally {
-    isLoadingVocabulary.value = false
-  }
+  await articleApi.getVocabulary(articleId)
+    .then((res) => {
+      vocabularies.value = res.data
+      showVocabulary.value = true
+    })
+    .catch(() => {
+      toast.error('获取词汇失败')
+    })
+    .finally(() => {
+      isLoadingVocabulary.value = false
+    })
 }
 
 watch(

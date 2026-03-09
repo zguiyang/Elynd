@@ -10,13 +10,15 @@ const password = ref('')
 const rememberMe = ref(false)
 
 const handleSubmit = async () => {
-  await authStore.login({
+  const result = await authStore.login({
     email: email.value,
     password: password.value,
     rememberMe: rememberMe.value,
   })
-  toast.success('登录成功')
-  await router.push('/learning')
+  if (result) {
+    toast.success('登录成功')
+    await router.push('/learning')
+  }
 }
 </script>
 

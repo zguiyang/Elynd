@@ -66,17 +66,14 @@ const handleSubmit = async () => {
     return
   }
 
-  try {
-    await authStore.resetPassword({
-      token,
-      password: password.value,
-      passwordConfirmation: confirmPassword.value,
-    })
+  const success = await authStore.resetPassword({
+    token,
+    password: password.value,
+    passwordConfirmation: confirmPassword.value,
+  })
+  if (success) {
     isSuccess.value = true
     toast.success('密码重置成功')
-  } catch (error: unknown) {
-    const err = error as { response?: { data?: { message?: string } } }
-    toast.error(err.response?.data?.message || '重置失败，请稍后重试')
   }
 }
 </script>

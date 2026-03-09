@@ -55,14 +55,16 @@ const updateReadingProgress = async (progress: number) => {
   if (progress === lastSavedProgress.value || isProgressUpdatePending.value) return
 
   isProgressUpdatePending.value = true
-  try {
-    await learningApi.updateProgress(articleId, progress)
-    lastSavedProgress.value = progress
-  } catch (e) {
-    console.error('Failed to update reading progress:', e)
-  } finally {
-    isProgressUpdatePending.value = false
-  }
+  await learningApi.updateProgress(articleId, progress)
+    .then(() => {
+      lastSavedProgress.value = progress
+    })
+    .catch(() => {
+      console.error('Failed to update reading progress')
+    })
+    .finally(() => {
+      isProgressUpdatePending.value = false
+    })
 }
 
 let progressTimer: ReturnType<typeof setInterval> | null = null

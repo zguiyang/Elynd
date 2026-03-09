@@ -2,9 +2,9 @@
 import { toast } from 'vue-sonner'
 import { adminApi, type SystemConfig } from '@/api/admin'
 import { Eye, EyeOff, Loader2 } from 'lucide-vue-next'
+import { useRequest } from '@/composables/useRequest'
 
 const isLoading = ref(false)
-const isSaving = ref(false)
 const showApiKey = ref(false)
 
 const formData = ref<SystemConfig>({
@@ -19,23 +19,31 @@ const formErrors = ref({
   aiModelName: '',
 })
 
-const loadConfig = async () => {
-  isLoading.value = true
-  try {
+const loadConfigRequest = useRequest<SystemConfig>({
+  fetcher: async () => {
     const data = await adminApi.getSystemConfig()
-    formData.value = {
+    return {
       aiBaseUrl: data.aiBaseUrl || '',
       aiApiKey: data.aiApiKey || '',
       aiModelName: data.aiModelName || 'gpt-4o-mini',
     }
-  } catch (error) {
-    const err = error as { message?: string }
-    const message = err?.message || '加载配置失败'
-    toast.error(message)
-  } finally {
-    isLoading.value = false
+  },
+})
+
+const loadConfig = async () => {
+  isLoading.value = true
+  const result = await loadConfigRequest.execute()
+  isLoading.value = false
+  if (result) {
+    formData.value = result
   }
 }
+
+watch(() => loadConfigRequest.error.value, (err) => {
+  if (err) {
+    toast.error('加载配置失败')
+  }
+})
 
 const validateForm = (): boolean => {
   formErrors.value = {
@@ -69,25 +77,26 @@ const validateForm = (): boolean => {
   return true
 }
 
-const handleSubmit = async () => {
-  if (!validateForm()) {
-    return
-  }
-
-  isSaving.value = true
-  try {
+const saveConfigRequest = useRequest({
+  fetcher: async () => {
     await adminApi.updateSystemConfig({
       aiBaseUrl: formData.value.aiBaseUrl.trim(),
       aiApiKey: formData.value.aiApiKey.trim(),
       aiModelName: formData.value.aiModelName.trim(),
     })
+    return true
+  },
+})
+
+const handleSubmit = async () => {
+  if (!validateForm()) {
+    return
+  }
+
+  const result = await saveConfigRequest.execute()
+
+  if (result) {
     toast.success('配置保存成功')
-  } catch (error) {
-    const err = error as { message?: string }
-    const message = err?.message || '保存配置失败，请稍后重试'
-    toast.error(message)
-  } finally {
-    isSaving.value = false
   }
 }
 
@@ -113,7 +122,7 @@ onMounted(() => {
               id="aiBaseUrl"
               v-model="formData.aiBaseUrl"
               placeholder="https://api.openai.com/v1"
-              :disabled="isSaving"
+              :disabled="saveConfigRequest.isLoading.value"
               :class="{ 'border-destructive': formErrors.aiBaseUrl }"
             />
             <p v-if="formErrors.aiBaseUrl" class="text-sm text-destructive">
@@ -129,14 +138,14 @@ onMounted(() => {
                 v-model="formData.aiApiKey"
                 :type="showApiKey ? 'text' : 'password'"
                 placeholder="sk-..."
-                :disabled="isSaving"
+                :disabled="saveConfigRequest.isLoading.value"
                 :class="{ 'border-destructive': formErrors.aiApiKey, 'pr-10': true }"
               />
               <button
                 type="button"
                 @click="showApiKey = !showApiKey"
                 class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                :disabled="isSaving"
+                :disabled="saveConfigRequest.isLoading.value"
               >
                 <Eye v-if="showApiKey" class="h-4 w-4" />
                 <EyeOff v-else class="h-4 w-4" />
@@ -153,7 +162,7 @@ onMounted(() => {
               id="aiModelName"
               v-model="formData.aiModelName"
               placeholder="gpt-4o-mini"
-              :disabled="isSaving"
+              :disabled="saveConfigRequest.isLoading.value"
               :class="{ 'border-destructive': formErrors.aiModelName }"
             />
             <p v-if="formErrors.aiModelName" class="text-sm text-destructive">
@@ -161,9 +170,9 @@ onMounted(() => {
             </p>
           </div>
 
-          <Button type="submit" class="w-full" :disabled="isSaving">
-            <Loader2 v-if="isSaving" class="mr-2 h-4 w-4 animate-spin" />
-            {{ isSaving ? '保存中...' : '保存配置' }}
+          <Button type="submit" class="w-full" :disabled="saveConfigRequest.isLoading.value">
+            <Loader2 v-if="saveConfigRequest.isLoading.value" class="mr-2 h-4 w-4 animate-spin" />
+            {{ saveConfigRequest.isLoading.value ? '保存中...' : '保存配置' }}
           </Button>
         </form>
       </CardContent>

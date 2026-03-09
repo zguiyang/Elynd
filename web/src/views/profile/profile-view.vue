@@ -1,24 +1,25 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
-import { userApi } from '@/api/user'
 import { useAuthStore } from '@/stores/auth'
+import { userApi } from '@/api/user'
+import { useRequest } from '@/composables/useRequest'
 
 const authStore = useAuthStore()
 const user = computed(() => authStore.user)
-
-const isLoading = ref(false)
 
 const currentPassword = ref('')
 const newPassword = ref('')
 const passwordError = ref('')
 
-interface ApiError {
-  response?: {
-    data?: {
-      message?: string
-    }
-  }
-}
+const changePasswordRequest = useRequest({
+  fetcher: async () => {
+    await userApi.changePassword({
+      currentPassword: currentPassword.value,
+      newPassword: newPassword.value,
+    })
+    return true
+  },
+})
 
 const handlePasswordChange = async () => {
   passwordError.value = ''
@@ -28,24 +29,21 @@ const handlePasswordChange = async () => {
     return
   }
 
-  isLoading.value = true
-  try {
-    await userApi.changePassword({
-      currentPassword: currentPassword.value,
-      newPassword: newPassword.value,
-    })
+  const result = await changePasswordRequest.execute()
+
+  if (result) {
     toast.success('密码修改成功')
     currentPassword.value = ''
     newPassword.value = ''
     await authStore.logout()
-  } catch (error: unknown) {
-    const apiError = error as ApiError
-    const message = apiError.response?.data?.message || '密码修改失败，请检查当前密码'
-    toast.error(message)
-  } finally {
-    isLoading.value = false
   }
 }
+
+watch(() => changePasswordRequest.error.value, (err) => {
+  if (err) {
+    toast.error('密码修改失败，请检查当前密码')
+  }
+})
 
 const formatDate = (dateString: string | undefined) => {
   if (!dateString) return '-'
@@ -119,7 +117,7 @@ onMounted(async () => {
             type="password"
             v-model="currentPassword"
             required
-            :disabled="isLoading"
+            :disabled="changePasswordRequest.isLoading.value"
             class="h-10"
           />
         </div>
@@ -130,14 +128,14 @@ onMounted(async () => {
             type="password"
             v-model="newPassword"
             required
-            :disabled="isLoading"
+            :disabled="changePasswordRequest.isLoading.value"
             class="h-10"
           />
           <p class="text-xs text-muted-foreground">密码长度至少8位</p>
         </div>
         <p v-if="passwordError" class="text-sm text-destructive">{{ passwordError }}</p>
-        <Button type="submit" :disabled="isLoading" class="w-full h-10">
-          {{ isLoading ? '保存中...' : '保存更改' }}
+        <Button type="submit" :disabled="changePasswordRequest.isLoading.value" class="w-full h-10">
+          {{ changePasswordRequest.isLoading.value ? '保存中...' : '保存更改' }}
         </Button>
       </form>
     </section>

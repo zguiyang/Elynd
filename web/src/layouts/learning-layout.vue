@@ -22,25 +22,25 @@ const isActive = (path: string) => {
   <div class="h-dvh flex flex-col bg-background">
     <!-- Header -->
     <header class="flex-none border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
-      <div class="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div class="container mx-auto flex h-14 items-center justify-between px-4 sm:px-6 lg:px-8">
         <!-- Logo -->
-        <RouterLink to="/learning" class="flex items-center gap-2">
+        <RouterLink to="/learning" class="flex items-center gap-2.5 transition-opacity duration-200 hover:opacity-80">
           <img 
             src="../assets/logo.svg" 
             alt="Logo" 
-            class="h-12 w-12"
+            class="h-9 w-9"
           />
-          <span class="text-xl font-semibold">Elynd</span>
+          <span class="text-lg font-semibold tracking-tight">Elynd</span>
         </RouterLink>
 
         <!-- Navigation -->
-        <nav class="hidden md:flex items-center gap-1">
+        <nav class="hidden md:flex items-center gap-0.5">
           <RouterLink
             v-for="item in navigation"
             :key="item.path"
             :to="item.path"
             :class="[
-              'flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200',
+              'flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200 cursor-pointer',
               isActive(item.path)
                 ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted'
@@ -54,13 +54,20 @@ const isActive = (path: string) => {
         <!-- User Menu -->
         <DropdownMenu>
           <DropdownMenuTrigger as-child>
-            <Button variant="ghost" size="icon" class="rounded-full">
-              <Avatar class="size-8">
-                <AvatarImage :src="authStore.user?.avatar || ''" alt="User" />
-                <AvatarFallback>
-                  <User class="size-4" />
-                </AvatarFallback>
-              </Avatar>
+            <Button variant="ghost" class="rounded-full h-9 px-1.5 gap-2 hover:bg-muted transition-colors duration-200 cursor-pointer">
+              <div class="flex items-center gap-2">
+                <div class="flex items-center justify-center rounded-full bg-primary/10 size-7">
+                  <Avatar class="size-5">
+                    <AvatarImage :src="authStore.user?.avatar || ''" alt="User" />
+                    <AvatarFallback class="size-5 text-xs">
+                      <User class="size-3" />
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+                <span class="text-sm font-medium text-foreground hidden lg:inline-block max-w-[100px] truncate">
+                  {{ authStore.user?.fullName || authStore.user?.email?.split('@')[0] }}
+                </span>
+              </div>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" class="w-56">

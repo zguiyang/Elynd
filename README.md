@@ -1,10 +1,8 @@
 # Elynd
 
-<p align="center">
-  <img src="https://img.shields.io/badge/version-MVP%200.1-blue" alt="MVP Version">
-  <img src="https://img.shields.io/badge/status-Developing-yellow" alt="Status">
-  <img src="https://img.shields.io/badge/Type-AI%20English%20Learning-orange" alt="Product Type">
-</p>
+[English](./README.en.md) | 中文
+
+---
 
 ## 产品简介
 
@@ -12,178 +10,140 @@
 
 我们的目标用户是：**英语基础较弱、因职场/跳槽/工作需要学习英语的成年人**。
 
----
+### 核心功能
 
-## 核心价值主张
+| 功能 | 说明 |
+|-----|------|
+| 📖 **分级阅读** | 预置难度分级的精选文章（L1/L2/L3），涵盖职场、日常、科技等场景 |
+| 🎧 **听读模式** | TTS 语音朗读，边听边读，多感官学习 |
+| 🔍 **即点查词** | 点击单词立即显示中英文释义，不打断阅读节奏 |
+| 🤖 **AI 问答** | 基于当前文章内容智能问答，深入理解文章含义 |
 
-| 用户痛点 | Elynd 解决方案 |
-|---------|---------------|
-| 找不到适合自己水平的阅读材料 | 预置难度分级的精选文章 (L1/L2/L3) |
-| 查单词打断阅读节奏 | 点击即查，沉浸式阅读体验 |
-| 只有文字，缺乏听觉输入 | TTS 听读功能，边听边读 |
-| 遇到难点无人解答 | AI 实时问答，深入理解文章 |
+### 快速开始
 
----
+#### 环境要求
 
-## 功能矩阵
-
-### 🚧 开发中功能 (MVP v0.1)
-
-| 模块 | 功能描述 | 用户价值 | 状态 |
-|-----|---------|---------|-----|
-| **用户系统** | 注册 / 登录 / 学习记录 | 个性化学习体验，数据追踪 | 🔵 开发中 |
-| **文章内容** | 预置分级文章 (职场/日常/科技) | 精准匹配学习需求 | 🔵 开发中 |
-| **阅读功能** | 完整文章展示 + 点击查词 | 沉浸式阅读，零障碍 | 🔵 开发中 |
-| **听读功能** | TTS 音频播放/暂停/重播 | 多感官学习，听读结合 | 🔵 开发中 |
-| **查词功能** | 点击单词显示中英文释义 | 即时获取词义，保持阅读流畅 | 🔵 开发中 |
-| **AI 问答** | 基于当前文章智能问答 | 个性化辅导，深入理解 | 🔵 开发中 |
-
-### ❌ MVP 暂不包含
-
-以下功能将根据用户反馈和验证结果在后续版本迭代：
-
-- 用户生成文章
-- 多语言学习支持
-- 学习计划 / 打卡系统
-- 成就系统 / 等级系统
-- 排行榜
-- 社交功能 / 学习小组
-- 语音识别 / 跟读打分
-- AI 场景对话训练
-- 复杂个性化推荐系统
-
----
-
-## 产品定位与设计理念
-
-### 🎯 精准定位
-
-Elynd 不是一款「全能型」英语学习应用，而是一个**轻量级阅读入口**：
-
-- **内容可控**：文章由产品方精选，确保难度适宜
-- **功能极简**：每个功能都服务于「完成一次阅读」这一核心目标
-- **门槛最低**：注册即可使用，无需复杂设置
-
-### 🧪 MVP 验证目标
-
-我们正在验证以下核心假设：
-
-1. **完成率**：用户是否愿意在 Elynd 中完整阅读一篇文章？
-2. **功能使用率**：用户是否会频繁使用查词和 AI 提问功能？
-3. **易用性**：相比自行找文章 + 查词，Elynd 是否更省力？
-4. **复访率**：用户是否愿意再次使用 Elynd？
-
----
-
-## 成功标准
-
-> ⚠️ 以下为 MVP 上线后的预期目标，当前处于开发验证阶段。
-
-### 📊 预期指标
-
-| 指标 | 目标 |
-|-----|-----|
-| 文章完成率 | ≥ 60% |
-| 查词功能使用率 | ≥ 40% 用户 |
-| AI 问答使用率 | ≥ 20% 用户 |
-| 次日留存率 | ≥ 25% |
-
-### 📝 定性反馈
-
-- 用户主观感受：「比我自己找文章看方便」
-- 用户需求洞察：哪些功能最受欢迎？最需要改进什么？
-
----
-
-## 技术架构
-
-### 技术栈
-
-| 层级 | 技术选型 |
+| 工具 | 版本要求 |
 |-----|---------|
-| 后端 | AdonisJS 6.x + PostgreSQL |
-| 前端 | Nuxt 4.x + Nuxt UI + Tailwind CSS |
-| 认证 | Access Token (Bearer) |
-| AI | 第三方 LLM API |
+| Node.js | ≥ 20.0.0 |
+| pnpm | ≥ 10.0.0 |
+| PostgreSQL | ≥ 15 |
+| Redis | 最新版 |
 
-### 项目结构
+#### 本地开发
 
-```
-Elynd (pnpm workspace)
-├── backend/           # AdonisJS API 服务 (port 3333)
-└── web/              # Nuxt 4 前端应用 (port 3000)
-```
-
----
-
-## 快速开始
-
-> ⚠️ 当前版本为 MVP 开发中，部分功能正在实现。
-
-### 开发环境
+**步骤 1：克隆项目**
 
 ```bash
-# 安装依赖
-pnpm install
+git clone <repository-url>
+cd elynd
+```
 
-# 启动后端
+**步骤 2：安装依赖**
+
+```bash
+pnpm install
+```
+
+**步骤 3：配置环境变量**
+
+```bash
+# 后端配置
+cp backend/.env.example backend/.env
+# 编辑 backend/.env，配置数据库连接等信息
+
+# 前端配置
+cp web/.env.example web/.env
+```
+
+**步骤 4：启动数据库（可选：使用 Docker）**
+
+```bash
+# 使用 Docker 启动 PostgreSQL 和 Redis
+docker-compose -f docker-compose.dev.yml up -d
+```
+
+**步骤 5：初始化数据库**
+
+```bash
+cd backend
+node ace migration:run
+```
+
+**步骤 6：启动开发服务器**
+
+```bash
+# 终端 1：启动后端 (http://localhost:3335)
 pnpm run dev:backend
 
-# 启动前端
+# 终端 2：启动前端 (http://localhost:3000)
 pnpm run dev:web
 ```
 
-### 生产构建
+启动完成后，打开浏览器访问 **http://localhost:3000** 即可使用。
+
+### Docker 部署
+
+#### 生产环境部署
+
+**步骤 1：配置环境变量**
 
 ```bash
-pnpm run build
-pnpm run start        # 后端生产环境
-pnpm run preview      # 前端预览
+# 后端生产配置
+cp backend/.env.example backend/.env
+# 编辑 backend/.env，设置生产环境参数：
+# - NODE_ENV=production
+# - DB_HOST=你的数据库地址
+# - REDIS_HOST=你的Redis地址
+# - APP_KEY=（运行 node ace generate:key 生成）
 ```
 
----
+**步骤 2：构建并启动容器**
 
-## 路线图
+```bash
+# 使用 Docker Compose 构建并启动
+docker-compose -f docker-compose.prod.yml up -d --build
+```
 
-### 🔜 近期迭代 (v0.2+)
+**步骤 3：初始化数据库（首次部署）**
 
-- [ ] AI 自动生成文章
-- [ ] 个性化难度调节
-- [ ] 基于文章生成练习题
+```bash
+# 进入容器执行迁移
+docker exec -it elynd-server sh
+node ace migration:run
+exit
+```
 
-### 🏃 长期规划
+#### 部署参数说明
 
-- [ ] 场景对话训练
-- [ ] 多语言支持
-- [ ] 学习进度系统
-- [ ] 订阅与付费模式
+| 环境变量 | 说明 | 示例 |
+|---------|------|------|
+| `PORT` | 后端服务端口 | `3335` |
+| `DB_HOST` | PostgreSQL 地址 | `postgres` |
+| `DB_PORT` | PostgreSQL 端口 | `5432` |
+| `DB_USER` | 数据库用户名 | `root` |
+| `DB_PASSWORD` | 数据库密码 | `your_password` |
+| `DB_DATABASE` | 数据库名称 | `app` |
+| `REDIS_HOST` | Redis 地址 | `redis` |
+| `APP_KEY` | 应用密钥 | （必需） |
 
----
+### 常见问题
 
-## 贡献指南
+**Q: 启动失败，提示数据库连接失败？**
 
-Elynd 是一款正处于 MVP 验证阶段的产品。我们欢迎以下类型的贡献：
+A: 请确认 PostgreSQL 已启动，并检查 `.env` 中的数据库配置是否正确。
 
-1. **功能反馈**：使用过程中发现的问题和建议
-2. **内容贡献**：优质英语文章推荐
-3. **技术贡献**：欢迎提交 PR (请先阅读 CONTRIBUTING.md)
+**Q: TTS 语音无法播放？**
 
----
+A: 需要配置 Azure Speech API 密钥（`TTS_API_KEY` 和 `TTS_REGION`）。如未配置，系统将使用备用方案。
 
-## 许可证
+**Q: 如何查看服务状态？**
 
-MIT License
-
----
-
-## 联系我们
-
-- 📧 邮箱：hello@elynd.com
-- 🌐 网站：https://elynd.com
+A: 后端服务健康检查：`http://localhost:3335/health`
 
 ---
 
 <p align="center">
-  <strong>Elynd MVP 0.1</strong><br>
-  目标：验证学习模式，而不是构建完整系统
+  <strong>Elynd</strong><br>
+  AI-Powered English Learning
 </p>

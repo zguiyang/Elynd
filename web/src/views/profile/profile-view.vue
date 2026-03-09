@@ -11,7 +11,7 @@ const currentPassword = ref('')
 const newPassword = ref('')
 const passwordError = ref('')
 
-const changePasswordRequest = useRequest({
+const { execute: changePasswordExecute, error: changePasswordError, isLoading: changePasswordLoading } = useRequest({
   fetcher: async () => {
     await userApi.changePassword({
       currentPassword: currentPassword.value,
@@ -29,7 +29,7 @@ const handlePasswordChange = async () => {
     return
   }
 
-  const result = await changePasswordRequest.execute()
+  const result = await changePasswordExecute()
 
   if (result) {
     toast.success('密码修改成功')
@@ -39,7 +39,7 @@ const handlePasswordChange = async () => {
   }
 }
 
-watch(() => changePasswordRequest.error.value, (err) => {
+watch(() => changePasswordError.value, (err) => {
   if (err) {
     toast.error('密码修改失败，请检查当前密码')
   }
@@ -117,7 +117,7 @@ onMounted(async () => {
             type="password"
             v-model="currentPassword"
             required
-            :disabled="changePasswordRequest.isLoading.value"
+            :disabled="changePasswordLoading"
             class="h-10"
           />
         </div>
@@ -128,14 +128,14 @@ onMounted(async () => {
             type="password"
             v-model="newPassword"
             required
-            :disabled="changePasswordRequest.isLoading.value"
+            :disabled="changePasswordLoading"
             class="h-10"
           />
           <p class="text-xs text-muted-foreground">密码长度至少8位</p>
         </div>
         <p v-if="passwordError" class="text-sm text-destructive">{{ passwordError }}</p>
-        <Button type="submit" :disabled="changePasswordRequest.isLoading.value" class="w-full h-10">
-          {{ changePasswordRequest.isLoading.value ? '保存中...' : '保存更改' }}
+        <Button type="submit" :disabled="changePasswordLoading" class="w-full h-10">
+          {{ changePasswordLoading ? '保存中...' : '保存更改' }}
         </Button>
       </form>
     </section>

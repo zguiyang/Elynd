@@ -44,12 +44,12 @@ const getDifficultyVariant = (difficulty: string) => {
   return variants[difficulty] || 'secondary'
 }
 
-const fetchData = useRequest<LearningIndexData>({
+const { execute, error } = useRequest<LearningIndexData>({
   fetcher: learningApi.getIndex,
 })
 
 onMounted(async () => {
-  const result = await fetchData.execute()
+  const result = await execute()
   isLoading.value = false
   if (result) {
     userData.value = result
@@ -64,7 +64,7 @@ onMounted(async () => {
 })
 
 watch(
-  () => fetchData.error.value,
+  () => error.value,
   (err) => {
     if (err) {
       toast.error('加载数据失败')
@@ -81,7 +81,7 @@ watch(
     </div>
 
     <!-- Error State -->
-    <div v-else-if="fetchData.error.value" class="text-center py-20">
+    <div v-else-if="error" class="text-center py-20">
       <p class="text-destructive">加载数据失败</p>
     </div>
 

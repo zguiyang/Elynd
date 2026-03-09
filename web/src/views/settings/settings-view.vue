@@ -51,7 +51,7 @@ const formatDate = (dateString: string | undefined) => {
   })
 }
 
-const fetchConfigRequest = useRequest<UserConfig>({
+const { execute: fetchConfigExecute, error: fetchError, isLoading: fetchLoading } = useRequest<UserConfig>({
   fetcher: async () => {
     const response = await userApi.getConfig()
     return response as unknown as UserConfig
@@ -59,7 +59,7 @@ const fetchConfigRequest = useRequest<UserConfig>({
 })
 
 const fetchConfig = async () => {
-  const result = await fetchConfigRequest.execute()
+  const result = await fetchConfigExecute()
   if (result) {
     config.value = result
     formData.value.nativeLanguage = result.nativeLanguage || 'zh'
@@ -70,7 +70,7 @@ const fetchConfig = async () => {
   }
 }
 
-const saveConfigRequest = useRequest({
+const { execute: saveConfigExecute, isLoading: saveLoading } = useRequest({
   fetcher: async () => {
     const data: UpdateUserConfigData = {
       nativeLanguage: formData.value.nativeLanguage,
@@ -85,14 +85,14 @@ const saveConfigRequest = useRequest({
 })
 
 const handleSaveConfig = async () => {
-  const result = await saveConfigRequest.execute()
+  const result = await saveConfigExecute()
 
   if (result) {
     toast.success('设置已保存')
   }
 }
 
-watch(() => fetchConfigRequest.error.value, (err) => {
+watch(() => fetchError.value, (err) => {
   if (err) {
     console.error('Failed to fetch config:', err)
   }
@@ -130,7 +130,7 @@ onMounted(async () => {
       </div>
     </header>
 
-    <div v-if="fetchConfigRequest.isLoading.value" class="flex items-center justify-center py-12">
+    <div v-if="fetchLoading" class="flex items-center justify-center py-12">
       <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
     </div>
 
@@ -230,8 +230,8 @@ onMounted(async () => {
           </div>
         </div>
 
-        <Button @click="handleSaveConfig" :disabled="saveConfigRequest.isLoading.value" class="w-full h-10 mt-2">
-          {{ saveConfigRequest.isLoading.value ? '保存中...' : '保存设置' }}
+        <Button @click="handleSaveConfig" :disabled="saveLoading" class="w-full h-10 mt-2">
+          {{ saveLoading ? '保存中...' : '保存设置' }}
         </Button>
       </section>
 

@@ -11,7 +11,7 @@ const articleId = Number(route.params.id)
 
 const vocabularies = ref<VocabularyItem[]>([])
 
-const fetchVocabularyRequest = useRequest<VocabularyItem[]>({
+const { execute, error, isLoading } = useRequest<VocabularyItem[]>({
   fetcher: () => articleApi.getVocabulary(articleId),
 })
 
@@ -35,14 +35,14 @@ const hasDetails = (item: VocabularyItem) => {
 }
 
 const loadData = async () => {
-  const result = await fetchVocabularyRequest.execute()
+  const result = await execute()
   if (result) {
     vocabularies.value = result
   }
 }
 
 watch(
-  () => fetchVocabularyRequest.error.value,
+  () => error.value,
   (err) => {
     if (err) {
       toast.error('获取词汇失败，请稍后重试')
@@ -67,14 +67,14 @@ onMounted(() => {
       返回文章
     </Button>
 
-    <div v-if="fetchVocabularyRequest.isLoading.value" class="flex items-center justify-center py-20">
+    <div v-if="isLoading" class="flex items-center justify-center py-20">
       <div class="flex flex-col items-center gap-3">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         <p class="text-sm text-muted-foreground">加载词汇中...</p>
       </div>
     </div>
 
-    <div v-else-if="fetchVocabularyRequest.error.value" class="flex flex-col items-center justify-center py-20">
+    <div v-else-if="error" class="flex flex-col items-center justify-center py-20">
       <BookOpen class="size-12 text-muted-foreground mb-4" />
       <p class="text-muted-foreground">获取词汇失败，请稍后重试</p>
       <Button class="mt-4" @click="loadData">重试</Button>

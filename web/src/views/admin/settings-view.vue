@@ -19,7 +19,7 @@ const formErrors = ref({
   aiModelName: '',
 })
 
-const loadConfigRequest = useRequest<SystemConfig>({
+const { execute: loadConfigExecute, error: loadError } = useRequest<SystemConfig>({
   fetcher: async () => {
     const data = await adminApi.getSystemConfig()
     return {
@@ -32,14 +32,14 @@ const loadConfigRequest = useRequest<SystemConfig>({
 
 const loadConfig = async () => {
   isLoading.value = true
-  const result = await loadConfigRequest.execute()
+  const result = await loadConfigExecute()
   isLoading.value = false
   if (result) {
     formData.value = result
   }
 }
 
-watch(() => loadConfigRequest.error.value, (err) => {
+watch(() => loadError.value, (err) => {
   if (err) {
     toast.error('加载配置失败')
   }
@@ -77,7 +77,7 @@ const validateForm = (): boolean => {
   return true
 }
 
-const saveConfigRequest = useRequest({
+const { execute: saveConfigExecute, isLoading: saveLoading } = useRequest({
   fetcher: async () => {
     await adminApi.updateSystemConfig({
       aiBaseUrl: formData.value.aiBaseUrl.trim(),
@@ -93,7 +93,7 @@ const handleSubmit = async () => {
     return
   }
 
-  const result = await saveConfigRequest.execute()
+  const result = await saveConfigExecute()
 
   if (result) {
     toast.success('配置保存成功')
@@ -122,7 +122,7 @@ onMounted(() => {
               id="aiBaseUrl"
               v-model="formData.aiBaseUrl"
               placeholder="https://api.openai.com/v1"
-              :disabled="saveConfigRequest.isLoading.value"
+              :disabled="saveLoading"
               :class="{ 'border-destructive': formErrors.aiBaseUrl }"
             />
             <p v-if="formErrors.aiBaseUrl" class="text-sm text-destructive">
@@ -138,14 +138,14 @@ onMounted(() => {
                 v-model="formData.aiApiKey"
                 :type="showApiKey ? 'text' : 'password'"
                 placeholder="sk-..."
-                :disabled="saveConfigRequest.isLoading.value"
+                :disabled="saveLoading"
                 :class="{ 'border-destructive': formErrors.aiApiKey, 'pr-10': true }"
               />
               <button
                 type="button"
                 @click="showApiKey = !showApiKey"
                 class="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                :disabled="saveConfigRequest.isLoading.value"
+                :disabled="saveLoading"
               >
                 <Eye v-if="showApiKey" class="h-4 w-4" />
                 <EyeOff v-else class="h-4 w-4" />
@@ -162,7 +162,7 @@ onMounted(() => {
               id="aiModelName"
               v-model="formData.aiModelName"
               placeholder="gpt-4o-mini"
-              :disabled="saveConfigRequest.isLoading.value"
+              :disabled="saveLoading"
               :class="{ 'border-destructive': formErrors.aiModelName }"
             />
             <p v-if="formErrors.aiModelName" class="text-sm text-destructive">
@@ -170,9 +170,9 @@ onMounted(() => {
             </p>
           </div>
 
-          <Button type="submit" class="w-full" :disabled="saveConfigRequest.isLoading.value">
-            <Loader2 v-if="saveConfigRequest.isLoading.value" class="mr-2 h-4 w-4 animate-spin" />
-            {{ saveConfigRequest.isLoading.value ? '保存中...' : '保存配置' }}
+          <Button type="submit" class="w-full" :disabled="saveLoading">
+            <Loader2 v-if="saveLoading" class="mr-2 h-4 w-4 animate-spin" />
+            {{ saveLoading ? '保存中...' : '保存配置' }}
           </Button>
         </form>
       </CardContent>

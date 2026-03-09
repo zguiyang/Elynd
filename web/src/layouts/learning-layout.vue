@@ -2,11 +2,20 @@
 import { BookOpen, User, Settings, BookMarked, Shield } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 
+const route = useRoute()
 const authStore = useAuthStore()
+
 const navigation = [
   { name: '学习', path: '/learning', icon: BookMarked },
   { name: '文章', path: '/learning/articles', icon: BookOpen },
 ]
+
+const isActive = (path: string) => {
+  if (path === '/learning') {
+    return route.path === '/learning' || route.path === '/learning/'
+  }
+  return route.path.startsWith(path)
+}
 </script>
 
 <template>
@@ -28,7 +37,12 @@ const navigation = [
             v-for="item in navigation"
             :key="item.path"
             :to="item.path"
-            class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+            :class="[
+              'flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200',
+              isActive(item.path)
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+            ]"
           >
             <component :is="item.icon" class="size-4" />
             {{ item.name }}

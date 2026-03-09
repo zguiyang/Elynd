@@ -13,12 +13,12 @@ export interface FullUserConfig {
  * Generated from user configuration to guide content generation
  */
 export interface LearnerProfile {
-  background: string
-  challenges: string[]
-  preferredContentStyle: string
-  vocabularyGuidelines: string
-  sentenceComplexity: string
-  culturalConsiderations: string
+  languageTransfer: string
+  commonChallenges: string[]
+  contentStyle: string
+  vocabularyRules: string
+  sentenceGuidelines: string
+  authenticityNotes: string
 }
 
 /**
@@ -26,13 +26,14 @@ export interface LearnerProfile {
  * Analyze topic, determine content type, tone, themes
  */
 export interface ArticleStrategy {
-  contentType: 'narrative' | 'expository' | 'dialogue' | 'mixed'
+  primaryOutputType: string
+  contentSubtype: string
   tone: string
   suggestedChapterCount: number
   culturalContext: string
   keyThemes: string[]
-  generationHints: string
   estimatedWordCount: number
+  generationHints: string
 }
 
 /**
@@ -40,11 +41,10 @@ export interface ArticleStrategy {
  * Let AI define boundaries, rules, and guidelines
  */
 export interface AiPlanning {
-  writingBoundaries: string[]
-  attentionPoints: string[]
-  writingRules: string[]
-  styleGuidelines: string[]
-  authenticityGuidelines: string[]
+  mustFollowRules: string[]
+  strictBoundaries: string[]
+  authenticityAndNaturalness: string[]
+  levelSpecificAdjustments: string[]
 }
 
 /**
@@ -57,15 +57,18 @@ export interface CharactersAndScenes {
     role: string
     personality: string
     speakingStyle: string
+    ageGroup?: string
   }>
   scenes: Array<{
     location: string
     atmosphere: string
     timeOfDay?: string
+    sensoryDetails?: string
   }>
   dialogueStyle: {
-    style: string
-    authenticityLevel: string
+    overallStyle: string
+    naturalnessRules: string
+    levelAdaptation: string
   }
 }
 
@@ -81,6 +84,7 @@ export interface ArticleOutline {
     summary: string
   }>
   estimatedWordCount: number
+  structureNote?: string
 }
 
 /**
@@ -126,6 +130,7 @@ export interface Vocabulary {
     sentence: string
     phonetic: string
   }>
+  totalSelected: number
 }
 
 /**

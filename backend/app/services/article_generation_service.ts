@@ -73,12 +73,14 @@ export class ArticleGenerationService {
       charactersScenes,
       chapterStructures,
       difficultyConfig,
-      aiConfig
+      aiConfig,
+      userConfig.englishVariant
     )
 
     const vocabulary = await this.executeStep7(learnerProfile, chapters, userConfig, aiConfig)
 
     const tags = await this.executeStep8(
+      learnerProfile,
       userConfig.nativeLanguage,
       outline.title,
       chapters,
@@ -121,7 +123,7 @@ export class ArticleGenerationService {
       responseFormat: { type: 'json_object' },
     })
 
-    logger.info({ step: 0, background: response.background }, 'Step 0 completed')
+    logger.info({ step: 0, background: response.languageTransfer }, 'Step 0 completed')
 
     return response
   }
@@ -169,7 +171,7 @@ export class ArticleGenerationService {
       strategy: JSON.stringify(strategy),
     })
 
-    logger.info({ step: 2, strategy: strategy.contentType }, 'Step 2: AI self-planning')
+    logger.info({ step: 2, strategy: strategy.primaryOutputType }, 'Step 2: AI self-planning')
 
     const response = await this.aiService.chatJson<AiPlanning>(aiConfig, {
       messages: [
@@ -181,7 +183,7 @@ export class ArticleGenerationService {
       responseFormat: { type: 'json_object' },
     })
 
-    logger.info({ step: 2, boundaries: response.writingBoundaries.length }, 'Step 2 completed')
+    logger.info({ step: 2, boundaries: response.mustFollowRules?.length ?? 0 }, 'Step 2 completed')
 
     return response
   }
@@ -234,7 +236,7 @@ export class ArticleGenerationService {
       charactersScenes: JSON.stringify(charactersScenes),
     })
 
-    logger.info({ step: 4, strategy: strategy.contentType }, 'Step 4: Outline generation')
+    logger.info({ step: 4, strategy: strategy.primaryOutputType }, 'Step 4: Outline generation')
 
     const response = await this.aiService.chatJson<ArticleOutline>(aiConfig, {
       messages: [
@@ -297,7 +299,8 @@ export class ArticleGenerationService {
     charactersScenes: CharactersAndScenes,
     chapterStructures: AllChapterStructures,
     config: DifficultyConfig,
-    aiConfig: AiClientConfig
+    aiConfig: AiClientConfig,
+    englishVariant: string
   ): Promise<ChapterContent[]> {
     const systemPrompt = this.promptService.render('system', {})
 
@@ -308,6 +311,7 @@ export class ArticleGenerationService {
         charactersScenes: JSON.stringify(charactersScenes),
         chapterStructure: JSON.stringify(chapterStructure),
         chapterIndex: chapterStructure.index,
+        englishVariant,
       })
 
       logger.info({ step: 6, chapter: chapterStructure.index }, 'Step 6: Content generation')
@@ -346,6 +350,7 @@ export class ArticleGenerationService {
       learnerProfile: JSON.stringify(learnerProfile),
       chapters: JSON.stringify(chapters),
       nativeLanguage: userConfig.nativeLanguage,
+      englishVariant: userConfig.englishVariant,
     })
 
     logger.info({ step: 7, chapterCount: chapters.length }, 'Step 7: Vocabulary extraction')
@@ -366,6 +371,7 @@ export class ArticleGenerationService {
   }
 
   private async executeStep8(
+    learnerProfile: LearnerProfile,
     nativeLanguage: string,
     title: string,
     chapters: ChapterContent[],
@@ -381,6 +387,7 @@ export class ArticleGenerationService {
       title,
       nativeLanguage,
       chapterSummaries,
+      learnerProfile: JSON.stringify(learnerProfile),
     })
 
     logger.info({ step: 8, title }, 'Step 8: Tag generation')

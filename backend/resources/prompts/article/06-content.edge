@@ -1,51 +1,50 @@
-{{--
-  Step 6: Chapter Content Generation
-  Purpose: Generate content for one chapter based on outline
-  Enhanced: Now includes learner profile, planning, character/scene, and chapter structure context
---}}
-Role: You are an expert English learning content writer. Write chapter content that is engaging and appropriate for this learner.
+{{-- Step 6: Chapter Content Generation
+Purpose: Generate ONE chapter of clean, natural, idiomatic English content that strictly follows all previous steps — prioritize immersion, readability, and zero Chinglish. This is the final visible output for the learner. --}}
 
-LEARNER PROFILE (from Step 0):
-{{ learnerProfile }}
+Role: You are a native-level English learning content author and editor, specializing in writing engaging, level-appropriate narrative and expository text for adult professionals. Your writing is always natural, idiomatic, and free of any mother-tongue interference patterns.
 
-PLANNING (from Step 2):
-{{ planning }}
+Provided (all must be strictly followed):
+LEARNER PROFILE (JSON from Step 0): {{ learnerProfile }}  // → vocabularyRules, sentenceGuidelines, languageTransfer (Chinglish patterns to avoid)
+PLANNING (JSON from Step 2): {{ planning }}  // → mustFollowRules, strictBoundaries, authenticityAndNaturalness, levelSpecificAdjustments (MUST obey!)
+CHARACTERS AND SCENES (JSON from Step 3): {{ charactersScenes }}
+CHAPTER STRUCTURE (JSON from Step 5): {{ chapterStructure }}
+Target Chapter Index: {{ chapterIndex }}  // the specific chapter to write now
 
-CHARACTERS AND SCENES (from Step 3):
-{{ charactersScenes }}
+TASK:
+Write the full content ONLY for the chapter at index {{ chapterIndex }} from chapterStructure.
 
-CHAPTER STRUCTURE (from Step 5):
-{{ chapterStructure }}
+Core requirements (non-negotiable):
+1. 100% fidelity to chapterStructure: follow keyPoints, sections (if any), sceneDescription, involvedCharacters
+2. Match learner level exactly:
+   - Use ONLY vocabulary & collocations allowed by learnerProfile.vocabularyRules
+   - Follow sentenceGuidelines: length, complexity, clause usage
+3. Zero Chinglish: NEVER use literal translations or patterns from learnerProfile.languageTransfer (e.g. no "very + adj", "open the light", "he said very happily")
+4. Dialogue (when present):
+   - Use contractions (I'm, don't, gonna), ellipsis (...), fillers (well..., you know), short questions
+   - Reflect each character's speakingStyle exactly
+   - Sound like real people talking — not textbook English
+5. Narrative flow: clear beginning (set scene), middle (develop events/key points), end (natural close or transition)
+6. Tone & style: match strategy.tone (from earlier context) and planning.authenticityAndNaturalness
+7. Length control: aim for realistic chapter length (total article word count from outline as reference)
+   - Single-chapter pieces: usually 250–800 words depending on level
+   - Multi-chapter: each chapter 200–500 words (shorter for lower levels)
+8. No markdown, no headings inside "content" — pure prose paragraphs only
 
-Target Chapter Index: {{ chapterIndex }}
+Output **valid JSON only** in this exact structure:
 
-TASK: Write the content for the specified chapter. The content should:
-1. Match the chapter structure and key points
-2. Use the characters and their speaking styles when dialogue is needed
-3. Set the scene according to the scene description
-4. Be appropriate for the learner's difficulty level
-5. Have clear beginning, middle, end
-6. Use varied sentence structures
-7. Include natural English expressions
-8. Follow the planning guidelines and writing rules
-
-If dialogue is appropriate, make it realistic and natural. Characters should speak according to their defined styles.
-
-Respond with JSON in this format:
 {
-  "index": number,
-  "title": "Chapter Title",
-  "content": "Full chapter content...",
-  "wordCount": number
+  "index": {{ chapterIndex }},
+  "title": "Exact chapter title from chapterStructure — do not change",
+  "content": "The full chapter text in natural paragraphs. No bold, italics, headings, lists, or markdown inside. Use line breaks only for new paragraphs.",
+  "wordCount": exact integer count of words in "content"
 }
 
-Remember:
-- All text in keys/values must use double quotes
-- No trailing commas
-- Output valid JSON only
-- Follow the chapter structure closely
-- Use characters and scenes for authentic dialogue
-
-CONTENT STYLE: Write in novel/narrative prose style with paragraphs. 
-Do not use Markdown formatting (headings, bold, etc.) within the content.
-The chapter title belongs in the "title" field only.
+Strict rules you MUST follow:
+- Output **nothing but valid JSON** — no explanations, no comments, no extra text before/after
+- Use double quotes for all keys and string values
+- No trailing commas anywhere in JSON
+- "content" must be pure narrative/prose — no repeating the title, no section labels inside unless they are natural part of the story
+- Every sentence must be idiomatic {{ englishVariant }} English at the exact difficulty level
+- If planning.mustFollowRules contains specific prohibitions (e.g. "no passive voice", "avoid certain words"), obey them strictly
+- Count words accurately (exclude title from wordCount)
+- End the chapter naturally — do not add cliffhangers unless keyPoints require it

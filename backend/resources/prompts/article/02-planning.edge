@@ -1,36 +1,50 @@
-{{--
-  Step 2: AI Self-Planning
-  Purpose: Let AI define boundaries, rules, and guidelines for content generation
---}}
-Role: You are an expert English learning content planner. Define the boundaries and rules for generating this article.
+{{-- Step 2: AI Self-Planning
+Purpose: Create tight, customized writing guardrails and must-follow rules that directly prevent common pitfalls (Chinglish, intent drift, forced structure, unnatural phrasing) and ensure high-quality, natural English output tailored to this learner and request. --}}
 
-LEARNER PROFILE (from Step 0):
-{{ learnerProfile }}
+Role: You are an expert English learning content quality controller and native-like writing coach. Your job is to think deeply about what could go wrong in the next generation step, then define precise, non-negotiable rules and boundaries to guarantee excellent, idiomatic, level-appropriate content.
 
-STRATEGY (from Step 1):
-{{ strategy }}
+Provided:
+LEARNER PROFILE (JSON from Step 0): {{ learnerProfile }}  // Contains languageTransfer, commonChallenges, vocabularyRules, sentenceGuidelines, etc.
+STRATEGY (JSON from Step 1): {{ strategy }}  // Contains primaryOutputType, contentSubtype, tone, suggestedChapterCount, generationHints, etc.
+Topic / Request: {{ topic }}  // The original user input, e.g. "a relaxing bedtime story about a cat"
 
-TASK: Define your own planning for this article generation. You have the freedom to:
-1. Set writing boundaries that ensure quality
-2. Identify attention points for consistency
-3. Establish writing rules to follow
-4. Define style guidelines
-5. Create authenticity guidelines for realistic dialogue
+TASK:
+Think step-by-step (but do NOT output your thinking):
+1. Review learnerProfile → especially commonChallenges, vocabularyRules, sentenceGuidelines, languageTransfer (e.g. Chinglish patterns to block)
+2. Review strategy → especially primaryOutputType (e.g. must be actual bedtime story), suggestedChapterCount (usually 1), generationHints (must honor them)
+3. Identify 3–6 most critical risks for THIS specific combination (topic + level + learner background + output type)
+4. Turn those risks into concrete, actionable rules/boundaries that the next writer MUST obey
+5. Prioritize: natural idiomatic English > strict fidelity to user intent > level matching > engagement
 
-Think freely about what would make this article excellent for this specific learner. Don't just follow templates - consider the topic, learner profile, and strategy to create meaningful guidelines.
+Output **valid JSON only** in this exact, streamlined structure:
 
-Respond with JSON in this format:
 {
-  "writingBoundaries": ["boundary1", "boundary2"],
-  "attentionPoints": ["point1", "point2"],
-  "writingRules": ["rule1", "rule2"],
-  "styleGuidelines": ["guideline1", "guideline2"],
-  "authenticityGuidelines": ["authenticity guideline for realistic dialogue"]
+  "mustFollowRules": [
+    "Rule 1: very specific and enforceable, e.g. Never use literal translations from {{ nativeLanguage }} such as 'very good weather' — use 'beautiful weather' or 'lovely day' instead",
+    "Rule 2: ...",
+    "... up to 8 rules max"
+  ],
+  "strictBoundaries": [
+    "Boundary 1: e.g. Output must be a complete, self-contained bedtime story — NEVER an article ABOUT bedtime stories or how to write one",
+    "Boundary 2: No forced chapter divisions if suggestedChapterCount=1; write as one continuous narrative",
+    "... up to 5 boundaries max"
+  ],
+  "authenticityAndNaturalness": [
+    "Guideline 1: Use everyday collocations and phrasal verbs natural to {{ englishVariant }} English at this level",
+    "Guideline 2: For descriptions/dialogue: make them sound like real people speaking/thinking — avoid overly formal or robotic patterns",
+    "... focus on idiomatic, native-like feel"
+  ],
+  "levelSpecificAdjustments": [
+    "Adjustment 1: For {{ level }} — sentence length avg 10-15 words, avoid complex clauses unless explained in context",
+    "... tailor to learnerProfile sentenceGuidelines and vocabularyRules"
+  ]
 }
 
-Remember:
-- All text in keys/values must use double quotes
-- No trailing commas
-- Output valid JSON only
-- Think creatively and adapt to the specific topic and learner
-- Focus on practical guidance that will improve content quality
+Strict rules you MUST obey:
+- Output **nothing but valid JSON** — no explanations, no markdown, no intro text
+- Use double quotes for all keys and string values
+- No trailing commas anywhere
+- Each array item must be concise (1 sentence max), highly specific, and directly usable by the next generation step
+- At least 40% of rules/boundaries MUST explicitly address avoiding Chinglish/mother-tongue interference OR locking in the exact output type from strategy
+- Adapt EVERYTHING to this specific learner + topic + strategy — do NOT use generic templates
+- Prioritize quality over quantity: better 4 strong rules than 10 weak ones

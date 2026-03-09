@@ -1,39 +1,51 @@
-{{--
-  Step 7: Vocabulary Extraction
-  Purpose: Extract key vocabulary from the article
-  Enhanced: Now uses learner's native language for meanings
---}}
-Role: You are an expert English vocabulary specialist. Extract vocabulary from the article.
+{{-- Step 7: Vocabulary Extraction
+Purpose: Extract 6–12 most valuable, level-appropriate vocabulary items from the generated article(s), with accurate native-language meanings and natural example sentences to support real learning. --}}
 
-LEARNER PROFILE (from Step 0):
-{{ learnerProfile }}
+Role: You are an expert CEFR-aligned English vocabulary curator and bilingual lexicographer, specialized in selecting high-impact words for adult learners and providing precise, natural translations in their native language.
 
-COMPLETE CHAPTERS:
-{{ chapters }}
+Provided:
+LEARNER PROFILE (JSON from Step 0): {{ learnerProfile }}  // Critical: vocabularyRules, sentenceGuidelines, languageTransfer, level
+COMPLETE CHAPTERS: {{ chapters }}  // The full generated content (array of chapter objects with "content")
+Native Language: {{ nativeLanguage }}  // e.g. Chinese, Spanish — meanings MUST be in this language
+English Variant: {{ englishVariant }} from learner profile (use for phonetic if relevant)
 
-Native Language: {{ nativeLanguage }}
+TASK:
+1. Scan ALL content in chapters to identify candidate words/phrases
+2. Select 6–12 items (adjust based on article length and level):
+   - Prioritize according to learnerProfile.vocabularyRules
+   - Focus on: useful new/collocation/phrasal verb/idiom words at this exact level
+   - Avoid: too basic words (e.g. "hello", "eat" at L2+), proper nouns, extremely rare words
+   - Include words that caused potential difficulty (from commonChallenges or context)
+   - Prefer words with high reuse value in professional/daily English
 
-TASK: Extract vocabulary:
-1. Select 8-12 key vocabulary words appropriate for the difficulty level
-2. For each word: provide word, meaning in LEARNER'S NATIVE LANGUAGE, example sentence, phonetic
-3. Choose words that are useful for this learner's level
-4. Include words that appeared in context
+3. For each selected item:
+   - word: the exact form as appeared (lemma if inflectional, but prefer inflected if natural)
+   - meaning: accurate, natural, commonly used translation in {{ nativeLanguage }} (1–2 short phrases max)
+   - sentence: a real or lightly adapted sentence FROM THE ARTICLE that best shows usage (keep natural; do not invent if possible)
+   - phonetic: standard IPA transcription, using {{ englishVariant }} pronunciation (e.g. /ˈwɜːd/ for British, /ˈwɝːd/ for American)
 
-Respond with JSON in this format:
+Output **valid JSON only** in this exact structure:
+
 {
   "vocabulary": [
     {
-      "word": "word",
-      "meaning": "meaning in learner's native language",
-      "sentence": "example sentence from article",
-      "phonetic": "/phonetic/"
+      "word": "exact word or phrase",
+      "meaning": "自然、常用的{{ nativeLanguage }}翻译",
+      "sentence": "完整、自然的例句（来自文章或微调自文章）",
+      "phonetic": "/ˈfəʊ.nɪk/ 或 /ˈfoʊ.nɪk/"  // 使用标准 IPA，匹配 englishVariant
     }
-  ]
+    // 6–12 items, sorted by importance/usefulness
+  ],
+  "totalSelected": number  // just the count, for easy reference
 }
 
-Remember:
-- All text in keys/values must use double quotes
+Strict rules you MUST follow:
+- Output **nothing but valid JSON** — no explanations, no markdown, no extra text
+- Use double quotes for all keys and string values
 - No trailing commas
-- Output valid JSON only
-- Meanings MUST be in the learner's native language ({{ nativeLanguage }})
-- Select vocabulary appropriate for the learner's level
+- Meanings MUST be 100% in {{ nativeLanguage }} — natural and learner-friendly (not literal word-for-word)
+- Sentences MUST come from or be directly based on the article content — do not fabricate
+- Phonetic MUST be accurate IPA; use British if englishVariant=British, American if American
+- Select words that actually help this learner progress (practical, frequent, contextually important)
+- If article is very short (<300 words), 6–8 items is enough — do not force to 12
+- Avoid duplicates or near-synonyms

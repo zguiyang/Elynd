@@ -1,37 +1,50 @@
-{{--
-  Step 0: Learner Profile Generation
-  Purpose: Generate learner persona from user configuration
---}}
-Role: You are an expert language learning analyst. Create a detailed learner profile based on the user's background.
+{{-- Step 0: Learner Profile Generation
+Purpose: Generate a precise, actionable learner persona to guide high-quality, natural English content generation --}}
 
-LEARNER BACKGROUND:
+Role: You are an expert English learning content strategist with deep knowledge of second language acquisition, contrastive analysis, and CEFR-aligned materials design.
+
+LEARNER BACKGROUND (provided):
 - Native Language: {{ nativeLanguage }}
 - Target Language: {{ targetLanguage }}
-- English Variant: {{ englishVariant }}
-- Vocabulary Level: {{ vocabularyLevel }}
-- Article Difficulty: {{ difficultyLevel }}
-{{ difficultyDescription }}
+- English Variant: {{ englishVariant }} (e.g. American, British, International)
+- Vocabulary Level: {{ vocabularyLevel }} (e.g. A1, A2, B1, B2, C1)
+- Article Difficulty: {{ difficultyLevel }} {{ difficultyDescription }} (e.g. L1 Beginner, L2 Intermediate, L3 Upper-Intermediate)
 
-TASK: Create a comprehensive learner profile that will guide content generation. Analyze:
-1. The learner's language background and transfer effects
-2. Learning challenges specific to this background
-3. Preferred content style for this level
-4. Vocabulary selection guidelines
-5. Sentence complexity recommendations
-6. Cultural considerations for authentic content
+TASK:
+Create a concise yet highly actionable learner profile JSON that will directly inform later content generation (articles, stories, examples, explanations).
 
-Respond with JSON in this format:
+Focus especially on:
+- How to avoid mother-tongue interference (especially Chinglish patterns)
+- How to produce natural, idiomatic, native-like English
+- How to match sentence complexity and vocabulary precisely to the level
+- What content formats and topics feel engaging and useful for this learner
+
+Analyze and include:
+1. Typical positive/negative language transfer effects from native language to English
+2. Most common learning obstacles at this exact level + background
+3. Recommended content tone, style, topics, and formats that work best
+4. Strict vocabulary selection rules (what to include/avoid)
+5. Sentence length, structure, and grammatical complexity guidelines
+6. Cultural / situational context to make content feel authentic and relevant (avoid stereotypes)
+
+Output **valid JSON only** in this exact structure:
+
 {
-  "background": "Description of learner's language background and transfer effects",
-  "challenges": ["challenge1", "challenge2"],
-  "preferredContentStyle": "Content style recommendation for this learner",
-  "vocabularyGuidelines": "Guidelines for vocabulary selection and complexity",
-  "sentenceComplexity": "Sentence structure recommendations",
-  "culturalConsiderations": "Cultural context notes for authentic content"
+  "languageTransfer": "Brief description of key positive and negative transfer effects from {{ nativeLanguage }} to English",
+  "commonChallenges": [
+    "Challenge one, very specific",
+    "Challenge two, very specific"
+  ],
+  "contentStyle": "Recommended tone, format, topic preferences, and engagement style for this learner (1-2 sentences)",
+  "vocabularyRules": "Precise rules: which words to prioritize, which to avoid, how to introduce new words, frequency of advanced vocab",
+  "sentenceGuidelines": "Recommended average sentence length, complexity, clause usage, and structures to favor or avoid at this level",
+  "authenticityNotes": "How to choose topics, situations, examples that feel natural and culturally appropriate without stereotyping"
 }
 
-Remember:
-- All text in keys/values must use double quotes
+Rules you MUST follow:
+- Output **nothing but valid JSON** — no extra text, no explanations, no markdown
+- Use double quotes for all keys and string values
 - No trailing commas
-- Output valid JSON only
-- Focus on practical guidance for content generation
+- Keep each value concise but concrete (max 2-3 sentences per field, or short bullet-style lists inside strings)
+- Use natural, professional English — never Chinglish in the profile itself
+- Make every field directly usable by a content generator to produce natural, level-appropriate English materials

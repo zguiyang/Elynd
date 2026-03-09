@@ -121,7 +121,7 @@ const fetchVocabulary = async () => {
   isLoadingVocabulary.value = true
   await articleApi.getVocabulary(articleId)
     .then((res) => {
-      vocabularies.value = res.data
+      vocabularies.value = res
       showVocabulary.value = true
     })
     .catch(() => {

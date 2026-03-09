@@ -1,4 +1,5 @@
 import { authApi, type LoginData, type RegisterData, type AuthResponse, type ForgotPasswordResponse, type ResetPasswordData } from '@/api/auth'
+import { userApi } from '@/api/user';
 import type { User } from '@/api/user'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -65,20 +66,16 @@ export const useAuthStore = defineStore('auth', () => {
     return response
   }
 
-  const fetchUser = async (): Promise<User | null> => {
-    try {
-      const userData = await fetch('/api/user/me', {
-        headers: {
-          'Authorization': `Bearer ${token.value}`,
-        },
-      }).then((res) => res.json())
-      user.value = userData as User
-      return userData as User
-    } catch {
-      token.value = null
-      user.value = null
-      return null
-    }
+  const fetchUser = async () => {
+     const userResponse = await userApi.me().catch(() => {
+       token.value = null;
+       user.value = null;
+       return null;
+     });
+     if (userResponse) {
+       user.value = userResponse as unknown as User;
+       return userResponse;
+     }
   }
 
   return {

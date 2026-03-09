@@ -18,7 +18,7 @@ export function useArticles() {
     const request = useRequest<ArticleListItem[]>({
       fetcher: async () => {
         const response = await articleApi.list(params)
-        return response.data.data
+        return response.data
       },
     })
     const result = await request.execute()
@@ -33,7 +33,7 @@ export function useArticles() {
     const request = useRequest<Tag[]>({
       fetcher: async () => {
         const response = await articleApi.getTags()
-        return response.data
+        return response
       },
     })
     const result = await request.execute()
@@ -67,7 +67,7 @@ export function useArticle() {
     const request = useRequest<Article>({
       fetcher: async () => {
         const response = await articleApi.getById(id)
-        return response.data
+        return response
       },
     })
     const result = await request.execute()
@@ -95,7 +95,7 @@ export function useChapter() {
     const request = useRequest<Chapter>({
       fetcher: async () => {
         const response = await articleApi.getChapter(articleId, chapterIndex)
-        return response.data
+        return response
       },
     })
     const result = await request.execute()

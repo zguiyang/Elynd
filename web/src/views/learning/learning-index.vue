@@ -47,7 +47,7 @@ const getDifficultyVariant = (difficulty: string) => {
 const fetchData = useRequest<LearningIndexData>({
   fetcher: async () => {
     const response = await learningApi.getIndex()
-    return response.data
+    return response
   },
 })
 

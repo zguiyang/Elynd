@@ -19,11 +19,11 @@ export interface SystemConfig {
 
 export const adminApi = {
   generateArticle: (data: GenerateArticleData) =>
-    request.post<GenerateArticleResponse>('/api/admin/articles/generate', data).then(res => res.data),
+    request.post<GenerateArticleResponse>('/api/admin/articles/generate', data),
 
   getSystemConfig: () =>
-    request.get<SystemConfig>('/api/admin/system-config').then(res => res.data),
+    request.get<SystemConfig>('/api/admin/system-config'),
 
   updateSystemConfig: (data: SystemConfig) =>
-    request.put<SystemConfig>('/api/admin/system-config', data).then(res => res.data),
+    request.put<SystemConfig>('/api/admin/system-config', data),
 }

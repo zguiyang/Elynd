@@ -14,7 +14,7 @@ const vocabularies = ref<VocabularyItem[]>([])
 const fetchVocabularyRequest = useRequest<VocabularyItem[]>({
   fetcher: async () => {
     const response = await articleApi.getVocabulary(articleId)
-    return response.data
+    return response
   },
 })
 

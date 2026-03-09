@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
 import { PlayCircle, Search, ArrowRight, Clock, BookMarked, Loader2 } from 'lucide-vue-next'
 import { learningApi } from '@/api/learning'
 import type { LearningIndexData } from '@/api/learning'

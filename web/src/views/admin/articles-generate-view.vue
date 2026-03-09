@@ -4,11 +4,14 @@ import { CheckCircle2, FileText, Clock, Calendar } from 'lucide-vue-next'
 import { adminApi, type GenerateArticleData } from '@/api/admin'
 import { useAuthStore } from '@/stores/auth'
 import { useArticleSse } from '@/composables/useArticleSse'
-import { Progress } from '@/components/ui/progress'
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 
 const router = useRouter()
 const authStore = useAuthStore()
+
+if (!authStore.user) {
+  toast.error('用户信息加载失败')
+  throw new Error('User not loaded')
+}
 
 const isLoading = ref(false)
 const difficultyLevel = ref<'L1' | 'L2' | 'L3'>('L1')
@@ -18,7 +21,7 @@ const extraInstructions = ref('')
 const topicError = ref('')
 const extraInstructionsError = ref('')
 
-const { status, article, error: sseError, subscribe, unsubscribe, reset } = useArticleSse(authStore.user!.id)
+const { status, article, error: sseError, subscribe, unsubscribe, reset } = useArticleSse(authStore.user.id)
 const progress = ref(0)
 const statusMessage = ref('')
 

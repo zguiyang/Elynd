@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Play, Pause, RotateCcw, Volume2, Loader2, AlertCircle } from 'lucide-vue-next'
-import { Slider } from '@/components/ui/slider'
 import type { AudioStatus } from '@/types/article'
 
 interface Props {

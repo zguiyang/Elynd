@@ -28,6 +28,48 @@ export default defineConfigWithVueTs(
     },
   },
 
+  // 禁止手动导入已自动导入的模块
+  {
+    name: 'app/no-restricted-imports',
+    files: ['**/*.vue', '**/*.ts'],
+    ignores: [
+      // shadcn-vue 组件内部需要使用 VueUse
+      '**/components/ui/**',
+      // 路由配置需要手动导入
+      '**/router/**',
+      // VueUse 需要手动导入以提高代码可读性
+      '**/composables/**',
+      '**/views/**',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            // Vue APIs - 已通过 unplugin-auto-import 自动导入
+            {
+              group: ['vue'],
+              importNames: ['ref', 'computed', 'watch', 'onMounted', 'onUnmounted', 'nextTick', 'reactive', 'toRefs'],
+              message: 'Vue APIs are auto-imported. Do not import manually.',
+            },
+            // Vue Router - 已通过 unplugin-auto-import 自动导入
+            {
+              group: ['vue-router'],
+              importNames: ['useRouter', 'useRoute'],
+              message: 'Vue Router hooks are auto-imported. Do not import manually.',
+            },
+            // Pinia - 已通过 unplugin-auto-import 自动导入
+            {
+              group: ['pinia'],
+              importNames: ['defineStore', 'storeToRefs'],
+              message: 'Pinia APIs are auto-imported. Do not import manually.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   vueTsConfigs.recommended,
 
   ...pluginOxlint.buildFromOxlintConfigFile('.oxlintrc.json'),

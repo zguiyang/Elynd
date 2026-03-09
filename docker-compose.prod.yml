@@ -1,0 +1,49 @@
+services:
+  elynd-server:
+    image: elynd:latest
+    container_name: elynd-server
+    restart: always
+    volumes:
+      - ./backend:/app
+      - pnpm-cache:/root/.cache/pnpm
+    environment:
+      - NODE_ENV=production
+      - PNPM_HOME=/root/.cache/pnpm
+      - PATH=/root/.cache/pnpm:$PATH
+    working_dir: /app
+    command: >
+      sh -c "cd /app && pnpm install --prod && node bin/server.js"
+    ports:
+      - "3335:3335"
+    networks:
+      - 1panel-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3335/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  elynd-jobs:
+    image: elynd:latest
+    container_name: elynd-jobs
+    restart: always
+    volumes:
+      - ./backend:/app
+      - pnpm-cache:/root/.cache/pnpm
+    environment:
+      - NODE_ENV=production
+      - PNPM_HOME=/root/.cache/pnpm
+      - PATH=/root/.cache/pnpm:$PATH
+    working_dir: /app
+    command: >
+      sh -c "cd /app && pnpm install --prod && node ace jobs:listen"
+    networks:
+      - 1panel-network
+
+networks:
+  1panel-network:
+    external: true
+
+volumes:
+  pnpm-cache:

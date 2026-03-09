@@ -25,9 +25,11 @@ const isActive = (path: string) => {
       <div class="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
         <!-- Logo -->
         <RouterLink to="/learning" class="flex items-center gap-2">
-          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <BookOpen class="size-5 text-primary-foreground" />
-          </div>
+          <img 
+            src="../assets/logo.svg" 
+            alt="Logo" 
+            class="h-12 w-12"
+          />
           <span class="text-xl font-semibold">Elynd</span>
         </RouterLink>
 

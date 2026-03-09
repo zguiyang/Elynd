@@ -9,7 +9,6 @@ export const changePasswordValidator = vine.compile(
       .string()
       .minLength(VALIDATION.PASSWORD_MIN)
       .maxLength(VALIDATION.PASSWORD_MAX),
-    newPasswordConfirmation: vine.string().sameAs('newPassword'),
   })
 )
 

@@ -39,7 +39,7 @@ request.interceptors.response.use(
       }
     }
     toast.error(message)
-    return Promise.resolve(error.response?.data || { message, error: true })
+    return Promise.reject(error.response?.data || { message, error: true })
   }
 )
 

@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { Send, Loader2, Bot, User, Sparkles } from 'lucide-vue-next'
-import { useArticleChat } from '@/composables/useArticleChat'
+import { useBookChat } from '@/composables/useBookChat'
 import MarkdownRenderer from './MarkdownRenderer.vue'
 
 interface Props {
   open: boolean
-  articleId: number
-  articleTitle: string
+  bookId: number
+  bookTitle: string
   chapterContent?: string
   chapterIndex?: number
 }
@@ -19,12 +19,12 @@ const emit = defineEmits<{
 const inputMessage = ref('')
 const messagesContainer = ref<HTMLElement | null>(null)
 
-const { messages, isLoading, isWaitingForResponse, sendMessage, clearMessages } = useArticleChat(props.articleId)
+const { messages, isLoading, isWaitingForResponse, sendMessage, clearMessages } = useBookChat(props.bookId)
 
 const quickActions = [
-  { label: '解释', prompt: '请解释这篇文章的主要内容' },
-  { label: '翻译', prompt: '请翻译这段文章' },
-  { label: '总结', prompt: '请总结这篇文章的重点' },
+  { label: '解释', prompt: '请解释这本书的主要内容' },
+  { label: '翻译', prompt: '请翻译这段书籍内容' },
+  { label: '总结', prompt: '请总结这本书的重点' },
 ]
 
 const scrollToBottom = () => {
@@ -45,7 +45,7 @@ watch(
 )
 
 watch(
-  () => props.articleId,
+  () => props.bookId,
   () => {
     clearMessages()
   }
@@ -92,7 +92,7 @@ const handleKeydown = (e: KeyboardEvent) => {
           <SheetClose class="size-8" />
         </div>
         <SheetDescription class="text-xs">
-          关于 "{{ articleTitle }}" 的问题
+          关于 "{{ bookTitle }}" 的问题
         </SheetDescription>
       </SheetHeader>
 
@@ -100,7 +100,7 @@ const handleKeydown = (e: KeyboardEvent) => {
         <div v-if="messages.length === 0" class="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
           <Bot class="size-12 mb-3 opacity-50" />
           <p class="text-sm">有什么可以帮助您的？</p>
-          <p class="text-xs mt-1">可以关于文章内容提问</p>
+          <p class="text-xs mt-1">可以关于书籍内容提问</p>
 
           <div class="flex flex-wrap gap-2 mt-4 justify-center">
             <Button

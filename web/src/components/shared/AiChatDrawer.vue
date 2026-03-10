@@ -46,7 +46,7 @@ const handleKeydown = (event: KeyboardEvent) => {
         <div class="flex-1 overflow-y-auto space-y-4 mb-4">
           <div v-if="messages.length === 0" class="text-center text-muted-foreground py-8">
             <Bot class="size-8 mx-auto mb-2 opacity-50" />
-            <p class="text-sm">针对文章内容向 AI 提问</p>
+            <p class="text-sm">针对书籍内容向 AI 提问</p>
           </div>
           <div
             v-for="(message, index) in messages"

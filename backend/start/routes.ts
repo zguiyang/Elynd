@@ -16,10 +16,10 @@ import { join } from 'node:path'
 
 const AuthController = () => import('#controllers/auth_controller')
 const UsersController = () => import('#controllers/users_controller')
-const ArticlesController = () => import('#controllers/articles_controller')
-const ArticleChatController = () => import('#controllers/article_chat_controller')
+const BooksController = () => import('#controllers/books_controller')
+const BookChatController = () => import('#controllers/book_chat_controller')
 const DictionaryController = () => import('#controllers/dictionary_controller')
-const AdminArticlesController = () => import('#controllers/admin/articles_controller')
+const AdminBooksController = () => import('#controllers/admin/books_controller')
 const AdminSystemConfigsController = () => import('#controllers/admin/system_configs_controller')
 const LearningsController = () => import('#controllers/learnings_controller')
 
@@ -47,14 +47,14 @@ router
     router.get('/user/config', [UsersController, 'getConfig'])
     router.put('/user/config', [UsersController, 'updateConfig'])
 
-    // Articles
-    router.get('/articles', [ArticlesController, 'index'])
-    router.get('/articles/:id', [ArticlesController, 'show'])
-    router.get('/articles/:id/chapters/:chapterIndex', [ArticlesController, 'chapter'])
-    router.get('/articles/:id/vocabulary', [ArticlesController, 'vocabulary'])
-    router.get('/tags', [ArticlesController, 'tags'])
-    router.post('/articles/:id/ai-chat', [ArticlesController, 'aiChat']).use(aiChatLimiter)
-    router.get('/articles/:id/chats', [ArticleChatController, 'chat'])
+    // Books
+    router.get('/books', [BooksController, 'index'])
+    router.get('/books/:id', [BooksController, 'show'])
+    router.get('/books/:id/chapters/:chapterIndex', [BooksController, 'chapter'])
+    router.get('/books/:id/vocabulary', [BooksController, 'vocabulary'])
+    router.get('/tags', [BooksController, 'tags'])
+    router.post('/books/:id/ai-chat', [BooksController, 'aiChat']).use(aiChatLimiter)
+    router.get('/books/:id/chats', [BookChatController, 'chat'])
 
     // Dictionary
     router.get('/dictionary/:word', [DictionaryController, 'lookup'])
@@ -72,8 +72,11 @@ router
 // ===== 管理员路由组 (需要认证 + 管理员权限) =====
 router
   .group(() => {
-    router.post('/admin/articles/generate', [AdminArticlesController, 'generate'])
-    router.post('/admin/articles/:id/retry-audio', [AdminArticlesController, 'retryAudio'])
+    router.post('/admin/books/generate', [AdminBooksController, 'generate'])
+    router.post('/admin/books/:id/retry-audio', [AdminBooksController, 'retryAudio'])
+    router.post('/admin/books/parse', [AdminBooksController, 'parse'])
+    router.post('/admin/books/import', [AdminBooksController, 'import'])
+    router.get('/admin/books/:id/status', [AdminBooksController, 'status'])
     router.get('/admin/system-config', [AdminSystemConfigsController, 'index'])
     router.put('/admin/system-config', [AdminSystemConfigsController, 'update'])
   })
@@ -104,7 +107,14 @@ router.jobs('/jobs').use(async (ctx, next) => {
 // ===== Transmit WebSocket 路由 =====
 transmit.registerRoutes()
 
-transmit.authorize('user:userId:article', (ctx, { userId }) => {
+transmit.authorize('user:userId:book', (ctx, { userId }) => {
+  if (!ctx.auth.isAuthenticated) {
+    return false
+  }
+  return Number(ctx.auth.user?.id) === Number(userId)
+})
+
+transmit.authorize('user:userId:book_import', (ctx, { userId }) => {
   if (!ctx.auth.isAuthenticated) {
     return false
   }
@@ -112,15 +122,15 @@ transmit.authorize('user:userId:article', (ctx, { userId }) => {
 })
 
 // ===== 静态资源路由 =====
-router.get('/audio/articles/:id', async ({ params, response }) => {
-  const articleId = params.id
-  const storageDir = join(process.cwd(), 'storage', 'article', 'voices')
-  const filePath = join(storageDir, `${articleId}.mp3`)
+router.get('/audio/books/:id', async ({ params, response }) => {
+  const bookId = params.id
+  const storageDir = join(process.cwd(), 'storage', 'book', 'voices')
+  const filePath = join(storageDir, `${bookId}.mp3`)
 
   try {
     const fileBuffer = await readFile(filePath)
     response.header('Content-Type', 'audio/mpeg')
-    response.header('Content-Disposition', `inline; filename="article-${articleId}.mp3"`)
+    response.header('Content-Disposition', `inline; filename="book-${bookId}.mp3"`)
     return response.send(fileBuffer)
   } catch {
     return response.notFound({ error: 'Audio file not found' })

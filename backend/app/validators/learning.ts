@@ -3,7 +3,7 @@ import { Infer } from '@vinejs/vine/types'
 
 export const progressValidator = vine.compile(
   vine.object({
-    articleId: vine.number(),
+    bookId: vine.number(),
     progress: vine.number().min(0).max(100),
   })
 )

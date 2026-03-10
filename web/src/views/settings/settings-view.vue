@@ -208,7 +208,7 @@ onMounted(async () => {
                 </SelectItem>
               </SelectContent>
             </Select>
-            <p class="text-xs text-muted-foreground">帮助我们为您推荐适合的文章难度</p>
+            <p class="text-xs text-muted-foreground">帮助我们为您推荐适合的书籍难度</p>
           </div>
 
           <div class="space-y-1.5">

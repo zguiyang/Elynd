@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { FileText, User, LogOut, Settings } from 'lucide-vue-next'
+import { FileText, User, LogOut, Settings, Upload } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
 const authStore = useAuthStore()
 
 const navigation = [
-  { name: '生成文章', path: '/admin/articles/generate', icon: FileText },
+  { name: '生成书籍', path: '/admin/books/generate', icon: FileText },
+  { name: '导入书籍', path: '/admin/books/import', icon: Upload },
   { name: '系统设置', path: '/admin/settings', icon: Settings },
 ]
 
@@ -19,7 +20,7 @@ const isActive = (path: string) => route.path.startsWith(path)
     <header class="flex-none border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
       <div class="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
         <!-- Logo -->
-        <RouterLink to="/admin/articles/generate" class="flex items-center gap-2">
+        <RouterLink to="/admin/books/generate" class="flex items-center gap-2">
           <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <FileText class="size-5 text-primary-foreground" />
           </div>

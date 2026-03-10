@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Play, Pause, RotateCcw, Volume2, Loader2, AlertCircle } from 'lucide-vue-next'
-import type { AudioStatus } from '@/types/article'
+import type { AudioStatus } from '@/types/book'
 
 interface Props {
   variant: 'full' | 'mini'

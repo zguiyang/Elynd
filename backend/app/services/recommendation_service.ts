@@ -1,9 +1,9 @@
 import { inject } from '@adonisjs/core'
-import Article from '#models/article'
-import { ArticleProgressService } from './article_progress_service.js'
+import Book from '#models/book'
+import { BookProgressService } from './book_progress_service.js'
 import Tag from '#models/tag'
 
-export interface RecommendedArticle {
+export interface RecommendedBook {
   id: number
   title: string
   difficultyLevel: string
@@ -13,71 +13,69 @@ export interface RecommendedArticle {
 
 @inject()
 export class RecommendationService {
-  constructor(private articleProgressService: ArticleProgressService) {}
+  constructor(private bookProgressService: BookProgressService) {}
 
-  async getRecommendations(userId: number, limit = 6): Promise<RecommendedArticle[]> {
-    const readArticleIds = await this.articleProgressService.getReadArticleIds(userId)
-    const userReadTags = await this.articleProgressService.getUserReadTags(userId)
-    const userMaxDifficulty = await this.articleProgressService.getUserMaxDifficultyLevel(userId)
+  async getRecommendations(userId: number, limit = 6): Promise<RecommendedBook[]> {
+    const readBookIds = await this.bookProgressService.getReadBookIds(userId)
+    const userReadTags = await this.bookProgressService.getUserReadTags(userId)
+    const userMaxDifficulty = await this.bookProgressService.getUserMaxDifficultyLevel(userId)
 
-    const articles = await Article.query()
+    const books = await Book.query()
       .where('isPublished', true)
       .preload('tags')
       .orderBy('createdAt', 'desc')
       .limit(50)
 
-    const scoredArticles: { article: Article; score: number }[] = []
+    const scoredBooks: { book: Book; score: number }[] = []
 
-    for (const article of articles) {
-      if (readArticleIds.includes(article.id)) {
+    for (const book of books) {
+      if (readBookIds.includes(book.id)) {
         continue
       }
 
       let score = 0
-      const articleTags = (article as unknown as { tags: Tag[] }).tags || []
+      const bookTags = (book as unknown as { tags: Tag[] }).tags || []
 
-      for (const tag of articleTags) {
+      for (const tag of bookTags) {
         if (userReadTags.includes(tag.name)) {
           score += 2
           break
         }
       }
 
-      const articleLevel = Number.parseInt(article.difficultyLevel.replace('L', ''), 10)
-      if (!Number.isNaN(articleLevel) && articleLevel <= userMaxDifficulty + 1) {
+      const bookLevel = Number.parseInt(book.difficultyLevel.replace('L', ''), 10)
+      if (!Number.isNaN(bookLevel) && bookLevel <= userMaxDifficulty + 1) {
         score += 1
       }
 
-      scoredArticles.push({ article, score })
+      scoredBooks.push({ book, score })
     }
 
-    scoredArticles.sort((a, b) => b.score - a.score)
+    scoredBooks.sort((a, b) => b.score - a.score)
 
-    const recommendations: RecommendedArticle[] = scoredArticles
-      .slice(0, limit)
-      .map(({ article }) => ({
-        id: article.id,
-        title: article.title,
-        difficultyLevel: article.difficultyLevel,
-        description: null,
-        tags: (article as unknown as { tags: Tag[] }).tags || [],
-      }))
+    const recommendations: RecommendedBook[] = scoredBooks.slice(0, limit).map(({ book }) => ({
+      id: book.id,
+      title: book.title,
+      difficultyLevel: book.difficultyLevel,
+      description: null,
+      tags: (book as unknown as { tags: Tag[] }).tags || [],
+    }))
 
     if (recommendations.length < limit) {
       const existingIds = new Set(recommendations.map((r) => r.id))
-      const existingReadIds = new Set(readArticleIds)
+      const existingReadIds = new Set(readBookIds)
 
-      const additionalArticles = articles
+      const additionalBooks = books
         .filter((a) => !existingIds.has(a.id) && !existingReadIds.has(a.id))
         .slice(0, limit - recommendations.length)
 
-      for (const article of additionalArticles) {
+      for (const book of additionalBooks) {
         recommendations.push({
-          id: article.id,
-          title: article.title,
-          difficultyLevel: article.difficultyLevel,
+          id: book.id,
+          title: book.title,
+          difficultyLevel: book.difficultyLevel,
           description: null,
-          tags: (article as unknown as { tags: Tag[] }).tags || [],
+          tags: (book as unknown as { tags: Tag[] }).tags || [],
         })
       }
     }
@@ -85,19 +83,19 @@ export class RecommendationService {
     return recommendations
   }
 
-  async getRecommendationsForNewUser(limit = 6): Promise<RecommendedArticle[]> {
-    const articles = await Article.query()
+  async getRecommendationsForNewUser(limit = 6): Promise<RecommendedBook[]> {
+    const books = await Book.query()
       .where('isPublished', true)
       .preload('tags')
       .orderBy('createdAt', 'desc')
       .limit(limit)
 
-    return articles.map((article) => ({
-      id: article.id,
-      title: article.title,
-      difficultyLevel: article.difficultyLevel,
+    return books.map((book) => ({
+      id: book.id,
+      title: book.title,
+      difficultyLevel: book.difficultyLevel,
       description: null,
-      tags: (article as unknown as { tags: Tag[] }).tags || [],
+      tags: (book as unknown as { tags: Tag[] }).tags || [],
     }))
   }
 }

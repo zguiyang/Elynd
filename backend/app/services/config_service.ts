@@ -4,8 +4,8 @@ import SystemConfig from '#models/system_config'
 import { UserConfigService } from '#services/user_config_service'
 import { AI } from '#constants'
 import type { AiClientConfig } from '#types/ai'
-import type { UserLanguageConfig } from '#types/article'
-import type { FullUserConfig } from '#types/article_generation'
+import type { UserLanguageConfig } from '#types/book'
+import type { FullUserConfig } from '#types/book_generation'
 
 @inject()
 export class ConfigService {

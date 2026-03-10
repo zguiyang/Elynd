@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ChevronDown, ChevronUp, Volume2, X } from 'lucide-vue-next'
-import type { VocabularyItem } from '@/types/article'
+import type { VocabularyItem } from '@/types/book'
 
 defineProps<{
   vocabularies: VocabularyItem[]

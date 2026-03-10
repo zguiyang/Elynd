@@ -1,7 +1,7 @@
 import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
 import { LearningService } from '#services/learning_service'
-import { ArticleProgressService } from '#services/article_progress_service'
+import { BookProgressService } from '#services/book_progress_service'
 import { RecommendationService } from '#services/recommendation_service'
 import { progressValidator } from '#validators/learning'
 
@@ -9,7 +9,7 @@ import { progressValidator } from '#validators/learning'
 export default class LearningsController {
   constructor(
     private learningService: LearningService,
-    private articleProgressService: ArticleProgressService,
+    private bookProgressService: BookProgressService,
     private recommendationService: RecommendationService
   ) {}
 
@@ -27,14 +27,14 @@ export default class LearningsController {
     const user = auth.getUserOrFail()
     const data = await request.validateUsing(progressValidator)
 
-    const progressRecord = await this.articleProgressService.updateProgress(
+    const progressRecord = await this.bookProgressService.updateProgress(
       user.id,
-      data.articleId,
+      data.bookId,
       data.progress
     )
 
     return {
-      articleId: progressRecord.articleId,
+      bookId: progressRecord.bookId,
       progress: progressRecord.progress,
     }
   }
@@ -45,26 +45,26 @@ export default class LearningsController {
     await this.learningService.updateLearningDays(user.id)
 
     const learningDays = await this.learningService.getLearningDays(user.id)
-    const articlesReadCount = await this.articleProgressService.getArticlesReadCount(user.id)
-    const continueReading = await this.articleProgressService.getArticlesInProgress(user.id, 2)
+    const booksReadCount = await this.bookProgressService.getBooksReadCount(user.id)
+    const continueReading = await this.bookProgressService.getBooksInProgress(user.id, 2)
     const recommendations = await this.recommendationService.getRecommendations(user.id, 6)
 
     return {
       learningDays,
-      articlesReadCount,
-      continueReading: continueReading.map((article) => ({
-        id: article.id,
-        title: article.title,
-        difficulty: article.difficultyLevel,
-        category: article.tags[0]?.name || '未分类',
-        progress: article.progress,
+      booksReadCount,
+      continueReading: continueReading.map((book) => ({
+        id: book.id,
+        title: book.title,
+        difficulty: book.difficultyLevel,
+        category: book.tags[0]?.name || '未分类',
+        progress: book.progress,
       })),
-      recommendedArticles: recommendations.map((article) => ({
-        id: article.id,
-        title: article.title,
-        difficulty: article.difficultyLevel,
-        category: article.tags[0]?.name || '未分类',
-        description: article.description,
+      recommendedBooks: recommendations.map((book) => ({
+        id: book.id,
+        title: book.title,
+        difficulty: book.difficultyLevel,
+        category: book.tags[0]?.name || '未分类',
+        description: book.description,
       })),
     }
   }
@@ -73,12 +73,12 @@ export default class LearningsController {
     const user = auth.getUserOrFail()
     const recommendations = await this.recommendationService.getRecommendations(user.id, 6)
 
-    return recommendations.map((article) => ({
-      id: article.id,
-      title: article.title,
-      difficulty: article.difficultyLevel,
-      category: article.tags[0]?.name || '未分类',
-      description: article.description,
+    return recommendations.map((book) => ({
+      id: book.id,
+      title: book.title,
+      difficulty: book.difficultyLevel,
+      category: book.tags[0]?.name || '未分类',
+      description: book.description,
     }))
   }
 }

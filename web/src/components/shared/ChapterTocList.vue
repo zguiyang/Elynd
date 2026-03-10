@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ChapterListItem } from '@/types/article'
+import type { ChapterListItem } from '@/types/book'
 
 interface Props {
   chapters: ChapterListItem[]

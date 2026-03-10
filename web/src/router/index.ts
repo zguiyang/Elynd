@@ -52,9 +52,9 @@ const router = createRouter({
           component: () => import('@/views/learning/learning-index.vue'),
         },
         {
-          path: 'articles',
-          name: 'learning-articles',
-          component: () => import('@/views/learning/learning-articles.vue'),
+          path: 'books',
+          name: 'learning-books',
+          component: () => import('@/views/learning/learning-books.vue'),
         },
         {
           path: 'profile',
@@ -67,22 +67,22 @@ const router = createRouter({
           component: () => import('@/views/settings/settings-view.vue'),
         },
         {
-          path: 'article/:id/vocabulary',
-          name: 'learning-article-vocabulary',
-          component: () => import('@/views/learning/article-vocabulary.vue'),
+          path: 'book/:id/vocabulary',
+          name: 'learning-book-vocabulary',
+          component: () => import('@/views/learning/book-vocabulary.vue'),
         },
       ],
     },
     {
-      path: '/learning/article/:id',
-      name: 'learning-article',
-      component: () => import('@/layouts/article-reading-layout.vue'),
+      path: '/learning/book/:id',
+      name: 'learning-book',
+      component: () => import('@/layouts/book-reading-layout.vue'),
       meta: { requiresAuth: true },
       children: [
         {
           path: '',
-          name: 'learning-article-content',
-          component: () => import('@/views/learning/learning-article.vue'),
+          name: 'learning-book-content',
+          component: () => import('@/views/learning/learning-book.vue'),
         },
       ],
     },
@@ -90,13 +90,18 @@ const router = createRouter({
       path: '/admin',
       name: 'admin',
       component: () => import('@/layouts/admin-layout.vue'),
-      redirect: '/admin/articles/generate',
+      redirect: '/admin/books/generate',
       meta: { requiresAuth: true, requiresAdmin: true },
       children: [
         {
-          path: 'articles/generate',
-          name: 'admin-articles-generate',
-          component: () => import('@/views/admin/articles-generate-view.vue'),
+          path: 'books/generate',
+          name: 'admin-books-generate',
+          component: () => import('@/views/admin/books-generate-view.vue'),
+        },
+        {
+          path: 'books/import',
+          name: 'admin-books-import',
+          component: () => import('@/views/admin/book-import-view.vue'),
         },
         {
           path: 'settings',

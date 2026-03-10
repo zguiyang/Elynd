@@ -1,0 +1,86 @@
+import { DateTime } from 'luxon'
+import { BaseModel, column, manyToMany, belongsTo, hasMany } from '@adonisjs/lucid/orm'
+import { type ManyToMany, type BelongsTo, type HasMany } from '@adonisjs/lucid/types/relations'
+import type { AudioStatus } from '#types/tts'
+import Tag from '#models/tag'
+import User from '#models/user'
+import BookVocabulary from '#models/book_vocabulary'
+import BookChapter from '#models/book_chapter'
+import BookChat from '#models/book_chat'
+
+export default class Book extends BaseModel {
+  @column({ isPrimary: true })
+  declare id: number
+
+  @column()
+  declare title: string
+
+  @column()
+  declare source: 'user_uploaded' | 'public_domain' | 'ai_generated'
+
+  @column()
+  declare author: string | null
+
+  @column()
+  declare description: string | null
+
+  @column()
+  declare difficultyLevel: string
+
+  @column()
+  declare status: 'processing' | 'ready' | 'failed'
+
+  @column()
+  declare processingStep: string | null
+
+  @column()
+  declare processingProgress: number
+
+  @column()
+  declare processingError: string | null
+
+  @column()
+  declare wordCount: number
+
+  @column()
+  declare readingTime: number
+
+  @column()
+  declare isPublished: boolean
+
+  @column()
+  declare createdBy: number
+
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+
+  @column()
+  declare audioUrl: string | null
+
+  @column()
+  declare audioStatus: AudioStatus | null
+
+  @column()
+  declare audioTiming: Record<string, unknown> | null
+
+  @column.dateTime()
+  declare audioGeneratedAt: DateTime | null
+
+  @belongsTo(() => User, { foreignKey: 'createdBy' })
+  declare creator: BelongsTo<typeof User>
+
+  @manyToMany(() => Tag, { pivotTable: 'book_tags', pivotTimestamps: true })
+  declare tags: ManyToMany<typeof Tag>
+
+  @hasMany(() => BookVocabulary)
+  declare vocabularies: HasMany<typeof BookVocabulary>
+
+  @hasMany(() => BookChapter)
+  declare chapters: HasMany<typeof BookChapter>
+
+  @hasMany(() => BookChat)
+  declare chats: HasMany<typeof BookChat>
+}

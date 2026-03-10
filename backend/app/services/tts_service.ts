@@ -9,7 +9,7 @@ import type { TtsResult, AudioTiming, WordTiming, ChapterTiming, ChapterInput } 
 @inject()
 export class TtsService {
   private speechConfig: sdk.SpeechConfig
-  private readonly audioUrl: string = 'article/voices'
+  private readonly audioUrl: string = 'book/voices'
 
   constructor() {
     this.speechConfig = sdk.SpeechConfig.fromSubscription(
@@ -25,8 +25,8 @@ export class TtsService {
     )
   }
 
-  async generateAudio(chapters: ChapterInput[], articleId: number): Promise<TtsResult> {
-    logger.info({ articleId, chapterCount: chapters.length }, 'Starting audio generation')
+  async generateAudio(chapters: ChapterInput[], bookId: number): Promise<TtsResult> {
+    logger.info({ bookId, chapterCount: chapters.length }, 'Starting audio generation')
 
     const allWordTimings: WordTiming[] = []
     const chapterTimings: ChapterTiming[] = []
@@ -65,7 +65,7 @@ export class TtsService {
     }
 
     const finalBuffer = Buffer.concat(audioBuffers)
-    const key = `${this.audioUrl}/${articleId}.mp3`
+    const key = `${this.audioUrl}/${bookId}.mp3`
     await drive.use().put(key, finalBuffer)
 
     const timing: AudioTiming = {
@@ -74,7 +74,7 @@ export class TtsService {
       duration: cumulativeOffset,
     }
 
-    logger.info({ articleId, totalDuration: cumulativeOffset }, 'Audio generation completed')
+    logger.info({ bookId, totalDuration: cumulativeOffset }, 'Audio generation completed')
 
     return { audioUrl: key, timing }
   }

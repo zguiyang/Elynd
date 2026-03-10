@@ -7,7 +7,7 @@ const authStore = useAuthStore()
 
 const navigation = [
   { name: '学习', path: '/learning', icon: BookMarked },
-  { name: '文章', path: '/learning/articles', icon: BookOpen },
+  { name: '书籍', path: '/learning/books', icon: BookOpen },
 ]
 
 const isActive = (path: string) => {
@@ -74,7 +74,7 @@ const isActive = (path: string) => {
             <DropdownMenuLabel>我的账户</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem v-if="authStore.user?.isAdmin" as-child>
-              <RouterLink to="/admin/articles/generate" class="flex items-center cursor-pointer">
+              <RouterLink to="/admin/books/generate" class="flex items-center cursor-pointer">
                 <Shield class="mr-2 size-4" />
                 <span>管理后台</span>
               </RouterLink>

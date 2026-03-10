@@ -2,7 +2,7 @@ import { request } from '@/lib/request'
 
 export interface LearningIndexData {
   learningDays: number
-  articlesReadCount: number
+  booksReadCount: number
   continueReading: Array<{
     id: number
     title: string
@@ -10,7 +10,7 @@ export interface LearningIndexData {
     category: string
     progress: number
   }>
-  recommendedArticles: Array<{
+  recommendedBooks: Array<{
     id: number
     title: string
     difficulty: string
@@ -19,7 +19,7 @@ export interface LearningIndexData {
   }>
 }
 
-export interface RecommendedArticle {
+export interface RecommendedBook {
   id: number
   title: string
   difficulty: string
@@ -31,16 +31,16 @@ export const learningApi = {
   login: () =>
     request<{ learningDays: number; isFirstLoginToday: boolean }>({ method: 'POST', url: '/api/learning/login' }),
 
-  updateProgress: (articleId: number, progress: number) =>
-    request<{ articleId: number; progress: number }>({
+  updateProgress: (bookId: number, progress: number) =>
+    request<{ bookId: number; progress: number }>({
       method: 'PUT',
       url: '/api/learning/progress',
-      data: { articleId, progress },
+      data: { bookId, progress },
     }),
 
   getIndex: () =>
     request<LearningIndexData>({ method: 'GET', url: '/api/learning/index' }),
 
   getRecommendations: () =>
-    request<RecommendedArticle[]>({ method: 'GET', url: '/api/learning/recommend' }),
+    request<RecommendedBook[]>({ method: 'GET', url: '/api/learning/recommend' }),
 }

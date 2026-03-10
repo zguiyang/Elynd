@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon'
 import { BaseModel, column, manyToMany } from '@adonisjs/lucid/orm'
 import { type ManyToMany } from '@adonisjs/lucid/types/relations'
-import Article from '#models/article'
+import Book from '#models/book'
 
 export default class Tag extends BaseModel {
   @column({ isPrimary: true })
@@ -16,6 +16,6 @@ export default class Tag extends BaseModel {
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 
-  @manyToMany(() => Article, { pivotTable: 'article_tags' })
-  declare articles: ManyToMany<typeof Article>
+  @manyToMany(() => Book, { pivotTable: 'book_tags' })
+  declare books: ManyToMany<typeof Book>
 }

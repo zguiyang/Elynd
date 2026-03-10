@@ -81,7 +81,7 @@ const ARTICLE_DIFFICULTY = {
   L3: 'L3', // Advanced
 } as const
 
-type ArticleDifficulty = (typeof ARTICLE_DIFFICULTY)[keyof typeof ARTICLE_DIFFICULTY]
+type BookDifficulty = (typeof ARTICLE_DIFFICULTY)[keyof typeof ARTICLE_DIFFICULTY]
 
 const ARTICLE_CONTENT = {
   MAX_CHARS: 100000,
@@ -96,7 +96,7 @@ const ARTICLE_CONTENT = {
   READING_SPEED: 200,
 } as const
 
-type ArticleContent = (typeof ARTICLE_CONTENT)[keyof typeof ARTICLE_CONTENT]
+type BookContent = (typeof ARTICLE_CONTENT)[keyof typeof ARTICLE_CONTENT]
 
 const ENGLISH_VARIANT = {
   US: 'en-US',
@@ -136,8 +136,8 @@ export type {
   Ai,
   VocabularyLevel,
   Language,
-  ArticleDifficulty,
-  ArticleContent,
+  BookDifficulty,
+  BookContent,
   EnglishVariant,
   Dictionary,
 }

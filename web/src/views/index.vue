@@ -74,7 +74,7 @@ const FEATURES = [
   {
     icon: BookOpen,
     title: 'AI 智能阅读',
-    description: '精选原版文章，AI 智能推荐适合你水平的阅读内容，让学习更高效',
+    description: '精选原版书籍，AI 智能推荐适合你水平的阅读内容，让学习更高效',
   },
   {
     icon: PlayCircle,
@@ -89,20 +89,20 @@ const FEATURES = [
   {
     icon: Sparkles,
     title: 'AI 问答助手',
-    description: '针对文章内容向 AI 提问，获得详细解答，加深理解',
+    description: '针对书籍内容向 AI 提问，获得详细解答，加深理解',
   },
 ]
 
 const STEPS = [
   {
     number: '01',
-    title: '选择文章',
-    description: '从海量精选库中，选择适合你兴趣和水平的文章进行阅读。',
+    title: '选择书籍',
+    description: '从海量精选库中，选择适合你兴趣和水平的书籍进行阅读。',
   },
   {
     number: '02',
     title: '沉浸阅读',
-    description: '在 AI 的辅助下，通过听读、查词等功能，深度理解文章内容。',
+    description: '在 AI 的辅助下，通过听读、查词等功能，深度理解书籍内容。',
   },
   {
     number: '03',

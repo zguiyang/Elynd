@@ -33,6 +33,9 @@ openspec/
 .roo/
 .junie/
 .ai/
+.codex/
+.claude/
+.agents/
 .sisyphus/
 AGENTS.md
 .output.txt

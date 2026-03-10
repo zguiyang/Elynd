@@ -25,6 +25,8 @@ export default class ArticleChatController {
     response.header('Connection', 'keep-alive')
     response.header('X-Accel-Buffering', 'no')
 
+    const streamed = response.stream(stream)
+
     await this.articleChatService.streamChat(
       {
         userId,
@@ -53,6 +55,6 @@ export default class ArticleChatController {
       }
     )
 
-    return response.stream(stream)
+    return streamed
   }
 }

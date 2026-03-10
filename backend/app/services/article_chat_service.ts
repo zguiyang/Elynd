@@ -121,6 +121,15 @@ export class ArticleChatService {
       {
         onChunk: handlers.onChunk,
         onComplete: async (data) => {
+          const content = data.content.trim()
+
+          if (!content) {
+            const error = new Error('AI did not return a response. Please try again.')
+            logger.warn({ userId, articleId }, 'AI stream completed with empty response')
+            handlers.onError(error)
+            return
+          }
+
           try {
             await ArticleChat.create({
               userId,

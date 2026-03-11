@@ -10,6 +10,8 @@ import BookChapter from '#models/book_chapter'
 import db from '@adonisjs/lucid/services/db'
 import { TransmitService } from '#services/transmit_service'
 import { BookParserService } from '#services/book_parser_service'
+import { BookChapterCleanerService } from '#services/book_chapter_cleaner_service'
+import { BookHashService } from '#services/book_hash_service'
 import {
   generateBookValidator,
   importBookValidator,
@@ -22,7 +24,13 @@ export default class AdminBooksController {
     private transmitService: TransmitService,
     private bookService: BookService,
     private bookParserService: BookParserService
-  ) {}
+  ) {
+    this.bookChapterCleanerService = new BookChapterCleanerService()
+    this.bookHashService = new BookHashService()
+  }
+
+  private bookChapterCleanerService: BookChapterCleanerService
+  private bookHashService: BookHashService
 
   async generate({ auth, request }: HttpContext) {
     const user = auth.getUserOrFail()
@@ -90,6 +98,32 @@ export default class AdminBooksController {
     const user = auth.getUserOrFail()
     const data = await request.validateUsing(importBookValidator)
 
+    // Clean chapters before persistence
+    const cleanResult = this.bookChapterCleanerService.clean(data.chapters)
+
+    // Compute content hash
+    const contentHash = this.bookHashService.hashNormalizedBook(cleanResult.cleanedChapters)
+
+    // Detect reusable completed book by content_hash
+    const existingBook = await Book.query()
+      .where('contentHash', contentHash)
+      .where('status', 'ready')
+      .first()
+
+    if (existingBook) {
+      logger.info({ bookId: existingBook.id, contentHash }, 'Reusing existing completed book')
+
+      return {
+        bookId: existingBook.id,
+        status: existingBook.status,
+        processingStep: existingBook.processingStep,
+        processingProgress: existingBook.processingProgress,
+        reused: true,
+        message: 'Book already processed, returning existing book',
+      }
+    }
+
+    // Create new book with cleaned chapters
     const book = await db.transaction(async (trx) => {
       const created = await Book.create(
         {
@@ -104,16 +138,17 @@ export default class AdminBooksController {
           processingStep: 'parsing',
           processingProgress: 0,
           processingError: null,
-          isPublished: true,
+          isPublished: false,
+          contentHash,
           createdBy: user.id,
         },
         { client: trx }
       )
 
       await BookChapter.createMany(
-        data.chapters.map((chapter, index) => ({
+        cleanResult.cleanedChapters.map((chapter) => ({
           bookId: created.id,
-          chapterIndex: index,
+          chapterIndex: chapter.chapterIndex,
           title: chapter.title,
           content: chapter.content,
         })),
@@ -133,6 +168,7 @@ export default class AdminBooksController {
       status: book.status,
       processingStep: book.processingStep,
       processingProgress: book.processingProgress,
+      reused: false,
     }
   }
 

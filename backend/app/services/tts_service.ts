@@ -4,7 +4,15 @@ import env from '#start/env'
 import drive from '@adonisjs/drive/services/main'
 import * as sdk from 'microsoft-cognitiveservices-speech-sdk'
 import { speechSdkTicksToMs } from '#utils/speech_sdk_time'
-import type { TtsResult, AudioTiming, WordTiming, ChapterTiming, ChapterInput } from '#types/tts'
+import type {
+  TtsResult,
+  AudioTiming,
+  WordTiming,
+  ChapterTiming,
+  ChapterInput,
+  ChapterAudioResult,
+  TtsErrorDetails,
+} from '#types/tts'
 
 @inject()
 export class TtsService {
@@ -25,6 +33,45 @@ export class TtsService {
     )
   }
 
+  /**
+   * Generate audio for a single chapter.
+   * Returns a deterministic audio file path and timing metadata.
+   */
+  async generateChapterAudio(
+    chapter: ChapterInput,
+    bookId: number,
+    _options?: { voiceName?: string }
+  ): Promise<ChapterAudioResult> {
+    logger.info(
+      { chapterIndex: chapter.chapterIndex, title: chapter.title, bookId },
+      'Generating chapter audio'
+    )
+
+    const text = `${chapter.title}\n\n${chapter.content}`
+    const result = await this.synthesizeChapter(text, chapter.chapterIndex)
+
+    // Generate deterministic path: book/voices/{bookId}/chapter-{chapterIndex}.mp3
+    const audioPath = `${this.audioUrl}/${bookId}/chapter-${chapter.chapterIndex}.mp3`
+    await drive.use().put(audioPath, result.audioBuffer)
+
+    logger.info(
+      { chapterIndex: chapter.chapterIndex, duration: result.duration, bookId },
+      'Chapter audio generated'
+    )
+
+    return {
+      chapterIndex: chapter.chapterIndex,
+      audioPath,
+      duration: result.duration,
+      timing: {
+        words: result.wordTimings,
+      },
+    }
+  }
+
+  /**
+   * Generate merged audio for all chapters (legacy method for backward compatibility).
+   */
   async generateAudio(chapters: ChapterInput[], bookId: number): Promise<TtsResult> {
     logger.info({ bookId, chapterCount: chapters.length }, 'Starting audio generation')
 
@@ -40,7 +87,7 @@ export class TtsService {
       )
 
       const text = `${chapter.title}\n\n${chapter.content}`
-      const result = await this.synthesizeChapter(text)
+      const result = await this.synthesizeChapter(text, chapter.chapterIndex)
 
       const adjustedWords = result.wordTimings.map((w) => ({
         ...w,
@@ -79,7 +126,28 @@ export class TtsService {
     return { audioUrl: key, timing }
   }
 
-  private async synthesizeChapter(text: string): Promise<{
+  /**
+   * Map SDK cancellation to structured error details for logging.
+   */
+  private mapErrorDetails(reason: sdk.ResultReason, chapterIndex?: number): TtsErrorDetails {
+    if (reason === sdk.ResultReason.Canceled) {
+      return {
+        code: 'canceled',
+        message: 'Speech synthesis was canceled',
+        chapterIndex,
+      }
+    }
+    return {
+      code: 'synthesis_failed',
+      message: 'Speech synthesis failed',
+      chapterIndex,
+    }
+  }
+
+  private async synthesizeChapter(
+    text: string,
+    chapterIndex?: number
+  ): Promise<{
     audioBuffer: Buffer
     wordTimings: WordTiming[]
     duration: number
@@ -118,16 +186,19 @@ export class TtsService {
               duration: speechSdkTicksToMs(result.audioDuration),
             })
           } else {
-            const errorDetails =
-              result.reason === sdk.ResultReason.Canceled
-                ? 'Speech synthesis canceled'
-                : 'Speech synthesis failed'
-            reject(new Error(errorDetails))
+            const errorDetails = this.mapErrorDetails(result.reason, chapterIndex)
+            const error = new Error(errorDetails.message)
+            // Attach error details for logging
+            ;(error as unknown as { ttsError: TtsErrorDetails }).ttsError = errorDetails
+            reject(error)
           }
         },
         (err: string) => {
           synthesizer.close()
-          reject(new Error(err))
+          const errorDetails = this.mapErrorDetails(sdk.ResultReason.Canceled, chapterIndex)
+          const error = new Error(err)
+          ;(error as unknown as { ttsError: TtsErrorDetails }).ttsError = errorDetails
+          reject(error)
         }
       )
     })

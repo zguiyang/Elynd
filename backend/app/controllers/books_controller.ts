@@ -5,6 +5,8 @@ import { TagService } from '#services/tag_service'
 import { BookChatService } from '#services/book_chat_service'
 import { listBookValidator } from '#validators/book_validator'
 import { bookChatValidator } from '#validators/ai_validator'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 
 @inject()
 export default class BooksController {
@@ -41,7 +43,49 @@ export default class BooksController {
 
     const chapter = await this.bookService.getChapterByIndex(bookId, chapterIndex)
 
-    return chapter.serialize()
+    // Get chapter audio info
+    const audioInfo = await this.bookService.getChapterAudio(bookId, chapterIndex)
+
+    const serialized = chapter.serialize()
+    if (audioInfo) {
+      return {
+        ...serialized,
+        audio: {
+          audioPath: audioInfo.audioPath,
+          durationMs: audioInfo.durationMs,
+        },
+      }
+    }
+
+    return serialized
+  }
+
+  async chapterAudio({ params, response }: HttpContext) {
+    const bookId = params.id
+    const chapterIndex = params.chapterIndex
+
+    // Verify book is published
+    await this.bookService.findPublishedById(bookId)
+
+    // Get chapter audio
+    const audioInfo = await this.bookService.getChapterAudio(bookId, Number(chapterIndex))
+
+    if (!audioInfo || !audioInfo.audioPath) {
+      return response.notFound({ error: 'Chapter audio not found' })
+    }
+
+    try {
+      // Get the audio file from storage
+      // audioPath format: book/voices/{bookId}/chapter-{chapterIndex}.mp3
+      const storageDir = join(process.cwd(), 'storage', audioInfo.audioPath)
+      const fileBuffer = await readFile(storageDir)
+
+      response.header('Content-Type', 'audio/mpeg')
+      response.header('Content-Disposition', `inline; filename="chapter-${chapterIndex}.mp3"`)
+      return response.send(fileBuffer)
+    } catch {
+      return response.notFound({ error: 'Audio file not found' })
+    }
   }
 
   async vocabulary({ params }: HttpContext) {

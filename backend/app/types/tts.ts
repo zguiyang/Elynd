@@ -36,3 +36,29 @@ export interface ChapterInput {
   title: string
   content: string
 }
+
+/**
+ * Result of generating audio for a single chapter.
+ * Each chapter gets its own audio file with deterministic path.
+ */
+export interface ChapterAudioResult {
+  /** Index of the chapter in the book (0-based). */
+  chapterIndex: number
+  /** Local path to the audio file (deterministic based on bookId and chapterIndex). */
+  audioPath: string
+  /** Duration of the chapter audio in milliseconds. */
+  duration: number
+  /** Timing metadata for words in this chapter. */
+  timing: {
+    words: WordTiming[]
+  }
+}
+
+/**
+ * Error details from TTS processing, structured for logging.
+ */
+export interface TtsErrorDetails {
+  code: 'canceled' | 'synthesis_failed' | 'unknown'
+  message: string
+  chapterIndex?: number
+}

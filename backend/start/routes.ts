@@ -51,6 +51,7 @@ router
     router.get('/books', [BooksController, 'index'])
     router.get('/books/:id', [BooksController, 'show'])
     router.get('/books/:id/chapters/:chapterIndex', [BooksController, 'chapter'])
+    router.get('/books/:id/chapters/:chapterIndex/audio', [BooksController, 'chapterAudio'])
     router.get('/books/:id/vocabulary', [BooksController, 'vocabulary'])
     router.get('/tags', [BooksController, 'tags'])
     router.post('/books/:id/ai-chat', [BooksController, 'aiChat']).use(aiChatLimiter)

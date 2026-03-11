@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FileText, User, LogOut, Settings, Upload, ListTodo } from 'lucide-vue-next'
+import { FileText, User, LogOut, Settings, ListTodo } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
@@ -7,8 +7,8 @@ const authStore = useAuthStore()
 
 const navigation = [
   { name: '书籍任务', path: '/admin/books', icon: ListTodo },
-  { name: '生成书籍', path: '/admin/books/generate', icon: FileText },
-  { name: '导入书籍', path: '/admin/books/import', icon: Upload },
+  // { name: '生成书籍', path: '/admin/books/generate', icon: FileText },
+  // { name: '导入书籍', path: '/admin/books/import', icon: Upload },
   { name: '系统设置', path: '/admin/settings', icon: Settings },
 ]
 

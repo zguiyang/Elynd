@@ -2,7 +2,42 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { toast } from 'vue-sonner'
 import { adminApi, type AdminBook, type AdminUpdateBookPayload } from '@/api/admin'
-import { RefreshCw, Loader2, Pencil, Trash2, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-vue-next'
+import { RefreshCw, Loader2, Pencil, Trash2, Clock, CheckCircle, XCircle, AlertCircle, Upload } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardFooter } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from '@/components/ui/table'
+import { Textarea } from '@/components/ui/textarea'
+
+const router = useRouter()
 
 // State
 const page = ref(1)
@@ -134,16 +169,18 @@ const goToPage = (newPage: number) => {
 const totalPages = computed(() => meta.value ? Math.ceil(meta.value.total / meta.value.perPage) : 1)
 
 // Status helpers
-const getStatusBadge = (status: string) => {
+type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline'
+
+const getStatusVariant = (status: string): BadgeVariant => {
   switch (status) {
     case 'processing':
-      return 'bg-blue-100 text-blue-800'
+      return 'secondary'
     case 'ready':
-      return 'bg-green-100 text-green-800'
+      return 'default'
     case 'failed':
-      return 'bg-red-100 text-red-800'
+      return 'destructive'
     default:
-      return 'bg-gray-100 text-gray-800'
+      return 'secondary'
   }
 }
 
@@ -191,11 +228,17 @@ onUnmounted(() => {
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-bold">书籍任务</h1>
-      <Button variant="outline" size="sm" @click="fetchBooks" :disabled="isLoading">
-        <RefreshCw v-if="!isLoading" class="h-4 w-4 mr-2" />
-        <Loader2 v-else class="h-4 w-4 mr-2 animate-spin" />
-        刷新
-      </Button>
+      <div class="flex items-center gap-2">
+        <Button variant="outline" size="sm" @click="router.push('/admin/books/import')">
+          <Upload class="h-4 w-4 mr-2" />
+          导入书籍
+        </Button>
+        <Button variant="outline" size="sm" @click="fetchBooks" :disabled="isLoading">
+          <RefreshCw v-if="!isLoading" class="h-4 w-4 mr-2" />
+          <Loader2 v-else class="h-4 w-4 mr-2 animate-spin" />
+          刷新
+        </Button>
+      </div>
     </div>
 
     <!-- Table -->
@@ -229,7 +272,7 @@ onUnmounted(() => {
               <TableCell class="font-medium">{{ book.title }}</TableCell>
               <TableCell>{{ book.author || '-' }}</TableCell>
               <TableCell>
-                <Badge :class="getStatusBadge(book.status)">
+                <Badge :variant="getStatusVariant(book.status)">
                   <component :is="getStatusIcon(book.status)" class="h-3 w-3 mr-1" />
                   {{ getStatusText(book.status) }}
                 </Badge>

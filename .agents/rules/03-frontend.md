@@ -339,6 +339,21 @@ import { BookmarkCard } from '@/components/shared/BookmarkCard.vue'  // ❌ Wron
 </template>
 ```
 
+**shadcn-vue Specific Rule**:
+
+- `pnpm dlx shadcn-vue@latest add <component>` is still required to generate the component source into the project
+- After generation, components under `src/components/ui/` are auto-registered by `unplugin-vue-components`
+- In normal `.vue` consumer files, use `<Button />`, `<Card />`, `<Empty />`, `<EmptyTitle />` directly without manual imports
+- Example: after running `pnpm dlx shadcn-vue@latest add empty`, you can use `<Empty />` and related subcomponents directly in templates
+- Manual imports are only needed when importing non-component modules such as icons, utilities, types, schemas, or third-party libraries
+
+**Actual Project Configuration**:
+
+- Vite uses `Components({ dirs: ['src/components'], deep: true })`
+- This means every Vue component under `src/components/**` is scanned recursively and auto-imported
+- `shadcn-vue` components generated into `src/components/ui/**` are covered automatically by this rule
+- Type declarations are generated into `src/components.d.ts`
+
 **Forbidden Practices**:
 
 ```typescript
@@ -397,7 +412,7 @@ import { useDebounceFn, useThrottleFn } from '@vueuse/core'
 **Note**: VueUse modules require manual import for better code readability.
 
 **Exceptions** (these files need manual imports):
-- `src/components/ui/**` - shadcn-vue components (internal usage)
+- `src/components/ui/**` - shadcn-vue component source files themselves; internal implementation may still need explicit imports
 - `src/router/**` - Router configuration files
 - `src/composables/**` - Composables (internal usage)
 - `src/views/**` - View components (VueUse imports)

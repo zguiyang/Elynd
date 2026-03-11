@@ -1,6 +1,39 @@
 import { request } from '@/lib/request'
 import type { BookStatusResponse } from '@/types/book'
 
+export interface AdminBook {
+  id: number
+  title: string
+  author: string | null
+  description: string | null
+  source: 'user_uploaded' | 'public_domain' | 'ai_generated'
+  difficultyLevel: string
+  status: 'processing' | 'ready' | 'failed'
+  processingStep: string | null
+  processingProgress: number
+  processingError: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AdminBooksListResponse {
+  data: AdminBook[]
+  meta: {
+    currentPage: number
+    perPage: number
+    total: number
+    lastPage: number
+  }
+}
+
+export interface AdminUpdateBookPayload {
+  title?: string
+  author?: string
+  description?: string
+  difficultyLevel?: 'L1' | 'L2' | 'L3'
+  source?: 'user_uploaded' | 'public_domain' | 'ai_generated'
+}
+
 export interface GenerateBookData {
   difficultyLevel: 'L1' | 'L2' | 'L3'
   topic: string
@@ -80,4 +113,21 @@ export const adminApi = {
 
   updateSystemConfig: (data: SystemConfig) =>
     request<SystemConfig>({ method: 'PUT', url: '/api/admin/system-config', data }),
+
+  listBooks: (params?: { page?: number; perPage?: number }) => {
+    const searchParams = new URLSearchParams()
+    if (params?.page) searchParams.set('page', String(params.page))
+    if (params?.perPage) searchParams.set('perPage', String(params.perPage))
+    const query = searchParams.toString()
+    return request<AdminBooksListResponse>({
+      method: 'GET',
+      url: `/api/admin/books${query ? `?${query}` : ''}`,
+    })
+  },
+
+  updateBook: (id: number, data: AdminUpdateBookPayload) =>
+    request<AdminBook>({ method: 'PATCH', url: `/api/admin/books/${id}`, data }),
+
+  deleteBook: (id: number) =>
+    request<{ success: boolean }>({ method: 'DELETE', url: `/api/admin/books/${id}` }),
 }

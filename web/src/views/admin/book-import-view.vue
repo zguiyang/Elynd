@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { Upload, FileText, CheckCircle2, Loader2, Wifi, WifiOff } from 'lucide-vue-next'
+import { Upload, FileText, CheckCircle2, Loader2, AlertCircle } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { adminApi, type ParsedBookPreview } from '@/api/admin'
 import { useAuthStore } from '@/stores/auth'
-import { useBookImportStatus } from '@/composables/useBookImportStatus'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const authStore = useAuthStore()
 const userId = authStore.user?.id
 
@@ -18,6 +19,9 @@ const isImporting = ref(false)
 const preview = ref<ParsedBookPreview | null>(null)
 const file = ref<File | null>(null)
 
+// Error state for inline display
+const submitError = ref<string | null>(null)
+
 const form = reactive({
   title: '',
   author: '',
@@ -26,51 +30,9 @@ const form = reactive({
   difficultyLevel: 'L1' as 'L1' | 'L2' | 'L3',
 })
 
-const {
-  status,
-  isConnected,
-  trackingBookId,
-  refreshStatus,
-  startTracking,
-  stopTracking,
-} = useBookImportStatus()
-
-const PROCESSING_STEP_LABELS: Record<string, string> = {
-  parsing: '解析内容',
-  analyzing_vocabulary: '分析词汇',
-  generating_meanings: '生成释义',
-  generating_audio: '生成音频',
-  audio_queued: '音频任务排队中',
-  audio: '音频处理中',
-  completed: '处理完成'
-}
-
-function getProcessingStepLabel(step: string | null) {
-  if (!step) {
-    return '处理中'
-  }
-
-  return PROCESSING_STEP_LABELS[step] || '处理中'
-}
-
-const progressText = computed(() => {
-  if (!status.value) {
-    return '等待开始处理'
-  }
-
-  if (status.value.status === 'failed') {
-    return status.value.processingError || '处理失败'
-  }
-
-  if (status.value.status === 'ready') {
-    return '处理完成'
-  }
-
-  return `${getProcessingStepLabel(status.value.processingStep)}（${status.value.processingProgress}%）`
-})
-
 async function parseSelectedFile(selected: File) {
   isParsing.value = true
+  submitError.value = null
   try {
     const result = await adminApi.parseBookFile(selected)
     preview.value = result
@@ -107,9 +69,10 @@ async function confirmImport() {
   }
 
   isImporting.value = true
+  submitError.value = null
 
   try {
-    const result = await adminApi.importBook({
+    await adminApi.importBook({
       title: form.title.trim(),
       author: form.author.trim(),
       description: form.description.trim(),
@@ -122,65 +85,30 @@ async function confirmImport() {
       })),
     })
 
-    await startTracking(result.bookId)
+    // Go directly to success state without tracking
     step.value = 3
   } catch (error) {
-    toast.error((error as Error).message || '导入书籍失败')
+    const err = error as { response?: { data?: { message?: string } } }
+    submitError.value = err.response?.data?.message || (error as Error).message || '导入书籍失败'
   } finally {
     isImporting.value = false
   }
-}
-
-function handleRefreshStatus() {
-  if (!trackingBookId.value) {
-    return
-  }
-  refreshStatus()
 }
 
 function resetFlow() {
   step.value = 1
   file.value = null
   preview.value = null
-  stopTracking()
+  submitError.value = null
+  // Reset form
+  form.title = ''
+  form.author = ''
+  form.description = ''
 }
 
-watch(status, (newStatus, oldStatus) => {
-  if (!newStatus) {
-    return
-  }
-
-  if (newStatus.status === 'processing') {
-    step.value = 3
-    return
-  }
-
-  if (newStatus.status === 'failed') {
-    if (oldStatus?.status === 'processing') {
-      toast.error(newStatus.processingError || '书籍导入失败')
-    }
-  }
-
-  if (newStatus.status === 'ready') {
-    if (oldStatus?.status === 'processing') {
-      toast.success('书籍导入完成')
-    }
-  }
-
-  resetFlow()
-})
-
-onMounted(async () => {
-  if (trackingBookId.value) {
-    await refreshStatus()
-    if (status.value?.status === 'processing') {
-      step.value = 3
-      return
-    }
-
-    await stopTracking()
-  }
-})
+function goToTasks() {
+  router.push('/admin/books')
+}
 </script>
 
 <template>
@@ -193,8 +121,15 @@ onMounted(async () => {
         <div class="flex items-center gap-2 text-sm text-muted-foreground">
           <Badge :variant="step >= 1 ? 'default' : 'outline'">1. 上传</Badge>
           <Badge :variant="step >= 2 ? 'default' : 'outline'">2. 预览</Badge>
-          <Badge :variant="step >= 3 ? 'default' : 'outline'">3. 进度</Badge>
+          <Badge :variant="step >= 3 ? 'default' : 'outline'">3. 提交</Badge>
         </div>
+
+        <!-- Error alert for submit failures -->
+        <Alert v-if="submitError" variant="destructive">
+          <AlertCircle class="h-4 w-4" />
+          <AlertTitle>导入失败</AlertTitle>
+          <AlertDescription>{{ submitError }}</AlertDescription>
+        </Alert>
 
         <div v-if="step === 1" class="space-y-4">
           <label
@@ -253,7 +188,7 @@ onMounted(async () => {
           </div>
 
           <div class="flex gap-3">
-            <Button variant="outline" @click="step = 1">返回</Button>
+            <Button variant="outline" @click="resetFlow">返回</Button>
             <Button :disabled="isImporting" @click="confirmImport">
               <Loader2 v-if="isImporting" class="mr-2 size-4 animate-spin" />
               导入
@@ -262,29 +197,20 @@ onMounted(async () => {
         </div>
 
         <div v-else-if="step === 3" class="space-y-4">
-          <div class="rounded-md border p-4">
-            <div class="mb-2 flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <CheckCircle2 v-if="status?.status === 'ready'" class="size-5 text-green-600" />
-                <Loader2 v-else-if="status?.status === 'processing'" class="size-5 animate-spin text-primary" />
-                <span class="font-medium">书籍 #{{ trackingBookId || '-' }}</span>
-              </div>
-              <div class="flex items-center gap-1 text-xs">
-                <Wifi v-if="isConnected" class="size-3 text-green-600" />
-                <WifiOff v-else class="size-3 text-muted-foreground" />
-                <span :class="isConnected ? 'text-green-600' : 'text-muted-foreground'">
-                  {{ isConnected ? '实时连接' : '重连中' }}
-                </span>
-              </div>
+          <div class="rounded-md border border-green-200 bg-green-50 p-6 text-center dark:border-green-800 dark:bg-green-950">
+            <CheckCircle2 class="mx-auto mb-3 size-12 text-green-600" />
+            <h3 class="mb-2 text-lg font-semibold">已提交处理任务</h3>
+            <p class="mb-4 text-sm text-muted-foreground">
+              后台正在异步处理。你可以继续上传下一本书，或前往书籍任务页查看状态。
+            </p>
+            <div class="flex justify-center gap-3">
+              <Button @click="resetFlow">
+                继续上传书籍
+              </Button>
+              <Button variant="outline" @click="goToTasks">
+                去往书籍任务页查看状态
+              </Button>
             </div>
-            <Progress :model-value="status?.processingProgress || 0" />
-            <p class="mt-2 text-sm text-muted-foreground">{{ progressText }}</p>
-            <p v-if="status?.processingError" class="mt-2 text-sm text-destructive">{{ status.processingError }}</p>
-          </div>
-
-          <div class="flex gap-3">
-            <Button variant="outline" @click="handleRefreshStatus">刷新状态</Button>
-            <Button variant="outline" @click="resetFlow">继续导入</Button>
           </div>
         </div>
       </CardContent>

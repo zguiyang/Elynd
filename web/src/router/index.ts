@@ -90,9 +90,14 @@ const router = createRouter({
       path: '/admin',
       name: 'admin',
       component: () => import('@/layouts/admin-layout.vue'),
-      redirect: '/admin/books/generate',
+      redirect: '/admin/books',
       meta: { requiresAuth: true, requiresAdmin: true },
       children: [
+        {
+          path: 'books',
+          name: 'admin-books-list',
+          component: () => import('@/views/admin/books-list-view.vue'),
+        },
         {
           path: 'books/generate',
           name: 'admin-books-generate',

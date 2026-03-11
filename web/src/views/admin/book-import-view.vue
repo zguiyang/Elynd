@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { Upload, FileText, CheckCircle2, Loader2 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
-import { adminApi, type ParsedBookPreview, type BookStatusResponse } from '@/api/admin'
+import { adminApi, type ParsedBookPreview } from '@/api/admin'
+import type { BookStatusResponse } from '@/types/book'
 import { useAuthStore } from '@/stores/auth'
 import { useBookImportSse } from '@/composables/useBookImportSse'
 

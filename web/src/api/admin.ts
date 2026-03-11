@@ -1,4 +1,5 @@
 import { request } from '@/lib/request'
+import type { BookStatusResponse } from '@/types/book'
 
 export interface GenerateBookData {
   difficultyLevel: 'L1' | 'L2' | 'L3'
@@ -48,14 +49,6 @@ export interface ImportBookResponse {
   status: 'processing' | 'ready' | 'failed'
   processingStep: string | null
   processingProgress: number
-}
-
-export interface BookStatusResponse {
-  id: number
-  status: 'processing' | 'ready' | 'failed'
-  processingStep: string | null
-  processingProgress: number
-  processingError: string | null
 }
 
 export const adminApi = {

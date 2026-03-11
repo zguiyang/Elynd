@@ -9,6 +9,9 @@ export interface Chapter {
   chapterIndex: number
   title: string
   content?: string
+  audioUrl: string | null
+  audioStatus: AudioStatus | null
+  audioDurationMs: number | null
 }
 
 export interface ChapterListItem {
@@ -18,6 +21,39 @@ export interface ChapterListItem {
 }
 
 export type AudioStatus = 'pending' | 'processing' | 'completed' | 'failed'
+
+export type BookImportRunStatus = 'pending' | 'parsing' | 'processing_chapters' | 'generating_vocabulary' | 'completed' | 'failed'
+export type BookImportStepStatus = 'pending' | 'in_progress' | 'completed' | 'failed'
+
+export interface BookImportStep {
+  key: string
+  status: BookImportStepStatus
+  progress: number
+  errorCode?: string
+  errorMessage?: string
+}
+
+export interface BookImportRun {
+  id: number
+  bookId: number
+  status: BookImportRunStatus
+  steps: BookImportStep[]
+  currentStep?: string
+  totalProgress: number
+  errorCode?: string
+  errorMessage?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface BookStatusResponse {
+  id: number
+  status: 'processing' | 'ready' | 'failed'
+  processingStep: string | null
+  processingProgress: number
+  processingError: string | null
+  importRun?: BookImportRun
+}
 
 export interface Book {
   id: number

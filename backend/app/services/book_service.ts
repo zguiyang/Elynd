@@ -4,6 +4,7 @@ import db from '@adonisjs/lucid/services/db'
 import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import BookVocabulary from '#models/book_vocabulary'
+import BookChapterAudio from '#models/book_chapter_audio'
 import GenerateBookAudioJob from '#jobs/generate_book_audio_job'
 import type { ListPublishedParams } from '#types/book'
 
@@ -105,5 +106,68 @@ export class BookService {
       bookId: book.id,
       status: 'pending',
     }
+  }
+
+  /**
+   * Get chapter audio metadata for a specific chapter
+   */
+  async getChapterAudio(bookId: number, chapterIndex: number) {
+    const audio = await BookChapterAudio.query()
+      .where('bookId', bookId)
+      .where('chapterIndex', chapterIndex)
+      .where('status', 'completed')
+      .first()
+
+    if (!audio) {
+      return null
+    }
+
+    return {
+      chapterIndex: audio.chapterIndex,
+      audioPath: audio.audioPath,
+      durationMs: audio.durationMs,
+      status: audio.status,
+    }
+  }
+
+  /**
+   * Get all chapter audios for a book
+   */
+  async getAllChapterAudios(bookId: number) {
+    const audios = await BookChapterAudio.query()
+      .where('bookId', bookId)
+      .where('status', 'completed')
+      .orderBy('chapterIndex', 'asc')
+
+    return audios.map((audio) => ({
+      chapterIndex: audio.chapterIndex,
+      audioPath: audio.audioPath,
+      durationMs: audio.durationMs,
+      status: audio.status,
+    }))
+  }
+
+  /**
+   * Check if all chapters have completed audio
+   */
+  async areAllChaptersReady(bookId: number): Promise<boolean> {
+    const totalChapters = await BookChapter.query()
+      .where('bookId', bookId)
+      .count('* as total')
+
+    const chapterCount = Number(totalChapters[0].$extras.total)
+
+    if (chapterCount === 0) {
+      return false
+    }
+
+    const completedAudios = await BookChapterAudio.query()
+      .where('bookId', bookId)
+      .where('status', 'completed')
+      .count('* as total')
+
+    const completedCount = Number(completedAudios[0].$extras.total)
+
+    return completedCount === chapterCount
   }
 }

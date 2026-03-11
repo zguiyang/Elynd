@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { ArrowLeft, Menu, BookOpen, ChevronDown, Bot } from 'lucide-vue-next'
-import { useBook } from '@/composables/useBook'
+import { useBook, useChapter } from '@/composables/useBook'
 import { useReadingSettingsStore } from '@/stores/reading-settings'
 import { learningApi } from '@/api/learning'
 import AiChatPanel from '@/components/shared/AiChatPanel.vue'
-import type { Chapter, ChapterListItem } from '@/types/book'
+import type { ChapterListItem } from '@/types/book'
 import { toast } from 'vue-sonner'
 
 const route = useRoute()
 const bookId = Number(route.params.id)
 
 const { book, fetchBook } = useBook()
+const { chapter, fetchChapter } = useChapter()
 const readingSettings = useReadingSettingsStore()
 
 const currentChapterIndex = ref(0)
@@ -42,13 +43,13 @@ const currentProgress = computed(() => {
 })
 
 const audioSrc = computed(() => {
-  if (!book.value?.audioUrl) return null
+  if (!chapter.value?.audioUrl) return null
   const baseUrl = import.meta.env.VITE_TTS_BASE_URL
-  return `${baseUrl}/${book.value.audioUrl}`
+  return `${baseUrl}/${chapter.value.audioUrl}`
 })
 
 const canPlayAudio = computed(() => {
-  return book.value?.audioStatus === 'completed' && book.value?.audioUrl
+  return chapter.value?.audioStatus === 'completed' && chapter.value?.audioUrl
 })
 
 const updateReadingProgress = async (progress: number) => {
@@ -104,13 +105,19 @@ const handleVisibilityChange = () => {
   }
 }
 
-const handleChapterSelect = (index: number) => {
+const handleChapterSelect = async (index: number) => {
   currentChapterIndex.value = index
+  isPlaying.value = false
+  currentTime.value = 0
+  await fetchChapter(bookId, index)
 }
 
-const handleMobileChapterSelect = (index: number) => {
+const handleMobileChapterSelect = async (index: number) => {
   currentChapterIndex.value = index
   isMobileTocOpen.value = false
+  isPlaying.value = false
+  currentTime.value = 0
+  await fetchChapter(bookId, index)
 }
 
 const handlePlay = () => {
@@ -333,7 +340,7 @@ watch(book, (newBook) => {
           :is-playing="isPlaying"
           :current-time="currentTime"
           :duration="duration"
-          :audio-status="book.audioStatus"
+          :audio-status="chapter?.audioStatus ?? null"
           @select="handleChapterSelect"
           @play="handlePlay"
           @pause="handlePause"
@@ -390,7 +397,7 @@ watch(book, (newBook) => {
       v-model:open="showAiChat"
       :book-id="bookId"
       :book-title="book?.title ?? ''"
-      :chapter-content="(chapters[currentChapterIndex] as Chapter)?.content"
+      :chapter-content="chapter?.content ?? ''"
       :chapter-index="currentChapterIndex"
     />
   </div>

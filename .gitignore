@@ -28,16 +28,8 @@ auto-imports.d.ts
 components.d.ts
 
 # ai generated files
-.opencode/
 openspec/
-.roo/
-.junie/
 .ai/
-.codex/
-.claude/
-.agents/
-.sisyphus/
-AGENTS.md
 .output.txt
 
 docs/

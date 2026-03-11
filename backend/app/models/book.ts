@@ -7,6 +7,9 @@ import User from '#models/user'
 import BookVocabulary from '#models/book_vocabulary'
 import BookChapter from '#models/book_chapter'
 import BookChat from '#models/book_chat'
+import BookProcessingRunLog from '#models/book_processing_run_log'
+import BookProcessingStepLog from '#models/book_processing_step_log'
+import BookChapterAudio from '#models/book_chapter_audio'
 
 export default class Book extends BaseModel {
   @column({ isPrimary: true })
@@ -48,6 +51,9 @@ export default class Book extends BaseModel {
   @column()
   declare isPublished: boolean
 
+  @column({ columnName: 'content_hash' })
+  declare contentHash: string | null
+
   @column()
   declare createdBy: number
 
@@ -83,4 +89,13 @@ export default class Book extends BaseModel {
 
   @hasMany(() => BookChat)
   declare chats: HasMany<typeof BookChat>
+
+  @hasMany(() => BookProcessingRunLog)
+  declare processingRuns: HasMany<typeof BookProcessingRunLog>
+
+  @hasMany(() => BookProcessingStepLog)
+  declare processingSteps: HasMany<typeof BookProcessingStepLog>
+
+  @hasMany(() => BookChapterAudio)
+  declare chapterAudios: HasMany<typeof BookChapterAudio>
 }

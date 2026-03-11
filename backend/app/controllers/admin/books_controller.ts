@@ -16,7 +16,11 @@ import {
   generateBookValidator,
   importBookValidator,
   queryBookStatusValidator,
+  adminListBooksValidator,
+  adminBookIdValidator,
+  adminUpdateBookValidator,
 } from '#validators/book_validator'
+import { Exception } from '@adonisjs/core/exceptions'
 
 @inject()
 export default class AdminBooksController {
@@ -181,5 +185,77 @@ export default class AdminBooksController {
     const enrichedStatus = await this.bookService.getEnrichedStatus(params.id)
 
     return enrichedStatus
+  }
+
+  async index({ request }: HttpContext) {
+    const data = await request.validateUsing(adminListBooksValidator)
+
+    const page = data.page || 1
+    const perPage = data.perPage || 20
+
+    const books = await Book.query()
+      .orderBy('createdAt', 'desc')
+      .paginate(page, perPage)
+
+    return books.serialize()
+  }
+
+  async update({ params, request }: HttpContext) {
+    const idData = await request.validateUsing(adminBookIdValidator, {
+      data: { id: params.id },
+    })
+
+    const data = await request.validateUsing(adminUpdateBookValidator)
+
+    const book = await Book.find(idData.id)
+
+    if (!book) {
+      throw new Exception('Book not found', { status: 404 })
+    }
+
+    if (book.status === 'processing') {
+      throw new Exception('Book is processing, operation not allowed', { status: 400 })
+    }
+
+    // Merge allowed fields only
+    if (data.title !== undefined) {
+      book.title = data.title
+    }
+    if (data.author !== undefined) {
+      book.author = data.author
+    }
+    if (data.description !== undefined) {
+      book.description = data.description
+    }
+    if (data.difficultyLevel !== undefined) {
+      book.difficultyLevel = data.difficultyLevel
+    }
+    if (data.source !== undefined) {
+      book.source = data.source
+    }
+
+    await book.save()
+
+    return book.serialize()
+  }
+
+  async destroy({ params, request }: HttpContext) {
+    const idData = await request.validateUsing(adminBookIdValidator, {
+      data: { id: params.id },
+    })
+
+    const book = await Book.find(idData.id)
+
+    if (!book) {
+      throw new Exception('Book not found', { status: 404 })
+    }
+
+    if (book.status === 'processing') {
+      throw new Exception('Book is processing, operation not allowed', { status: 400 })
+    }
+
+    await book.delete()
+
+    return { success: true }
   }
 }

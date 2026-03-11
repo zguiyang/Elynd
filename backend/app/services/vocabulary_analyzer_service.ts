@@ -1,8 +1,12 @@
 import { inject } from '@adonisjs/core'
 import natural from 'natural'
+import logger from '@adonisjs/core/services/logger'
 import { AiService } from '#services/ai_service'
 import { ConfigService } from '#services/config_service'
 import BookVocabulary from '#models/book_vocabulary'
+import { AI_ERROR_CODES } from '#types/ai'
+import type { AiClientConfig, AiServiceError } from '#types/ai'
+import { VOCABULARY_ANALYZER } from '#constants'
 
 export interface VocabularyCandidate {
   word: string
@@ -93,9 +97,84 @@ export class VocabularyAnalyzerService {
     }
 
     const aiConfig = await this.configService.getAiConfig()
+    const mapped = new Map<string, { word: string; meaning: string; sentence: string }>()
+    const chunks = this.chunkVocabulary(vocabulary, VOCABULARY_ANALYZER.MAX_WORDS_PER_REQUEST)
+
+    for (const chunk of chunks) {
+      const batchItems = await this.generateMeaningsForBatch(bookTitle, chunk, aiConfig)
+
+      for (const item of batchItems) {
+        mapped.set(item.word.toLowerCase(), item)
+      }
+    }
+
+    return vocabulary.map((item) => {
+      const generated = mapped.get(item.word.toLowerCase())
+
+      return {
+        ...item,
+        meaning: generated?.meaning || '',
+        sentence: generated?.sentence || '',
+      }
+    })
+  }
+
+  private chunkVocabulary(
+    items: VocabularyCandidate[],
+    chunkSize: number
+  ): VocabularyCandidate[][] {
+    const chunks: VocabularyCandidate[][] = []
+
+    for (let index = 0; index < items.length; index += chunkSize) {
+      chunks.push(items.slice(index, index + chunkSize))
+    }
+
+    return chunks
+  }
+
+  private async generateMeaningsForBatch(
+    bookTitle: string,
+    vocabulary: VocabularyCandidate[],
+    aiConfig: AiClientConfig
+  ): Promise<Array<{ word: string; meaning: string; sentence: string }>> {
+    try {
+      const response = await this.requestMeanings(bookTitle, vocabulary, aiConfig)
+      return response.words || []
+    } catch (error) {
+      if (
+        this.isParseError(error) &&
+        vocabulary.length > VOCABULARY_ANALYZER.MIN_WORDS_PER_REQUEST
+      ) {
+        const splitAt = Math.ceil(vocabulary.length / 2)
+        const left = await this.generateMeaningsForBatch(
+          bookTitle,
+          vocabulary.slice(0, splitAt),
+          aiConfig
+        )
+        const right = await this.generateMeaningsForBatch(
+          bookTitle,
+          vocabulary.slice(splitAt),
+          aiConfig
+        )
+        return [...left, ...right]
+      }
+
+      logger.warn(
+        { err: error, bookTitle, batchSize: vocabulary.length },
+        'Failed to generate meanings for vocabulary batch'
+      )
+      return []
+    }
+  }
+
+  private requestMeanings(
+    bookTitle: string,
+    vocabulary: VocabularyCandidate[],
+    aiConfig: AiClientConfig
+  ) {
     const words = vocabulary.map((item) => item.word)
 
-    const response = await this.aiService.chatJson<{
+    return this.aiService.chatJson<{
       words: Array<{ word: string; meaning: string; sentence: string }>
     }>(aiConfig, {
       messages: [
@@ -109,24 +188,18 @@ export class VocabularyAnalyzerService {
           content: `Book title: ${bookTitle}\nGenerate concise Chinese meaning and one English example sentence for each word.\nWords: ${words.join(', ')}`,
         },
       ],
-      maxTokens: 3000,
+      maxTokens: VOCABULARY_ANALYZER.MEANING_MAX_TOKENS,
       temperature: 0.3,
       responseFormat: { type: 'json_object' },
     })
+  }
 
-    const mapped = new Map(
-      (response.words || []).map((item) => [item.word.toLowerCase(), item] as const)
+  private isParseError(error: unknown): boolean {
+    return (
+      error instanceof Error &&
+      error.name === 'AiServiceError' &&
+      (error as AiServiceError).code === AI_ERROR_CODES.PARSE_ERROR
     )
-
-    return vocabulary.map((item) => {
-      const generated = mapped.get(item.word.toLowerCase())
-
-      return {
-        ...item,
-        meaning: generated?.meaning || '',
-        sentence: generated?.sentence || '',
-      }
-    })
   }
 
   async saveVocabulary(bookId: number, items: VocabularyWithMeaning[]) {

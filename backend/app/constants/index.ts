@@ -113,6 +113,14 @@ const DICTIONARY = {
 
 type Dictionary = (typeof DICTIONARY)[keyof typeof DICTIONARY]
 
+const VOCABULARY_ANALYZER = {
+  MAX_WORDS_PER_REQUEST: 40,
+  MIN_WORDS_PER_REQUEST: 10,
+  MEANING_MAX_TOKENS: 3000,
+} as const
+
+type VocabularyAnalyzer = (typeof VOCABULARY_ANALYZER)[keyof typeof VOCABULARY_ANALYZER]
+
 export {
   ORDER_BY,
   PAGINATION,
@@ -126,6 +134,7 @@ export {
   ARTICLE_CONTENT,
   ENGLISH_VARIANT,
   DICTIONARY,
+  VOCABULARY_ANALYZER,
 }
 export type {
   OrderBy,
@@ -140,4 +149,5 @@ export type {
   BookContent,
   EnglishVariant,
   Dictionary,
+  VocabularyAnalyzer,
 }

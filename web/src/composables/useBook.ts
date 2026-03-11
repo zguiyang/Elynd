@@ -1,12 +1,11 @@
 import { bookApi } from '@/api/book'
-import { useRequest } from './useRequest'
 import type { Book, BookListItem, BookListParams, Chapter, Tag } from '@/types/book'
 
 export function useBooks() {
   const books = ref<BookListItem[]>([])
   const tags = ref<Tag[]>([])
   const isLoading = ref(false)
-  const error = ref<unknown>(null)
+  const error = ref<string | null>(null)
   const pagination = ref({
     currentPage: 1,
     perPage: 20,
@@ -15,27 +14,31 @@ export function useBooks() {
   })
 
   const fetchBooks = async (params?: BookListParams) => {
-    const request = useRequest<BookListItem[]>({
-      fetcher: async () => {
-        const response = await bookApi.list(params)
-        return response.data
-      },
-    })
-    const result = await request.execute()
-    if (result) {
-      books.value = result
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const response = await bookApi.list(params)
+      books.value = response.data
+      pagination.value = {
+        currentPage: response.meta.currentPage,
+        perPage: response.meta.perPage,
+        lastPage: response.meta.lastPage,
+        total: response.meta.total,
+      }
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to fetch books'
+    } finally {
+      isLoading.value = false
     }
-    isLoading.value = request.isLoading.value
-    error.value = request.error.value
   }
 
   const fetchTags = async () => {
-    const request = useRequest<Tag[]>({
-      fetcher: bookApi.getTags,
-    })
-    const result = await request.execute()
-    if (result) {
-      tags.value = result
+    try {
+      const response = await bookApi.getTags()
+      tags.value = response
+    } catch (e) {
+      console.error('Failed to fetch tags:', e)
     }
   }
 
@@ -58,18 +61,20 @@ export function useBooks() {
 export function useBook() {
   const book = ref<Book | null>(null)
   const isLoading = ref(false)
-  const error = ref<unknown>(null)
+  const error = ref<string | null>(null)
 
   const fetchBook = async (id: number) => {
-    const request = useRequest<Book>({
-      fetcher: () => bookApi.getById(id),
-    })
-    const result = await request.execute()
-    if (result) {
-      book.value = result
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const response = await bookApi.getById(id)
+      book.value = response
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to fetch book'
+    } finally {
+      isLoading.value = false
     }
-    isLoading.value = request.isLoading.value
-    error.value = request.error.value
   }
 
   return {
@@ -83,18 +88,20 @@ export function useBook() {
 export function useChapter() {
   const chapter = ref<Chapter | null>(null)
   const isLoading = ref(false)
-  const error = ref<unknown>(null)
+  const error = ref<string | null>(null)
 
   const fetchChapter = async (bookId: number, chapterIndex: number) => {
-    const request = useRequest<Chapter>({
-      fetcher: () => bookApi.getChapter(bookId, chapterIndex),
-    })
-    const result = await request.execute()
-    if (result) {
-      chapter.value = result
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const response = await bookApi.getChapter(bookId, chapterIndex)
+      chapter.value = response
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Failed to fetch chapter'
+    } finally {
+      isLoading.value = false
     }
-    isLoading.value = request.isLoading.value
-    error.value = request.error.value
   }
 
   return {

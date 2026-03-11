@@ -54,23 +54,44 @@ export class BookParserService {
     const epub = await parseEpub(path, { type: 'path', expand: false })
     const structure = Array.isArray(epub.structure) ? epub.structure : []
     const sections = Array.isArray(epub.sections) ? epub.sections : []
+    const manifest = this.getEpubManifest(epub)
+    const flatStructure = this.flattenStructure(structure)
     const sectionMap = new Map(sections.map((section) => [section.id, section]))
+    const chapters: ParsedBookChapter[] = []
 
-    const chapters = structure
-      .map((node: any, index) => {
-        const section = sectionMap.get(String(node.sectionId))
-        const title = String(node.name || `Chapter ${index + 1}`)
-        const rawContent = section?.htmlString || ''
-        const content = this.cleanContent(rawContent.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' '))
+    for (let i = 0; i < flatStructure.length; i++) {
+      const node = flatStructure[i]
+      const pathRef = typeof node?.path === 'string' ? node.path : ''
+      const filePath = pathRef.split('#')[0]
 
-        return {
-          chapterIndex: index,
-          title,
-          content,
-          wordCount: this.countWords(content),
-        }
+      if (!filePath) {
+        continue
+      }
+
+      const nodeId = this.getNodeId(node)
+      const sectionId = node?.sectionId || this.resolveSectionIdFromPath(pathRef, manifest)
+      const section = sectionId ? sectionMap.get(String(sectionId)) : null
+      const rawContent = section?.htmlString || ''
+
+      if (!rawContent) {
+        continue
+      }
+
+      const nextNodeId = this.findNextNodeIdInSameFile(flatStructure, i, filePath)
+      const fragment = this.extractHtmlFragment(rawContent, nodeId, nextNodeId)
+      const content = this.cleanContent(fragment.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' '))
+
+      if (!content) {
+        continue
+      }
+
+      chapters.push({
+        chapterIndex: chapters.length,
+        title: String(node?.name || `Chapter ${chapters.length + 1}`),
+        content,
+        wordCount: this.countWords(content),
       })
-      .filter((chapter) => chapter.content.length > 0)
+    }
 
     const fallbackContent = sections
       .map((section) => section.htmlString || '')
@@ -153,6 +174,129 @@ export class BookParserService {
       .replace(/[ \t]+\n/g, '\n')
       .replace(/\n{3,}/g, '\n\n')
       .trim()
+  }
+
+  private getEpubManifest(epub: unknown): Array<{ id: string; href: string }> {
+    const manifest = (epub as { _manifest?: Array<{ id: string; href: string }> })._manifest
+    return Array.isArray(manifest) ? manifest : []
+  }
+
+  private flattenStructure(nodes: any[]): any[] {
+    const result: any[] = []
+
+    const visit = (node: any) => {
+      result.push(node)
+      const children = Array.isArray(node?.children) ? node.children : []
+      for (const child of children) {
+        visit(child)
+      }
+    }
+
+    for (const node of nodes) {
+      visit(node)
+    }
+
+    return result
+  }
+
+  private getNodeId(node: any): string | null {
+    if (node?.nodeId) {
+      return String(node.nodeId)
+    }
+
+    const pathRef = typeof node?.path === 'string' ? node.path : ''
+    const hash = pathRef.split('#')[1]
+    return hash ? String(hash) : null
+  }
+
+  private resolveSectionIdFromPath(
+    pathRef: string,
+    manifest: Array<{ id: string; href: string }>
+  ): string | null {
+    const name = this.getLinkName(pathRef)
+    if (!name) {
+      return null
+    }
+
+    const matched = manifest.find((item) => this.getLinkName(item.href) === name)
+    return matched?.id ?? null
+  }
+
+  private getLinkName(href: string): string | null {
+    if (!href) {
+      return null
+    }
+
+    const url = href.split('#')[0]
+    const filename = url.split('/').pop() || ''
+
+    if (!filename) {
+      return null
+    }
+
+    const parts = filename.split('.')
+    if (parts.length <= 1) {
+      return filename
+    }
+
+    parts.pop()
+    return parts.join('.')
+  }
+
+  private findNextNodeIdInSameFile(nodes: any[], startIndex: number, filePath: string) {
+    for (let i = startIndex + 1; i < nodes.length; i++) {
+      const pathRef = typeof nodes[i]?.path === 'string' ? nodes[i].path : ''
+      if (pathRef.split('#')[0] !== filePath) {
+        continue
+      }
+
+      const nodeId = this.getNodeId(nodes[i])
+      if (nodeId) {
+        return nodeId
+      }
+    }
+
+    return null
+  }
+
+  private extractHtmlFragment(html: string, nodeId: string | null, nextNodeId: string | null) {
+    if (!nodeId) {
+      return html
+    }
+
+    const startIndex = this.findAnchorIndex(html, nodeId)
+    if (startIndex === -1) {
+      return html
+    }
+
+    if (nextNodeId) {
+      const endIndex = this.findAnchorIndex(html, nextNodeId)
+      if (endIndex > startIndex) {
+        return html.slice(startIndex, endIndex)
+      }
+    }
+
+    return html.slice(startIndex)
+  }
+
+  private findAnchorIndex(html: string, anchorId: string): number {
+    const escaped = anchorId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const patterns = [
+      new RegExp(`id=["']${escaped}["']`, 'i'),
+      new RegExp(`name=["']${escaped}["']`, 'i'),
+    ]
+
+    for (const pattern of patterns) {
+      const matchIndex = html.search(pattern)
+      if (matchIndex === -1) {
+        continue
+      }
+
+      const tagStart = html.lastIndexOf('<', matchIndex)
+      return tagStart === -1 ? matchIndex : tagStart
+    }
+
+    return -1
   }
 
   private splitTxtChapters(content: string): ParsedBookChapter[] {

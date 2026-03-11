@@ -118,13 +118,17 @@ async function confirmImport() {
 
 async function refreshStatus() {
   if (!trackingBookId.value) {
-    return
+    return false
   }
 
   try {
     status.value = await adminApi.getBookStatus(trackingBookId.value)
+    return true
   } catch (error) {
     toast.error((error as Error).message || 'Failed to query status')
+    // 接口失败时重置流程，让用户可以重新上传
+    resetFlow()
+    return false
   }
 }
 
@@ -162,8 +166,10 @@ watch(event, (payload) => {
 onMounted(async () => {
   await subscribe()
   if (trackingBookId.value) {
-    await refreshStatus()
-    step.value = 3
+    const success = await refreshStatus()
+    if (success) {
+      step.value = 3
+    }
   }
 })
 

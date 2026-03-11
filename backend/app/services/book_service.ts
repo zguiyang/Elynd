@@ -5,8 +5,36 @@ import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import BookVocabulary from '#models/book_vocabulary'
 import BookChapterAudio from '#models/book_chapter_audio'
+import BookProcessingRunLog from '#models/book_processing_run_log'
 import GenerateBookAudioJob from '#jobs/generate_book_audio_job'
 import type { ListPublishedParams } from '#types/book'
+
+export interface ChapterAudioSummary {
+  total: number
+  completed: number
+  pending: number
+  failed: number
+}
+
+export interface EnrichedBookStatus {
+  id: number
+  status: string
+  processingStep: string | null
+  processingProgress: number
+  processingError: string | null
+  latestRun: {
+    id: number
+    jobType: string
+    status: string
+    currentStep: string | null
+    progress: number
+    startedAt: string | null
+    finishedAt: string | null
+    errorCode: string | null
+    errorMessage: string | null
+  } | null
+  chapterAudioSummary: ChapterAudioSummary
+}
 
 @inject()
 export class BookService {
@@ -169,5 +197,78 @@ export class BookService {
     const completedCount = Number(completedAudios[0].$extras.total)
 
     return completedCount === chapterCount
+  }
+
+  /**
+   * Get enriched book status with run diagnostics and chapter audio summary
+   */
+  async getEnrichedStatus(bookId: number): Promise<EnrichedBookStatus> {
+    // Get basic book info
+    const book = await Book.find(bookId)
+
+    if (!book) {
+      throw new Exception('Book not found', { status: 404 })
+    }
+
+    // Get latest run log
+    const latestRun = await BookProcessingRunLog.query()
+      .where('bookId', bookId)
+      .orderBy('startedAt', 'desc')
+      .first()
+
+    // Get chapter audio summary
+    const totalChaptersResult = await BookChapter.query()
+      .where('bookId', bookId)
+      .count('* as total')
+
+    const totalChapters = Number(totalChaptersResult[0].$extras.total)
+
+    const completedAudiosResult = await BookChapterAudio.query()
+      .where('bookId', bookId)
+      .where('status', 'completed')
+      .count('* as total')
+
+    const completedCount = Number(completedAudiosResult[0].$extras.total)
+
+    const failedAudiosResult = await BookChapterAudio.query()
+      .where('bookId', bookId)
+      .where('status', 'failed')
+      .count('* as total')
+
+    const failedCount = Number(failedAudiosResult[0].$extras.total)
+
+    const pendingAudiosResult = await BookChapterAudio.query()
+      .where('bookId', bookId)
+      .where('status', 'pending')
+      .count('* as total')
+
+    const pendingCount = Number(pendingAudiosResult[0].$extras.total)
+
+    return {
+      id: book.id,
+      status: book.status,
+      processingStep: book.processingStep,
+      processingProgress: book.processingProgress,
+      processingError: book.processingError,
+      latestRun: latestRun
+        ? {
+            id: latestRun.id,
+            jobType: latestRun.jobType,
+            status: latestRun.status,
+            currentStep: latestRun.currentStep,
+            progress: latestRun.progress,
+            startedAt: latestRun.startedAt ? latestRun.startedAt.toISO() : null,
+            finishedAt: latestRun.finishedAt ? latestRun.finishedAt.toISO() : null,
+            errorCode: latestRun.errorCode,
+            errorMessage: latestRun.errorMessage,
+          }
+        : null,
+      chapterAudioSummary: {
+        total: totalChapters,
+        completed: completedCount,
+        pending: pendingCount,
+        failed: failedCount,
+      },
+    }
   }
 }

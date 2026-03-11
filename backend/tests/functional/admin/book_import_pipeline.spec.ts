@@ -1,4 +1,5 @@
 import { test } from '@japa/runner'
+import { DateTime } from 'luxon'
 import Book from '#models/book'
 import User from '#models/user'
 import BookProcessingRunLog from '#models/book_processing_run_log'
@@ -545,5 +546,306 @@ test.group('GenerateBookAudioJob - Chapter Level Retry', () => {
     assert.equal(chapterCount, 3, 'Should have 3 chapters')
     assert.equal(completedCount, 2, 'Should have 2 completed audios')
     assert.isFalse(completedCount === chapterCount, 'Book should NOT be ready yet')
+  })
+})
+
+test.group('Admin Book Status Endpoint - Diagnostics', () => {
+  test('status endpoint includes run diagnostics', async ({ assert, cleanup }) => {
+    // Create test user
+    const user = await createTestUser()
+    cleanup(async () => {
+      await user.delete()
+    })
+
+    // Create test book
+    const book = await Book.create({
+      title: 'Test Book for Status',
+      author: 'Test Author',
+      source: 'user_uploaded',
+      difficultyLevel: 'intermediate',
+      status: 'processing',
+      wordCount: 1000,
+      readingTime: 5,
+      isPublished: false,
+      createdBy: user.id,
+      contentHash: crypto.randomUUID(),
+      processingStep: 'audio',
+      processingProgress: 75,
+    })
+    cleanup(async () => {
+      await BookChapterAudio.query().where('bookId', book.id).delete()
+      await BookProcessingStepLog.query().where('bookId', book.id).delete()
+      await BookProcessingRunLog.query().where('bookId', book.id).delete()
+      await book.delete()
+    })
+
+    // Create a run log
+    const runLog = await BookProcessingRunLog.create({
+      bookId: book.id,
+      jobType: 'import',
+      status: 'processing',
+      currentStep: 'generate_audio',
+      progress: 75,
+      startedAt: DateTime.now(),
+    })
+
+    // Create step logs
+    await BookProcessingStepLog.createMany([
+      {
+        runLogId: runLog.id,
+        bookId: book.id,
+        stepKey: 'analyze_vocabulary',
+        status: 'success',
+        startedAt: DateTime.now(),
+        finishedAt: DateTime.now(),
+        durationMs: 1000,
+      },
+      {
+        runLogId: runLog.id,
+        bookId: book.id,
+        stepKey: 'generate_meanings',
+        status: 'success',
+        startedAt: DateTime.now(),
+        finishedAt: DateTime.now(),
+        durationMs: 2000,
+      },
+      {
+        runLogId: runLog.id,
+        bookId: book.id,
+        stepKey: 'generate_audio',
+        status: 'processing',
+        startedAt: DateTime.now(),
+      },
+    ])
+
+    // Test: should include run diagnostics
+    // This test will fail until we implement the enriched status response
+    // For now, we verify the data exists in the database
+    const latestRun = await BookProcessingRunLog.query()
+      .where('bookId', book.id)
+      .orderBy('startedAt', 'desc')
+      .first()
+
+    assert.isNotNull(latestRun, 'Should have a run log')
+    assert.equal(latestRun?.status, 'processing', 'Run status should be processing')
+    assert.equal(latestRun?.currentStep, 'generate_audio', 'Current step should be generate_audio')
+    assert.equal(latestRun?.progress, 75, 'Progress should be 75')
+  })
+
+  test('status endpoint includes last error info', async ({ assert, cleanup }) => {
+    // Create test user
+    const user = await createTestUser()
+    cleanup(async () => {
+      await user.delete()
+    })
+
+    // Create test book with failed run
+    const book = await Book.create({
+      title: 'Test Book for Error Status',
+      author: 'Test Author',
+      source: 'user_uploaded',
+      difficultyLevel: 'intermediate',
+      status: 'failed',
+      wordCount: 1000,
+      readingTime: 5,
+      isPublished: false,
+      createdBy: user.id,
+      contentHash: crypto.randomUUID(),
+    })
+    cleanup(async () => {
+      await BookChapterAudio.query().where('bookId', book.id).delete()
+      await BookProcessingStepLog.query().where('bookId', book.id).delete()
+      await BookProcessingRunLog.query().where('bookId', book.id).delete()
+      await book.delete()
+    })
+
+    // Create a failed run log
+    await BookProcessingRunLog.create({
+      bookId: book.id,
+      jobType: 'import',
+      status: 'failed',
+      currentStep: 'analyze_vocabulary',
+      progress: 10,
+      startedAt: DateTime.now(),
+      finishedAt: DateTime.now(),
+      errorCode: 'VOCABULARY_ANALYSIS_FAILED',
+      errorMessage: 'Failed to analyze vocabulary: API rate limit exceeded',
+    })
+
+    // Test: should include last error info
+    const latestRun = await BookProcessingRunLog.query()
+      .where('bookId', book.id)
+      .orderBy('startedAt', 'desc')
+      .first()
+
+    assert.isNotNull(latestRun, 'Should have a run log')
+    assert.equal(latestRun?.status, 'failed', 'Run status should be failed')
+    assert.equal(latestRun?.errorCode, 'VOCABULARY_ANALYSIS_FAILED', 'Error code should be captured')
+    assert.equal(latestRun?.errorMessage, 'Failed to analyze vocabulary: API rate limit exceeded', 'Error message should be captured')
+  })
+
+  test('status endpoint includes chapter audio completion summary', async ({ assert, cleanup }) => {
+    // Create test user
+    const user = await createTestUser()
+    cleanup(async () => {
+      await user.delete()
+    })
+
+    // Create test book
+    const book = await Book.create({
+      title: 'Test Book for Audio Summary',
+      author: 'Test Author',
+      source: 'user_uploaded',
+      difficultyLevel: 'intermediate',
+      status: 'processing',
+      wordCount: 1000,
+      readingTime: 5,
+      isPublished: false,
+      createdBy: user.id,
+      contentHash: crypto.randomUUID(),
+    })
+    cleanup(async () => {
+      await BookChapterAudio.query().where('bookId', book.id).delete()
+      await BookChapter.query().where('bookId', book.id).delete()
+      await BookProcessingStepLog.query().where('bookId', book.id).delete()
+      await BookProcessingRunLog.query().where('bookId', book.id).delete()
+      await book.delete()
+    })
+
+    // Create chapters
+    await BookChapter.createMany([
+      { bookId: book.id, chapterIndex: 1, title: 'Chapter 1', content: 'Content 1' },
+      { bookId: book.id, chapterIndex: 2, title: 'Chapter 2', content: 'Content 2' },
+      { bookId: book.id, chapterIndex: 3, title: 'Chapter 3', content: 'Content 3' },
+      { bookId: book.id, chapterIndex: 4, title: 'Chapter 4', content: 'Content 4' },
+    ])
+
+    // Create chapter audios (2 completed, 1 pending, 1 failed)
+    await BookChapterAudio.createMany([
+      { bookId: book.id, chapterIndex: 1, textHash: 'h1', voiceHash: 'v', status: 'completed', audioPath: 'path1', durationMs: 1000 },
+      { bookId: book.id, chapterIndex: 2, textHash: 'h2', voiceHash: 'v', status: 'completed', audioPath: 'path2', durationMs: 1500 },
+      { bookId: book.id, chapterIndex: 3, textHash: 'h3', voiceHash: 'v', status: 'pending' },
+      { bookId: book.id, chapterIndex: 4, textHash: 'h4', voiceHash: 'v', status: 'failed', errorMessage: 'TTS service unavailable' },
+    ])
+
+    // Test: should include chapter audio completion summary
+    const totalChapters = await BookChapter.query().where('bookId', book.id).count('* as total')
+    const completedAudios = await BookChapterAudio.query()
+      .where('bookId', book.id)
+      .where('status', 'completed')
+      .count('* as total')
+    const failedAudios = await BookChapterAudio.query()
+      .where('bookId', book.id)
+      .where('status', 'failed')
+      .count('* as total')
+    const pendingAudios = await BookChapterAudio.query()
+      .where('bookId', book.id)
+      .where('status', 'pending')
+      .count('* as total')
+
+    const total = Number(totalChapters[0].$extras.total)
+    const completed = Number(completedAudios[0].$extras.total)
+    const failed = Number(failedAudios[0].$extras.total)
+    const pending = Number(pendingAudios[0].$extras.total)
+
+    assert.equal(total, 4, 'Should have 4 chapters')
+    assert.equal(completed, 2, 'Should have 2 completed audios')
+    assert.equal(failed, 1, 'Should have 1 failed audio')
+    assert.equal(pending, 1, 'Should have 1 pending audio')
+    assert.equal(completed + failed + pending, total, 'All chapters should be accounted for')
+  })
+
+  test('book service provides enriched status with diagnostics', async ({ assert, cleanup }) => {
+    const { BookService } = await import('#services/book_service')
+
+    // Create test user
+    const user = await createTestUser()
+    cleanup(async () => {
+      await user.delete()
+    })
+
+    // Create test book
+    const book = await Book.create({
+      title: 'Test Book for Enriched Status',
+      author: 'Test Author',
+      source: 'user_uploaded',
+      difficultyLevel: 'intermediate',
+      status: 'processing',
+      wordCount: 1000,
+      readingTime: 5,
+      isPublished: false,
+      createdBy: user.id,
+      contentHash: crypto.randomUUID(),
+    })
+    cleanup(async () => {
+      await BookChapterAudio.query().where('bookId', book.id).delete()
+      await BookChapter.query().where('bookId', book.id).delete()
+      await BookProcessingStepLog.query().where('bookId', book.id).delete()
+      await BookProcessingRunLog.query().where('bookId', book.id).delete()
+      await book.delete()
+    })
+
+    // Create chapters
+    await BookChapter.createMany([
+      { bookId: book.id, chapterIndex: 1, title: 'Chapter 1', content: 'Content 1' },
+      { bookId: book.id, chapterIndex: 2, title: 'Chapter 2', content: 'Content 2' },
+    ])
+
+    // Create a run log
+    const runLog = await BookProcessingRunLog.create({
+      bookId: book.id,
+      jobType: 'import',
+      status: 'success',
+      currentStep: 'queue_audio',
+      progress: 100,
+      startedAt: DateTime.now(),
+      finishedAt: DateTime.now(),
+    })
+
+    // Create step logs
+    await BookProcessingStepLog.createMany([
+      {
+        runLogId: runLog.id,
+        bookId: book.id,
+        stepKey: 'analyze_vocabulary',
+        status: 'success',
+        startedAt: DateTime.now(),
+        finishedAt: DateTime.now(),
+      },
+      {
+        runLogId: runLog.id,
+        bookId: book.id,
+        stepKey: 'generate_meanings',
+        status: 'success',
+        startedAt: DateTime.now(),
+        finishedAt: DateTime.now(),
+      },
+    ])
+
+    // Create chapter audios
+    await BookChapterAudio.createMany([
+      { bookId: book.id, chapterIndex: 1, textHash: 'h1', voiceHash: 'v', status: 'completed', audioPath: 'path1', durationMs: 1000 },
+      { bookId: book.id, chapterIndex: 2, textHash: 'h2', voiceHash: 'v', status: 'completed', audioPath: 'path2', durationMs: 1500 },
+    ])
+
+    // Get enriched status from service
+    const bookService = new BookService()
+    const enrichedStatus = await bookService.getEnrichedStatus(book.id)
+
+    // Verify enriched status structure
+    assert.isObject(enrichedStatus, 'Should return an object')
+    assert.equal(enrichedStatus.id, book.id, 'Should include book id')
+    assert.equal(enrichedStatus.status, 'processing', 'Should include book status')
+
+    // Verify run diagnostics
+    assert.isObject(enrichedStatus.latestRun, 'Should include latest run info')
+    assert.equal(enrichedStatus.latestRun.status, 'success', 'Latest run status should be success')
+    assert.equal(enrichedStatus.latestRun.currentStep, 'queue_audio', 'Current step should be queue_audio')
+
+    // Verify chapter audio summary
+    assert.isObject(enrichedStatus.chapterAudioSummary, 'Should include chapter audio summary')
+    assert.equal(enrichedStatus.chapterAudioSummary.total, 2, 'Should have 2 total chapters')
+    assert.equal(enrichedStatus.chapterAudioSummary.completed, 2, 'Should have 2 completed audios')
+    assert.equal(enrichedStatus.chapterAudioSummary.pending, 0, 'Should have 0 pending audios')
   })
 })

@@ -177,14 +177,9 @@ export default class AdminBooksController {
       data: { id: params.id },
     })
 
-    const book = await this.bookService.findById(params.id)
+    // Use enriched status to include run diagnostics and chapter audio summary
+    const enrichedStatus = await this.bookService.getEnrichedStatus(params.id)
 
-    return {
-      id: book.id,
-      status: book.status,
-      processingStep: book.processingStep,
-      processingProgress: book.processingProgress,
-      processingError: book.processingError,
-    }
+    return enrichedStatus
   }
 }

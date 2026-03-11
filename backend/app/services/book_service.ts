@@ -179,9 +179,7 @@ export class BookService {
    * Check if all chapters have completed audio
    */
   async areAllChaptersReady(bookId: number): Promise<boolean> {
-    const totalChapters = await BookChapter.query()
-      .where('bookId', bookId)
-      .count('* as total')
+    const totalChapters = await BookChapter.query().where('bookId', bookId).count('* as total')
 
     const chapterCount = Number(totalChapters[0].$extras.total)
 

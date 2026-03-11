@@ -35,12 +35,7 @@ export default class extends BaseSchema {
     // Create book_processing_run_logs table
     this.schema.createTable('book_processing_run_logs', (table) => {
       table.increments('id').notNullable()
-      table
-        .integer('book_id')
-        .unsigned()
-        .references('books.id')
-        .onDelete('CASCADE')
-        .notNullable()
+      table.integer('book_id').unsigned().references('books.id').onDelete('CASCADE').notNullable()
       table.enum('job_type', ['import', 'retry_audio']).notNullable()
       table.enum('status', ['processing', 'success', 'failed']).notNullable()
       table.string('current_step', 100).nullable()
@@ -67,16 +62,12 @@ export default class extends BaseSchema {
         .references('book_processing_run_logs.id')
         .onDelete('CASCADE')
         .notNullable()
-      table
-        .integer('book_id')
-        .unsigned()
-        .references('books.id')
-        .onDelete('CASCADE')
-        .notNullable()
+      table.integer('book_id').unsigned().references('books.id').onDelete('CASCADE').notNullable()
       table.string('step_key', 100).notNullable()
       table.string('item_key', 100).nullable()
       table.string('input_hash', 64).nullable()
-      table.enum('status', ['pending', 'processing', 'success', 'failed', 'skipped'])
+      table
+        .enum('status', ['pending', 'processing', 'success', 'failed', 'skipped'])
         .notNullable()
         .defaultTo('pending')
       table.timestamp('started_at').nullable()
@@ -88,27 +79,21 @@ export default class extends BaseSchema {
       table.timestamp('created_at').notNullable()
       table.timestamp('updated_at').notNullable()
 
-      table.index(
-        ['book_id', 'step_key', 'item_key', 'input_hash'],
-        'step_logs_composite_idx'
-      )
+      table.index(['book_id', 'step_key', 'item_key', 'input_hash'], 'step_logs_composite_idx')
     })
 
     // Create book_chapter_audios table
     this.schema.createTable('book_chapter_audios', (table) => {
       table.increments('id').notNullable()
-      table
-        .integer('book_id')
-        .unsigned()
-        .references('books.id')
-        .onDelete('CASCADE')
-        .notNullable()
+      table.integer('book_id').unsigned().references('books.id').onDelete('CASCADE').notNullable()
       table.integer('chapter_index').notNullable()
       table.string('text_hash', 64).notNullable()
       table.string('voice_hash', 64).notNullable()
       table.string('audio_path', 500).nullable()
       table.integer('duration_ms').nullable()
-      table.enum('status', ['pending', 'processing', 'completed', 'failed']).notNullable()
+      table
+        .enum('status', ['pending', 'processing', 'completed', 'failed'])
+        .notNullable()
         .defaultTo('pending')
       table.text('error_message').nullable()
       table.timestamp('created_at').notNullable()

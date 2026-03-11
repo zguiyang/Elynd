@@ -8,8 +8,6 @@ import BookChapterAudio from '#models/book_chapter_audio'
 import BookChapter from '#models/book_chapter'
 import { BookProcessingLogService } from '#services/book_processing_log_service'
 import ProcessBookJob from '#jobs/process_book_job'
-import GenerateBookAudioJob from '#jobs/generate_book_audio_job'
-import { VocabularyAnalyzerService } from '#services/vocabulary_analyzer_service'
 import crypto from 'node:crypto'
 
 /**
@@ -27,12 +25,18 @@ async function createTestUser(): Promise<User> {
 test.group('Book Import Pipeline Models', () => {
   test('BookProcessingRunLog model can be imported and instantiated', async ({ assert }) => {
     const runLog = new BookProcessingRunLog()
-    assert.isTrue(runLog instanceof BookProcessingRunLog, 'BookProcessingRunLog should be importable')
+    assert.isTrue(
+      runLog instanceof BookProcessingRunLog,
+      'BookProcessingRunLog should be importable'
+    )
   })
 
   test('BookProcessingStepLog model can be imported and instantiated', async ({ assert }) => {
     const stepLog = new BookProcessingStepLog()
-    assert.isTrue(stepLog instanceof BookProcessingStepLog, 'BookProcessingStepLog should be importable')
+    assert.isTrue(
+      stepLog instanceof BookProcessingStepLog,
+      'BookProcessingStepLog should be importable'
+    )
   })
 
   test('BookChapterAudio model can be imported and instantiated', async ({ assert }) => {
@@ -115,12 +119,18 @@ test.group('BookProcessingLogService', () => {
 
   test('has findSuccessfulStep method', async ({ assert }) => {
     const service = new BookProcessingLogService()
-    assert.isTrue(typeof service.findSuccessfulStep === 'function', 'Should have findSuccessfulStep method')
+    assert.isTrue(
+      typeof service.findSuccessfulStep === 'function',
+      'Should have findSuccessfulStep method'
+    )
   })
 
   test('has getOrCreateActiveRun method', async ({ assert }) => {
     const service = new BookProcessingLogService()
-    assert.isTrue(typeof service.getOrCreateActiveRun === 'function', 'Should have getOrCreateActiveRun method')
+    assert.isTrue(
+      typeof service.getOrCreateActiveRun === 'function',
+      'Should have getOrCreateActiveRun method'
+    )
   })
 })
 
@@ -206,7 +216,7 @@ test.group('ProcessBookJob with Logging', () => {
     assert.isTrue(stepKeys.includes('queue_audio'), 'Should have audio queue step')
   })
 
-  test('failed step writes error_message', async ({ assert, cleanup }) => {
+  test('failed step writes error_message', async ({ cleanup }) => {
     // Create test user first
     const user = await createTestUser()
     cleanup(async () => {
@@ -240,17 +250,14 @@ test.group('ProcessBookJob with Logging', () => {
       // Expected to fail
     }
 
-    // Check run log for error message
-    const runLog = await BookProcessingRunLog.query()
-      .where('bookId', 99999)
-      .orderBy('startedAt', 'desc')
-      .first()
-
     // Note: Since book 99999 doesn't exist, run log won't be created
     // This test validates the error handling path exists
   })
 
-  test('book status is NOT set to ready in ProcessBookJob (audio handled separately)', async ({ assert, cleanup }) => {
+  test('book status is NOT set to ready in ProcessBookJob (audio handled separately)', async ({
+    assert,
+    cleanup,
+  }) => {
     // Create test user first
     const user = await createTestUser()
     cleanup(async () => {
@@ -324,7 +331,7 @@ test.group('ProcessBookJob with Logging', () => {
     const runLog = await logService.startRun(book.id, 'import')
     const testHash = 'test-input-hash-123'
 
-    await logService.startStep(runLog.id, book.id, 'analyze_vocabulary', null, testHash)
+    await logService.startStep(runLog.id, book.id, 'analyze_vocabulary', undefined, testHash)
     const previousStep = await logService.findSuccessfulStep(
       book.id,
       'analyze_vocabulary',
@@ -383,7 +390,7 @@ test.group('GenerateBookAudioJob - Chapter Level Retry', () => {
     })
 
     // Create chapters
-    const chapters = await BookChapter.createMany([
+    await BookChapter.createMany([
       {
         bookId: book.id,
         chapterIndex: 1,
@@ -416,7 +423,6 @@ test.group('GenerateBookAudioJob - Chapter Level Retry', () => {
     // 3. Complete book when all chapters done
 
     // For now, we expect the job to process all chapters
-    const job = new GenerateBookAudioJob()
 
     // The job should handle chapter 1 as reused and chapter 2 as needs generation
     // Note: We can't fully test without mocking TTS, but we can verify the logic exists
@@ -491,7 +497,10 @@ test.group('GenerateBookAudioJob - Chapter Level Retry', () => {
     assert.equal(existingAudio?.audioPath, 'book/voices/1/chapter-1.mp3', 'Audio path should match')
   })
 
-  test('book becomes ready only after all chapters have completed audio', async ({ assert, cleanup }) => {
+  test('book becomes ready only after all chapters have completed audio', async ({
+    assert,
+    cleanup,
+  }) => {
     // Create test user
     const user = await createTestUser()
     cleanup(async () => {
@@ -528,8 +537,24 @@ test.group('GenerateBookAudioJob - Chapter Level Retry', () => {
 
     // Only complete 2 out of 3 chapters
     await BookChapterAudio.createMany([
-      { bookId: book.id, chapterIndex: 1, textHash: 'h1', voiceHash: 'v', status: 'completed', audioPath: 'path1', durationMs: 1000 },
-      { bookId: book.id, chapterIndex: 2, textHash: 'h2', voiceHash: 'v', status: 'completed', audioPath: 'path2', durationMs: 1000 },
+      {
+        bookId: book.id,
+        chapterIndex: 1,
+        textHash: 'h1',
+        voiceHash: 'v',
+        status: 'completed',
+        audioPath: 'path1',
+        durationMs: 1000,
+      },
+      {
+        bookId: book.id,
+        chapterIndex: 2,
+        textHash: 'h2',
+        voiceHash: 'v',
+        status: 'completed',
+        audioPath: 'path2',
+        durationMs: 1000,
+      },
       // Chapter 3 is not completed
     ])
 
@@ -680,8 +705,16 @@ test.group('Admin Book Status Endpoint - Diagnostics', () => {
 
     assert.isNotNull(latestRun, 'Should have a run log')
     assert.equal(latestRun?.status, 'failed', 'Run status should be failed')
-    assert.equal(latestRun?.errorCode, 'VOCABULARY_ANALYSIS_FAILED', 'Error code should be captured')
-    assert.equal(latestRun?.errorMessage, 'Failed to analyze vocabulary: API rate limit exceeded', 'Error message should be captured')
+    assert.equal(
+      latestRun?.errorCode,
+      'VOCABULARY_ANALYSIS_FAILED',
+      'Error code should be captured'
+    )
+    assert.equal(
+      latestRun?.errorMessage,
+      'Failed to analyze vocabulary: API rate limit exceeded',
+      'Error message should be captured'
+    )
   })
 
   test('status endpoint includes chapter audio completion summary', async ({ assert, cleanup }) => {
@@ -722,10 +755,33 @@ test.group('Admin Book Status Endpoint - Diagnostics', () => {
 
     // Create chapter audios (2 completed, 1 pending, 1 failed)
     await BookChapterAudio.createMany([
-      { bookId: book.id, chapterIndex: 1, textHash: 'h1', voiceHash: 'v', status: 'completed', audioPath: 'path1', durationMs: 1000 },
-      { bookId: book.id, chapterIndex: 2, textHash: 'h2', voiceHash: 'v', status: 'completed', audioPath: 'path2', durationMs: 1500 },
+      {
+        bookId: book.id,
+        chapterIndex: 1,
+        textHash: 'h1',
+        voiceHash: 'v',
+        status: 'completed',
+        audioPath: 'path1',
+        durationMs: 1000,
+      },
+      {
+        bookId: book.id,
+        chapterIndex: 2,
+        textHash: 'h2',
+        voiceHash: 'v',
+        status: 'completed',
+        audioPath: 'path2',
+        durationMs: 1500,
+      },
       { bookId: book.id, chapterIndex: 3, textHash: 'h3', voiceHash: 'v', status: 'pending' },
-      { bookId: book.id, chapterIndex: 4, textHash: 'h4', voiceHash: 'v', status: 'failed', errorMessage: 'TTS service unavailable' },
+      {
+        bookId: book.id,
+        chapterIndex: 4,
+        textHash: 'h4',
+        voiceHash: 'v',
+        status: 'failed',
+        errorMessage: 'TTS service unavailable',
+      },
     ])
 
     // Test: should include chapter audio completion summary
@@ -824,8 +880,24 @@ test.group('Admin Book Status Endpoint - Diagnostics', () => {
 
     // Create chapter audios
     await BookChapterAudio.createMany([
-      { bookId: book.id, chapterIndex: 1, textHash: 'h1', voiceHash: 'v', status: 'completed', audioPath: 'path1', durationMs: 1000 },
-      { bookId: book.id, chapterIndex: 2, textHash: 'h2', voiceHash: 'v', status: 'completed', audioPath: 'path2', durationMs: 1500 },
+      {
+        bookId: book.id,
+        chapterIndex: 1,
+        textHash: 'h1',
+        voiceHash: 'v',
+        status: 'completed',
+        audioPath: 'path1',
+        durationMs: 1000,
+      },
+      {
+        bookId: book.id,
+        chapterIndex: 2,
+        textHash: 'h2',
+        voiceHash: 'v',
+        status: 'completed',
+        audioPath: 'path2',
+        durationMs: 1500,
+      },
     ])
 
     // Get enriched status from service
@@ -839,8 +911,9 @@ test.group('Admin Book Status Endpoint - Diagnostics', () => {
 
     // Verify run diagnostics
     assert.isObject(enrichedStatus.latestRun, 'Should include latest run info')
-    assert.equal(enrichedStatus.latestRun.status, 'success', 'Latest run status should be success')
-    assert.equal(enrichedStatus.latestRun.currentStep, 'queue_audio', 'Current step should be queue_audio')
+    const latestRun = enrichedStatus.latestRun!
+    assert.equal(latestRun.status, 'success', 'Latest run status should be success')
+    assert.equal(latestRun.currentStep, 'queue_audio', 'Current step should be queue_audio')
 
     // Verify chapter audio summary
     assert.isObject(enrichedStatus.chapterAudioSummary, 'Should include chapter audio summary')

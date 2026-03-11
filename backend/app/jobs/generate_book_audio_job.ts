@@ -64,10 +64,9 @@ export default class GenerateBookAudioJob extends Job {
         await book.merge({ audioStatus: 'failed' }).save()
 
         // Throw error to mark job as failed
-        throw new Exception(
-          `Audio generation failed for ${failedChapters.length} chapter(s)`,
-          { status: 500 }
-        )
+        throw new Exception(`Audio generation failed for ${failedChapters.length} chapter(s)`, {
+          status: 500,
+        })
       }
 
       // All chapters completed - finalize book readiness
@@ -184,10 +183,7 @@ export default class GenerateBookAudioJob extends Job {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
 
-      logger.error(
-        { err: error, bookId, chapterIndex },
-        'Chapter audio generation failed'
-      )
+      logger.error({ err: error, bookId, chapterIndex }, 'Chapter audio generation failed')
 
       // Upsert failed record
       await this.upsertChapterAudio(
@@ -273,14 +269,9 @@ export default class GenerateBookAudioJob extends Job {
   /**
    * Finalize book readiness when all chapters are complete
    */
-  private async finalizeBookReady(
-    book: Book,
-    results: ChapterProcessingResult[]
-  ): Promise<void> {
+  private async finalizeBookReady(book: Book, results: ChapterProcessingResult[]): Promise<void> {
     // Verify all chapters are complete
-    const totalChapters = await BookChapter.query()
-      .where('bookId', book.id)
-      .count('* as total')
+    const totalChapters = await BookChapter.query().where('bookId', book.id).count('* as total')
 
     const chapterCount = Number(totalChapters[0].$extras.total)
 
@@ -307,10 +298,7 @@ export default class GenerateBookAudioJob extends Job {
       ? chapterAudios[0].audioPath.replace(/chapter-\d+\.mp3$/, `${book.id}.mp3`)
       : null
 
-    const totalDuration = chapterAudios.reduce(
-      (sum, audio) => sum + (audio.durationMs || 0),
-      0
-    )
+    const totalDuration = chapterAudios.reduce((sum, audio) => sum + (audio.durationMs || 0), 0)
 
     await book
       .merge({
@@ -332,9 +320,6 @@ export default class GenerateBookAudioJob extends Job {
       })
       .save()
 
-    logger.info(
-      { bookId: book.id, chapterCount, totalDuration },
-      'Book marked as ready'
-    )
+    logger.info({ bookId: book.id, chapterCount, totalDuration }, 'Book marked as ready')
   }
 }

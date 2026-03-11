@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
-import BookProcessingRunLog, { type JobType, type RunStatus } from '#models/book_processing_run_log'
-import BookProcessingStepLog, { type StepStatus } from '#models/book_processing_step_log'
+import BookProcessingRunLog, { type JobType } from '#models/book_processing_run_log'
+import BookProcessingStepLog from '#models/book_processing_step_log'
 
 export class BookProcessingLogService {
   /**
@@ -74,7 +74,9 @@ export class BookProcessingLogService {
     runLog.status = 'success'
     runLog.progress = 100
     runLog.finishedAt = DateTime.now()
-    runLog.durationMs = runLog.startedAt ? DateTime.now().toMillis() - runLog.startedAt.toMillis() : null
+    runLog.durationMs = runLog.startedAt
+      ? DateTime.now().toMillis() - runLog.startedAt.toMillis()
+      : null
     await runLog.save()
 
     return runLog
@@ -87,7 +89,9 @@ export class BookProcessingLogService {
     const runLog = await BookProcessingRunLog.findOrFail(runId)
     runLog.status = 'failed'
     runLog.finishedAt = DateTime.now()
-    runLog.durationMs = runLog.startedAt ? DateTime.now().toMillis() - runLog.startedAt.toMillis() : null
+    runLog.durationMs = runLog.startedAt
+      ? DateTime.now().toMillis() - runLog.startedAt.toMillis()
+      : null
     runLog.errorMessage = error
     runLog.errorCode = errorCode || null
     await runLog.save()
@@ -185,11 +189,11 @@ export class BookProcessingLogService {
       .where('stepKey', stepKey)
       .where('status', 'success')
 
-    if (itemKey !== undefined) {
+    if (itemKey !== undefined && itemKey !== null) {
       query.where('itemKey', itemKey)
     }
 
-    if (inputHash !== undefined) {
+    if (inputHash !== undefined && inputHash !== null) {
       query.where('inputHash', inputHash)
     }
 
@@ -210,8 +214,6 @@ export class BookProcessingLogService {
    * Get all step logs for a run
    */
   async getStepsForRun(runLogId: number): Promise<BookProcessingStepLog[]> {
-    return BookProcessingStepLog.query()
-      .where('runLogId', runLogId)
-      .orderBy('createdAt', 'asc')
+    return BookProcessingStepLog.query().where('runLogId', runLogId).orderBy('createdAt', 'asc')
   }
 }

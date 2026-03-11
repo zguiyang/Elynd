@@ -195,10 +195,7 @@ export class TtsService {
         },
         (err: string) => {
           synthesizer.close()
-          const errorDetails = this.mapErrorDetails(
-            sdk.ResultReason.Canceled,
-            chapterIndex
-          )
+          const errorDetails = this.mapErrorDetails(sdk.ResultReason.Canceled, chapterIndex)
           const error = new Error(err)
           ;(error as unknown as { ttsError: TtsErrorDetails }).ttsError = errorDetails
           reject(error)

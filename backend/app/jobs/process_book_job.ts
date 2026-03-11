@@ -80,12 +80,7 @@ export default class ProcessBookJob extends Job {
 
       await this.logService.advanceRun(runLog.id, step1Key, 20)
 
-      const step1Completed = await this.checkStepCompleted(
-        bookId,
-        step1Key,
-        null,
-        contentHash
-      )
+      const step1Completed = await this.checkStepCompleted(bookId, step1Key, undefined, contentHash)
 
       if (step1Completed) {
         logger.info({ bookId, step: step1Key }, 'Skipping already completed step')
@@ -94,7 +89,7 @@ export default class ProcessBookJob extends Job {
           .where('stepKey', step1Key)
           .where('status', 'success')
         if (existingSteps.length > 0) {
-          await this.logService.startStep(runLog.id, bookId, step1Key, null, contentHash)
+          await this.logService.startStep(runLog.id, bookId, step1Key, undefined, contentHash)
           const allNewSteps = await BookProcessingStepLog.query()
             .where('runLogId', runLog.id)
             .orderBy('id', 'desc')
@@ -107,7 +102,7 @@ export default class ProcessBookJob extends Job {
           runLog.id,
           bookId,
           step1Key,
-          null,
+          undefined,
           contentHash
         )
 
@@ -140,7 +135,8 @@ export default class ProcessBookJob extends Job {
 
       // Step 2: Generate meanings
       const step2Key = 'generate_meanings'
-      const step2InputHash = crypto.createHash('md5')
+      const step2InputHash = crypto
+        .createHash('md5')
         .update(book.title + '-meanings')
         .digest('hex')
 
@@ -149,7 +145,7 @@ export default class ProcessBookJob extends Job {
       const step2Completed = await this.checkStepCompleted(
         bookId,
         step2Key,
-        null,
+        undefined,
         step2InputHash
       )
 
@@ -160,7 +156,7 @@ export default class ProcessBookJob extends Job {
           runLog.id,
           bookId,
           step2Key,
-          null,
+          undefined,
           step2InputHash
         )
 
@@ -196,12 +192,7 @@ export default class ProcessBookJob extends Job {
 
       await this.logService.advanceRun(runLog.id, step3Key, 80)
 
-      const step3Completed = await this.checkStepCompleted(
-        bookId,
-        step3Key,
-        null,
-        null
-      )
+      const step3Completed = await this.checkStepCompleted(bookId, step3Key, undefined, undefined)
 
       if (step3Completed) {
         logger.info({ bookId, step: step3Key }, 'Skipping already completed step')
@@ -210,8 +201,8 @@ export default class ProcessBookJob extends Job {
           runLog.id,
           bookId,
           step3Key,
-          null,
-          null
+          undefined,
+          undefined
         )
 
         try {

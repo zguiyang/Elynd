@@ -43,7 +43,9 @@ test.group('ChapterAudioResult type contract', () => {
     assert.equal(result.timing.words[0].word, 'Hello')
   })
 
-  test('should generate deterministic audio path based on bookId and chapterIndex', ({ assert }) => {
+  test('should generate deterministic audio path based on bookId and chapterIndex', ({
+    assert,
+  }) => {
     const bookId = 123
     const chapterIndex = 2
 

@@ -35,20 +35,38 @@ const {
   stopTracking,
 } = useBookImportStatus()
 
+const PROCESSING_STEP_LABELS: Record<string, string> = {
+  parsing: '解析内容',
+  analyzing_vocabulary: '分析词汇',
+  generating_meanings: '生成释义',
+  generating_audio: '生成音频',
+  audio_queued: '音频任务排队中',
+  audio: '音频处理中',
+  completed: '处理完成'
+}
+
+function getProcessingStepLabel(step: string | null) {
+  if (!step) {
+    return '处理中'
+  }
+
+  return PROCESSING_STEP_LABELS[step] || '处理中'
+}
+
 const progressText = computed(() => {
   if (!status.value) {
-    return 'Waiting to start'
+    return '等待开始处理'
   }
 
   if (status.value.status === 'failed') {
-    return status.value.processingError || 'Processing failed'
+    return status.value.processingError || '处理失败'
   }
 
   if (status.value.status === 'ready') {
-    return 'Completed'
+    return '处理完成'
   }
 
-  return `${status.value.processingStep || 'processing'} (${status.value.processingProgress}%)`
+  return `${getProcessingStepLabel(status.value.processingStep)}（${status.value.processingProgress}%）`
 })
 
 async function parseSelectedFile(selected: File) {
@@ -61,7 +79,7 @@ async function parseSelectedFile(selected: File) {
     form.description = result.description || ''
     step.value = 2
   } catch (error) {
-    toast.error((error as Error).message || 'Failed to parse file')
+    toast.error((error as Error).message || '解析文件失败')
   } finally {
     isParsing.value = false
   }
@@ -84,7 +102,7 @@ async function confirmImport() {
   }
 
   if (!form.title.trim()) {
-    toast.error('Please input title')
+    toast.error('请输入书名')
     return
   }
 
@@ -107,7 +125,7 @@ async function confirmImport() {
     await startTracking(result.bookId)
     step.value = 3
   } catch (error) {
-    toast.error((error as Error).message || 'Failed to import book')
+    toast.error((error as Error).message || '导入书籍失败')
   } finally {
     isImporting.value = false
   }
@@ -127,26 +145,40 @@ function resetFlow() {
   stopTracking()
 }
 
-watch(status, (newStatus) => {
+watch(status, (newStatus, oldStatus) => {
   if (!newStatus) {
     return
   }
 
-  step.value = 3
+  if (newStatus.status === 'processing') {
+    step.value = 3
+    return
+  }
 
   if (newStatus.status === 'failed') {
-    toast.error(newStatus.processingError || 'Book import failed')
+    if (oldStatus?.status === 'processing') {
+      toast.error(newStatus.processingError || '书籍导入失败')
+    }
   }
 
   if (newStatus.status === 'ready') {
-    toast.success('Book import completed')
+    if (oldStatus?.status === 'processing') {
+      toast.success('书籍导入完成')
+    }
   }
+
+  resetFlow()
 })
 
 onMounted(async () => {
   if (trackingBookId.value) {
     await refreshStatus()
-    step.value = 3
+    if (status.value?.status === 'processing') {
+      step.value = 3
+      return
+    }
+
+    await stopTracking()
   }
 })
 </script>
@@ -155,13 +187,13 @@ onMounted(async () => {
   <div class="container mx-auto max-w-4xl px-4 py-8">
     <Card>
       <CardHeader>
-        <CardTitle>Import Book</CardTitle>
+        <CardTitle>导入书籍</CardTitle>
       </CardHeader>
       <CardContent class="space-y-6">
         <div class="flex items-center gap-2 text-sm text-muted-foreground">
-          <Badge :variant="step >= 1 ? 'default' : 'outline'">1. Upload</Badge>
-          <Badge :variant="step >= 2 ? 'default' : 'outline'">2. Preview</Badge>
-          <Badge :variant="step >= 3 ? 'default' : 'outline'">3. Progress</Badge>
+          <Badge :variant="step >= 1 ? 'default' : 'outline'">1. 上传</Badge>
+          <Badge :variant="step >= 2 ? 'default' : 'outline'">2. 预览</Badge>
+          <Badge :variant="step >= 3 ? 'default' : 'outline'">3. 进度</Badge>
         </div>
 
         <div v-if="step === 1" class="space-y-4">
@@ -169,29 +201,29 @@ onMounted(async () => {
             class="flex min-h-52 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/40 bg-muted/20 p-6 text-center"
           >
             <Upload class="mb-3 size-8 text-muted-foreground" />
-            <p class="font-medium">Drag file here or click to upload</p>
-            <p class="mt-1 text-sm text-muted-foreground">Only .epub and .txt, max 4MB</p>
+            <p class="font-medium">拖拽文件到此处或点击上传</p>
+            <p class="mt-1 text-sm text-muted-foreground">仅支持 .epub 和 .txt，最大 4MB</p>
             <input class="hidden" type="file" accept=".epub,.txt" @change="onFileChange" />
           </label>
 
           <div v-if="isParsing" class="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 class="size-4 animate-spin" />
-            Parsing file...
+            正在解析文件...
           </div>
         </div>
 
         <div v-else-if="step === 2 && preview" class="space-y-4">
           <div class="grid gap-4 md:grid-cols-2">
             <div class="space-y-2 md:col-span-2">
-              <Label>Title</Label>
+              <Label>书名</Label>
               <Input v-model="form.title" />
             </div>
             <div class="space-y-2">
-              <Label>Author</Label>
+              <Label>作者</Label>
               <Input v-model="form.author" />
             </div>
             <div class="space-y-2">
-              <Label>Difficulty</Label>
+              <Label>难度</Label>
               <Select v-model="form.difficultyLevel">
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -202,7 +234,7 @@ onMounted(async () => {
               </Select>
             </div>
             <div class="space-y-2 md:col-span-2">
-              <Label>Description</Label>
+              <Label>简介</Label>
               <Textarea v-model="form.description" :rows="3" />
             </div>
           </div>
@@ -211,7 +243,7 @@ onMounted(async () => {
             <div class="mb-2 flex items-center gap-2 text-sm">
               <FileText class="size-4" />
               <span>{{ preview.fileName }}</span>
-              <span class="text-muted-foreground">· {{ preview.wordCount }} words</span>
+              <span class="text-muted-foreground">· {{ preview.wordCount }} 词</span>
             </div>
             <div class="max-h-52 space-y-2 overflow-auto text-sm">
               <div v-for="chapter in preview.chapters" :key="chapter.chapterIndex" class="rounded bg-muted/30 px-2 py-1">
@@ -221,10 +253,10 @@ onMounted(async () => {
           </div>
 
           <div class="flex gap-3">
-            <Button variant="outline" @click="step = 1">Back</Button>
+            <Button variant="outline" @click="step = 1">返回</Button>
             <Button :disabled="isImporting" @click="confirmImport">
               <Loader2 v-if="isImporting" class="mr-2 size-4 animate-spin" />
-              Import
+              导入
             </Button>
           </div>
         </div>
@@ -235,13 +267,13 @@ onMounted(async () => {
               <div class="flex items-center gap-2">
                 <CheckCircle2 v-if="status?.status === 'ready'" class="size-5 text-green-600" />
                 <Loader2 v-else-if="status?.status === 'processing'" class="size-5 animate-spin text-primary" />
-                <span class="font-medium">Book #{{ trackingBookId || '-' }}</span>
+                <span class="font-medium">书籍 #{{ trackingBookId || '-' }}</span>
               </div>
               <div class="flex items-center gap-1 text-xs">
                 <Wifi v-if="isConnected" class="size-3 text-green-600" />
                 <WifiOff v-else class="size-3 text-muted-foreground" />
                 <span :class="isConnected ? 'text-green-600' : 'text-muted-foreground'">
-                  {{ isConnected ? 'Live' : 'Reconnecting' }}
+                  {{ isConnected ? '实时连接' : '重连中' }}
                 </span>
               </div>
             </div>
@@ -251,8 +283,8 @@ onMounted(async () => {
           </div>
 
           <div class="flex gap-3">
-            <Button variant="outline" @click="handleRefreshStatus">Refresh Status</Button>
-            <Button variant="outline" @click="resetFlow">Import Another</Button>
+            <Button variant="outline" @click="handleRefreshStatus">刷新状态</Button>
+            <Button variant="outline" @click="resetFlow">继续导入</Button>
           </div>
         </div>
       </CardContent>

@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { Upload, FileText, CheckCircle2, Loader2 } from 'lucide-vue-next'
+import { Upload, FileText, CheckCircle2, Loader2, Wifi, WifiOff } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { adminApi, type ParsedBookPreview } from '@/api/admin'
-import type { BookStatusResponse } from '@/types/book'
 import { useAuthStore } from '@/stores/auth'
-import { useBookImportSse } from '@/composables/useBookImportSse'
+import { useBookImportStatus } from '@/composables/useBookImportStatus'
 
 const authStore = useAuthStore()
 const userId = authStore.user?.id
@@ -27,16 +26,14 @@ const form = reactive({
   difficultyLevel: 'L1' as 'L1' | 'L2' | 'L3',
 })
 
-const status = ref<BookStatusResponse | null>(null)
-
 const {
-  event,
+  status,
+  isConnected,
   trackingBookId,
-  setTrackingBookId,
-  clearTracking,
-  subscribe,
-  unsubscribe,
-} = useBookImportSse(userId)
+  refreshStatus,
+  startTracking,
+  stopTracking,
+} = useBookImportStatus()
 
 const progressText = computed(() => {
   if (!status.value) {
@@ -107,8 +104,7 @@ async function confirmImport() {
       })),
     })
 
-    setTrackingBookId(result.bookId)
-    status.value = await adminApi.getBookStatus(result.bookId)
+    await startTracking(result.bookId)
     step.value = 3
   } catch (error) {
     toast.error((error as Error).message || 'Failed to import book')
@@ -117,65 +113,41 @@ async function confirmImport() {
   }
 }
 
-async function refreshStatus() {
+function handleRefreshStatus() {
   if (!trackingBookId.value) {
-    return false
+    return
   }
-
-  try {
-    status.value = await adminApi.getBookStatus(trackingBookId.value)
-    return true
-  } catch (error) {
-    toast.error((error as Error).message || 'Failed to query status')
-    // 接口失败时重置流程，让用户可以重新上传
-    resetFlow()
-    return false
-  }
+  refreshStatus()
 }
 
 function resetFlow() {
   step.value = 1
   file.value = null
   preview.value = null
-  status.value = null
-  clearTracking()
+  stopTracking()
 }
 
-watch(event, (payload) => {
-  if (!payload) {
+watch(status, (newStatus) => {
+  if (!newStatus) {
     return
   }
 
-  status.value = {
-    id: payload.bookId,
-    status: payload.status,
-    processingStep: payload.processingStep,
-    processingProgress: payload.processingProgress,
-    processingError: payload.processingError || null,
-  }
   step.value = 3
 
-  if (payload.status === 'failed') {
-    toast.error(payload.processingError || payload.message || 'Book import failed')
+  if (newStatus.status === 'failed') {
+    toast.error(newStatus.processingError || 'Book import failed')
   }
 
-  if (payload.status === 'ready') {
+  if (newStatus.status === 'ready') {
     toast.success('Book import completed')
   }
 })
 
 onMounted(async () => {
-  await subscribe()
   if (trackingBookId.value) {
-    const success = await refreshStatus()
-    if (success) {
-      step.value = 3
-    }
+    await refreshStatus()
+    step.value = 3
   }
-})
-
-onUnmounted(() => {
-  unsubscribe()
 })
 </script>
 
@@ -259,10 +231,19 @@ onUnmounted(() => {
 
         <div v-else-if="step === 3" class="space-y-4">
           <div class="rounded-md border p-4">
-            <div class="mb-2 flex items-center gap-2">
-              <CheckCircle2 v-if="status?.status === 'ready'" class="size-5 text-green-600" />
-              <Loader2 v-else-if="status?.status === 'processing'" class="size-5 animate-spin text-primary" />
-              <span class="font-medium">Book #{{ trackingBookId || '-' }}</span>
+            <div class="mb-2 flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <CheckCircle2 v-if="status?.status === 'ready'" class="size-5 text-green-600" />
+                <Loader2 v-else-if="status?.status === 'processing'" class="size-5 animate-spin text-primary" />
+                <span class="font-medium">Book #{{ trackingBookId || '-' }}</span>
+              </div>
+              <div class="flex items-center gap-1 text-xs">
+                <Wifi v-if="isConnected" class="size-3 text-green-600" />
+                <WifiOff v-else class="size-3 text-muted-foreground" />
+                <span :class="isConnected ? 'text-green-600' : 'text-muted-foreground'">
+                  {{ isConnected ? 'Live' : 'Reconnecting' }}
+                </span>
+              </div>
             </div>
             <Progress :model-value="status?.processingProgress || 0" />
             <p class="mt-2 text-sm text-muted-foreground">{{ progressText }}</p>
@@ -270,7 +251,7 @@ onUnmounted(() => {
           </div>
 
           <div class="flex gap-3">
-            <Button variant="outline" @click="refreshStatus">Refresh Status</Button>
+            <Button variant="outline" @click="handleRefreshStatus">Refresh Status</Button>
             <Button variant="outline" @click="resetFlow">Import Another</Button>
           </div>
         </div>

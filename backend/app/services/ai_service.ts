@@ -46,12 +46,19 @@ export class AiService {
         temperature: params.temperature ?? 0.7,
         stream: true,
         stream_options: { include_usage: true },
+        ...(params.signal && { signal: params.signal }),
       })
 
       let fullContent = ''
       let usage: AiResponse['usage'] | undefined
 
       for await (const chunk of stream) {
+        // Check if request was aborted
+        if (params.signal?.aborted) {
+          logger.info({ model: config.model }, 'AI stream aborted by client')
+          return
+        }
+
         const delta = chunk.choices[0]?.delta?.content || ''
 
         if (delta) {

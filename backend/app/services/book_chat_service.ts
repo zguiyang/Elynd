@@ -22,6 +22,8 @@ export interface StreamHandlers {
     usage: { promptTokens: number; completionTokens: number; totalTokens: number }
   }) => void
   onError: (error: Error) => void
+  /** Optional guard to check if the client has disconnected */
+  isAborted?: () => boolean
 }
 
 export interface SimpleChatParams {
@@ -72,7 +74,11 @@ export class BookChatService {
     })
   }
 
-  async streamChat(params: ChatParams, handlers: StreamHandlers): Promise<void> {
+  async streamChat(
+    params: ChatParams,
+    handlers: StreamHandlers,
+    signal?: AbortSignal
+  ): Promise<void> {
     const { userId, bookId, message, chapterIndex } = params
 
     const [userConfig, book] = await Promise.all([
@@ -117,6 +123,7 @@ export class BookChatService {
           { role: 'user', content: message },
         ],
         maxTokens: 1000,
+        signal,
       },
       {
         onChunk: handlers.onChunk,

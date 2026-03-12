@@ -14,6 +14,7 @@ export interface AiChatParams {
   maxTokens?: number
   temperature?: number
   responseFormat?: { type: 'text' | 'json_object' }
+  signal?: AbortSignal
 }
 
 export interface AiResponse {

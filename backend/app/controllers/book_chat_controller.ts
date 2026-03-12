@@ -21,6 +21,14 @@ export default class BookChatController {
     const sse = createSseWriter({ request, response } as HttpContext)
     sse.comment('connected')
 
+    // Create AbortController to cancel AI request on client disconnect
+    const abortController = new AbortController()
+
+    // Abort AI request when client disconnects
+    sse.onClose(() => {
+      abortController.abort()
+    })
+
     await this.bookChatService.streamChat(
       {
         userId,
@@ -45,7 +53,9 @@ export default class BookChatController {
           sse.send({ type: 'error', message: error.message })
           sse.close()
         },
-      }
+        isAborted: () => abortController.signal.aborted,
+      },
+      abortController.signal
     )
   }
 }

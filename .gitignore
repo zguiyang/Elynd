@@ -88,6 +88,7 @@ lerna-debug.log*
 
 # Vitest
 __screenshots__/
+**/coverage/
 
 # Vite
 *.timestamp-*-*.mjs

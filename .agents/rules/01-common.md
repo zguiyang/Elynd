@@ -226,6 +226,10 @@ app/
 
 ## Quality Checks
 
+## Git Commit Rules
+
+Git commit rules are defined in [`04-git-commit.md`](./04-git-commit.md).
+
 ### Before Committing
 
 Always run these commands before committing changes:

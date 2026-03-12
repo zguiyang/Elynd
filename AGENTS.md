@@ -33,6 +33,7 @@ Before code changes, feature implementation, refactoring, testing, or code gener
 - **[01-common.md](.agents/rules/01-common.md)** - Naming conventions, code style, quality checks, boundary rules
 - **[02-backend.md](.agents/rules/02-backend.md)** - Backend development (AdonisJS)
 - **[03-frontend.md](.agents/rules/03-frontend.md)** - Frontend development (Vue 3 + shadcn-vue)
+- **[04-git-commit.md](.agents/rules/04-git-commit.md)** - Git commit message rules, commit boundaries, verification, and remote safety
 
 ### OpenSpec Workflow
 

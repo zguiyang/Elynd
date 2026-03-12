@@ -21,7 +21,7 @@ const isActive = (path: string) => route.path.startsWith(path)
     <header class="flex-none border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
       <div class="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
         <!-- Logo -->
-        <RouterLink to="/admin/books/generate" class="flex items-center gap-2">
+        <RouterLink to="/admin/books" class="flex items-center gap-2">
           <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <FileText class="size-5 text-primary-foreground" />
           </div>

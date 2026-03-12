@@ -74,7 +74,7 @@ const isActive = (path: string) => {
             <DropdownMenuLabel>我的账户</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem v-if="authStore.user?.isAdmin" as-child>
-              <RouterLink to="/admin/books/generate" class="flex items-center cursor-pointer">
+              <RouterLink to="/admin/books" class="flex items-center cursor-pointer">
                 <Shield class="mr-2 size-4" />
                 <span>管理后台</span>
               </RouterLink>

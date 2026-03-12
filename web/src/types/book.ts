@@ -52,7 +52,23 @@ export interface BookStatusResponse {
   processingStep: string | null
   processingProgress: number
   processingError: string | null
-  importRun?: BookImportRun
+  latestRun?: {
+    id: number
+    jobType: string
+    status: string
+    currentStep: string | null
+    progress: number
+    startedAt: string | null
+    finishedAt: string | null
+    errorCode: string | null
+    errorMessage: string | null
+  } | null
+  chapterAudioSummary?: {
+    total: number
+    completed: number
+    pending: number
+    failed: number
+  }
 }
 
 export interface Book {

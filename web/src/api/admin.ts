@@ -1,6 +1,13 @@
 import { request } from '@/lib/request'
 import type { BookStatusResponse } from '@/types/book'
 
+export interface ChapterAudioSummary {
+  total: number
+  completed: number
+  pending: number
+  failed: number
+}
+
 export interface AdminBook {
   id: number
   title: string
@@ -12,6 +19,8 @@ export interface AdminBook {
   processingStep: string | null
   processingProgress: number
   processingError: string | null
+  audioStatus: 'pending' | 'processing' | 'completed' | 'failed' | null
+  chapterAudioSummary: ChapterAudioSummary
   createdAt: string
   updatedAt: string
 }

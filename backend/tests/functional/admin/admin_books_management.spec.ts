@@ -1,5 +1,7 @@
 import { test } from '@japa/runner'
 import Book from '#models/book'
+import BookChapter from '#models/book_chapter'
+import BookChapterAudio from '#models/book_chapter_audio'
 import User from '#models/user'
 import crypto from 'node:crypto'
 
@@ -14,10 +16,7 @@ async function createAdminUser(): Promise<{ user: User; token: string }> {
     isAdmin: true,
   })
 
-  const token = await User.accessTokens.create(user, {
-    name: 'test-token',
-    expiresIn: '1 day',
-  })
+  const token = await User.accessTokens.create(user, ['*'], { expiresIn: '1 day' })
 
   return { user, token: token.value!.release() }
 }
@@ -33,10 +32,7 @@ async function createRegularUser(): Promise<{ user: User; token: string }> {
     isAdmin: false,
   })
 
-  const token = await User.accessTokens.create(user, {
-    name: 'test-token',
-    expiresIn: '1 day',
-  })
+  const token = await User.accessTokens.create(user, ['*'], { expiresIn: '1 day' })
 
   return { user, token: token.value!.release() }
 }
@@ -128,6 +124,97 @@ test.group('Admin Books Management API', () => {
     assert.equal(response.body().meta.currentPage, 1, 'Should be on page 1')
     assert.equal(response.body().meta.perPage, 10, 'Should have 10 per page')
     assert.isAtLeast(response.body().meta.total, 25, 'Should have at least 25 total items')
+  })
+
+  test('GET /api/admin/books returns chapter audio summary for processing books', async ({
+    assert,
+    client,
+    cleanup,
+  }) => {
+    const { user: admin, token } = await createAdminUser()
+    cleanup(async () => {
+      await admin.delete()
+    })
+
+    const book = await Book.create({
+      title: 'Audio Progress Book',
+      author: 'Audio Author',
+      source: 'user_uploaded',
+      difficultyLevel: 'beginner',
+      status: 'processing',
+      processingStep: 'generating_audio',
+      processingProgress: 80,
+      audioStatus: 'processing',
+      wordCount: 1500,
+      readingTime: 8,
+      isPublished: false,
+      createdBy: admin.id,
+      contentHash: crypto.randomUUID(),
+    })
+
+    cleanup(async () => {
+      await BookChapterAudio.query().where('bookId', book.id).delete()
+      await BookChapter.query().where('bookId', book.id).delete()
+      await book.delete()
+    })
+
+    await BookChapter.createMany([
+      {
+        bookId: book.id,
+        chapterIndex: 0,
+        title: 'Chapter 1',
+        content: 'Content 1',
+      },
+      {
+        bookId: book.id,
+        chapterIndex: 1,
+        title: 'Chapter 2',
+        content: 'Content 2',
+      },
+      {
+        bookId: book.id,
+        chapterIndex: 2,
+        title: 'Chapter 3',
+        content: 'Content 3',
+      },
+    ])
+
+    await BookChapterAudio.createMany([
+      {
+        bookId: book.id,
+        chapterIndex: 0,
+        textHash: crypto.randomUUID().replace(/-/g, ''),
+        voiceHash: 'default-voice',
+        audioPath: '/audio/chapter-0.mp3',
+        durationMs: 1200,
+        status: 'completed',
+        errorMessage: null,
+      },
+      {
+        bookId: book.id,
+        chapterIndex: 1,
+        textHash: crypto.randomUUID().replace(/-/g, ''),
+        voiceHash: 'default-voice',
+        audioPath: null,
+        durationMs: null,
+        status: 'failed',
+        errorMessage: 'TTS failed',
+      },
+    ])
+
+    const response = await client.get('/api/admin/books').header('Authorization', `Bearer ${token}`)
+
+    response.assertStatus(200)
+
+    const targetBook = response.body().data.find((item: { id: number }) => item.id === book.id)
+    assert.exists(targetBook, 'Response should contain the target book')
+    assert.equal(targetBook.audioStatus, 'processing')
+    assert.deepEqual(targetBook.chapterAudioSummary, {
+      total: 3,
+      completed: 1,
+      pending: 0,
+      failed: 1,
+    })
   })
 
   test('GET /api/admin/books requires admin authentication', async ({
@@ -233,7 +320,6 @@ test.group('Admin Books Management API', () => {
   })
 
   test('PATCH /api/admin/books/:id returns 404 for non-existent book', async ({
-    assert,
     client,
     cleanup,
   }) => {
@@ -357,12 +443,11 @@ test.group('Admin Books Management API', () => {
       .delete(`/api/admin/books/${book.id}`)
       .header('Authorization', `Bearer ${token}`)
 
-    response.assertStatus(200, 'Failed books should be deletable')
+    response.assertStatus(200)
     assert.equal(response.body().success, true)
   })
 
   test('DELETE /api/admin/books/:id returns 404 for non-existent book', async ({
-    assert,
     client,
     cleanup,
   }) => {
@@ -378,7 +463,7 @@ test.group('Admin Books Management API', () => {
     response.assertStatus(404)
   })
 
-  test('PATCH /api/admin/books/:id validates input fields', async ({ assert, client, cleanup }) => {
+  test('PATCH /api/admin/books/:id validates input fields', async ({ client, cleanup }) => {
     const { user: admin, token } = await createAdminUser()
     cleanup(async () => {
       await admin.delete()

@@ -7,6 +7,7 @@ import ProcessBookJob from '#jobs/process_book_job'
 import { BookService } from '#services/book_service'
 import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
+import BookChapterAudio from '#models/book_chapter_audio'
 import db from '@adonisjs/lucid/services/db'
 import { TransmitService } from '#services/transmit_service'
 import { BookParserService } from '#services/book_parser_service'
@@ -195,7 +196,61 @@ export default class AdminBooksController {
 
     const books = await Book.query().orderBy('createdAt', 'desc').paginate(page, perPage)
 
-    return books.serialize()
+    const serialized = books.serialize()
+    const bookIds = serialized.data.map((book) => book.id)
+
+    if (bookIds.length === 0) {
+      return serialized
+    }
+
+    const [chapterTotals, completedAudios, failedAudios, pendingAudios] = await Promise.all([
+      BookChapter.query()
+        .whereIn('bookId', bookIds)
+        .select('bookId')
+        .count('* as total')
+        .groupBy('bookId'),
+      BookChapterAudio.query()
+        .whereIn('bookId', bookIds)
+        .where('status', 'completed')
+        .select('bookId')
+        .count('* as total')
+        .groupBy('bookId'),
+      BookChapterAudio.query()
+        .whereIn('bookId', bookIds)
+        .where('status', 'failed')
+        .select('bookId')
+        .count('* as total')
+        .groupBy('bookId'),
+      BookChapterAudio.query()
+        .whereIn('bookId', bookIds)
+        .where('status', 'pending')
+        .select('bookId')
+        .count('* as total')
+        .groupBy('bookId'),
+    ])
+
+    const toCountMap = (rows: Array<{ bookId: number; $extras: Record<string, unknown> }>) =>
+      rows.reduce<Record<number, number>>((acc, row) => {
+        acc[row.bookId] = Number(row.$extras.total || 0)
+        return acc
+      }, {})
+
+    const chapterTotalsMap = toCountMap(chapterTotals)
+    const completedAudiosMap = toCountMap(completedAudios)
+    const failedAudiosMap = toCountMap(failedAudios)
+    const pendingAudiosMap = toCountMap(pendingAudios)
+
+    serialized.data = serialized.data.map((book) => ({
+      ...book,
+      chapterAudioSummary: {
+        total: chapterTotalsMap[book.id] ?? 0,
+        completed: completedAudiosMap[book.id] ?? 0,
+        pending: pendingAudiosMap[book.id] ?? 0,
+        failed: failedAudiosMap[book.id] ?? 0,
+      },
+    }))
+
+    return serialized
   }
 
   async update({ params, request }: HttpContext) {

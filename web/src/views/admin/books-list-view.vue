@@ -178,6 +178,67 @@ const getStatusIcon = (status: string) => {
   }
 }
 
+const isAudioPhase = (book: AdminBook) => {
+  return book.audioStatus === 'processing' || book.processingStep === 'audio_failed'
+}
+
+const getDisplayProgress = (book: AdminBook) => {
+  const summary = book.chapterAudioSummary
+
+  if (book.status === 'ready') {
+    return 100
+  }
+
+  if (summary.total > 0 && isAudioPhase(book)) {
+    const audioProgress = summary.completed / summary.total
+    return Math.min(99, Math.round(80 + audioProgress * 20))
+  }
+
+  return book.processingProgress
+}
+
+const getDisplayStep = (book: AdminBook) => {
+  const summary = book.chapterAudioSummary
+
+  if (summary.total > 0 && isAudioPhase(book)) {
+    return `音频生成 ${summary.completed}/${summary.total}`
+  }
+
+  switch (book.processingStep) {
+    case 'parsing':
+      return '解析书籍'
+    case 'analyzing_vocabulary':
+      return '分析词汇'
+    case 'generating_meanings':
+      return '生成释义'
+    case 'generating_audio':
+    case 'audio_queued':
+      return '准备音频'
+    case 'audio_failed':
+      return '音频失败'
+    case 'completed':
+      return '处理完成'
+    default:
+      return book.processingStep || '-'
+  }
+}
+
+const getProgressSummary = (book: AdminBook) => {
+  const summary = book.chapterAudioSummary
+
+  if (summary.total === 0) {
+    return null
+  }
+
+  const parts = [`章节音频 ${summary.completed}/${summary.total}`]
+
+  if (summary.failed > 0) {
+    parts.push(`失败 ${summary.failed}`)
+  }
+
+  return parts.join('，')
+}
+
 // Lifecycle
 onMounted(() => {
   fetchBooks()
@@ -245,8 +306,15 @@ onUnmounted(() => {
                   {{ getStatusText(book.status) }}
                 </Badge>
               </TableCell>
-              <TableCell>{{ book.processingProgress }}%</TableCell>
-              <TableCell>{{ book.processingStep || '-' }}</TableCell>
+              <TableCell>
+                <div class="space-y-1">
+                  <div class="font-medium">{{ getDisplayProgress(book) }}%</div>
+                  <p v-if="getProgressSummary(book)" class="text-xs text-muted-foreground">
+                    {{ getProgressSummary(book) }}
+                  </p>
+                </div>
+              </TableCell>
+              <TableCell>{{ getDisplayStep(book) }}</TableCell>
               <TableCell>
                 <span v-if="book.processingError" class="text-destructive text-sm line-clamp-1" :title="book.processingError">
                   {{ book.processingError }}

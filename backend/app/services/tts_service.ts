@@ -12,6 +12,7 @@ import type {
   ChapterInput,
   ChapterAudioResult,
   TtsErrorDetails,
+  SynthesizedChunkResult,
 } from '#types/tts'
 
 @inject()
@@ -36,6 +37,7 @@ export class TtsService {
   /**
    * Generate audio for a single chapter.
    * Returns a deterministic audio file path and timing metadata.
+   * Uses text chunking for long chapters to prevent Azure TTS failures.
    */
   async generateChapterAudio(
     chapter: ChapterInput,
@@ -45,6 +47,7 @@ export class TtsService {
     const startTime = Date.now()
     const textLength = chapter.content.length
     const voiceName = this.speechConfig.speechSynthesisVoiceName || 'default'
+    const maxChunkChars = env.get('BOOK_AUDIO_CHUNK_MAX_CHARS', 3500)
 
     logger.info(
       {
@@ -54,26 +57,58 @@ export class TtsService {
         textLength,
         provider: 'azure_tts',
         voiceName,
+        maxChunkChars,
       },
       'Generating chapter audio'
     )
 
-    const text = `${chapter.title}\n\n${chapter.content}`
-    const result = await this.synthesizeChapter(text, chapter.chapterIndex)
-
-    const elapsedMs = Date.now() - startTime
-
-    // Generate deterministic path: book/voices/{bookId}/chapter-{chapterIndex}.mp3
-    const audioPath = `${this.audioUrl}/${bookId}/chapter-${chapter.chapterIndex}.mp3`
-    await drive.use().put(audioPath, result.audioBuffer)
+    const text = this.buildChapterText(chapter)
+    const chunks = this.splitTextIntoChunks(text, maxChunkChars)
 
     logger.info(
       {
         bookId,
         chapterIndex: chapter.chapterIndex,
-        durationMs: result.duration,
+        chunkCount: chunks.length,
+      },
+      'Chapter text split into chunks'
+    )
+
+    const results: SynthesizedChunkResult[] = []
+
+    for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+      const chunk = chunks[chunkIndex]
+      logger.info(
+        {
+          bookId,
+          chapterIndex: chapter.chapterIndex,
+          chunkIndex,
+          chunkCount: chunks.length,
+          chunkLength: chunk.length,
+        },
+        'Synthesizing chapter audio chunk'
+      )
+
+      const result = await this.synthesizeTextChunk(chunk, chapter.chapterIndex)
+      results.push(result)
+    }
+
+    const merged = this.mergeChunkResults(results)
+
+    const elapsedMs = Date.now() - startTime
+
+    // Generate deterministic path: book/voices/{bookId}/chapter-{chapterIndex}.mp3
+    const audioPath = `${this.audioUrl}/${bookId}/chapter-${chapter.chapterIndex}.mp3`
+    await drive.use().put(audioPath, merged.audioBuffer)
+
+    logger.info(
+      {
+        bookId,
+        chapterIndex: chapter.chapterIndex,
+        durationMs: merged.duration,
         elapsedMs,
         audioPath,
+        chunkCount: chunks.length,
       },
       'Chapter audio generated successfully'
     )
@@ -81,10 +116,123 @@ export class TtsService {
     return {
       chapterIndex: chapter.chapterIndex,
       audioPath,
-      duration: result.duration,
+      duration: merged.duration,
       timing: {
-        words: result.wordTimings,
+        words: merged.wordTimings,
       },
+    }
+  }
+
+  /**
+   * Build full chapter text from title and content.
+   */
+  private buildChapterText(chapter: ChapterInput): string {
+    return `${chapter.title}\n\n${chapter.content}`
+  }
+
+  /**
+   * Split text into chunks, preserving paragraph boundaries where possible.
+   * Uses a conservative approach:
+   * 1. First split by blank-line paragraph boundaries
+   * 2. If a paragraph exceeds maxChars, split by sentence punctuation
+   * 3. If a sentence still exceeds maxChars, hard-split by character length
+   */
+  private splitTextIntoChunks(text: string, maxChars: number): string[] {
+    const chunks: string[] = []
+
+    // Split by blank lines (paragraph boundaries)
+    const paragraphs = text.split(/\n\s*\n/)
+
+    for (const paragraph of paragraphs) {
+      if (paragraph.length <= maxChars) {
+        if (paragraph.trim()) {
+          chunks.push(paragraph.trim())
+        }
+        continue
+      }
+
+      // Paragraph exceeds maxChars, try sentence splitting
+      const sentences = paragraph.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [paragraph]
+
+      let currentChunk = ''
+      for (const sentence of sentences) {
+        if ((currentChunk + sentence).length <= maxChars) {
+          currentChunk += sentence
+        } else {
+          // Current chunk is full
+          if (currentChunk.trim()) {
+            chunks.push(currentChunk.trim())
+          }
+
+          // If single sentence exceeds maxChars, hard split
+          if (sentence.length > maxChars) {
+            let remaining = sentence
+            while (remaining.length > maxChars) {
+              chunks.push(remaining.slice(0, maxChars))
+              remaining = remaining.slice(maxChars)
+            }
+            currentChunk = remaining
+          } else {
+            currentChunk = sentence
+          }
+        }
+      }
+
+      if (currentChunk.trim()) {
+        chunks.push(currentChunk.trim())
+      }
+    }
+
+    // Filter out empty chunks and trim
+    return chunks.filter((chunk) => chunk.length > 0)
+  }
+
+  /**
+   * Merge multiple chunk synthesis results into a single result.
+   * Offsets word timings from later chunks by cumulative duration of prior chunks.
+   */
+  private mergeChunkResults(results: SynthesizedChunkResult[]): {
+    audioBuffer: Buffer
+    wordTimings: WordTiming[]
+    duration: number
+  } {
+    if (results.length === 0) {
+      return {
+        audioBuffer: Buffer.alloc(0),
+        wordTimings: [],
+        duration: 0,
+      }
+    }
+
+    if (results.length === 1) {
+      return {
+        audioBuffer: results[0].audioBuffer,
+        wordTimings: results[0].wordTimings,
+        duration: results[0].duration,
+      }
+    }
+
+    const audioBuffers: Buffer[] = []
+    const mergedWordTimings: WordTiming[] = []
+    let cumulativeOffset = 0
+
+    for (const result of results) {
+      audioBuffers.push(result.audioBuffer)
+
+      // Offset word timings by cumulative duration
+      const offsetWords = result.wordTimings.map((w) => ({
+        ...w,
+        audioOffset: w.audioOffset + cumulativeOffset,
+      }))
+      mergedWordTimings.push(...offsetWords)
+
+      cumulativeOffset += result.duration
+    }
+
+    return {
+      audioBuffer: Buffer.concat(audioBuffers),
+      wordTimings: mergedWordTimings,
+      duration: cumulativeOffset,
     }
   }
 
@@ -106,7 +254,7 @@ export class TtsService {
       )
 
       const text = `${chapter.title}\n\n${chapter.content}`
-      const result = await this.synthesizeChapter(text, chapter.chapterIndex)
+      const result = await this.synthesizeTextChunk(text, chapter.chapterIndex)
 
       const adjustedWords = result.wordTimings.map((w) => ({
         ...w,
@@ -171,14 +319,10 @@ export class TtsService {
     }
   }
 
-  private async synthesizeChapter(
+  private async synthesizeTextChunk(
     text: string,
     chapterIndex?: number
-  ): Promise<{
-    audioBuffer: Buffer
-    wordTimings: WordTiming[]
-    duration: number
-  }> {
+  ): Promise<SynthesizedChunkResult> {
     return new Promise((resolve, reject) => {
       const wordTimings: WordTiming[] = []
       const synthesizer = new sdk.SpeechSynthesizer(

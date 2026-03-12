@@ -66,3 +66,13 @@ export interface TtsErrorDetails {
   requestId: string | null
   chapterIndex?: number
 }
+
+/**
+ * Result of synthesizing a single text chunk.
+ * Used internally for chunked chapter synthesis.
+ */
+export interface SynthesizedChunkResult {
+  audioBuffer: Buffer
+  wordTimings: WordTiming[]
+  duration: number
+}

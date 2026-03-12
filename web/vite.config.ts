@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig } from 'vite'
@@ -10,6 +11,22 @@ import Components from 'unplugin-vue-components/vite'
 export default defineConfig({
   server: {
     port: 3336,
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./tests/setup.ts'],
+    include: ['tests/**/*.test.ts', 'src/**/*.test.ts'],
+    exclude: [
+      'src/components/ui/**',
+      'src/**/*.d.ts',
+      'src/auto-imports.d.ts',
+      'src/components.d.ts'
+    ],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html']
+    }
   },
   plugins: [
     tailwindcss(),

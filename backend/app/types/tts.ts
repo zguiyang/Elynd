@@ -60,5 +60,9 @@ export interface ChapterAudioResult {
 export interface TtsErrorDetails {
   code: 'canceled' | 'synthesis_failed' | 'unknown'
   message: string
+  provider: 'azure_tts'
+  reason: string | null
+  errorDetails: string | null
+  requestId: string | null
   chapterIndex?: number
 }

@@ -7,6 +7,7 @@ import { TtsService } from '#services/tts_service'
 import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import BookChapterAudio from '#models/book_chapter_audio'
+import BookProcessingRunLog from '#models/book_processing_run_log'
 import type { ChapterInput } from '#types/tts'
 import crypto from 'node:crypto'
 
@@ -44,6 +45,16 @@ export default class GenerateBookAudioJob extends Job {
       throw new Exception(`Book ${bookId} not found`, { status: 404 })
     }
 
+    // Create run log for tracking
+    const runLog = await BookProcessingRunLog.create({
+      bookId,
+      jobType: 'import',
+      status: 'processing',
+      currentStep: 'generate_audio',
+      progress: 0,
+      startedAt: DateTime.now(),
+    })
+
     try {
       // Update book status to processing
       await book.merge({ audioStatus: 'processing' }).save()
@@ -51,36 +62,128 @@ export default class GenerateBookAudioJob extends Job {
       // Process chapters and collect results
       const results = await this.processChapters(bookId)
 
-      // Check if all chapters succeeded
-      const failedChapters = results.filter((r) => r.status === 'failed')
+      // Calculate summary
+      const totalChapters = results.length
+      const completedChapters = results.filter(
+        (r) => r.status === 'reused' || r.status === 'generated'
+      ).length
+      const failedChapters = results.filter((r) => r.status === 'failed').length
+      const reusedChapters = results.filter((r) => r.status === 'reused').length
 
-      if (failedChapters.length > 0) {
+      // Check if all chapters succeeded
+      const failedResults = results.filter((r) => r.status === 'failed')
+
+      if (failedResults.length > 0) {
+        const summaryMessage = `Audio generation failed for ${failedResults.length} chapter(s)`
         logger.error(
-          { bookId, failedCount: failedChapters.length, failedChapters },
+          { bookId, failedCount: failedResults.length, failedResults },
           'Some chapters failed audio generation'
         )
 
-        // Update book to failed status if any chapter failed
-        await book.merge({ audioStatus: 'failed' }).save()
+        // Converge to failed state with all diagnostic fields
+        await book
+          .merge({
+            status: 'failed',
+            audioStatus: 'failed',
+            processingStep: 'audio_failed',
+            processingError: summaryMessage,
+          })
+          .save()
+
+        // Update run log with failure metadata
+        await runLog
+          .merge({
+            status: 'failed',
+            currentStep: 'generate_audio',
+            progress: Math.round((completedChapters / totalChapters) * 100),
+            finishedAt: DateTime.now(),
+            durationMs: DateTime.now().toMillis() - runLog.startedAt.toMillis(),
+            errorMessage: summaryMessage,
+            errorCode: 'AUDIO_GENERATION_FAILED',
+            metadata: {
+              context: { bookId, jobType: 'import' },
+              summary: {
+                totalChapters,
+                completedChapters,
+                failedChapters,
+                reusedChapters,
+              },
+              audio: {
+                firstFailedChapterIndex: failedResults[0]?.chapterIndex,
+                lastProcessedChapterIndex: results[results.length - 1]?.chapterIndex,
+                suspectedSystemicFailure: failedResults.length > 1,
+              },
+              failure: {
+                stage: 'generate_audio',
+                errorCode: 'audio_generation_failed',
+                errorMessage: summaryMessage,
+              },
+            },
+          })
+          .save()
 
         // Throw error to mark job as failed
-        throw new Exception(`Audio generation failed for ${failedChapters.length} chapter(s)`, {
+        throw new Exception(summaryMessage, {
           status: 500,
         })
       }
+
+      // All chapters completed - update run log with success metadata
+      await runLog
+        .merge({
+          status: 'success',
+          currentStep: 'generate_audio',
+          progress: 100,
+          finishedAt: DateTime.now(),
+          durationMs: DateTime.now().toMillis() - runLog.startedAt.toMillis(),
+          metadata: {
+            context: { bookId, jobType: 'import' },
+            summary: {
+              totalChapters,
+              completedChapters,
+              failedChapters,
+              reusedChapters,
+            },
+            audio: {
+              lastProcessedChapterIndex: results[results.length - 1]?.chapterIndex,
+            },
+          },
+        })
+        .save()
 
       // All chapters completed - finalize book readiness
       await this.finalizeBookReady(book, results)
 
       logger.info({ bookId }, 'All chapter audio generation completed')
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       logger.error({ err: error, bookId }, 'Audio generation failed')
 
       if (book) {
-        // Only set to failed if not already set
-        if (book.audioStatus !== 'failed') {
-          await book.merge({ audioStatus: 'failed' }).save()
-        }
+        // Converge to failed state with all diagnostic fields
+        await book
+          .merge({
+            status: 'failed',
+            audioStatus: 'failed',
+            processingStep: 'audio_failed',
+            processingError: errorMessage,
+          })
+          .save()
+      }
+
+      // Update run log if not already failed
+      if (runLog.status !== 'failed') {
+        await runLog
+          .merge({
+            status: 'failed',
+            finishedAt: DateTime.now(),
+            durationMs: runLog.startedAt
+              ? DateTime.now().toMillis() - runLog.startedAt.toMillis()
+              : null,
+            errorMessage: errorMessage,
+            errorCode: 'AUDIO_GENERATION_FAILED',
+          })
+          .save()
       }
 
       throw error

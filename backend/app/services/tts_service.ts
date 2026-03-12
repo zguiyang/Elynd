@@ -42,21 +42,40 @@ export class TtsService {
     bookId: number,
     _options?: { voiceName?: string }
   ): Promise<ChapterAudioResult> {
+    const startTime = Date.now()
+    const textLength = chapter.content.length
+    const voiceName = this.speechConfig.speechSynthesisVoiceName || 'default'
+
     logger.info(
-      { chapterIndex: chapter.chapterIndex, title: chapter.title, bookId },
+      {
+        bookId,
+        chapterIndex: chapter.chapterIndex,
+        title: chapter.title,
+        textLength,
+        provider: 'azure_tts',
+        voiceName,
+      },
       'Generating chapter audio'
     )
 
     const text = `${chapter.title}\n\n${chapter.content}`
     const result = await this.synthesizeChapter(text, chapter.chapterIndex)
 
+    const elapsedMs = Date.now() - startTime
+
     // Generate deterministic path: book/voices/{bookId}/chapter-{chapterIndex}.mp3
     const audioPath = `${this.audioUrl}/${bookId}/chapter-${chapter.chapterIndex}.mp3`
     await drive.use().put(audioPath, result.audioBuffer)
 
     logger.info(
-      { chapterIndex: chapter.chapterIndex, duration: result.duration, bookId },
-      'Chapter audio generated'
+      {
+        bookId,
+        chapterIndex: chapter.chapterIndex,
+        durationMs: result.duration,
+        elapsedMs,
+        audioPath,
+      },
+      'Chapter audio generated successfully'
     )
 
     return {
@@ -134,12 +153,20 @@ export class TtsService {
       return {
         code: 'canceled',
         message: 'Speech synthesis was canceled',
+        provider: 'azure_tts',
+        reason: 'Canceled',
+        errorDetails: null,
+        requestId: null,
         chapterIndex,
       }
     }
     return {
       code: 'synthesis_failed',
       message: 'Speech synthesis failed',
+      provider: 'azure_tts',
+      reason: reason.toString(),
+      errorDetails: null,
+      requestId: null,
       chapterIndex,
     }
   }

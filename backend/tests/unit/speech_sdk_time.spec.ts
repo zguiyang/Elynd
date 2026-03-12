@@ -71,15 +71,20 @@ test.group('ChapterInput type', () => {
 })
 
 test.group('TtsErrorDetails type', () => {
-  test('should have code, message, and optional chapterIndex', ({ assert }) => {
+  test('should have code, message, provider, and optional chapterIndex', ({ assert }) => {
     const error: TtsErrorDetails = {
       code: 'canceled',
       message: 'Speech synthesis was canceled',
+      provider: 'azure_tts',
+      reason: 'ErrorReason.ConnectionTimeout',
+      errorDetails: 'Connection timed out',
+      requestId: null,
       chapterIndex: 2,
     }
 
     assert.equal(error.code, 'canceled')
     assert.equal(error.message, 'Speech synthesis was canceled')
+    assert.equal(error.provider, 'azure_tts')
     assert.equal(error.chapterIndex, 2)
   })
 
@@ -87,6 +92,10 @@ test.group('TtsErrorDetails type', () => {
     const error: TtsErrorDetails = {
       code: 'synthesis_failed',
       message: 'Speech synthesis failed',
+      provider: 'azure_tts',
+      reason: 'ResultReason.Canceled',
+      errorDetails: null,
+      requestId: null,
     }
 
     assert.equal(error.code, 'synthesis_failed')

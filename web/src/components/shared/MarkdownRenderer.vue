@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
+import { getNextTypewriterContent, hasPendingTypewriterChars } from '@/lib/streaming-typewriter'
 
 interface Props {
   content: string
@@ -48,19 +49,24 @@ const startTypewriter = () => {
     clearTimeout(typewriterTimer)
   }
 
-  const fullContent = props.content
-  displayedContent.value = ''
+  if (!hasPendingTypewriterChars(displayedContent.value, props.content)) {
+    isTyping.value = false
+    return
+  }
+
   isTyping.value = true
-  let charIndex = 0
 
   const typeNextChar = () => {
-    if (charIndex < fullContent.length) {
-      const charsToType = Math.min(3, fullContent.length - charIndex)
-      displayedContent.value += fullContent.slice(charIndex, charIndex + charsToType)
-      charIndex += charsToType
+    if (hasPendingTypewriterChars(displayedContent.value, props.content)) {
+      displayedContent.value = getNextTypewriterContent(
+        displayedContent.value,
+        props.content,
+        3
+      )
       typewriterTimer = setTimeout(typeNextChar, props.streamingSpeed)
     } else {
       isTyping.value = false
+      typewriterTimer = null
     }
   }
 
@@ -75,9 +81,10 @@ watch(
       isTyping.value = false
       if (typewriterTimer) {
         clearTimeout(typewriterTimer)
+        typewriterTimer = null
       }
     } else if (newContent.length > (oldContent?.length || 0)) {
-      if (!isTyping.value && displayedContent.value.length < newContent.length) {
+      if (!isTyping.value && hasPendingTypewriterChars(displayedContent.value, newContent)) {
         startTypewriter()
       }
     }

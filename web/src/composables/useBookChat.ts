@@ -1,4 +1,5 @@
 import { createBookChat, type ChatMessage } from '@/api/book-chat'
+import { updateAssistantMessageContent } from '@/lib/chat-stream-message'
 
 export function useBookChat(bookId: number) {
   const messages = ref<ChatMessage[]>([])
@@ -7,7 +8,7 @@ export function useBookChat(bookId: number) {
   const currentStreamingContent = ref('')
   let currentEventSource: { close: () => void } | null = null
 
-  let assistantMessageRef: ChatMessage | null = null
+  let assistantMessageIndex: number | null = null
 
   const sendMessage = (content: string, chapterIndex?: number) => {
     if (isLoading.value) return
@@ -25,7 +26,7 @@ export function useBookChat(bookId: number) {
       content: '',
     }
     messages.value.push(assistantMessage)
-    assistantMessageRef = assistantMessage
+    assistantMessageIndex = messages.value.length - 1
 
     isLoading.value = true
     isWaitingForResponse.value = true
@@ -40,20 +41,22 @@ export function useBookChat(bookId: number) {
 
         // 直接显示新内容，实时流式
         currentStreamingContent.value += chunk
-        if (assistantMessageRef) {
-          assistantMessageRef.content = currentStreamingContent.value
-        }
+        updateAssistantMessageContent(
+          messages.value,
+          assistantMessageIndex,
+          currentStreamingContent.value
+        )
       },
       onComplete: (fullContent) => {
-        assistantMessage.content = fullContent
+        updateAssistantMessageContent(messages.value, assistantMessageIndex, fullContent)
         currentStreamingContent.value = fullContent
-        assistantMessageRef = null
+        assistantMessageIndex = null
         isLoading.value = false
         isWaitingForResponse.value = false
       },
       onError: (error) => {
-        assistantMessageRef = null
-        assistantMessage.content = '抱歉，请稍后重试'
+        updateAssistantMessageContent(messages.value, assistantMessageIndex, '抱歉，请稍后重试')
+        assistantMessageIndex = null
         isLoading.value = false
         isWaitingForResponse.value = false
         console.error('Chat error:', error)
@@ -64,7 +67,7 @@ export function useBookChat(bookId: number) {
   const clearMessages = () => {
     messages.value = []
     currentStreamingContent.value = ''
-    assistantMessageRef = null
+    assistantMessageIndex = null
     isWaitingForResponse.value = false
     if (currentEventSource) {
       currentEventSource.close()

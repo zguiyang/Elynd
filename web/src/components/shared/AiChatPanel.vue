@@ -151,7 +151,6 @@ const handleKeydown = (e: KeyboardEvent) => {
                 v-else-if="isLoading && index === messages.length - 1"
                 :content="msg.content"
                 :is-streaming="true"
-                :streaming-speed="30"
               />
               
               <!-- Completed State - Show Markdown -->

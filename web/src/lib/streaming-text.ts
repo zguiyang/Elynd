@@ -1,13 +1,13 @@
-export function hasPendingTypewriterChars(displayedContent: string, targetContent: string): boolean {
+export function hasPendingStreamingText(displayedContent: string, targetContent: string): boolean {
   return displayedContent.length < targetContent.length
 }
 
-export function getNextTypewriterContent(
+export function getNextStreamingText(
   displayedContent: string,
   targetContent: string,
-  charsPerTick = 3
+  charsPerTick = 8
 ): string {
-  if (!hasPendingTypewriterChars(displayedContent, targetContent)) {
+  if (!hasPendingStreamingText(displayedContent, targetContent)) {
     return displayedContent
   }
 

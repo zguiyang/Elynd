@@ -2,6 +2,8 @@
 
 Frontend development guidelines for Elynd project using Vue 3 + Vite + shadcn-vue.
 
+Frontend changes that affect behavior or correctness must follow [`05-tdd.md`](./05-tdd.md) when in scope.
+
 ## Naming Conventions
 
 ### Vue Component Files

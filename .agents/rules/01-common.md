@@ -2,6 +2,8 @@
 
 This document applies to both backend and frontend development in the Elynd project.
 
+For TDD and test-friendly development rules, see [`05-tdd.md`](./05-tdd.md).
+
 ## Naming Conventions
 
 | Type | File Name | Component Name |

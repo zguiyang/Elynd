@@ -1,0 +1,186 @@
+# Test-Driven Development And Test-Friendly Development
+
+This project adopts **TDD as the default development mode** for both backend and frontend work.
+
+TDD is not treated as an optional preference. For in-scope changes, it is the default expectation. If TDD is skipped, the reason must be stated explicitly in the development context.
+
+## Core Principle
+
+For behavior-changing work, follow the TDD cycle:
+
+1. Write a failing test first
+2. Run the test and confirm it fails for the expected reason
+3. Implement the minimal code change
+4. Run the test and confirm it passes
+5. Refactor only after the test is green
+6. Run the relevant verification commands before claiming completion
+
+## In-Scope Changes
+
+The following changes must follow TDD by default.
+
+### Backend
+
+- Controller behavior changes
+- Service logic changes
+- Validator changes
+- Authentication and authorization changes
+- Model query logic changes
+- API contract changes
+- Business rule changes
+- Data transformation logic changes
+- Bug fixes
+- Refactoring that affects maintainability or correctness
+
+### Frontend
+
+- Shared component behavior changes
+- Key page interaction changes
+- Composable logic changes
+- Store logic changes
+- `src/lib` utility changes
+- API adapter changes
+- Route guard changes
+- Bug fixes
+- Refactoring that affects maintainability or correctness
+
+## Allowed Exceptions
+
+TDD is not mandatory for changes that do not introduce or modify meaningful behavior.
+
+Examples:
+
+- Documentation only
+- Comments only
+- Pure formatting changes
+- Pure renaming without behavior changes
+- Minor style-only UI adjustments without interaction changes
+- Small build or tooling configuration adjustments
+- Generated files
+- Scaffold output
+- One-off migration support files with no stable runtime behavior
+
+## Exception Rule
+
+If a change does not follow TDD, the reason must be stated explicitly in the task context, implementation notes, or review context.
+
+Do not silently skip TDD for in-scope work.
+
+## Test-Friendly Development
+
+TDD is not only about writing tests first. Code must also be designed to be easy to test, easy to reason about, and easy to verify.
+
+When implementing new code or modifying existing code:
+
+- Prefer small, focused units with one clear responsibility
+- Prefer explicit inputs and outputs over hidden side effects
+- Keep business logic separate from framework or UI glue code when practical
+- Avoid unnecessary coupling between modules
+- Avoid hidden dependencies and implicit state
+- Refactor code that is unnecessarily difficult to test when it directly affects the current task
+
+Tests are required, but testability is also required. If the implementation is unnecessarily hard to test, improving the design is part of the task.
+
+## Good Test Standards
+
+Good tests should be:
+
+- Focused on one behavior
+- Clear about what is being verified
+- Stable under safe refactoring
+- Small in scope and easy to read
+- Based on public behavior whenever possible
+- Free from unnecessary mocks, stubs, or snapshots
+
+Avoid tests that:
+
+- Assert internal implementation details without strong reason
+- Break whenever code is refactored but behavior stays the same
+- Depend on unrelated global state
+- Cover too many behaviors in one test
+- Pass without proving meaningful behavior
+- Use snapshots as the primary proof of correctness for meaningful logic
+
+## Design For Testability
+
+Prefer code structures that naturally support testing:
+
+- Extract pure logic from large components, controllers, or services when appropriate
+- Keep transformation and decision logic in directly testable units
+- Isolate side effects such as network calls, storage, timers, and browser APIs
+- Use clear module boundaries so tests can target behavior directly
+- Reduce reliance on broad setup when narrower boundaries are possible
+
+Do not introduce unnecessary abstraction only for theoretical testability. Prefer practical, local improvements that make the current change easier to verify and maintain.
+
+## Backend Guidance
+
+Backend changes should prefer tests that validate behavior through stable boundaries.
+
+### Preferred Test Targets
+
+Choose the narrowest useful test level:
+
+- Functional or HTTP tests for route and controller contract changes
+- Service-level tests for business workflows
+- Validation-focused tests for request rules
+- Query and result tests for model or data-access behavior
+- Regression tests for bug fixes
+
+### Backend Test-Friendly Practices
+
+Prefer:
+
+- Keeping business logic in services or clearly bounded units
+- Making validation, transformation, and decision logic directly testable
+- Using stable API contract tests for route behavior
+- Keeping side effects and orchestration logic explicit
+
+Avoid:
+
+- Placing too much business logic directly in controllers
+- Mixing persistence, validation, transformation, and decision logic in one large method
+- Writing tests that only prove framework wiring but not real business behavior
+
+## Frontend Guidance
+
+Frontend changes should prefer tests that validate public behavior, interaction, and state transitions.
+
+### Preferred Test Targets
+
+Choose the most direct test boundary for the change:
+
+- Component tests for shared component behavior and interaction
+- Composable tests for reusable stateful logic
+- Store tests for state transitions and actions
+- Utility tests for pure functions
+- API adapter tests for request and response shaping
+- Guard tests for route access behavior
+
+### Frontend Test-Friendly Practices
+
+Prefer:
+
+- Testing rendered output and user interaction through public component behavior
+- Extracting reusable stateful logic into composables when logic grows
+- Keeping formatting, parsing, and transformation logic out of large view files when practical
+- Minimizing direct dependence on global browser APIs
+- Adding DOM or browser mocks only when a real failing test requires them
+
+Avoid:
+
+- Large components that mix rendering, state transitions, API calls, and transformation logic in one file
+- Snapshot-only tests for meaningful behavior
+- Tests that depend on fragile markup details unrelated to user behavior
+- Broad mocks when narrower boundaries can be tested directly
+
+## Verification Before Completion
+
+Passing a new test is not enough on its own.
+
+Before claiming completion for in-scope work:
+
+- Run the directly relevant tests
+- Run the relevant type-check or lint commands for the changed area
+- Confirm the result with fresh command output
+- Do not claim success based on assumption or partial verification

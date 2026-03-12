@@ -2,6 +2,8 @@
 
 Backend development guidelines for Linky project using AdonisJS 6.x.
 
+Backend changes that affect behavior or correctness must follow [`05-tdd.md`](./05-tdd.md) when in scope.
+
 ## Development Guidelines
 
 ### Priority 1: Consult AdonisJS Skill

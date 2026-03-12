@@ -5,7 +5,8 @@
     "auto-imports.d.ts",
     "components.d.ts",
     "src/**/*",
-    "src/**/*.vue"
+    "src/**/*.vue",
+    "tests/**/*.ts"
   ],
   "exclude": ["src/**/__tests__/*"],
   "compilerOptions": {
@@ -13,6 +14,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "types": ["vitest/globals"]
   }
 }

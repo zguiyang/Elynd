@@ -1,4 +1,4 @@
-<script setup lang="ts">
+ <script setup lang="ts">
 import {
   Play,
   Pause,
@@ -10,15 +10,17 @@ import {
   Loader2,
 } from 'lucide-vue-next'
 import { useReadingSettingsStore } from '@/stores/reading-settings'
-import { useChapter } from '@/composables/useBook'
 import { bookApi } from '@/api/book'
 import type { LineHeight, ContentWidth } from '@/stores/reading-settings'
-import type { Book, VocabularyItem } from '@/types/book'
+import type { Book, Chapter, VocabularyItem } from '@/types/book'
 import VocabularyPreview from '@/components/shared/VocabularyPreview.vue'
 import { toast } from 'vue-sonner'
 
 interface Props {
   book?: Book | null
+  chapter?: Chapter | null
+  chapterLoading?: boolean
+  chapterError?: string | null
   currentChapterIndex?: number
   isPlaying?: boolean
   currentTime?: number
@@ -27,6 +29,9 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   book: null,
+  chapter: null,
+  chapterLoading: false,
+  chapterError: null,
   currentChapterIndex: 0,
   isPlaying: false,
   currentTime: 0,
@@ -45,8 +50,6 @@ const emit = defineEmits<{
 
 const route = useRoute()
 const bookId = Number(route.params.id)
-
-const { chapter, isLoading, error: chapterError, fetchChapter } = useChapter()
 
 const readingSettings = useReadingSettingsStore()
 
@@ -68,27 +71,21 @@ const contentWidthOptions: { value: ContentWidth; label: string }[] = [
 const totalChapters = computed(() => props.book?.chapters.length ?? 0)
 
 const paragraphs = computed(() => {
-  if (!chapter.value?.content) return []
-  return chapter.value.content.split('\n\n').filter((p) => p.trim())
+  if (!props.chapter?.content) return []
+  return props.chapter.content.split('\n\n').filter((p) => p.trim())
 })
 
-const loadChapter = async (index: number) => {
-  await fetchChapter(bookId, index)
-}
-
-const goToPreviousChapter = async () => {
+const goToPreviousChapter = () => {
   if (props.currentChapterIndex > 0) {
     const newIndex = props.currentChapterIndex - 1
     emit('update:currentChapterIndex', newIndex)
-    await loadChapter(newIndex)
   }
 }
 
-const goToNextChapter = async () => {
+const goToNextChapter = () => {
   if (props.currentChapterIndex < totalChapters.value - 1) {
     const newIndex = props.currentChapterIndex + 1
     emit('update:currentChapterIndex', newIndex)
-    await loadChapter(newIndex)
   }
 }
 
@@ -132,36 +129,6 @@ const fetchVocabulary = async () => {
     })
 }
 
-watch(
-  () => props.currentChapterIndex,
-  async (newIndex) => {
-    if (props.book && props.book.chapters.length > 0) {
-      await loadChapter(newIndex)
-    }
-  }
-)
-
-watch(
-  () => props.book,
-  async (newBook) => {
-    if (newBook && newBook.chapters.length > 0) {
-      await loadChapter(props.currentChapterIndex)
-    }
-  }
-)
-
-watch(chapterError, (err) => {
-  if (err) {
-    toast.error(err)
-  }
-})
-
-onMounted(async () => {
-  if (props.book && props.book.chapters.length > 0) {
-    await loadChapter(props.currentChapterIndex)
-  }
-})
-
 defineExpose({
   fetchVocabulary,
 })
@@ -170,21 +137,20 @@ defineExpose({
 <template>
   <div class="h-full flex flex-col relative">
     <div class="flex-1 min-h-0 overflow-auto px-4 py-6">
-      <div v-if="isLoading" class="flex items-center justify-center h-full">
+      <div v-if="props.chapterLoading" class="flex items-center justify-center h-full">
         <Loader2 class="size-8 animate-spin text-muted-foreground" />
       </div>
 
-      <div v-else-if="chapterError" class="flex items-center justify-center h-full">
+      <div v-else-if="props.chapterError" class="flex items-center justify-center h-full">
         <div class="text-center">
-          <p class="text-destructive mb-4">{{ chapterError }}</p>
-          <Button @click="loadChapter(props.currentChapterIndex)">重试</Button>
+          <p class="text-destructive mb-4">{{ props.chapterError }}</p>
         </div>
       </div>
 
       <BookReader
-        v-else-if="chapter"
+        v-else-if="props.chapter"
         :paragraphs="paragraphs"
-        :chapter-title="chapter?.title"
+        :chapter-title="props.chapter?.title"
       />
     </div>
 

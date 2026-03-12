@@ -11,7 +11,7 @@ const route = useRoute()
 const bookId = Number(route.params.id)
 
 const { book, fetchBook } = useBook()
-const { chapter, fetchChapter } = useChapter()
+const { chapter, isLoading: chapterLoading, error: chapterError, fetchChapter } = useChapter()
 const readingSettings = useReadingSettingsStore()
 
 const currentChapterIndex = ref(0)
@@ -109,6 +109,8 @@ const handleChapterSelect = async (index: number) => {
   currentChapterIndex.value = index
   isPlaying.value = false
   currentTime.value = 0
+  duration.value = 0
+  audioError.value = null
   await fetchChapter(bookId, index)
 }
 
@@ -117,6 +119,8 @@ const handleMobileChapterSelect = async (index: number) => {
   isMobileTocOpen.value = false
   isPlaying.value = false
   currentTime.value = 0
+  duration.value = 0
+  audioError.value = null
   await fetchChapter(bookId, index)
 }
 
@@ -188,8 +192,8 @@ const getDifficultyVariant = (difficulty: string): 'default' | 'secondary' | 'ou
   return variants[difficulty] || 'secondary'
 }
 
-onMounted(() => {
-  fetchBook(bookId)
+onMounted(async () => {
+  await fetchBook(bookId)
   document.addEventListener('visibilitychange', handleVisibilityChange)
   window.addEventListener('beforeunload', stopProgressTracking)
 })
@@ -201,8 +205,10 @@ onUnmounted(() => {
 })
 
 watch(book, (newBook) => {
-  if (newBook && newBook.chapters) {
+  if (newBook && newBook.chapters && newBook.chapters.length > 0) {
     startProgressTracking()
+    // 自动加载第一章
+    fetchChapter(bookId, 0)
   }
 }, { immediate: true })
 </script>
@@ -352,6 +358,9 @@ watch(book, (newBook) => {
       <main class="flex-1 min-h-0 overflow-auto">
         <router-view
           :book="book"
+          :chapter="chapter"
+          :chapter-loading="chapterLoading"
+          :chapter-error="chapterError"
           :current-chapter-index="currentChapterIndex"
           :is-playing="isPlaying"
           :current-time="currentTime"

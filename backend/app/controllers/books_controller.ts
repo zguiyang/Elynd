@@ -47,17 +47,18 @@ export default class BooksController {
     const audioInfo = await this.bookService.getChapterAudio(bookId, chapterIndex)
 
     const serialized = chapter.serialize()
-    if (audioInfo) {
-      return {
-        ...serialized,
-        audio: {
-          audioPath: audioInfo.audioPath,
-          durationMs: audioInfo.durationMs,
-        },
-      }
-    }
 
-    return serialized
+    // Return top-level audio fields instead of nested object
+    const audioUrl = audioInfo?.audioPath ?? null
+    const audioStatus = audioInfo?.status ?? null
+    const audioDurationMs = audioInfo?.durationMs ?? null
+
+    return {
+      ...serialized,
+      audioUrl,
+      audioStatus,
+      audioDurationMs,
+    }
   }
 
   async chapterAudio({ params, response }: HttpContext) {

@@ -143,17 +143,20 @@ export class BookService {
     const audio = await BookChapterAudio.query()
       .where('bookId', bookId)
       .where('chapterIndex', chapterIndex)
-      .where('status', 'completed')
+      .orderBy('updatedAt', 'desc')
       .first()
 
     if (!audio) {
       return null
     }
 
+    // Only return audioPath and durationMs for completed status
+    const isCompleted = audio.status === 'completed'
+
     return {
       chapterIndex: audio.chapterIndex,
-      audioPath: audio.audioPath,
-      durationMs: audio.durationMs,
+      audioPath: isCompleted ? audio.audioPath : null,
+      durationMs: isCompleted ? audio.durationMs : null,
       status: audio.status,
     }
   }

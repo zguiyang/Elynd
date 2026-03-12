@@ -2,24 +2,8 @@ import { test } from '@japa/runner'
 import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import BookChapterAudio from '#models/book_chapter_audio'
-import User from '#models/user'
 import crypto from 'node:crypto'
-
-/**
- * Helper function to create a test authenticated user with access token
- */
-async function createAuthenticatedUser(): Promise<{ user: User; token: string }> {
-  const user = await User.create({
-    fullName: 'Test User',
-    email: `user-${crypto.randomUUID()}@example.com`,
-    password: 'testpassword123',
-    isAdmin: false,
-  })
-
-  const token = await User.accessTokens.create(user, ['*'], { expiresIn: '1 day' })
-
-  return { user, token: token.value!.release() }
-}
+import { bearerAuthHeader, createAuthenticatedUser } from '#tests/helpers/auth'
 
 test.group('Books Reading API - Chapter Contract', () => {
   test('GET /api/books/:id/chapters/0 returns chapter with audio at top level', async ({
@@ -73,7 +57,7 @@ test.group('Books Reading API - Chapter Contract', () => {
     })
 
     // Request GET /api/books/:id/chapters/0
-    const response = await client.get(`/api/books/${book.id}/chapters/0`).header('Authorization', `Bearer ${token}`)
+    const response = await client.get(`/api/books/${book.id}/chapters/0`).header('Authorization', bearerAuthHeader(token))
 
     const body = response.body()
 
@@ -127,7 +111,7 @@ test.group('Books Reading API - Chapter Contract', () => {
     })
 
     // Request GET /api/books/:id/chapters/0 (no audio record created)
-    const response = await client.get(`/api/books/${book.id}/chapters/0`).header('Authorization', `Bearer ${token}`)
+    const response = await client.get(`/api/books/${book.id}/chapters/0`).header('Authorization', bearerAuthHeader(token))
 
     const body = response.body()
 
@@ -153,7 +137,7 @@ test.group('Books Reading API - Chapter Contract', () => {
     })
 
     // Request with non-existent book ID
-    const response = await client.get('/api/books/99999/chapters/0').header('Authorization', `Bearer ${token}`)
+    const response = await client.get('/api/books/99999/chapters/0').header('Authorization', bearerAuthHeader(token))
 
     response.assertStatus(404)
   })
@@ -195,7 +179,7 @@ test.group('Books Reading API - Chapter Contract', () => {
     })
 
     // Request non-existent chapter (chapterIndex = 5)
-    const response = await client.get(`/api/books/${book.id}/chapters/5`).header('Authorization', `Bearer ${token}`)
+    const response = await client.get(`/api/books/${book.id}/chapters/5`).header('Authorization', bearerAuthHeader(token))
 
     response.assertStatus(404)
   })

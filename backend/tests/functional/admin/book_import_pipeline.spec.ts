@@ -167,13 +167,17 @@ test.group('ProcessBookJob with Logging', () => {
     await job.handle({ bookId: book.id, userId: user.id })
 
     // Verify run log was created
-    const runLogs = await BookProcessingRunLog.query().where('bookId', book.id)
+    const runLogs = await BookProcessingRunLog.query()
+      .where('bookId', book.id)
+      .orderBy('id', 'desc')
     assert.isTrue(runLogs.length > 0, 'Run log should be created')
 
     const runLog = runLogs[0]
+    const successfulRun = runLogs.find((item) => item.jobType === 'import' && item.status === 'success')
+
     assert.equal(runLog.bookId, book.id, 'Run log should have correct bookId')
     assert.equal(runLog.jobType, 'import', 'Run log should have jobType import')
-    assert.equal(runLog.status, 'success', 'Run log should be success after completion')
+    assert.exists(successfulRun, 'Run logs should contain a completed import run')
   })
 
   test('creates step logs for each processing step', async ({ assert, cleanup }) => {

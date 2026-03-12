@@ -57,7 +57,7 @@ export class RecommendationService {
       id: book.id,
       title: book.title,
       difficultyLevel: book.difficultyLevel,
-      description: null,
+      description: book.description,
       tags: (book as unknown as { tags: Tag[] }).tags || [],
     }))
 
@@ -74,7 +74,7 @@ export class RecommendationService {
           id: book.id,
           title: book.title,
           difficultyLevel: book.difficultyLevel,
-          description: null,
+          description: book.description,
           tags: (book as unknown as { tags: Tag[] }).tags || [],
         })
       }
@@ -94,7 +94,7 @@ export class RecommendationService {
       id: book.id,
       title: book.title,
       difficultyLevel: book.difficultyLevel,
-      description: null,
+      description: book.description,
       tags: (book as unknown as { tags: Tag[] }).tags || [],
     }))
   }

@@ -1,21 +1,8 @@
 import { test } from '@japa/runner'
 import crypto from 'node:crypto'
 import Book from '#models/book'
-import User from '#models/user'
 import { BookChatService } from '#services/book_chat_service'
-
-async function createAuthenticatedUser(): Promise<{ user: User; token: string }> {
-  const user = await User.create({
-    fullName: 'SSE Test User',
-    email: `sse-${crypto.randomUUID()}@example.com`,
-    password: 'testpassword123',
-    isAdmin: false,
-  })
-
-  const token = await User.accessTokens.create(user, ['*'], { expiresIn: '1 day' })
-
-  return { user, token: token.value!.release() }
-}
+import { bearerAuthHeader, createAuthenticatedUser } from '#tests/helpers/auth'
 
 test.group('Book Chat SSE API', () => {
   test('GET /api/books/:id/chats responds as text/event-stream and emits chunk/done events', async ({
@@ -23,7 +10,7 @@ test.group('Book Chat SSE API', () => {
     client,
     cleanup,
   }) => {
-    const { user, token } = await createAuthenticatedUser()
+    const { user, token } = await createAuthenticatedUser({ fullName: 'SSE Test User', emailPrefix: 'sse' })
     cleanup(async () => {
       await user.delete()
     })
@@ -63,7 +50,7 @@ test.group('Book Chat SSE API', () => {
     const response = await client
       .get(`/api/books/${book.id}/chats`)
       .qs({ message: 'Explain this chapter' })
-      .header('Authorization', `Bearer ${token}`)
+      .header('Authorization', bearerAuthHeader(token))
 
     assert.equal(response.status(), 200, 'Response should return 200 OK')
     assert.include(

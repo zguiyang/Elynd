@@ -2,40 +2,22 @@ import { test } from '@japa/runner'
 import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import BookChapterAudio from '#models/book_chapter_audio'
-import User from '#models/user'
 import crypto from 'node:crypto'
+import { bearerAuthHeader, createAuthenticatedUser } from '#tests/helpers/auth'
 
-/**
- * Helper function to create a test admin user with access token
- */
-async function createAdminUser(): Promise<{ user: User; token: string }> {
-  const user = await User.create({
+const createAdminUser = () =>
+  createAuthenticatedUser({
     fullName: 'Admin User',
-    email: `admin-${crypto.randomUUID()}@example.com`,
-    password: 'testpassword123',
+    emailPrefix: 'admin',
     isAdmin: true,
   })
 
-  const token = await User.accessTokens.create(user, ['*'], { expiresIn: '1 day' })
-
-  return { user, token: token.value!.release() }
-}
-
-/**
- * Helper function to create a test regular user with access token
- */
-async function createRegularUser(): Promise<{ user: User; token: string }> {
-  const user = await User.create({
+const createRegularUser = () =>
+  createAuthenticatedUser({
     fullName: 'Regular User',
-    email: `user-${crypto.randomUUID()}@example.com`,
-    password: 'testpassword123',
+    emailPrefix: 'user',
     isAdmin: false,
   })
-
-  const token = await User.accessTokens.create(user, ['*'], { expiresIn: '1 day' })
-
-  return { user, token: token.value!.release() }
-}
 
 test.group('Admin Books Management API', () => {
   test('GET /api/admin/books returns paginated books sorted by newest first', async ({
@@ -77,7 +59,9 @@ test.group('Admin Books Management API', () => {
     })
     cleanup(async () => await book2.delete())
 
-    const response = await client.get('/api/admin/books').header('Authorization', `Bearer ${token}`)
+    const response = await client
+      .get('/api/admin/books')
+      .header('Authorization', bearerAuthHeader(token))
 
     response.assertStatus(200)
     assert.isObject(response.body(), 'Response should be an object')
@@ -117,7 +101,7 @@ test.group('Admin Books Management API', () => {
 
     const response = await client
       .get('/api/admin/books?page=1&perPage=10')
-      .header('Authorization', `Bearer ${token}`)
+      .header('Authorization', bearerAuthHeader(token))
 
     response.assertStatus(200)
     assert.equal(response.body().data.length, 10, 'Should return 10 items per page')
@@ -202,7 +186,9 @@ test.group('Admin Books Management API', () => {
       },
     ])
 
-    const response = await client.get('/api/admin/books').header('Authorization', `Bearer ${token}`)
+    const response = await client
+      .get('/api/admin/books')
+      .header('Authorization', bearerAuthHeader(token))
 
     response.assertStatus(200)
 
@@ -227,7 +213,9 @@ test.group('Admin Books Management API', () => {
       await regularUser.delete()
     })
 
-    const response = await client.get('/api/admin/books').header('Authorization', `Bearer ${token}`)
+    const response = await client
+      .get('/api/admin/books')
+      .header('Authorization', bearerAuthHeader(token))
 
     response.assertStatus(403)
     // Response might be in different format
@@ -265,7 +253,7 @@ test.group('Admin Books Management API', () => {
 
     const response = await client
       .patch(`/api/admin/books/${book.id}`)
-      .header('Authorization', `Bearer ${token}`)
+      .header('Authorization', bearerAuthHeader(token))
       .json({
         title: 'Updated Title',
         author: 'Updated Author',
@@ -304,7 +292,7 @@ test.group('Admin Books Management API', () => {
 
     const response = await client
       .patch(`/api/admin/books/${book.id}`)
-      .header('Authorization', `Bearer ${token}`)
+      .header('Authorization', bearerAuthHeader(token))
       .json({
         title: 'Updated Title',
       })
@@ -330,7 +318,7 @@ test.group('Admin Books Management API', () => {
 
     const response = await client
       .patch('/api/admin/books/99999')
-      .header('Authorization', `Bearer ${token}`)
+      .header('Authorization', bearerAuthHeader(token))
       .json({
         title: 'Updated Title',
       })
@@ -364,7 +352,7 @@ test.group('Admin Books Management API', () => {
 
     const response = await client
       .delete(`/api/admin/books/${bookId}`)
-      .header('Authorization', `Bearer ${token}`)
+      .header('Authorization', bearerAuthHeader(token))
 
     response.assertStatus(200)
     assert.equal(response.body().success, true)
@@ -402,7 +390,7 @@ test.group('Admin Books Management API', () => {
 
     const response = await client
       .delete(`/api/admin/books/${book.id}`)
-      .header('Authorization', `Bearer ${token}`)
+      .header('Authorization', bearerAuthHeader(token))
 
     response.assertStatus(400)
     // Response might be in different format
@@ -441,7 +429,7 @@ test.group('Admin Books Management API', () => {
 
     const response = await client
       .delete(`/api/admin/books/${book.id}`)
-      .header('Authorization', `Bearer ${token}`)
+      .header('Authorization', bearerAuthHeader(token))
 
     response.assertStatus(200)
     assert.equal(response.body().success, true)
@@ -458,7 +446,7 @@ test.group('Admin Books Management API', () => {
 
     const response = await client
       .delete('/api/admin/books/99999')
-      .header('Authorization', `Bearer ${token}`)
+      .header('Authorization', bearerAuthHeader(token))
 
     response.assertStatus(404)
   })
@@ -486,7 +474,7 @@ test.group('Admin Books Management API', () => {
     // Test invalid difficulty level
     const response1 = await client
       .patch(`/api/admin/books/${book.id}`)
-      .header('Authorization', `Bearer ${token}`)
+      .header('Authorization', bearerAuthHeader(token))
       .json({
         difficultyLevel: 'invalid_level',
       })
@@ -496,7 +484,7 @@ test.group('Admin Books Management API', () => {
     // Test invalid source
     const response2 = await client
       .patch(`/api/admin/books/${book.id}`)
-      .header('Authorization', `Bearer ${token}`)
+      .header('Authorization', bearerAuthHeader(token))
       .json({
         source: 'invalid_source',
       })
@@ -506,7 +494,7 @@ test.group('Admin Books Management API', () => {
     // Test title too long
     const response3 = await client
       .patch(`/api/admin/books/${book.id}`)
-      .header('Authorization', `Bearer ${token}`)
+      .header('Authorization', bearerAuthHeader(token))
       .json({
         title: 'a'.repeat(201),
       })

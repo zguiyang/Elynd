@@ -14,9 +14,14 @@ export interface ChatOptions {
 }
 
 interface ChatChunkData {
-  type: 'chunk' | 'complete' | 'done' | 'error'
+  type: 'chunk' | 'done' | 'error'
   content?: string
   message?: string
+  usage?: {
+    promptTokens: number
+    completionTokens: number
+    totalTokens: number
+  }
 }
 
 export function createBookChat(bookId: number, options: ChatOptions): SseHandle {

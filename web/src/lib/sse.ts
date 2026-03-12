@@ -68,7 +68,7 @@ export function createSSE<T = unknown>(options: SseOptions<T>): SseHandle {
           fullContent += chunkContent
         }
         onChunk?.(data)
-      } else if (type === 'complete' || type === 'done') {
+      } else if (type === 'done') {
         close()
         onComplete?.(fullContent)
       } else if (type === 'error') {

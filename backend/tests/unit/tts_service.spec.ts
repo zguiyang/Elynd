@@ -9,14 +9,14 @@ test.group('TtsService chunking', () => {
     const chapter = {
       chapterIndex: 1,
       title: 'Long Chapter',
-      content: 'Paragraph one with some text.\n\nParagraph two with more text.\n\nParagraph three with even more text.',
+      content:
+        'Paragraph one with some text.\n\nParagraph two with more text.\n\nParagraph three with even more text.',
     }
 
     // Access private method using type assertion
-    const chunks = (service as unknown as { splitTextIntoChunks: (text: string, maxChars: number) => string[] })['splitTextIntoChunks'](
-      `${chapter.title}\n\n${chapter.content}`,
-      50
-    )
+    const chunks = (
+      service as unknown as { splitTextIntoChunks: (text: string, maxChars: number) => string[] }
+    )['splitTextIntoChunks'](`${chapter.title}\n\n${chapter.content}`, 50)
 
     assert.isAbove(chunks.length, 1)
     assert.isTrue(chunks.every((chunk) => chunk.length <= 50))
@@ -27,16 +27,46 @@ test.group('TtsService chunking', () => {
 
     const service = new TtsService()
 
-    const merged = (service as unknown as { mergeChunkResults: (results: { audioBuffer: Buffer; duration: number; wordTimings: { word: string; audioOffset: number; duration: number; textOffset: number; wordLength: number }[] }[]) => { audioBuffer: Buffer; duration: number; wordTimings: { word: string; audioOffset: number; duration: number; textOffset: number; wordLength: number }[] } })['mergeChunkResults']([
+    const merged = (
+      service as unknown as {
+        mergeChunkResults: (
+          results: {
+            audioBuffer: Buffer
+            duration: number
+            wordTimings: {
+              word: string
+              audioOffset: number
+              duration: number
+              textOffset: number
+              wordLength: number
+            }[]
+          }[]
+        ) => {
+          audioBuffer: Buffer
+          duration: number
+          wordTimings: {
+            word: string
+            audioOffset: number
+            duration: number
+            textOffset: number
+            wordLength: number
+          }[]
+        }
+      }
+    )['mergeChunkResults']([
       {
         audioBuffer: Buffer.from('a'),
         duration: 1000,
-        wordTimings: [{ word: 'Hello', audioOffset: 0, duration: 400, textOffset: 0, wordLength: 5 }],
+        wordTimings: [
+          { word: 'Hello', audioOffset: 0, duration: 400, textOffset: 0, wordLength: 5 },
+        ],
       },
       {
         audioBuffer: Buffer.from('b'),
         duration: 800,
-        wordTimings: [{ word: 'World', audioOffset: 0, duration: 300, textOffset: 0, wordLength: 5 }],
+        wordTimings: [
+          { word: 'World', audioOffset: 0, duration: 300, textOffset: 0, wordLength: 5 },
+        ],
       },
     ])
 
@@ -51,10 +81,9 @@ test.group('TtsService chunking', () => {
 
     const text = 'Short paragraph.\n\nAnother short paragraph.\n\nYet another paragraph.'
 
-    const chunks = (service as unknown as { splitTextIntoChunks: (text: string, maxChars: number) => string[] })['splitTextIntoChunks'](
-      text,
-      100
-    )
+    const chunks = (
+      service as unknown as { splitTextIntoChunks: (text: string, maxChars: number) => string[] }
+    )['splitTextIntoChunks'](text, 100)
 
     // Should split into 3 paragraphs
     assert.equal(chunks.length, 3)
@@ -66,12 +95,12 @@ test.group('TtsService chunking', () => {
     const service = new TtsService()
 
     // Single long paragraph
-    const text = 'This is a very long paragraph that definitely exceeds the maximum character limit and should be split into multiple chunks by the algorithm.'
+    const text =
+      'This is a very long paragraph that definitely exceeds the maximum character limit and should be split into multiple chunks by the algorithm.'
 
-    const chunks = (service as unknown as { splitTextIntoChunks: (text: string, maxChars: number) => string[] })['splitTextIntoChunks'](
-      text,
-      50
-    )
+    const chunks = (
+      service as unknown as { splitTextIntoChunks: (text: string, maxChars: number) => string[] }
+    )['splitTextIntoChunks'](text, 50)
 
     // Should split into multiple chunks
     assert.isAbove(chunks.length, 1)

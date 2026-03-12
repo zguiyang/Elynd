@@ -65,4 +65,12 @@ export default await Env.create(new URL('../', import.meta.url), {
   */
   TTS_API_KEY: Env.schema.string(),
   TTS_REGION: Env.schema.string(),
+
+  /*
+  |----------------------------------------------------------
+  | Variables for configuring book audio processing
+  |----------------------------------------------------------
+  */
+  BOOK_AUDIO_CHAPTER_CONCURRENCY: Env.schema.number(),
+  BOOK_AUDIO_CHUNK_MAX_CHARS: Env.schema.number(),
 })

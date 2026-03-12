@@ -81,9 +81,7 @@ test.group('Admin Books Management API', () => {
     })
     cleanup(async () => await book2.delete())
 
-    const response = await client
-      .get('/api/admin/books')
-      .header('Authorization', `Bearer ${token}`)
+    const response = await client.get('/api/admin/books').header('Authorization', `Bearer ${token}`)
 
     response.assertStatus(200)
     assert.isObject(response.body(), 'Response should be an object')
@@ -98,11 +96,7 @@ test.group('Admin Books Management API', () => {
     assert.equal(data[1].title, 'Old Book', 'Second book should be older')
   })
 
-  test('GET /api/admin/books with pagination params works', async ({
-    assert,
-    client,
-    cleanup,
-  }) => {
+  test('GET /api/admin/books with pagination params works', async ({ assert, client, cleanup }) => {
     const { user: admin, token } = await createAdminUser()
     cleanup(async () => {
       await admin.delete()
@@ -146,9 +140,7 @@ test.group('Admin Books Management API', () => {
       await regularUser.delete()
     })
 
-    const response = await client
-      .get('/api/admin/books')
-      .header('Authorization', `Bearer ${token}`)
+    const response = await client.get('/api/admin/books').header('Authorization', `Bearer ${token}`)
 
     response.assertStatus(403)
     // Response might be in different format
@@ -386,11 +378,7 @@ test.group('Admin Books Management API', () => {
     response.assertStatus(404)
   })
 
-  test('PATCH /api/admin/books/:id validates input fields', async ({
-    assert,
-    client,
-    cleanup,
-  }) => {
+  test('PATCH /api/admin/books/:id validates input fields', async ({ assert, client, cleanup }) => {
     const { user: admin, token } = await createAdminUser()
     cleanup(async () => {
       await admin.delete()

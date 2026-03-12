@@ -193,9 +193,7 @@ export default class AdminBooksController {
     const page = data.page || 1
     const perPage = data.perPage || 20
 
-    const books = await Book.query()
-      .orderBy('createdAt', 'desc')
-      .paginate(page, perPage)
+    const books = await Book.query().orderBy('createdAt', 'desc').paginate(page, perPage)
 
     return books.serialize()
   }

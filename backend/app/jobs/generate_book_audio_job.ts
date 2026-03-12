@@ -203,7 +203,10 @@ export default class GenerateBookAudioJob extends Job {
 
     const concurrency = this.getChapterConcurrency()
 
-    logger.info({ bookId, chapterCount: chapters.length, concurrency }, 'Processing chapters with bounded concurrency')
+    logger.info(
+      { bookId, chapterCount: chapters.length, concurrency },
+      'Processing chapters with bounded concurrency'
+    )
 
     // Process chapters with bounded concurrency
     return await this.runWithConcurrency(chapters, concurrency, async (chapter) => {

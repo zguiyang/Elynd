@@ -3,6 +3,7 @@ import { Job } from 'adonisjs-jobs'
 import app from '@adonisjs/core/services/app'
 import { Exception } from '@adonisjs/core/exceptions'
 import logger from '@adonisjs/core/services/logger'
+import env from '#start/env'
 import { TtsService } from '#services/tts_service'
 import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
@@ -191,7 +192,7 @@ export default class GenerateBookAudioJob extends Job {
   }
 
   /**
-   * Process all chapters for a book with reuse logic
+   * Process all chapters for a book with reuse logic and bounded concurrency
    */
   private async processChapters(bookId: number): Promise<ChapterProcessingResult[]> {
     // Get all chapters for this book
@@ -200,15 +201,14 @@ export default class GenerateBookAudioJob extends Job {
       .orderBy('chapterIndex', 'asc')
       .select(['id', 'chapterIndex', 'title', 'content'])
 
-    const results: ChapterProcessingResult[] = []
+    const concurrency = this.getChapterConcurrency()
 
-    // Process each chapter
-    for (const chapter of chapters) {
-      const result = await this.processChapter(chapter, bookId)
-      results.push(result)
-    }
+    logger.info({ bookId, chapterCount: chapters.length, concurrency }, 'Processing chapters with bounded concurrency')
 
-    return results
+    // Process chapters with bounded concurrency
+    return await this.runWithConcurrency(chapters, concurrency, async (chapter) => {
+      return await this.processChapter(chapter, bookId)
+    })
   }
 
   /**
@@ -251,6 +251,18 @@ export default class GenerateBookAudioJob extends Job {
 
     // Generate new audio
     try {
+      // Write processing status before starting synthesis
+      await this.upsertChapterAudio(
+        bookId,
+        chapterIndex,
+        textHash,
+        voiceHash,
+        null,
+        null,
+        'processing',
+        null
+      )
+
       const chapterInput: ChapterInput = {
         chapterIndex: chapter.chapterIndex,
         title: chapter.title,
@@ -424,5 +436,47 @@ export default class GenerateBookAudioJob extends Job {
       .save()
 
     logger.info({ bookId: book.id, chapterCount, totalDuration }, 'Book marked as ready')
+  }
+
+  /**
+   * Get chapter concurrency limit from environment
+   */
+  private getChapterConcurrency(): number {
+    const concurrency = env.get('BOOK_AUDIO_CHAPTER_CONCURRENCY', 3)
+    // Clamp invalid values to 1
+    if (typeof concurrency !== 'number' || concurrency < 1) {
+      return 1
+    }
+    return Math.min(Math.floor(concurrency), 10) // Cap at 10 to prevent resource exhaustion
+  }
+
+  /**
+   * Run async workers with bounded concurrency
+   * Preserves input order in returned results
+   */
+  private async runWithConcurrency<T, R>(
+    items: T[],
+    limit: number,
+    worker: (item: T) => Promise<R>
+  ): Promise<R[]> {
+    const results: R[] = new Array(items.length)
+    const queue = items.map((item, index) => ({ item, index }))
+
+    async function processNext(): Promise<void> {
+      while (queue.length > 0) {
+        const { item, index } = queue.shift()!
+        const result = await worker(item)
+        results[index] = result
+      }
+    }
+
+    // Start limited number of workers
+    const workers = Array(Math.min(limit, items.length))
+      .fill(null)
+      .map(() => processNext())
+
+    await Promise.all(workers)
+
+    return results
   }
 }

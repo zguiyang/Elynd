@@ -10,9 +10,9 @@ describe('MarkdownRenderer', () => {
       },
     })
 
-    expect(wrapper.html()).toContain('Hello World')
-    expect(wrapper.html()).toContain('This is a')
-    expect(wrapper.html()).toContain('test')
+    expect(wrapper.find('h1').text()).toBe('Hello World')
+    expect(wrapper.find('strong').text()).toBe('test')
+    expect(wrapper.html()).toContain('<p>This is a <strong>test</strong>.</p>')
   })
 
   it('renders content without streaming by default', () => {

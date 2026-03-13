@@ -1,4 +1,5 @@
 import { inject } from '@adonisjs/core'
+import drive from '@adonisjs/drive/services/main'
 import { Exception } from '@adonisjs/core/exceptions'
 import type { MultipartFile } from '@adonisjs/core/bodyparser'
 import { parseEpub } from '@gxl/epub-parser'
@@ -40,23 +41,17 @@ export class BookParserService {
     }
   }
 
-  async parseFile(file: MultipartFile): Promise<ParsedBookResult> {
-    this.validateFile(file)
-
-    const ext = (file.extname || '').toLowerCase()
-    if (ext === 'epub') {
-      return this.parseEpub(file.tmpPath!)
-    }
-    return this.parseTxt(file.tmpPath!)
-  }
-
-  async parseFileFromStorage(path: string, extname: string): Promise<ParsedBookResult> {
+  async parseFileFromStorage(
+    storagePath: string,
+    absolutePath: string,
+    extname: string
+  ): Promise<ParsedBookResult> {
     const ext = extname.toLowerCase()
     if (ext === 'epub') {
-      return this.parseEpub(path)
+      return this.parseEpub(absolutePath)
     }
     if (ext === 'txt') {
-      return this.parseTxt(path)
+      return this.parseTxtFromStorage(storagePath)
     }
     throw new Exception('Only .epub and .txt files are supported', { status: 400 })
   }
@@ -132,9 +127,13 @@ export class BookParserService {
     }
   }
 
-  async parseTxt(path: string): Promise<ParsedBookResult> {
-    const { readFile } = await import('node:fs/promises')
-    const content = await readFile(path, 'utf-8')
+  async parseTxtFromStorage(storagePath: string): Promise<ParsedBookResult> {
+    const contentBuffer = await drive.use().get(storagePath)
+    const content = Buffer.from(contentBuffer).toString('utf-8')
+    return this.parseTxtContent(content)
+  }
+
+  private parseTxtContent(content: string): ParsedBookResult {
     const cleaned = this.cleanContent(content)
     const chapters = this.splitTxtChapters(cleaned)
     const metadata = this.extractMetadata(cleaned)

@@ -5,8 +5,7 @@ import { TagService } from '#services/tag_service'
 import { BookChatService } from '#services/book_chat_service'
 import { listBookValidator } from '#validators/book_validator'
 import { bookChatValidator } from '#validators/ai_validator'
-import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import drive from '@adonisjs/drive/services/main'
 
 @inject()
 export default class BooksController {
@@ -76,10 +75,7 @@ export default class BooksController {
     }
 
     try {
-      // Get the audio file from storage
-      // audioPath format: book/voices/{bookId}/chapter-{chapterIndex}.mp3
-      const storageDir = join(process.cwd(), 'storage', audioInfo.audioPath)
-      const fileBuffer = await readFile(storageDir)
+      const fileBuffer = await drive.use().get(audioInfo.audioPath)
 
       response.header('Content-Type', 'audio/mpeg')
       response.header('Content-Disposition', `inline; filename="chapter-${chapterIndex}.mp3"`)

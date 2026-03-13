@@ -1,7 +1,7 @@
 import { inject } from '@adonisjs/core'
 import { createHash } from 'node:crypto'
-import { resolve } from 'node:path'
-import { access } from 'node:fs/promises'
+import app from '@adonisjs/core/services/app'
+import drive from '@adonisjs/drive/services/main'
 import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import BookChapterAudio from '#models/book_chapter_audio'
@@ -60,19 +60,27 @@ export class BookImportOrchestratorService {
     return 0
   }
 
-  async validateSourceFile(book: Book): Promise<{ absolutePath: string; ext: string }> {
+  async validateSourceFile(book: Book): Promise<{ storagePath: string; absolutePath: string; ext: string }> {
     if (!book.rawFilePath || !book.rawFileExt) {
       throw new Error('Raw source file metadata missing')
     }
 
-    const absolutePath = resolve(process.cwd(), 'storage', book.rawFilePath)
-    await access(absolutePath)
+    const exists = await drive.use().exists(book.rawFilePath)
+    if (!exists) {
+      throw new Error(`Raw source file not found: ${book.rawFilePath}`)
+    }
 
-    return { absolutePath, ext: book.rawFileExt.toLowerCase() }
+    const absolutePath = app.makePath('storage', book.rawFilePath)
+
+    return { storagePath: book.rawFilePath, absolutePath, ext: book.rawFileExt.toLowerCase() }
   }
 
-  async parseSourceFile(params: { absolutePath: string; ext: string }): Promise<ParsedSourceResult> {
-    const parsed = await this.parserService.parseFileFromStorage(params.absolutePath, params.ext)
+  async parseSourceFile(params: { storagePath: string; absolutePath: string; ext: string }): Promise<ParsedSourceResult> {
+    const parsed = await this.parserService.parseFileFromStorage(
+      params.storagePath,
+      params.absolutePath,
+      params.ext
+    )
     return {
       title: parsed.title,
       author: parsed.author,

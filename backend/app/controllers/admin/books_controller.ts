@@ -2,8 +2,8 @@ import { inject } from '@adonisjs/core'
 import logger from '@adonisjs/core/services/logger'
 import type { HttpContext } from '@adonisjs/core/http'
 import { dispatch } from 'adonisjs-jobs/services/main'
-import { copyFile, mkdir, readFile } from 'node:fs/promises'
-import { extname, join, basename } from 'node:path'
+import drive from '@adonisjs/drive/services/main'
+import { extname, basename } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import GenerateBookJob from '#jobs/generate_book_job'
 import ProcessBookJob from '#jobs/process_book_job'
@@ -110,16 +110,17 @@ export default class AdminBooksController {
     }
 
     const fileExt = (file.extname || extname(file.clientName).replace('.', '')).toLowerCase()
-    const storageDir = join(process.cwd(), 'storage', 'book', 'raw')
-    await mkdir(storageDir, { recursive: true })
-
     const uniqueBaseName = `${Date.now()}-${randomUUID()}`
     const storageFileName = `${uniqueBaseName}.${fileExt}`
-    const storagePath = join(storageDir, storageFileName)
     const relativePath = `book/raw/${storageFileName}`
 
-    await copyFile(file.tmpPath, storagePath)
-    const rawBuffer = await readFile(storagePath)
+    await file.moveToDisk(relativePath)
+
+    if (file.hasErrors) {
+      throw new Exception(file.errors[0]?.message || 'Failed to store upload file', { status: 500 })
+    }
+
+    const rawBuffer = await drive.use().get(relativePath)
     const rawFileHash = this.hashService.hashRawFile(rawBuffer)
     const fallbackTitle = basename(file.clientName, extname(file.clientName)) || 'Untitled'
 
@@ -143,7 +144,7 @@ export default class AdminBooksController {
           rawFilePath: relativePath,
           rawFileName: file.clientName,
           rawFileExt: fileExt,
-          rawFileSize: file.size ?? 0,
+          rawFileSize: file.size ?? rawBuffer.length,
           rawFileHash,
           audioStatus: 'pending',
           vocabularyStatus: 'pending',

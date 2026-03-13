@@ -11,8 +11,7 @@ import { middleware } from '#start/kernel'
 import env from '#start/env'
 import transmit from '@adonisjs/transmit/services/main'
 import { apiLimiter, authLimiter, aiChatLimiter } from '#start/limiter'
-import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import drive from '@adonisjs/drive/services/main'
 
 const AuthController = () => import('#controllers/auth_controller')
 const UsersController = () => import('#controllers/users_controller')
@@ -128,11 +127,10 @@ transmit.authorize('user:userId:book_import', (ctx, { userId }) => {
 // ===== 静态资源路由 =====
 router.get('/audio/books/:id', async ({ params, response }) => {
   const bookId = params.id
-  const storageDir = join(process.cwd(), 'storage', 'book', 'voices')
-  const filePath = join(storageDir, `${bookId}.mp3`)
+  const filePath = `book/voices/${bookId}.mp3`
 
   try {
-    const fileBuffer = await readFile(filePath)
+    const fileBuffer = await drive.use().get(filePath)
     response.header('Content-Type', 'audio/mpeg')
     response.header('Content-Disposition', `inline; filename="book-${bookId}.mp3"`)
     return response.send(fileBuffer)

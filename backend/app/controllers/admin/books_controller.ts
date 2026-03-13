@@ -2,6 +2,9 @@ import { inject } from '@adonisjs/core'
 import logger from '@adonisjs/core/services/logger'
 import type { HttpContext } from '@adonisjs/core/http'
 import { dispatch } from 'adonisjs-jobs/services/main'
+import { copyFile, mkdir, readFile } from 'node:fs/promises'
+import { extname, join, basename } from 'node:path'
+import { randomUUID } from 'node:crypto'
 import GenerateBookJob from '#jobs/generate_book_job'
 import ProcessBookJob from '#jobs/process_book_job'
 import { BookService } from '#services/book_service'
@@ -20,9 +23,12 @@ import {
   adminUpdateBookValidator,
 } from '#validators/book_validator'
 import { Exception } from '@adonisjs/core/exceptions'
+import { BookHashService } from '#services/book_hash_service'
 
 @inject()
 export default class AdminBooksController {
+  private readonly hashService = new BookHashService()
+
   constructor(
     private transmitService: TransmitService,
     private bookService: BookService,
@@ -81,43 +87,52 @@ export default class AdminBooksController {
     }
   }
 
-  async parse({ request }: HttpContext) {
+  async import({ auth, request }: HttpContext) {
+    const user = auth.getUserOrFail()
+    const data = await request.validateUsing(importBookValidator)
     const file = request.file('file', {
       extnames: ['epub', 'txt'],
       size: '4mb',
     })
 
     if (!file) {
-      return { errors: [{ message: 'File is required' }] }
+      throw new Exception('File is required', { status: 400 })
     }
 
     if (file.hasErrors) {
-      return { errors: file.errors }
+      throw new Exception(file.errors[0]?.message || 'Invalid upload file', { status: 400 })
     }
 
-    const parsed = await this.bookParserService.parseFile(file)
+    this.bookParserService.validateFile(file)
 
-    return {
-      fileName: file.clientName,
-      ...parsed,
+    if (!file.tmpPath) {
+      throw new Exception('Upload temp file not found', { status: 400 })
     }
-  }
 
-  async import({ auth, request }: HttpContext) {
-    const user = auth.getUserOrFail()
-    const data = await request.validateUsing(importBookValidator)
+    const fileExt = (file.extname || extname(file.clientName).replace('.', '')).toLowerCase()
+    const storageDir = join(process.cwd(), 'storage', 'book', 'raw')
+    await mkdir(storageDir, { recursive: true })
 
-    // Create new book with cleaned chapters
+    const uniqueBaseName = `${Date.now()}-${randomUUID()}`
+    const storageFileName = `${uniqueBaseName}.${fileExt}`
+    const storagePath = join(storageDir, storageFileName)
+    const relativePath = `book/raw/${storageFileName}`
+
+    await copyFile(file.tmpPath, storagePath)
+    const rawBuffer = await readFile(storagePath)
+    const rawFileHash = this.hashService.hashRawFile(rawBuffer)
+    const fallbackTitle = basename(file.clientName, extname(file.clientName)) || 'Untitled'
+
     const book = await db.transaction(async (trx) => {
-      const created = await Book.create(
+      return await Book.create(
         {
-          title: data.title,
-          author: data.author || null,
-          description: data.description || null,
+          title: fallbackTitle,
+          author: null,
+          description: null,
           source: data.source,
-          difficultyLevel: data.difficultyLevel,
-          wordCount: data.wordCount,
-          readingTime: Math.max(1, Math.ceil(data.wordCount / 200)),
+          difficultyLevel: 'L1',
+          wordCount: 0,
+          readingTime: 1,
           status: 'processing',
           processingStep: 'import_received',
           processingProgress: 0,
@@ -125,24 +140,17 @@ export default class AdminBooksController {
           isPublished: false,
           contentHash: null,
           bookHash: data.bookHash,
+          rawFilePath: relativePath,
+          rawFileName: file.clientName,
+          rawFileExt: fileExt,
+          rawFileSize: file.size ?? 0,
+          rawFileHash,
           audioStatus: 'pending',
           vocabularyStatus: 'pending',
           createdBy: user.id,
         },
         { client: trx }
       )
-
-      await BookChapter.createMany(
-        data.chapters.map((chapter, index) => ({
-          bookId: created.id,
-          chapterIndex: index,
-          title: chapter.title,
-          content: chapter.content,
-        })),
-        { client: trx }
-      )
-
-      return created
     })
 
     await dispatch(ProcessBookJob, {

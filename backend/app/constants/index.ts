@@ -123,23 +123,28 @@ type VocabularyAnalyzer = (typeof VOCABULARY_ANALYZER)[keyof typeof VOCABULARY_A
 
 const BOOK_IMPORT_STEP = {
   RECEIVED: 'import_received',
-  SEMANTIC_CLEANING: 'semantic_cleaning',
-  DEDUP_CHECKING: 'dedup_checking',
-  PERSISTING_BOOK: 'persisting_book',
+  FILE_VALIDATING: 'file_validating',
+  SEMANTIC_METADATA: 'semantic_metadata',
+  SEMANTIC_CHAPTERS: 'semantic_chapters',
+  CONTENT_HASHING: 'content_hashing',
+  VOCABULARY_EXTRACTING: 'vocabulary_extracting',
   PARALLEL_PROCESSING: 'parallel_processing',
-  AUDIO_PROCESSING: 'audio_processing',
-  VOCABULARY_PROCESSING: 'vocabulary_processing',
   FINALIZING_PUBLISH: 'finalizing_publish',
   COMPLETED: 'completed',
-  FAILED: 'failed',
+  FAILED: 'failed'
 } as const
 
 type BookImportStep = (typeof BOOK_IMPORT_STEP)[keyof typeof BOOK_IMPORT_STEP]
 
 const BOOK_IMPORT_PROGRESS = {
-  PREP_PHASE_MAX: 40,
-  AUDIO_PHASE_MAX: 30,
-  VOCABULARY_PHASE_MAX: 30,
+  IMPORT_RECEIVED: 5,
+  FILE_VALIDATING: 5,
+  SEMANTIC_METADATA: 15,
+  SEMANTIC_CHAPTERS: 20,
+  CONTENT_HASHING: 5,
+  VOCABULARY_EXTRACTING: 15,
+  PARALLEL_PROCESSING: 30,
+  FINALIZING_PUBLISH: 5,
   TOTAL_MAX: 100,
 } as const
 

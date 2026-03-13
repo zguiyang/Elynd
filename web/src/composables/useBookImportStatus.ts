@@ -9,36 +9,41 @@ const FALLBACK_RETRY_DELAY_MS = 5000 // 5 seconds
 // Canonical step keys for import pipeline
 export const STEP_KEYS = {
   RECEIVED: 'import_received',
-  SEMANTIC_CLEANING: 'semantic_cleaning',
-  DEDUP_CHECKING: 'dedup_checking',
-  PERSISTING_BOOK: 'persisting_book',
+  FILE_VALIDATING: 'file_validating',
+  SEMANTIC_METADATA: 'semantic_metadata',
+  SEMANTIC_CHAPTERS: 'semantic_chapters',
+  CONTENT_HASHING: 'content_hashing',
+  VOCABULARY_EXTRACTING: 'vocabulary_extracting',
   PARALLEL_PROCESSING: 'parallel_processing',
-  AUDIO_PROCESSING: 'audio_processing',
-  VOCABULARY_PROCESSING: 'vocabulary_processing',
   FINALIZING_PUBLISH: 'finalizing_publish',
   COMPLETED: 'completed',
-  FAILED: 'failed',
+  FAILED: 'failed'
 } as const
 
 // Progress weight constants
 export const PROGRESS_WEIGHTS = {
-  PREP_PHASE_MAX: 40,
-  AUDIO_PHASE_MAX: 30,
-  VOCABULARY_PHASE_MAX: 30,
-  TOTAL_MAX: 100,
+  IMPORT_RECEIVED: 5,
+  FILE_VALIDATING: 5,
+  SEMANTIC_METADATA: 15,
+  SEMANTIC_CHAPTERS: 20,
+  CONTENT_HASHING: 5,
+  VOCABULARY_EXTRACTING: 15,
+  PARALLEL_PROCESSING: 30,
+  FINALIZING_PUBLISH: 5,
+  TOTAL_MAX: 100
 } as const
 
 // Step key to Chinese text mapping
 export function getStepText(stepKey: string): string {
   const stepTextMap: Record<string, string> = {
     [STEP_KEYS.RECEIVED]: '已接收',
-    [STEP_KEYS.SEMANTIC_CLEANING]: '语义清洗',
-    [STEP_KEYS.DEDUP_CHECKING]: '去重检查',
-    [STEP_KEYS.PERSISTING_BOOK]: '保存书籍',
+    [STEP_KEYS.FILE_VALIDATING]: '校验文件',
+    [STEP_KEYS.SEMANTIC_METADATA]: '提取书籍信息',
+    [STEP_KEYS.SEMANTIC_CHAPTERS]: '清洗章节',
+    [STEP_KEYS.CONTENT_HASHING]: '计算内容哈希',
+    [STEP_KEYS.VOCABULARY_EXTRACTING]: '提取词汇',
     [STEP_KEYS.PARALLEL_PROCESSING]: '并行处理',
-    [STEP_KEYS.AUDIO_PROCESSING]: '音频处理',
-    [STEP_KEYS.VOCABULARY_PROCESSING]: '词汇处理',
-    [STEP_KEYS.FINALIZING_PUBLISH]: '发布就绪',
+    [STEP_KEYS.FINALIZING_PUBLISH]: '发布书籍',
     [STEP_KEYS.COMPLETED]: '已完成',
     [STEP_KEYS.FAILED]: '失败',
     // Legacy step keys for backwards compatibility
@@ -70,24 +75,31 @@ export function getProgressComposition(params: {
   const { step, stepProgress } = params
 
   // Map step keys to phases
-  const prepSteps: string[] = [
+  const schedulerSteps: string[] = [
     STEP_KEYS.RECEIVED,
-    STEP_KEYS.SEMANTIC_CLEANING,
-    STEP_KEYS.DEDUP_CHECKING,
-    STEP_KEYS.PERSISTING_BOOK,
+    STEP_KEYS.FILE_VALIDATING,
+    STEP_KEYS.SEMANTIC_METADATA,
+    STEP_KEYS.SEMANTIC_CHAPTERS,
+    STEP_KEYS.CONTENT_HASHING,
+    STEP_KEYS.VOCABULARY_EXTRACTING,
     STEP_KEYS.PARALLEL_PROCESSING,
+    STEP_KEYS.FINALIZING_PUBLISH
   ]
-
-  const audioSteps: string[] = [STEP_KEYS.AUDIO_PROCESSING]
-  const vocabularySteps: string[] = [STEP_KEYS.VOCABULARY_PROCESSING]
   const completeSteps: string[] = [STEP_KEYS.COMPLETED]
   const failedSteps: string[] = [STEP_KEYS.FAILED]
-  const finalizingSteps: string[] = [STEP_KEYS.FINALIZING_PUBLISH, 'audio_completed_waiting_vocabulary']
 
-  // Legacy step mappings
-  const legacyPrepSteps = ['parsing', 'analyze_vocabulary', 'analyzing_vocabulary', 'generate_meanings', 'generating_meanings']
-  const legacyAudioSteps = ['queue_audio', 'generate_audio', 'audio_queued', 'audio_failed']
-  const legacyVocabularySteps = ['generating_vocabulary']
+  const legacySteps = [
+    'parsing',
+    'analyze_vocabulary',
+    'analyzing_vocabulary',
+    'generate_meanings',
+    'generating_meanings',
+    'queue_audio',
+    'generate_audio',
+    'audio_queued',
+    'audio_failed',
+    'generating_vocabulary'
+  ]
 
   if (completeSteps.includes(step) || step === 'completed') {
     return { totalProgress: 100, phase: 'complete', phaseProgress: 100 }
@@ -97,26 +109,12 @@ export function getProgressComposition(params: {
     return { totalProgress: 100, phase: 'failed', phaseProgress: 100 }
   }
 
-  if (finalizingSteps.includes(step)) {
-    return { totalProgress: Math.max(90, stepProgress), phase: 'prep', phaseProgress: stepProgress }
+  if (schedulerSteps.includes(step)) {
+    return { totalProgress: stepProgress, phase: 'prep', phaseProgress: stepProgress }
   }
 
-  if (prepSteps.includes(step) || legacyPrepSteps.includes(step)) {
-    const phaseProgress = stepProgress / 100
-    const totalProgress = Math.round(phaseProgress * PROGRESS_WEIGHTS.PREP_PHASE_MAX)
-    return { totalProgress, phase: 'prep', phaseProgress: stepProgress }
-  }
-
-  if (audioSteps.includes(step) || legacyAudioSteps.includes(step)) {
-    const phaseProgress = stepProgress / 100
-    const totalProgress = PROGRESS_WEIGHTS.PREP_PHASE_MAX + Math.round(phaseProgress * PROGRESS_WEIGHTS.AUDIO_PHASE_MAX)
-    return { totalProgress, phase: 'audio', phaseProgress: stepProgress }
-  }
-
-  if (vocabularySteps.includes(step) || legacyVocabularySteps.includes(step)) {
-    const phaseProgress = stepProgress / 100
-    const totalProgress = PROGRESS_WEIGHTS.PREP_PHASE_MAX + PROGRESS_WEIGHTS.AUDIO_PHASE_MAX + Math.round(phaseProgress * PROGRESS_WEIGHTS.VOCABULARY_PHASE_MAX)
-    return { totalProgress, phase: 'vocabulary', phaseProgress: stepProgress }
+  if (legacySteps.includes(step)) {
+    return { totalProgress: stepProgress, phase: 'prep', phaseProgress: stepProgress }
   }
 
   // Default fallback

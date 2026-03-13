@@ -131,6 +131,13 @@ export class DictionaryService {
     const audioResult = results[0].status === 'fulfilled' ? results[0].value : null
     const meaningResult = results[1].status === 'fulfilled' ? results[1].value : null
 
+    if (results[0].status === 'rejected') {
+      logger.warn({ word, source: 'audio', reason: String(results[0].reason) }, 'Dictionary upstream failed')
+    }
+    if (results[1].status === 'rejected') {
+      logger.warn({ word, source: 'meaning', reason: String(results[1].reason) }, 'Dictionary upstream failed')
+    }
+
     if (!audioResult && !meaningResult) {
       return null
     }
@@ -150,12 +157,21 @@ export class DictionaryService {
       entry.meanings = meaningResult.meanings
     }
 
-    try {
-      const ttlSeconds = DICTIONARY.DEFAULT_TTL_DAYS * 24 * 60 * 60
-      await redis.setex(cacheKey, ttlSeconds, JSON.stringify(entry))
-      logger.debug({ word, ttlDays: DICTIONARY.DEFAULT_TTL_DAYS }, 'Dictionary result cached')
-    } catch (error) {
-      logger.warn({ err: error, word }, 'Failed to cache dictionary result')
+    const hasUsableData =
+      entry.meanings.length > 0 ||
+      entry.phonetics.length > 0 ||
+      (typeof entry.phonetic === 'string' && entry.phonetic.length > 0)
+
+    if (hasUsableData) {
+      try {
+        const ttlSeconds = DICTIONARY.DEFAULT_TTL_DAYS * 24 * 60 * 60
+        await redis.setex(cacheKey, ttlSeconds, JSON.stringify(entry))
+        logger.debug({ word, ttlDays: DICTIONARY.DEFAULT_TTL_DAYS }, 'Dictionary result cached')
+      } catch (error) {
+        logger.warn({ err: error, word }, 'Failed to cache dictionary result')
+      }
+    } else {
+      logger.warn({ word }, 'Skipping cache for incomplete dictionary result')
     }
 
     return entry

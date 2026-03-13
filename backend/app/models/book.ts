@@ -59,6 +59,21 @@ export default class Book extends BaseModel {
   @column({ columnName: 'book_hash' })
   declare bookHash: string | null
 
+  @column({ columnName: 'raw_file_path' })
+  declare rawFilePath: string | null
+
+  @column({ columnName: 'raw_file_name' })
+  declare rawFileName: string | null
+
+  @column({ columnName: 'raw_file_ext' })
+  declare rawFileExt: string | null
+
+  @column({ columnName: 'raw_file_size' })
+  declare rawFileSize: number | null
+
+  @column({ columnName: 'raw_file_hash' })
+  declare rawFileHash: string | null
+
   @column()
   declare createdBy: number
 

@@ -1,12 +1,6 @@
 import { inject } from '@adonisjs/core'
 import natural from 'natural'
-import logger from '@adonisjs/core/services/logger'
-import { AiService } from '#services/ai_service'
-import { ConfigService } from '#services/config_service'
 import BookVocabulary from '#models/book_vocabulary'
-import { AI_ERROR_CODES } from '#types/ai'
-import type { AiClientConfig, AiServiceError } from '#types/ai'
-import { VOCABULARY_ANALYZER } from '#constants'
 
 export interface VocabularyCandidate {
   word: string
@@ -22,6 +16,7 @@ export interface VocabularyWithMeaning extends VocabularyCandidate {
 @inject()
 export class VocabularyAnalyzerService {
   private tokenizer = new natural.WordTokenizer()
+  private nounInflector = new natural.NounInflector()
   private irregularLemmas: Record<string, string> = {
     children: 'child',
     men: 'man',
@@ -35,10 +30,7 @@ export class VocabularyAnalyzerService {
     went: 'go',
   }
 
-  constructor(
-    private aiService: AiService,
-    private configService: ConfigService
-  ) {}
+  constructor() {}
 
   tokenize(content: string): string[] {
     return this.tokenizer
@@ -51,9 +43,17 @@ export class VocabularyAnalyzerService {
     if (this.irregularLemmas[word]) {
       return this.irregularLemmas[word]
     }
+    const normalized = word.toLowerCase().replace(/'s$/i, '')
+    if (normalized.length <= 3) {
+      return normalized
+    }
 
-    const stemmed = natural.PorterStemmer.stem(word)
-    return stemmed || word
+    const singular = this.nounInflector.singularize(normalized)
+    if (singular && singular.length > 2) {
+      return singular
+    }
+
+    return normalized
   }
 
   getWordFrequency(tokens: string[]): Map<string, number> {
@@ -86,120 +86,6 @@ export class VocabularyAnalyzerService {
       }))
       .sort((a, b) => b.frequency - a.frequency)
       .slice(0, 200)
-  }
-
-  async generateMeaningsWithAI(
-    bookTitle: string,
-    vocabulary: VocabularyCandidate[]
-  ): Promise<VocabularyWithMeaning[]> {
-    if (vocabulary.length === 0) {
-      return []
-    }
-
-    const aiConfig = await this.configService.getAiConfig()
-    const mapped = new Map<string, { word: string; meaning: string; sentence: string }>()
-    const chunks = this.chunkVocabulary(vocabulary, VOCABULARY_ANALYZER.MAX_WORDS_PER_REQUEST)
-
-    for (const chunk of chunks) {
-      const batchItems = await this.generateMeaningsForBatch(bookTitle, chunk, aiConfig)
-
-      for (const item of batchItems) {
-        mapped.set(item.word.toLowerCase(), item)
-      }
-    }
-
-    return vocabulary.map((item) => {
-      const generated = mapped.get(item.word.toLowerCase())
-
-      return {
-        ...item,
-        meaning: generated?.meaning || '',
-        sentence: generated?.sentence || '',
-      }
-    })
-  }
-
-  private chunkVocabulary(
-    items: VocabularyCandidate[],
-    chunkSize: number
-  ): VocabularyCandidate[][] {
-    const chunks: VocabularyCandidate[][] = []
-
-    for (let index = 0; index < items.length; index += chunkSize) {
-      chunks.push(items.slice(index, index + chunkSize))
-    }
-
-    return chunks
-  }
-
-  private async generateMeaningsForBatch(
-    bookTitle: string,
-    vocabulary: VocabularyCandidate[],
-    aiConfig: AiClientConfig
-  ): Promise<Array<{ word: string; meaning: string; sentence: string }>> {
-    try {
-      const response = await this.requestMeanings(bookTitle, vocabulary, aiConfig)
-      return response.words || []
-    } catch (error) {
-      if (
-        this.isParseError(error) &&
-        vocabulary.length > VOCABULARY_ANALYZER.MIN_WORDS_PER_REQUEST
-      ) {
-        const splitAt = Math.ceil(vocabulary.length / 2)
-        const left = await this.generateMeaningsForBatch(
-          bookTitle,
-          vocabulary.slice(0, splitAt),
-          aiConfig
-        )
-        const right = await this.generateMeaningsForBatch(
-          bookTitle,
-          vocabulary.slice(splitAt),
-          aiConfig
-        )
-        return [...left, ...right]
-      }
-
-      logger.warn(
-        { err: error, bookTitle, batchSize: vocabulary.length },
-        'Failed to generate meanings for vocabulary batch'
-      )
-      return []
-    }
-  }
-
-  private requestMeanings(
-    bookTitle: string,
-    vocabulary: VocabularyCandidate[],
-    aiConfig: AiClientConfig
-  ) {
-    const words = vocabulary.map((item) => item.word)
-
-    return this.aiService.chatJson<{
-      words: Array<{ word: string; meaning: string; sentence: string }>
-    }>(aiConfig, {
-      messages: [
-        {
-          role: 'system',
-          content:
-            'You are an English vocabulary assistant. Return strict JSON with key "words". No markdown.',
-        },
-        {
-          role: 'user',
-          content: `Book title: ${bookTitle}\nGenerate concise Chinese meaning and one English example sentence for each word.\nWords: ${words.join(', ')}`,
-        },
-      ],
-      maxTokens: VOCABULARY_ANALYZER.MEANING_MAX_TOKENS,
-      temperature: 0.3,
-      responseFormat: { type: 'json_object' },
-    })
-  }
-
-  private isParseError(error: unknown): boolean {
-    return (
-      error instanceof Error &&
-      error.name === 'AiServiceError' &&
-      (error as AiServiceError).code === AI_ERROR_CODES.PARSE_ERROR
-    )
   }
 
   async saveVocabulary(bookId: number, items: VocabularyWithMeaning[]) {

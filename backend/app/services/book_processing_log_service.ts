@@ -147,7 +147,8 @@ export class BookProcessingLogService {
   async failStep(
     stepLogId: number,
     error: string,
-    errorCode?: string
+    errorCode?: string,
+    outputRef?: Record<string, unknown>
   ): Promise<BookProcessingStepLog> {
     const stepLog = await BookProcessingStepLog.findOrFail(stepLogId)
     stepLog.status = 'failed'
@@ -157,6 +158,7 @@ export class BookProcessingLogService {
       : null
     stepLog.errorMessage = error
     stepLog.errorCode = errorCode || null
+    stepLog.outputRef = outputRef || null
     await stepLog.save()
 
     return stepLog

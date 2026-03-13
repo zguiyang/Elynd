@@ -137,91 +137,83 @@ test.group('BookChapterCleanerService.clean', () => {
 })
 
 test.group('BookSemanticCleanService', () => {
-  test('validates structured response mapping', async ({ assert }) => {
+  test('extractMetadata maps structured response', async ({ assert }) => {
     const mockAiService = {
       chatJson: async () => ({
-        cleanedChapters: [
-          {
-            title: 'Chapter 1',
-            content: 'Valid content here with enough words to pass threshold',
-            keep: true,
-            reason: '',
-          },
-          {
-            title: 'Chapter 2',
-            content: 'Another valid chapter with sufficient content length',
-            keep: true,
-            reason: '',
-          },
-        ],
-        droppedChapters: [],
+        title: 'Alice in Wonderland',
+        author: 'Lewis Carroll',
+        description: 'A fantasy novel',
       }),
     }
     const mockPromptService = {
       render: (_name: string, data: any) => JSON.stringify(data),
     }
     const mockRuleCleaner = new BookChapterCleanerService()
-
-    const service = new BookSemanticCleanService(
-      mockAiService as any,
-      mockPromptService as any,
-      mockRuleCleaner
-    )
-
-    const mockRawInput = [
-      { title: 'Chapter 1', content: 'Valid content here with enough words to pass threshold' },
-      { title: 'Chapter 2', content: 'Another valid chapter with sufficient content length' },
-    ]
-
-    const result = await service.clean(mockRawInput as any)
-
-    assert.equal(result.cleanedChapters.length, 2)
-    assert.equal(result.stats.totalDropped, 0)
-  })
-
-  test('triggers fallback when AI returns invalid JSON', async ({ assert }) => {
-    const mockAiService = {
-      chatJson: async () => {
-        throw new Error('Invalid JSON')
-      },
-    }
-    const mockPromptService = {
-      render: (_name: string, data: any) => JSON.stringify(data),
-    }
-    const mockRuleCleaner = {
-      clean: (_chapters: any[]) => ({
-        cleanedChapters: [
-          { title: 'Chapter 1', content: 'Valid content here with enough words', chapterIndex: 0 },
-        ],
-        stats: {
-          droppedEmpty: 0,
-          droppedShort: 0,
-          droppedNoisy: 1,
-          totalDropped: 1,
-          totalInput: 2,
-        },
+    const mockConfigService = {
+      getAiConfig: async () => ({
+        baseUrl: 'https://example.com/v1',
+        apiKey: 'test-key',
+        model: 'test-model',
       }),
     }
 
     const service = new BookSemanticCleanService(
       mockAiService as any,
       mockPromptService as any,
-      mockRuleCleaner as any
+      mockRuleCleaner,
+      mockConfigService as any
     )
 
-    const mockRawInput = [
-      { title: 'Chapter 1', content: 'Valid content here with enough words' },
-      { title: 'Preface', content: 'Preface content with enough words to pass' },
-    ]
+    const result = await service.extractMetadata({
+      fileName: 'alice.txt',
+      sourceType: 'user_uploaded',
+      chapterTitles: ['Chapter 1'],
+      sampleText: 'Alice was beginning to get very tired',
+    })
 
-    const result = await service.clean(mockRawInput as any)
-
-    assert.equal(result.cleanedChapters.length, 1)
-    assert.equal(result.cleanedChapters[0].title, 'Chapter 1')
-    assert.isTrue(result.isFallback)
+    assert.equal(result.title, 'Alice in Wonderland')
+    assert.equal(result.author, 'Lewis Carroll')
   })
 
-  test('uses fallback cleaner path when AI fails', async ({ assert }) => {
+  test('cleanChapters returns AI cleaned chapters', async ({ assert }) => {
+    const mockAiService = {
+      chatJson: async () => ({
+        cleanedChapters: [
+          { title: 'Chapter 1', content: 'Valid content', dropReason: null },
+          { title: 'Chapter 2', content: 'Another valid content', dropReason: null },
+        ],
+        droppedChapters: [{ title: 'Preface', reason: 'preface' }],
+      }),
+    }
+    const mockPromptService = {
+      render: (_name: string, data: any) => JSON.stringify(data),
+    }
+    const mockRuleCleaner = new BookChapterCleanerService()
+    const mockConfigService = {
+      getAiConfig: async () => ({
+        baseUrl: 'https://example.com/v1',
+        apiKey: 'test-key',
+        model: 'test-model',
+      }),
+    }
+
+    const service = new BookSemanticCleanService(
+      mockAiService as any,
+      mockPromptService as any,
+      mockRuleCleaner,
+      mockConfigService as any
+    )
+
+    const result = await service.cleanChapters([
+      { title: 'Chapter 1', content: 'Valid content here with enough words' },
+      { title: 'Preface', content: 'Preface content with enough words to pass' },
+    ])
+
+    assert.equal(result.length, 2)
+    assert.equal(result[0].title, 'Chapter 1')
+  })
+
+  test('cleanChapters uses fallback when AI fails', async ({ assert }) => {
     const mockAiService = {
       chatJson: async () => {
         throw new Error('AI service unavailable')
@@ -231,20 +223,26 @@ test.group('BookSemanticCleanService', () => {
       render: (_name: string, data: any) => JSON.stringify(data),
     }
     const mockRuleCleaner = new BookChapterCleanerService()
+    const mockConfigService = {
+      getAiConfig: async () => ({
+        baseUrl: 'https://example.com/v1',
+        apiKey: 'test-key',
+        model: 'test-model',
+      }),
+    }
 
     const service = new BookSemanticCleanService(
       mockAiService as any,
       mockPromptService as any,
-      mockRuleCleaner
+      mockRuleCleaner,
+      mockConfigService as any
     )
 
-    const mockRawInput = [
+    const result = await service.cleanChapters([
       { title: 'Chapter 1', content: 'Valid content here with enough words to pass threshold' },
       { title: 'References', content: 'References content' },
-    ]
+    ])
 
-    const result = await service.clean(mockRawInput as any)
-
-    assert.isTrue(result.isFallback)
+    assert.isTrue(result.length >= 1)
   })
 })

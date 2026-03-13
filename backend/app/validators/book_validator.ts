@@ -27,23 +27,8 @@ export const listBookValidator = vine.compile(
 
 export const importBookValidator = vine.compile(
   vine.object({
-    title: vine.string().trim().minLength(1).maxLength(200),
-    author: vine.string().trim().maxLength(200).optional(),
-    description: vine.string().trim().maxLength(2000).optional(),
     source: vine.enum(['user_uploaded', 'public_domain', 'ai_generated']),
-    difficultyLevel: vine.enum([
-      ARTICLE_DIFFICULTY.L1,
-      ARTICLE_DIFFICULTY.L2,
-      ARTICLE_DIFFICULTY.L3,
-    ]),
-    wordCount: vine.number().min(1),
     bookHash: vine.string().trim().minLength(1).maxLength(128),
-    chapters: vine.array(
-      vine.object({
-        title: vine.string().trim().minLength(1).maxLength(200),
-        content: vine.string().trim().minLength(1),
-      })
-    ),
   })
 )
 

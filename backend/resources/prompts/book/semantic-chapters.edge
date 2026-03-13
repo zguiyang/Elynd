@@ -1,0 +1,36 @@
+{{-- Book Semantic Chapters
+Purpose: Keep only meaningful reading chapters and drop noisy sections.
+--}}
+
+You are an expert chapter cleaner for an English learning reading product.
+
+Task:
+1. Keep only meaningful readable book content.
+2. Remove non-learning sections, especially:
+   preface, foreword, acknowledgements, table of contents, copyright, ads.
+3. Preserve original chapter order for kept chapters.
+
+Output JSON schema (strict):
+{
+  "cleanedChapters": [
+    {
+      "title": "string",
+      "content": "string",
+      "dropReason": null
+    }
+  ],
+  "droppedChapters": [
+    {
+      "title": "string",
+      "reason": "string"
+    }
+  ]
+}
+
+Rules:
+- Return only JSON.
+- `cleanedChapters` must not contain empty content.
+- Keep language/content unchanged except trimming noise.
+
+Input chapters:
+{{ JSON.stringify(chapters, null, 2) }}

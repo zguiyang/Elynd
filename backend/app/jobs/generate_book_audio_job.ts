@@ -1,4 +1,3 @@
-import { DateTime } from 'luxon'
 import { Job } from 'adonisjs-jobs'
 import app from '@adonisjs/core/services/app'
 import { Exception } from '@adonisjs/core/exceptions'
@@ -8,9 +7,7 @@ import { TtsService } from '#services/tts_service'
 import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import BookChapterAudio from '#models/book_chapter_audio'
-import BookProcessingRunLog from '#models/book_processing_run_log'
 import { BookProcessingLogService } from '#services/book_processing_log_service'
-import { BOOK_IMPORT_STEP } from '#constants/index'
 import type { ChapterInput } from '#types/tts'
 import crypto from 'node:crypto'
 
@@ -50,37 +47,15 @@ export default class GenerateBookAudioJob extends Job {
       throw new Exception(`Book ${bookId} not found`, { status: 404 })
     }
 
-    // Create run log for tracking
-    const runLog = await BookProcessingRunLog.create({
-      bookId,
-      jobType: 'import',
-      status: 'processing',
-      currentStep: 'generate_audio',
-      progress: 0,
-      startedAt: DateTime.now(),
-    })
+    const runLog = await this.logService.getOrCreateActiveRun(bookId, 'import')
 
     try {
-      // Update book status to processing
-      await book
-        .merge({
-          audioStatus: 'processing',
-          processingStep: BOOK_IMPORT_STEP.AUDIO_PROCESSING,
-          processingProgress: 65,
-        })
-        .save()
+      await book.merge({ audioStatus: 'processing' }).save()
 
       // Process chapters and collect results with step logging
       const results = await this.processChapters(bookId, runLog.id)
 
       // Calculate summary
-      const totalChapters = results.length
-      const completedChapters = results.filter(
-        (r) => r.status === 'reused' || r.status === 'generated'
-      ).length
-      const failedChapters = results.filter((r) => r.status === 'failed').length
-      const reusedChapters = results.filter((r) => r.status === 'reused').length
-
       // Check if all chapters succeeded
       const failedResults = results.filter((r) => r.status === 'failed')
 
@@ -91,56 +66,7 @@ export default class GenerateBookAudioJob extends Job {
           'Some chapters failed audio generation'
         )
 
-        // Refresh book to get current vocabularyStatus
-        await book.refresh()
-
-        // Build update data - always set audioStatus to failed
-        const updateData: Partial<Book> = {
-          audioStatus: 'failed',
-          processingStep: BOOK_IMPORT_STEP.FAILED,
-          processingError: summaryMessage,
-        }
-
-        // Only set status to failed if vocabulary is not already failed
-        // This preserves the vocabulary failure state
-        if (book.vocabularyStatus !== 'failed') {
-          updateData.status = 'failed'
-        }
-
-        // Converge to failed state with all diagnostic fields
-        await book.merge(updateData).save()
-
-        // Update run log with failure metadata
-        await runLog
-          .merge({
-            status: 'failed',
-            currentStep: 'generate_audio',
-            progress: Math.round((completedChapters / totalChapters) * 100),
-            finishedAt: DateTime.now(),
-            durationMs: DateTime.now().toMillis() - runLog.startedAt.toMillis(),
-            errorMessage: summaryMessage,
-            errorCode: 'AUDIO_GENERATION_FAILED',
-            metadata: {
-              context: { bookId, jobType: 'import' },
-              summary: {
-                totalChapters,
-                completedChapters,
-                failedChapters,
-                reusedChapters,
-              },
-              audio: {
-                firstFailedChapterIndex: failedResults[0]?.chapterIndex,
-                lastProcessedChapterIndex: results[results.length - 1]?.chapterIndex,
-                suspectedSystemicFailure: failedResults.length > 1,
-              },
-              failure: {
-                stage: 'generate_audio',
-                errorCode: 'audio_generation_failed',
-                errorMessage: summaryMessage,
-              },
-            },
-          })
-          .save()
+        await book.merge({ audioStatus: 'failed' }).save()
 
         // Throw error to mark job as failed
         throw new Exception(summaryMessage, {
@@ -148,83 +74,35 @@ export default class GenerateBookAudioJob extends Job {
         })
       }
 
-      // All chapters completed - update run log with success metadata
-      await runLog
+      const chapterAudios = await BookChapterAudio.query()
+        .where('bookId', book.id)
+        .where('status', 'completed')
+        .orderBy('chapterIndex', 'asc')
+      const totalDuration = chapterAudios.reduce((sum, audio) => sum + (audio.durationMs || 0), 0)
+      const audioUrl = chapterAudios[0]?.audioPath
+        ? chapterAudios[0].audioPath.replace(/chapter-\d+\.mp3$/, `${book.id}.mp3`)
+        : null
+
+      await book
         .merge({
-          status: 'success',
-          currentStep: 'generate_audio',
-          progress: 100,
-          finishedAt: DateTime.now(),
-          durationMs: DateTime.now().toMillis() - runLog.startedAt.toMillis(),
-          metadata: {
-            context: { bookId, jobType: 'import' },
-            summary: {
-              totalChapters,
-              completedChapters,
-              failedChapters,
-              reusedChapters,
-            },
-            audio: {
-              lastProcessedChapterIndex: results[results.length - 1]?.chapterIndex,
-            },
-          },
+          audioStatus: 'completed',
+          audioUrl,
+          audioTiming: {
+            chapters: chapterAudios.map((audio) => ({
+              chapterIndex: audio.chapterIndex,
+              audioPath: audio.audioPath,
+              durationMs: audio.durationMs
+            })),
+            totalDuration
+          }
         })
         .save()
 
-      // All chapters completed - finalize book readiness with step logging
-      const finalizeInputHash = crypto
-        .createHash('md5')
-        .update(`${book.id}:${book.audioStatus}:${book.vocabularyStatus}`)
-        .digest('hex')
-      const finalizeStep = await this.logService.startStep(
-        runLog.id,
-        bookId,
-        'audio_finalize',
-        'audio',
-        finalizeInputHash
-      )
-      await this.tryFinalizePublish(book, results)
-      await this.logService.completeStep(finalizeStep.id)
-
       logger.info({ bookId }, 'All chapter audio generation completed')
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       logger.error({ err: error, bookId }, 'Audio generation failed')
 
-      if (book) {
-        // Refresh book to get current vocabularyStatus
-        await book.refresh()
-
-        // Only set book to failed if vocabulary is not already failed
-        // This preserves the vocabulary failure state
-        const updateData: Partial<Book> = {
-          audioStatus: 'failed',
-          processingStep: BOOK_IMPORT_STEP.FAILED,
-          processingError: errorMessage,
-        }
-
-        // Only update status if vocabulary is not already failed
-        if (book.vocabularyStatus !== 'failed') {
-          updateData.status = 'failed'
-        }
-
-        await book.merge(updateData).save()
-      }
-
-      // Update run log if not already failed
-      if (runLog.status !== 'failed') {
-        await runLog
-          .merge({
-            status: 'failed',
-            finishedAt: DateTime.now(),
-            durationMs: runLog.startedAt
-              ? DateTime.now().toMillis() - runLog.startedAt.toMillis()
-              : null,
-            errorMessage: errorMessage,
-            errorCode: 'AUDIO_GENERATION_FAILED',
-          })
-          .save()
-      }
+      await book.merge({ audioStatus: 'failed' }).save()
 
       throw error
     }
@@ -269,18 +147,22 @@ export default class GenerateBookAudioJob extends Job {
 
     logger.info({ bookId, chapterIndex }, 'Processing chapter audio')
 
+    // Compute hashes for reuse check
+    const textHash = this.computeTextHash(chapter.content)
+    const voiceHash = DEFAULT_VOICE_HASH
+    const inputHash = crypto
+      .createHash('sha256')
+      .update(`${chapter.title}|${textHash}|${voiceHash}`)
+      .digest('hex')
+
     // Start step log for this chapter
     const stepLog = await this.logService.startStep(
       runLogId,
       bookId,
       'audio_generate_chapter',
       itemKey,
-      undefined
+      inputHash
     )
-
-    // Compute hashes for reuse check
-    const textHash = this.computeTextHash(chapter.content)
-    const voiceHash = DEFAULT_VOICE_HASH
 
     // Check for existing successful audio with matching hashes
     const existingAudio = await BookChapterAudio.query()
@@ -447,85 +329,6 @@ export default class GenerateBookAudioJob extends Job {
       status,
       errorMessage,
     })
-  }
-
-  /**
-   * Try to finalize book publish when audio completes
-   * Only marks book as ready and published if vocabulary is also completed
-   */
-  private async tryFinalizePublish(book: Book, results: ChapterProcessingResult[]): Promise<void> {
-    // Verify all chapters are complete
-    const totalChapters = await BookChapter.query().where('bookId', book.id).count('* as total')
-
-    const chapterCount = Number(totalChapters[0].$extras.total)
-
-    const completedCount = results.filter(
-      (r) => r.status === 'reused' || r.status === 'generated'
-    ).length
-
-    if (completedCount !== chapterCount) {
-      logger.warn(
-        { bookId: book.id, completedCount, chapterCount },
-        'Not all chapters completed, audioStatus will be set but book will not be marked as ready'
-      )
-      // Even if not all chapters complete, we should update audioStatus
-    }
-
-    // Collect all audio paths and durations for book-level audio
-    const chapterAudios = await BookChapterAudio.query()
-      .where('bookId', book.id)
-      .where('status', 'completed')
-      .orderBy('chapterIndex', 'asc')
-
-    const audioUrl = chapterAudios[0]?.audioPath
-      ? chapterAudios[0].audioPath.replace(/chapter-\d+\.mp3$/, `${book.id}.mp3`)
-      : null
-
-    const totalDuration = chapterAudios.reduce((sum, audio) => sum + (audio.durationMs || 0), 0)
-
-    // Refresh book to get latest vocabularyStatus
-    await book.refresh()
-
-    // Check if vocabulary is also completed - this is the join condition
-    const canPublish = book.vocabularyStatus === 'completed'
-
-    // Build update data - always set audioStatus to completed
-    const updateData: Partial<Book> = {
-      audioStatus: 'completed',
-      audioUrl,
-      audioTiming: {
-        chapters: chapterAudios.map((audio) => ({
-          chapterIndex: audio.chapterIndex,
-          audioPath: audio.audioPath,
-          durationMs: audio.durationMs,
-        })),
-        totalDuration,
-      },
-      audioGeneratedAt: DateTime.now(),
-    }
-
-    // Only mark as ready and published if vocabulary is also completed
-    if (canPublish) {
-      updateData.status = 'ready'
-      updateData.isPublished = true
-      updateData.processingStep = BOOK_IMPORT_STEP.COMPLETED
-      updateData.processingProgress = 100
-
-      logger.info(
-        { bookId: book.id, chapterCount, totalDuration },
-        'Book marked as ready and published (both audio and vocabulary complete)'
-      )
-    } else {
-      // Keep status as processing if vocabulary not completed
-      updateData.processingStep = BOOK_IMPORT_STEP.FINALIZING_PUBLISH
-      updateData.processingProgress = 90
-      logger.info(
-        { bookId: book.id, vocabularyStatus: book.vocabularyStatus },
-        'Audio completed but book not published - waiting for vocabulary to complete'
-      )
-    }
-
-    await book.merge(updateData).save()
   }
 
   /**

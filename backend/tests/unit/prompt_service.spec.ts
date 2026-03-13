@@ -19,32 +19,35 @@ test.group('PromptService', () => {
     assert.include(rendered, 'Please translate this section.')
   })
 
-  test('renders the book semantic-clean prompt template without throwing', async ({ assert }) => {
+  test('renders the semantic metadata prompt template without throwing', async ({ assert }) => {
     const { default: PromptService } = await import('#services/prompt_service')
 
     const promptService = new PromptService()
-    const samplePayload = {
-      chapters: [
-        {
-          title: 'Chapter 1',
-          content: 'This is the first chapter with meaningful content.',
-        },
-        {
-          title: 'Preface',
-          content: 'This is a preface with some content.',
-        },
-        {
-          title: 'Chapter 2',
-          content: 'This is the second chapter with more meaningful content.',
-        },
-      ],
-    }
-
-    // This should not throw
-    const rendered = promptService.render('book/semantic-clean', samplePayload)
+    const rendered = promptService.render('book/semantic-metadata', {
+      fileName: 'alice.txt',
+      sourceType: 'user_uploaded',
+      chapterTitles: ['Preface', 'Chapter 1'],
+      sampleText: 'Alice was beginning to get very tired of sitting by her sister on the bank.',
+    })
 
     assert.isString(rendered)
+    assert.include(rendered, 'alice.txt')
+    assert.include(rendered, 'chapterTitles')
+  })
+
+  test('renders the semantic chapters prompt template without throwing', async ({ assert }) => {
+    const { default: PromptService } = await import('#services/prompt_service')
+
+    const promptService = new PromptService()
+    const rendered = promptService.render('book/semantic-chapters', {
+      chapters: [
+        { title: 'Preface', content: 'This is the preface.' },
+        { title: 'Chapter 1', content: 'This is meaningful chapter content.' },
+      ],
+    })
+
+    assert.isString(rendered)
+    assert.include(rendered, 'Preface')
     assert.include(rendered, 'Chapter 1')
-    assert.include(rendered, 'Chapter 2')
   })
 })

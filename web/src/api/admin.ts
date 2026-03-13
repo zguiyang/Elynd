@@ -67,31 +67,10 @@ export interface SystemConfig {
   aiModelName: string
 }
 
-export interface ParsedBookChapter {
-  chapterIndex: number
-  title: string
-  content: string
-  wordCount: number
-}
-
-export interface ParsedBookPreview {
-  fileName: string
-  title: string
-  author: string | null
-  description: string | null
-  chapters: ParsedBookChapter[]
-  wordCount: number
-}
-
 export interface ImportBookPayload {
-  title: string
-  author?: string
-  description?: string
+  file: File
   source: 'user_uploaded' | 'public_domain' | 'ai_generated'
-  difficultyLevel: 'L1' | 'L2' | 'L3'
-  wordCount: number
   bookHash: string
-  chapters: Array<{ title: string; content: string }>
 }
 
 export interface ImportBookResponse {
@@ -123,22 +102,20 @@ export const adminApi = {
   retryVocabulary: (bookId: number) =>
     request<RetryVocabularyResponse>({ method: 'POST', url: `/api/admin/books/${bookId}/retry-vocabulary` }),
 
-  parseBookFile: (file: File) => {
+  importBook: (data: ImportBookPayload) => {
     const formData = new FormData()
-    formData.append('file', file)
-
-    return request<ParsedBookPreview>({
+    formData.append('file', data.file)
+    formData.append('bookHash', data.bookHash)
+    formData.append('source', data.source)
+    return request<ImportBookResponse>({
       method: 'POST',
-      url: '/api/admin/books/parse',
+      url: '/api/admin/books/import',
       data: formData,
       headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+        'Content-Type': 'multipart/form-data'
+      }
     })
   },
-
-  importBook: (data: ImportBookPayload) =>
-    request<ImportBookResponse>({ method: 'POST', url: '/api/admin/books/import', data }),
 
   getBookStatus: (id: number) =>
     request<BookStatusResponse>({ method: 'GET', url: `/api/admin/books/${id}/status` }),

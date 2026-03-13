@@ -50,6 +50,17 @@ export class BookParserService {
     return this.parseTxt(file.tmpPath!)
   }
 
+  async parseFileFromStorage(path: string, extname: string): Promise<ParsedBookResult> {
+    const ext = extname.toLowerCase()
+    if (ext === 'epub') {
+      return this.parseEpub(path)
+    }
+    if (ext === 'txt') {
+      return this.parseTxt(path)
+    }
+    throw new Exception('Only .epub and .txt files are supported', { status: 400 })
+  }
+
   async parseEpub(path: string): Promise<ParsedBookResult> {
     const epub = await parseEpub(path, { type: 'path', expand: false })
     const structure = Array.isArray(epub.structure) ? epub.structure : []

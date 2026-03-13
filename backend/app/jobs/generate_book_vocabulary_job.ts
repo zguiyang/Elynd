@@ -10,7 +10,6 @@ import BookVocabulary from '#models/book_vocabulary'
 import BookChapter from '#models/book_chapter'
 import BookProcessingStepLog from '#models/book_processing_step_log'
 import { BookProcessingLogService } from '#services/book_processing_log_service'
-import { BOOK_IMPORT_STEP } from '#constants/index'
 
 interface GenerateVocabularyPayload {
   bookId: number
@@ -35,13 +34,7 @@ export default class GenerateBookVocabularyJob extends Job {
 
     const runLog = await this.logService.getOrCreateActiveRun(bookId, 'import')
 
-    await book
-      .merge({
-        vocabularyStatus: 'processing',
-        processingStep: BOOK_IMPORT_STEP.VOCABULARY_PROCESSING,
-        processingProgress: 35,
-      })
-      .save()
+    await book.merge({ vocabularyStatus: 'processing' }).save()
 
     try {
       // Step 1: extract vocabulary seed
@@ -132,34 +125,7 @@ export default class GenerateBookVocabularyJob extends Job {
         missingEntries,
       })
 
-      await book
-        .merge({
-          vocabularyStatus: 'completed',
-          processingStep: BOOK_IMPORT_STEP.FINALIZING_PUBLISH,
-          processingProgress: 90,
-          processingError: null,
-        })
-        .save()
-
-      const finalizeInputHash = crypto
-        .createHash('md5')
-        .update(`${book.id}:${book.audioStatus}:${book.vocabularyStatus}`)
-        .digest('hex')
-      const finalizeStep = await this.logService.startStep(
-        runLog.id,
-        bookId,
-        BOOK_IMPORT_STEP.FINALIZING_PUBLISH,
-        'vocabulary',
-        finalizeInputHash
-      )
-      const published = await this.tryFinalizePublish(book)
-      await this.logService.completeStep(finalizeStep.id, {
-        published,
-        audioStatus: book.audioStatus,
-        vocabularyStatus: 'completed',
-      })
-
-      await this.logService.completeRun(runLog.id)
+      await book.merge({ vocabularyStatus: 'completed' }).save()
 
       logger.info(
         {
@@ -167,8 +133,7 @@ export default class GenerateBookVocabularyJob extends Job {
           extractedWords,
           lookedUpWords,
           enrichedWords,
-          missingEntries,
-          published,
+          missingEntries
         },
         'Vocabulary generation completed'
       )
@@ -185,34 +150,8 @@ export default class GenerateBookVocabularyJob extends Job {
       }
 
       await this.logService.failRun(runLog.id, errorMessage)
-      await book
-        .merge({
-          status: 'failed',
-          vocabularyStatus: 'failed',
-          processingStep: BOOK_IMPORT_STEP.FAILED,
-          processingError: errorMessage,
-        })
-        .save()
+      await book.merge({ vocabularyStatus: 'failed' }).save()
       throw error
     }
-  }
-
-  private async tryFinalizePublish(book: Book): Promise<boolean> {
-    await book.refresh()
-    if (book.audioStatus !== 'completed') {
-      return false
-    }
-
-    await book
-      .merge({
-        status: 'ready',
-        isPublished: true,
-        processingStep: BOOK_IMPORT_STEP.COMPLETED,
-        processingProgress: 100,
-        processingError: null,
-      })
-      .save()
-
-    return true
   }
 }

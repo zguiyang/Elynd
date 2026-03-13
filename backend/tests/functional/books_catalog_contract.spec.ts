@@ -32,7 +32,10 @@ test.group('Books API catalog contract', () => {
     client,
     cleanup,
   }) => {
-    const { user, token } = await createAuthenticatedUser({ fullName: 'Books User', emailPrefix: 'books' })
+    const { user, token } = await createAuthenticatedUser({
+      fullName: 'Books User',
+      emailPrefix: 'books',
+    })
     const tag = await Tag.create({
       name: `Catalog Tag ${crypto.randomUUID()}`,
       slug: `catalog-tag-${crypto.randomUUID()}`,
@@ -72,9 +75,9 @@ test.group('Books API catalog contract', () => {
 
     listResponse.assertStatus(200)
 
-    const listedBook = listResponse.body().data.find(
-      (item: { id: number }) => item.id === matchingBook.id
-    )
+    const listedBook = listResponse
+      .body()
+      .data.find((item: { id: number }) => item.id === matchingBook.id)
 
     assert.exists(listedBook)
     assert.equal(listedBook.title, 'Matching Book')
@@ -99,7 +102,10 @@ test.group('Books API catalog contract', () => {
     client,
     cleanup,
   }) => {
-    const { user, token } = await createAuthenticatedUser({ fullName: 'Books User', emailPrefix: 'books' })
+    const { user, token } = await createAuthenticatedUser({
+      fullName: 'Books User',
+      emailPrefix: 'books',
+    })
     const book = await createPublishedBook(user.id, {
       title: 'Vocabulary Book',
     })
@@ -152,7 +158,10 @@ test.group('Books API catalog contract', () => {
     client,
     cleanup,
   }) => {
-    const { user, token } = await createAuthenticatedUser({ fullName: 'Books User', emailPrefix: 'books' })
+    const { user, token } = await createAuthenticatedUser({
+      fullName: 'Books User',
+      emailPrefix: 'books',
+    })
     const book = await createPublishedBook(user.id, {
       title: 'Audio Chapter Book',
     })

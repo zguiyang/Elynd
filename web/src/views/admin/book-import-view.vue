@@ -18,6 +18,7 @@ const isParsing = ref(false)
 const isImporting = ref(false)
 const preview = ref<ParsedBookPreview | null>(null)
 const file = ref<File | null>(null)
+const bookHash = ref<string>('')
 
 // Error state for inline display
 const submitError = ref<string | null>(null)
@@ -30,10 +31,23 @@ const form = reactive({
   difficultyLevel: 'L1' as 'L1' | 'L2' | 'L3',
 })
 
+/**
+ * Compute SHA-256 hash of file content for traceability
+ */
+async function computeFileHash(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer()
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
 async function parseSelectedFile(selected: File) {
   isParsing.value = true
   submitError.value = null
   try {
+    // Compute file hash for traceability
+    bookHash.value = await computeFileHash(selected)
+
     const result = await adminApi.parseBookFile(selected)
     preview.value = result
     form.title = result.title
@@ -68,6 +82,11 @@ async function confirmImport() {
     return
   }
 
+  if (!bookHash.value) {
+    toast.error('文件哈希计算失败')
+    return
+  }
+
   isImporting.value = true
   submitError.value = null
 
@@ -79,6 +98,7 @@ async function confirmImport() {
       source: form.source,
       difficultyLevel: form.difficultyLevel,
       wordCount: preview.value.wordCount,
+      bookHash: bookHash.value,
       chapters: preview.value.chapters.map((chapter) => ({
         title: chapter.title,
         content: chapter.content,
@@ -99,6 +119,7 @@ function resetFlow() {
   step.value = 1
   file.value = null
   preview.value = null
+  bookHash.value = ''
   submitError.value = null
   // Reset form
   form.title = ''

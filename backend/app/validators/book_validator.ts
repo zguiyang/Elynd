@@ -37,6 +37,7 @@ export const importBookValidator = vine.compile(
       ARTICLE_DIFFICULTY.L3,
     ]),
     wordCount: vine.number().min(1),
+    bookHash: vine.string().trim().minLength(1).maxLength(128),
     chapters: vine.array(
       vine.object({
         title: vine.string().trim().minLength(1).maxLength(200),

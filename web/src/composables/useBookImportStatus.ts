@@ -6,6 +6,186 @@ import { useAuthStore } from '@/stores/auth'
 
 const FALLBACK_RETRY_DELAY_MS = 5000 // 5 seconds
 
+// Canonical step keys for import pipeline
+export const STEP_KEYS = {
+  RECEIVED: 'import_received',
+  SEMANTIC_CLEANING: 'semantic_cleaning',
+  DEDUP_CHECKING: 'dedup_checking',
+  PERSISTING_BOOK: 'persisting_book',
+  PARALLEL_PROCESSING: 'parallel_processing',
+  AUDIO_PROCESSING: 'audio_processing',
+  VOCABULARY_PROCESSING: 'vocabulary_processing',
+  FINALIZING_PUBLISH: 'finalizing_publish',
+  COMPLETED: 'completed',
+  FAILED: 'failed',
+} as const
+
+// Progress weight constants
+export const PROGRESS_WEIGHTS = {
+  PREP_PHASE_MAX: 40,
+  AUDIO_PHASE_MAX: 30,
+  VOCABULARY_PHASE_MAX: 30,
+  TOTAL_MAX: 100,
+} as const
+
+// Step key to Chinese text mapping
+export function getStepText(stepKey: string): string {
+  const stepTextMap: Record<string, string> = {
+    [STEP_KEYS.RECEIVED]: '已接收',
+    [STEP_KEYS.SEMANTIC_CLEANING]: '语义清洗',
+    [STEP_KEYS.DEDUP_CHECKING]: '去重检查',
+    [STEP_KEYS.PERSISTING_BOOK]: '保存书籍',
+    [STEP_KEYS.PARALLEL_PROCESSING]: '并行处理',
+    [STEP_KEYS.AUDIO_PROCESSING]: '音频处理',
+    [STEP_KEYS.VOCABULARY_PROCESSING]: '词汇处理',
+    [STEP_KEYS.FINALIZING_PUBLISH]: '发布就绪',
+    [STEP_KEYS.COMPLETED]: '已完成',
+    [STEP_KEYS.FAILED]: '失败',
+    // Legacy step keys for backwards compatibility
+    'parsing': '解析书籍',
+    'analyze_vocabulary': '分析词汇',
+    'analyzing_vocabulary': '分析词汇',
+    'generate_meanings': '生成释义',
+    'generating_meanings': '生成释义',
+    'queue_audio': '队列音频',
+    'generate_audio': '生成音频',
+    'audio_queued': '音频已队列',
+    'audio_failed': '音频失败',
+    'audio_completed_waiting_vocabulary': '等待词汇处理完成',
+  }
+  return stepTextMap[stepKey] || stepKey
+}
+
+// Progress composition calculation
+export interface ProgressCompositionResult {
+  totalProgress: number
+  phase: 'prep' | 'audio' | 'vocabulary' | 'complete' | 'failed'
+  phaseProgress: number
+}
+
+export function getProgressComposition(params: {
+  step: string
+  stepProgress: number
+}): ProgressCompositionResult {
+  const { step, stepProgress } = params
+
+  // Map step keys to phases
+  const prepSteps: string[] = [
+    STEP_KEYS.RECEIVED,
+    STEP_KEYS.SEMANTIC_CLEANING,
+    STEP_KEYS.DEDUP_CHECKING,
+    STEP_KEYS.PERSISTING_BOOK,
+    STEP_KEYS.PARALLEL_PROCESSING,
+  ]
+
+  const audioSteps: string[] = [STEP_KEYS.AUDIO_PROCESSING]
+  const vocabularySteps: string[] = [STEP_KEYS.VOCABULARY_PROCESSING]
+  const completeSteps: string[] = [STEP_KEYS.COMPLETED]
+  const failedSteps: string[] = [STEP_KEYS.FAILED]
+  const finalizingSteps: string[] = [STEP_KEYS.FINALIZING_PUBLISH, 'audio_completed_waiting_vocabulary']
+
+  // Legacy step mappings
+  const legacyPrepSteps = ['parsing', 'analyze_vocabulary', 'analyzing_vocabulary', 'generate_meanings', 'generating_meanings']
+  const legacyAudioSteps = ['queue_audio', 'generate_audio', 'audio_queued', 'audio_failed']
+  const legacyVocabularySteps = ['generating_vocabulary']
+
+  if (completeSteps.includes(step) || step === 'completed') {
+    return { totalProgress: 100, phase: 'complete', phaseProgress: 100 }
+  }
+
+  if (failedSteps.includes(step) || step === 'failed') {
+    return { totalProgress: 100, phase: 'failed', phaseProgress: 100 }
+  }
+
+  if (finalizingSteps.includes(step)) {
+    return { totalProgress: Math.max(90, stepProgress), phase: 'prep', phaseProgress: stepProgress }
+  }
+
+  if (prepSteps.includes(step) || legacyPrepSteps.includes(step)) {
+    const phaseProgress = stepProgress / 100
+    const totalProgress = Math.round(phaseProgress * PROGRESS_WEIGHTS.PREP_PHASE_MAX)
+    return { totalProgress, phase: 'prep', phaseProgress: stepProgress }
+  }
+
+  if (audioSteps.includes(step) || legacyAudioSteps.includes(step)) {
+    const phaseProgress = stepProgress / 100
+    const totalProgress = PROGRESS_WEIGHTS.PREP_PHASE_MAX + Math.round(phaseProgress * PROGRESS_WEIGHTS.AUDIO_PHASE_MAX)
+    return { totalProgress, phase: 'audio', phaseProgress: stepProgress }
+  }
+
+  if (vocabularySteps.includes(step) || legacyVocabularySteps.includes(step)) {
+    const phaseProgress = stepProgress / 100
+    const totalProgress = PROGRESS_WEIGHTS.PREP_PHASE_MAX + PROGRESS_WEIGHTS.AUDIO_PHASE_MAX + Math.round(phaseProgress * PROGRESS_WEIGHTS.VOCABULARY_PHASE_MAX)
+    return { totalProgress, phase: 'vocabulary', phaseProgress: stepProgress }
+  }
+
+  // Default fallback
+  return { totalProgress: stepProgress, phase: 'prep', phaseProgress: stepProgress }
+}
+
+// Step 2 & 3: Unified mapping for dual task summaries (audio + vocabulary)
+export interface TaskSummary {
+  audio: string | null
+  vocabulary: string | null
+}
+
+// Get task summary for display: audio completed/total and vocabulary completed/total or status text
+export function getTaskSummary(book: {
+  chapterAudioSummary?: {
+    total: number
+    completed: number
+    failed?: number
+    pending?: number
+  }
+  vocabularySummary?: {
+    total: number
+    completed: number
+    failed?: number
+    pending?: number
+  } | null
+  audioStatus?: string | null
+  vocabularyStatus?: string | null
+}): TaskSummary {
+  const audioSummary = book.chapterAudioSummary
+  const vocabSummary = book.vocabularySummary
+
+  // Audio summary: always show completed/total if available
+  let audio: string | null = null
+  if (audioSummary && audioSummary.total > 0) {
+    audio = `${audioSummary.completed}/${audioSummary.total}`
+  }
+
+  // Vocabulary summary: show completed/total if vocabularySummary exists, otherwise show status text
+  let vocabulary: string | null = null
+  if (vocabSummary && vocabSummary.total > 0) {
+    vocabulary = `${vocabSummary.completed}/${vocabSummary.total}`
+  } else if (book.vocabularyStatus) {
+    // Fallback to status text when summary is not available
+    const statusTextMap: Record<string, string> = {
+      pending: '待处理',
+      processing: '处理中',
+      completed: '已完成',
+      failed: '失败',
+    }
+    vocabulary = statusTextMap[book.vocabularyStatus] || book.vocabularyStatus
+  }
+
+  return { audio, vocabulary }
+}
+
+// Step 4: Retry button disabled logic
+export function canRetryVocabulary(book: {
+  vocabularyStatus?: string | null
+}): boolean {
+  return book.vocabularyStatus === 'failed'
+}
+
+export function canRetryAudio(book: {
+  audioStatus?: string | null
+}): boolean {
+  return book.audioStatus === 'failed'
+}
+
 export function useBookImportStatus() {
   const authStore = useAuthStore()
   const userId = authStore.user?.id

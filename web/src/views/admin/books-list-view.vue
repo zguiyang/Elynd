@@ -2,8 +2,9 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { toast } from 'vue-sonner'
 import { adminApi, type AdminBook, type AdminUpdateBookPayload } from '@/api/admin'
-import { RefreshCw, Loader2, Pencil, Trash2, Clock, CheckCircle, XCircle, AlertCircle, Upload } from 'lucide-vue-next'
+import { RefreshCw, Loader2, Pencil, Trash2, Clock, CheckCircle, XCircle, AlertCircle, Upload, BookOpen, Volume2 } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
+import { getStepText, getProgressComposition, getTaskSummary, canRetryVocabulary, canRetryAudio } from '@/composables/useBookImportStatus'
 
 const router = useRouter()
 
@@ -128,6 +129,30 @@ const handleDelete = async () => {
   }
 }
 
+// Vocabulary retry
+const retryVocabulary = async (book: AdminBook) => {
+  try {
+    await adminApi.retryVocabulary(book.id)
+    toast.success('词汇表重试任务已添加')
+    fetchBooks()
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { message?: string } } }
+    toast.error(err.response?.data?.message || '重试失败')
+  }
+}
+
+// Audio retry
+const retryAudio = async (book: AdminBook) => {
+  try {
+    await adminApi.retryAudio(book.id)
+    toast.success('音频重试任务已添加')
+    fetchBooks()
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { message?: string } } }
+    toast.error(err.response?.data?.message || '重试失败')
+  }
+}
+
 // Pagination
 const goToPage = (newPage: number) => {
   page.value = newPage
@@ -179,7 +204,7 @@ const getStatusIcon = (status: string) => {
 }
 
 const isAudioPhase = (book: AdminBook) => {
-  return book.audioStatus === 'processing' || book.processingStep === 'audio_failed'
+  return book.audioStatus === 'processing'
 }
 
 const getDisplayProgress = (book: AdminBook) => {
@@ -189,6 +214,16 @@ const getDisplayProgress = (book: AdminBook) => {
     return 100
   }
 
+  // Use progress composition for canonical steps
+  if (book.processingStep) {
+    const composition = getProgressComposition({
+      step: book.processingStep,
+      stepProgress: book.processingProgress,
+    })
+    return composition.totalProgress
+  }
+
+  // Legacy progress calculation for audio phase
   if (summary.total > 0 && isAudioPhase(book)) {
     const audioProgress = summary.completed / summary.total
     return Math.min(99, Math.round(80 + audioProgress * 20))
@@ -204,36 +239,30 @@ const getDisplayStep = (book: AdminBook) => {
     return `音频生成 ${summary.completed}/${summary.total}`
   }
 
-  switch (book.processingStep) {
-    case 'parsing':
-      return '解析书籍'
-    case 'analyzing_vocabulary':
-      return '分析词汇'
-    case 'generating_meanings':
-      return '生成释义'
-    case 'generating_audio':
-    case 'audio_queued':
-      return '准备音频'
-    case 'audio_failed':
-      return '音频失败'
-    case 'completed':
-      return '处理完成'
-    default:
-      return book.processingStep || '-'
+  // Use canonical step text mapping
+  if (book.processingStep) {
+    return getStepText(book.processingStep)
   }
+
+  return '-'
 }
 
 const getProgressSummary = (book: AdminBook) => {
-  const summary = book.chapterAudioSummary
+  // Use unified task summary for dual display (audio + vocabulary)
+  const taskSummary = getTaskSummary(book)
 
-  if (summary.total === 0) {
-    return null
+  const parts: string[] = []
+
+  if (taskSummary.audio) {
+    parts.push(`音频 ${taskSummary.audio}`)
   }
 
-  const parts = [`章节音频 ${summary.completed}/${summary.total}`]
+  if (taskSummary.vocabulary) {
+    parts.push(`词汇 ${taskSummary.vocabulary}`)
+  }
 
-  if (summary.failed > 0) {
-    parts.push(`失败 ${summary.failed}`)
+  if (parts.length === 0) {
+    return null
   }
 
   return parts.join('，')
@@ -324,6 +353,26 @@ onUnmounted(() => {
               <TableCell>{{ new Date(book.createdAt).toLocaleString('zh-CN') }}</TableCell>
               <TableCell>
                 <div class="flex items-center gap-2">
+                  <!-- Audio retry button -->
+                  <Button
+                    v-if="canRetryAudio(book)"
+                    variant="ghost"
+                    size="icon"
+                    @click="retryAudio(book)"
+                    title="重试音频生成"
+                  >
+                    <Volume2 class="h-4 w-4" />
+                  </Button>
+                  <!-- Vocabulary retry button -->
+                  <Button
+                    v-if="canRetryVocabulary(book)"
+                    variant="ghost"
+                    size="icon"
+                    @click="retryVocabulary(book)"
+                    title="重试词汇表生成"
+                  >
+                    <BookOpen class="h-4 w-4" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"

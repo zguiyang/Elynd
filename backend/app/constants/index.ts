@@ -121,6 +121,30 @@ const VOCABULARY_ANALYZER = {
 
 type VocabularyAnalyzer = (typeof VOCABULARY_ANALYZER)[keyof typeof VOCABULARY_ANALYZER]
 
+const BOOK_IMPORT_STEP = {
+  RECEIVED: 'import_received',
+  SEMANTIC_CLEANING: 'semantic_cleaning',
+  DEDUP_CHECKING: 'dedup_checking',
+  PERSISTING_BOOK: 'persisting_book',
+  PARALLEL_PROCESSING: 'parallel_processing',
+  AUDIO_PROCESSING: 'audio_processing',
+  VOCABULARY_PROCESSING: 'vocabulary_processing',
+  FINALIZING_PUBLISH: 'finalizing_publish',
+  COMPLETED: 'completed',
+  FAILED: 'failed',
+} as const
+
+type BookImportStep = (typeof BOOK_IMPORT_STEP)[keyof typeof BOOK_IMPORT_STEP]
+
+const BOOK_IMPORT_PROGRESS = {
+  PREP_PHASE_MAX: 40,
+  AUDIO_PHASE_MAX: 30,
+  VOCABULARY_PHASE_MAX: 30,
+  TOTAL_MAX: 100,
+} as const
+
+type BookImportProgress = (typeof BOOK_IMPORT_PROGRESS)[keyof typeof BOOK_IMPORT_PROGRESS]
+
 export {
   ORDER_BY,
   PAGINATION,
@@ -135,6 +159,8 @@ export {
   ENGLISH_VARIANT,
   DICTIONARY,
   VOCABULARY_ANALYZER,
+  BOOK_IMPORT_STEP,
+  BOOK_IMPORT_PROGRESS,
 }
 export type {
   OrderBy,
@@ -150,4 +176,6 @@ export type {
   EnglishVariant,
   Dictionary,
   VocabularyAnalyzer,
+  BookImportStep,
+  BookImportProgress,
 }

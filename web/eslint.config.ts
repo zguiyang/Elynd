@@ -72,6 +72,15 @@ export default defineConfigWithVueTs(
 
   vueTsConfigs.recommended,
 
+  // Allow 'any' in test files for flexibility
+  {
+    name: 'app/test-any-allow',
+    files: ['**/*.test.ts', '**/*.spec.ts'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
+
   ...pluginOxlint.buildFromOxlintConfigFile('.oxlintrc.json'),
 
   skipFormatting,

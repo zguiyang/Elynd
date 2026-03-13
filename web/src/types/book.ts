@@ -52,6 +52,8 @@ export interface BookStatusResponse {
   processingStep: string | null
   processingProgress: number
   processingError: string | null
+  audioStatus?: AudioStatus | null
+  vocabularyStatus?: 'pending' | 'processing' | 'completed' | 'failed' | null
   latestRun?: {
     id: number
     jobType: string
@@ -64,6 +66,12 @@ export interface BookStatusResponse {
     errorMessage: string | null
   } | null
   chapterAudioSummary?: {
+    total: number
+    completed: number
+    pending: number
+    failed: number
+  }
+  vocabularySummary?: {
     total: number
     completed: number
     pending: number

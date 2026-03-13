@@ -92,7 +92,9 @@ test.group('DictionaryService.lookup', (group) => {
     assert.isString(cachedValue)
   })
 
-  test('degrades gracefully when one upstream request fails but the other succeeds', async ({ assert }) => {
+  test('degrades gracefully when one upstream request fails but the other succeeds', async ({
+    assert,
+  }) => {
     redis.get = async function fakeGet() {
       return null
     } as typeof redis.get

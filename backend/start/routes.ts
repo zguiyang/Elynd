@@ -75,6 +75,7 @@ router
   .group(() => {
     router.post('/admin/books/generate', [AdminBooksController, 'generate'])
     router.post('/admin/books/:id/retry-audio', [AdminBooksController, 'retryAudio'])
+    router.post('/admin/books/:id/retry-vocabulary', [AdminBooksController, 'retryVocabulary'])
     router.post('/admin/books/parse', [AdminBooksController, 'parse'])
     router.post('/admin/books/import', [AdminBooksController, 'import'])
     router.get('/admin/books', [AdminBooksController, 'index'])

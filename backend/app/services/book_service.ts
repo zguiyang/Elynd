@@ -7,9 +7,17 @@ import BookVocabulary from '#models/book_vocabulary'
 import BookChapterAudio from '#models/book_chapter_audio'
 import BookProcessingRunLog from '#models/book_processing_run_log'
 import GenerateBookAudioJob from '#jobs/generate_book_audio_job'
+import GenerateBookVocabularyJob from '#jobs/generate_book_vocabulary_job'
 import type { ListPublishedParams } from '#types/book'
 
 export interface ChapterAudioSummary {
+  total: number
+  completed: number
+  pending: number
+  failed: number
+}
+
+export interface VocabularySummary {
   total: number
   completed: number
   pending: number
@@ -22,6 +30,9 @@ export interface EnrichedBookStatus {
   processingStep: string | null
   processingProgress: number
   processingError: string | null
+  bookHash: string | null
+  audioStatus: string | null
+  vocabularyStatus: string
   latestRun: {
     id: number
     jobType: string
@@ -34,6 +45,7 @@ export interface EnrichedBookStatus {
     errorMessage: string | null
   } | null
   chapterAudioSummary: ChapterAudioSummary
+  vocabularySummary: VocabularySummary
 }
 
 @inject()
@@ -133,6 +145,29 @@ export class BookService {
     return {
       bookId: book.id,
       status: 'pending',
+    }
+  }
+
+  async retryVocabularyGeneration(bookId: number) {
+    const book = await Book.find(bookId)
+
+    if (!book) {
+      throw new Exception('Book not found', { status: 404 })
+    }
+
+    if (book.vocabularyStatus !== 'failed') {
+      throw new Exception('Can only retry books with failed vocabulary status', { status: 400 })
+    }
+
+    await db.transaction(async (trx) => {
+      await book.useTransaction(trx).merge({ vocabularyStatus: 'pending' }).save()
+    })
+
+    await GenerateBookVocabularyJob.dispatch({ bookId: book.id })
+
+    return {
+      bookId: book.id,
+      vocabularyStatus: 'pending',
     }
   }
 
@@ -245,12 +280,42 @@ export class BookService {
 
     const pendingCount = Number(pendingAudiosResult[0].$extras.total)
 
+    // Get vocabulary summary
+    const totalVocabResult = await BookVocabulary.query()
+      .where('bookId', bookId)
+      .count('* as total')
+
+    const totalVocab = Number(totalVocabResult[0].$extras.total)
+
+    // Compute vocabulary counts based on book-level vocabularyStatus
+    let vocabCompleted = 0
+    let vocabPending = 0
+    let vocabFailed = 0
+
+    if (book.vocabularyStatus === 'completed') {
+      vocabCompleted = totalVocab
+      vocabPending = 0
+      vocabFailed = 0
+    } else if (book.vocabularyStatus === 'failed') {
+      vocabCompleted = 0
+      vocabPending = 0
+      vocabFailed = totalVocab
+    } else {
+      // pending or processing
+      vocabCompleted = 0
+      vocabPending = totalVocab
+      vocabFailed = 0
+    }
+
     return {
       id: book.id,
       status: book.status,
       processingStep: book.processingStep,
       processingProgress: book.processingProgress,
       processingError: book.processingError,
+      bookHash: book.bookHash,
+      audioStatus: book.audioStatus,
+      vocabularyStatus: book.vocabularyStatus,
       latestRun: latestRun
         ? {
             id: latestRun.id,
@@ -269,6 +334,12 @@ export class BookService {
         completed: completedCount,
         pending: pendingCount,
         failed: failedCount,
+      },
+      vocabularySummary: {
+        total: totalVocab,
+        completed: vocabCompleted,
+        pending: vocabPending,
+        failed: vocabFailed,
       },
     }
   }

@@ -11,8 +11,6 @@ import BookChapterAudio from '#models/book_chapter_audio'
 import db from '@adonisjs/lucid/services/db'
 import { TransmitService } from '#services/transmit_service'
 import { BookParserService } from '#services/book_parser_service'
-import { BookChapterCleanerService } from '#services/book_chapter_cleaner_service'
-import { BookHashService } from '#services/book_hash_service'
 import {
   generateBookValidator,
   importBookValidator,
@@ -29,13 +27,7 @@ export default class AdminBooksController {
     private transmitService: TransmitService,
     private bookService: BookService,
     private bookParserService: BookParserService
-  ) {
-    this.bookChapterCleanerService = new BookChapterCleanerService()
-    this.bookHashService = new BookHashService()
-  }
-
-  private bookChapterCleanerService: BookChapterCleanerService
-  private bookHashService: BookHashService
+  ) {}
 
   async generate({ auth, request }: HttpContext) {
     const user = auth.getUserOrFail()
@@ -77,6 +69,18 @@ export default class AdminBooksController {
     }
   }
 
+  async retryVocabulary({ params }: HttpContext) {
+    logger.info({ bookId: params.id }, 'Vocabulary retry requested')
+
+    const result = await this.bookService.retryVocabularyGeneration(params.id)
+
+    return {
+      success: true,
+      message: 'Vocabulary retry task added to queue',
+      ...result,
+    }
+  }
+
   async parse({ request }: HttpContext) {
     const file = request.file('file', {
       extnames: ['epub', 'txt'],
@@ -103,31 +107,6 @@ export default class AdminBooksController {
     const user = auth.getUserOrFail()
     const data = await request.validateUsing(importBookValidator)
 
-    // Clean chapters before persistence
-    const cleanResult = this.bookChapterCleanerService.clean(data.chapters)
-
-    // Compute content hash
-    const contentHash = this.bookHashService.hashNormalizedBook(cleanResult.cleanedChapters)
-
-    // Detect reusable completed book by content_hash
-    const existingBook = await Book.query()
-      .where('contentHash', contentHash)
-      .where('status', 'ready')
-      .first()
-
-    if (existingBook) {
-      logger.info({ bookId: existingBook.id, contentHash }, 'Reusing existing completed book')
-
-      return {
-        bookId: existingBook.id,
-        status: existingBook.status,
-        processingStep: existingBook.processingStep,
-        processingProgress: existingBook.processingProgress,
-        reused: true,
-        message: 'Book already processed, returning existing book',
-      }
-    }
-
     // Create new book with cleaned chapters
     const book = await db.transaction(async (trx) => {
       const created = await Book.create(
@@ -140,20 +119,23 @@ export default class AdminBooksController {
           wordCount: data.wordCount,
           readingTime: Math.max(1, Math.ceil(data.wordCount / 200)),
           status: 'processing',
-          processingStep: 'parsing',
+          processingStep: 'import_received',
           processingProgress: 0,
           processingError: null,
           isPublished: false,
-          contentHash,
+          contentHash: null,
+          bookHash: data.bookHash,
+          audioStatus: 'pending',
+          vocabularyStatus: 'pending',
           createdBy: user.id,
         },
         { client: trx }
       )
 
       await BookChapter.createMany(
-        cleanResult.cleanedChapters.map((chapter) => ({
+        data.chapters.map((chapter, index) => ({
           bookId: created.id,
-          chapterIndex: chapter.chapterIndex,
+          chapterIndex: index,
           title: chapter.title,
           content: chapter.content,
         })),

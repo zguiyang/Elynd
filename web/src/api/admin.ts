@@ -21,6 +21,13 @@ export interface AdminBook {
   processingError: string | null
   audioStatus: 'pending' | 'processing' | 'completed' | 'failed' | null
   chapterAudioSummary: ChapterAudioSummary
+  vocabularyStatus?: 'pending' | 'processing' | 'completed' | 'failed' | null
+  vocabularySummary?: {
+    total: number
+    completed: number
+    pending: number
+    failed: number
+  }
   createdAt: string
   updatedAt: string
 }
@@ -83,6 +90,7 @@ export interface ImportBookPayload {
   source: 'user_uploaded' | 'public_domain' | 'ai_generated'
   difficultyLevel: 'L1' | 'L2' | 'L3'
   wordCount: number
+  bookHash: string
   chapters: Array<{ title: string; content: string }>
 }
 
@@ -93,9 +101,27 @@ export interface ImportBookResponse {
   processingProgress: number
 }
 
+export interface RetryVocabularyResponse {
+  success: boolean
+  message: string
+  vocabularyStatus: string
+}
+
+export interface RetryAudioResponse {
+  success: boolean
+  message: string
+  status: string
+}
+
 export const adminApi = {
   generateBook: (data: GenerateBookData) =>
     request<GenerateBookResponse>({ method: 'POST', url: '/api/admin/books/generate', data }),
+
+  retryAudio: (bookId: number) =>
+    request<RetryAudioResponse>({ method: 'POST', url: `/api/admin/books/${bookId}/retry-audio` }),
+
+  retryVocabulary: (bookId: number) =>
+    request<RetryVocabularyResponse>({ method: 'POST', url: `/api/admin/books/${bookId}/retry-vocabulary` }),
 
   parseBookFile: (file: File) => {
     const formData = new FormData()

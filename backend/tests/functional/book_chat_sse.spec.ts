@@ -10,7 +10,10 @@ test.group('Book Chat SSE API', () => {
     client,
     cleanup,
   }) => {
-    const { user, token } = await createAuthenticatedUser({ fullName: 'SSE Test User', emailPrefix: 'sse' })
+    const { user, token } = await createAuthenticatedUser({
+      fullName: 'SSE Test User',
+      emailPrefix: 'sse',
+    })
     cleanup(async () => {
       await user.delete()
     })

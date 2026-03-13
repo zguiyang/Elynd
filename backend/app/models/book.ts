@@ -11,6 +11,8 @@ import BookProcessingRunLog from '#models/book_processing_run_log'
 import BookProcessingStepLog from '#models/book_processing_step_log'
 import BookChapterAudio from '#models/book_chapter_audio'
 
+export type VocabularyStatus = 'pending' | 'processing' | 'completed' | 'failed'
+
 export default class Book extends BaseModel {
   @column({ isPrimary: true })
   declare id: number
@@ -54,6 +56,9 @@ export default class Book extends BaseModel {
   @column({ columnName: 'content_hash' })
   declare contentHash: string | null
 
+  @column({ columnName: 'book_hash' })
+  declare bookHash: string | null
+
   @column()
   declare createdBy: number
 
@@ -74,6 +79,9 @@ export default class Book extends BaseModel {
 
   @column.dateTime()
   declare audioGeneratedAt: DateTime | null
+
+  @column({ columnName: 'vocabulary_status' })
+  declare vocabularyStatus: VocabularyStatus
 
   @belongsTo(() => User, { foreignKey: 'createdBy' })
   declare creator: BelongsTo<typeof User>

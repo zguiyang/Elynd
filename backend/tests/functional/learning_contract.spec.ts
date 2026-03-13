@@ -29,7 +29,10 @@ test.group('Learning API contract', () => {
     client,
     cleanup,
   }) => {
-    const { user, token } = await createAuthenticatedUser({ fullName: 'Learning User', emailPrefix: 'learning' })
+    const { user, token } = await createAuthenticatedUser({
+      fullName: 'Learning User',
+      emailPrefix: 'learning',
+    })
     cleanup(async () => {
       await LearningRecord.query().where('userId', user.id).delete()
       await user.delete()
@@ -57,7 +60,10 @@ test.group('Learning API contract', () => {
     client,
     cleanup,
   }) => {
-    const { user, token } = await createAuthenticatedUser({ fullName: 'Learning User', emailPrefix: 'learning' })
+    const { user, token } = await createAuthenticatedUser({
+      fullName: 'Learning User',
+      emailPrefix: 'learning',
+    })
     const book = await createPublishedBook({ createdBy: user.id })
 
     cleanup(async () => {
@@ -103,7 +109,10 @@ test.group('Learning API contract', () => {
     client,
     cleanup,
   }) => {
-    const { user, token } = await createAuthenticatedUser({ fullName: 'Learning User', emailPrefix: 'learning' })
+    const { user, token } = await createAuthenticatedUser({
+      fullName: 'Learning User',
+      emailPrefix: 'learning',
+    })
     const tag = await Tag.create({
       name: `Tag ${crypto.randomUUID()}`,
       slug: `tag-${crypto.randomUUID()}`,

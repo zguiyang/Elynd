@@ -4,11 +4,19 @@ import logger from '@adonisjs/core/services/logger'
 import crypto from 'node:crypto'
 import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
-import BookProcessingStepLog from '#models/book_processing_step_log'
+import BookVocabulary from '#models/book_vocabulary'
+import BookChapterAudio from '#models/book_chapter_audio'
 import GenerateBookAudioJob from '#jobs/generate_book_audio_job'
+import GenerateBookVocabularyJob from '#jobs/generate_book_vocabulary_job'
 import { VocabularyAnalyzerService } from '#services/vocabulary_analyzer_service'
 import { TransmitService } from '#services/transmit_service'
 import { BookProcessingLogService } from '#services/book_processing_log_service'
+import { BookSemanticCleanService } from '#services/book_semantic_clean_service'
+import { BookHashService } from '#services/book_hash_service'
+import { BookChapterCleanerService } from '#services/book_chapter_cleaner_service'
+import PromptService from '#services/prompt_service'
+import { AiService } from '#services/ai_service'
+import { BOOK_IMPORT_STEP } from '#constants/index'
 
 interface ProcessBookPayload {
   bookId: number
@@ -21,25 +29,7 @@ export default class ProcessBookJob extends Job {
   }
 
   private logService = new BookProcessingLogService()
-
-  /**
-   * Check if a step has already been completed successfully with the same input
-   * Used for resuming interrupted jobs
-   */
-  private async checkStepCompleted(
-    bookId: number,
-    stepKey: string,
-    itemKey?: string | null,
-    inputHash?: string | null
-  ): Promise<boolean> {
-    const successfulStep = await this.logService.findSuccessfulStep(
-      bookId,
-      stepKey,
-      itemKey,
-      inputHash
-    )
-    return successfulStep !== null
-  }
+  private hashService = new BookHashService()
 
   async handle(payload: ProcessBookPayload) {
     const { bookId, userId } = payload
@@ -49,11 +39,15 @@ export default class ProcessBookJob extends Job {
       throw new Error(`Book ${bookId} not found`)
     }
 
-    // Get or create active run log for this job
     const runLog = await this.logService.getOrCreateActiveRun(bookId, 'import')
-
     const transmitService = await app.container.make(TransmitService)
     const analyzer = await app.container.make(VocabularyAnalyzerService)
+    const aiService = await app.container.make(AiService)
+    const semanticCleaner = new BookSemanticCleanService(
+      aiService,
+      new PromptService(),
+      new BookChapterCleanerService()
+    )
     const channel = `user:${userId}:book_import`
 
     const pushStatus = async (data: {
@@ -70,202 +64,300 @@ export default class ProcessBookJob extends Job {
     }
 
     try {
-      // Step 1: Analyze vocabulary
-      const step1Key = 'analyze_vocabulary'
-      const chapters = await BookChapter.query()
-        .where('bookId', bookId)
-        .orderBy('chapterIndex', 'asc')
-      const fullContent = chapters.map((chapter) => chapter.content).join('\n\n')
-      const contentHash = crypto.createHash('md5').update(fullContent).digest('hex')
+      const rawChapters = await BookChapter.query().where('bookId', bookId).orderBy('chapterIndex', 'asc')
+      let cleanedChapters: Array<{ title: string; content: string; chapterIndex: number }> =
+        rawChapters.map((chapter) => ({
+          title: chapter.title,
+          content: chapter.content,
+          chapterIndex: chapter.chapterIndex,
+        }))
+      let contentHash = book.contentHash || ''
 
-      await this.logService.advanceRun(runLog.id, step1Key, 20)
-
-      const step1Completed = await this.checkStepCompleted(bookId, step1Key, undefined, contentHash)
-
-      if (step1Completed) {
-        logger.info({ bookId, step: step1Key }, 'Skipping already completed step')
-        const existingSteps = await BookProcessingStepLog.query()
-          .where('bookId', bookId)
-          .where('stepKey', step1Key)
-          .where('status', 'success')
-        if (existingSteps.length > 0) {
-          await this.logService.startStep(runLog.id, bookId, step1Key, undefined, contentHash)
-          const allNewSteps = await BookProcessingStepLog.query()
-            .where('runLogId', runLog.id)
-            .orderBy('id', 'desc')
-          if (allNewSteps.length > 0) {
-            await this.logService.skipStep(allNewSteps[0].id)
-          }
-        }
-      } else {
-        const step1Log = await this.logService.startStep(
+      if (rawChapters.length > 0) {
+        // Step 1: semantic cleaning
+        const semanticInputHash = this.computeChaptersHash(rawChapters)
+        await this.logService.advanceRun(runLog.id, BOOK_IMPORT_STEP.SEMANTIC_CLEANING, 10)
+        const semanticStep = await this.logService.startStep(
           runLog.id,
           bookId,
-          step1Key,
+          BOOK_IMPORT_STEP.SEMANTIC_CLEANING,
+          undefined,
+          semanticInputHash
+        )
+
+        await book
+          .merge({
+            status: 'processing',
+            processingStep: BOOK_IMPORT_STEP.SEMANTIC_CLEANING,
+            processingProgress: 10,
+            processingError: null,
+          })
+          .save()
+        await pushStatus({
+          status: 'processing',
+          processingStep: BOOK_IMPORT_STEP.SEMANTIC_CLEANING,
+          processingProgress: 10,
+          message: 'Semantic cleaning chapters',
+        })
+
+        const cleanResult = await semanticCleaner.clean(
+          rawChapters.map((chapter) => ({
+            title: chapter.title,
+            content: chapter.content,
+          }))
+        )
+
+        if (cleanResult.cleanedChapters.length === 0) {
+          throw new Error('All chapters were dropped during semantic cleaning')
+        }
+
+        await BookChapter.query().where('bookId', bookId).delete()
+        await BookChapter.createMany(
+          cleanResult.cleanedChapters.map((chapter, index) => ({
+            bookId,
+            chapterIndex: index,
+            title: chapter.title,
+            content: chapter.content,
+          }))
+        )
+
+        await this.logService.completeStep(semanticStep.id, {
+          inputChapters: rawChapters.length,
+          keptChapters: cleanResult.cleanedChapters.length,
+          droppedChapters: cleanResult.stats.totalDropped,
+          isFallback: cleanResult.isFallback,
+        })
+
+        // Step 2: dedup checking
+        cleanedChapters = cleanResult.cleanedChapters.map((chapter, index) => ({
+          title: chapter.title,
+          content: chapter.content,
+          chapterIndex: index,
+        }))
+        contentHash = this.hashService.hashNormalizedBook(cleanedChapters)
+
+        await this.logService.advanceRun(runLog.id, BOOK_IMPORT_STEP.DEDUP_CHECKING, 25)
+        const dedupStep = await this.logService.startStep(
+          runLog.id,
+          bookId,
+          BOOK_IMPORT_STEP.DEDUP_CHECKING,
           undefined,
           contentHash
         )
 
-        try {
+        await book
+          .merge({
+            processingStep: BOOK_IMPORT_STEP.DEDUP_CHECKING,
+            processingProgress: 25,
+            contentHash,
+          })
+          .save()
+        await pushStatus({
+          status: 'processing',
+          processingStep: BOOK_IMPORT_STEP.DEDUP_CHECKING,
+          processingProgress: 25,
+          message: 'Checking duplicate content',
+        })
+
+        const reusableBook = await Book.query()
+          .where('id', '!=', bookId)
+          .where('contentHash', contentHash)
+          .where('status', 'ready')
+          .first()
+
+        if (reusableBook) {
+          await this.cloneReusableResult(reusableBook.id, bookId)
           await book
             .merge({
-              status: 'processing',
-              processingStep: 'analyzing_vocabulary',
-              processingProgress: 20,
+              status: 'ready',
+              isPublished: true,
+              processingStep: BOOK_IMPORT_STEP.COMPLETED,
+              processingProgress: 100,
               processingError: null,
+              audioStatus: 'completed',
+              vocabularyStatus: 'completed',
+              audioUrl: reusableBook.audioUrl,
+              audioTiming: reusableBook.audioTiming,
+              audioGeneratedAt: reusableBook.audioGeneratedAt,
             })
             .save()
 
-          await pushStatus({
-            status: 'processing',
-            processingStep: 'analyzing_vocabulary',
-            processingProgress: 20,
-            message: 'Analyzing vocabulary',
+          await this.logService.completeStep(dedupStep.id, {
+            reused: true,
+            reusedFromBookId: reusableBook.id,
+            contentHash,
           })
+          await this.logService.completeRun(runLog.id)
 
-          const vocabulary = analyzer.extractVocabulary(fullContent)
-
-          await this.logService.completeStep(step1Log.id, { vocabularyCount: vocabulary.length })
-        } catch (stepError) {
-          const errorMessage = stepError instanceof Error ? stepError.message : 'Unknown error'
-          await this.logService.failStep(step1Log.id, errorMessage)
-          throw stepError
+          await pushStatus({
+            status: 'ready',
+            processingStep: BOOK_IMPORT_STEP.COMPLETED,
+            processingProgress: 100,
+            message: 'Reused existing processed content',
+          })
+          return
         }
+
+        await pushStatus({
+          status: 'processing',
+          processingStep: BOOK_IMPORT_STEP.DEDUP_CHECKING,
+          processingProgress: 30,
+          message: 'No reusable content, continue processing',
+        })
+
+        await this.logService.completeStep(dedupStep.id, {
+          reused: false,
+          contentHash,
+        })
       }
 
-      // Step 2: Generate meanings
-      const step2Key = 'generate_meanings'
-      const step2InputHash = crypto
-        .createHash('md5')
-        .update(book.title + '-meanings')
-        .digest('hex')
+      // Step 3: persisting vocabulary seed
+      const fullContent = cleanedChapters.map((chapter) => chapter.content).join('\n\n')
+      if (!contentHash) {
+        contentHash = this.hashService.hashNormalizedBook(cleanedChapters)
+      }
+      const persistInputHash = crypto.createHash('md5').update(fullContent).digest('hex')
 
-      await this.logService.advanceRun(runLog.id, step2Key, 50)
-
-      const step2Completed = await this.checkStepCompleted(
+      await this.logService.advanceRun(runLog.id, BOOK_IMPORT_STEP.PERSISTING_BOOK, 40)
+      const persistStep = await this.logService.startStep(
+        runLog.id,
         bookId,
-        step2Key,
+        BOOK_IMPORT_STEP.PERSISTING_BOOK,
         undefined,
-        step2InputHash
+        persistInputHash
       )
 
-      if (step2Completed) {
-        logger.info({ bookId, step: step2Key }, 'Skipping already completed step')
-      } else {
-        const step2Log = await this.logService.startStep(
-          runLog.id,
-          bookId,
-          step2Key,
-          undefined,
-          step2InputHash
-        )
-
-        try {
-          await book
-            .merge({
-              processingStep: 'generating_meanings',
-              processingProgress: 50,
-            })
-            .save()
-
-          await pushStatus({
-            status: 'processing',
-            processingStep: 'generating_meanings',
-            processingProgress: 50,
-            message: 'Generating meanings',
-          })
-
-          const vocabulary = analyzer.extractVocabulary(fullContent)
-          const withMeanings = await analyzer.generateMeaningsWithAI(book.title, vocabulary)
-          await analyzer.saveVocabulary(bookId, withMeanings)
-
-          await this.logService.completeStep(step2Log.id, { wordsProcessed: withMeanings.length })
-        } catch (stepError) {
-          const errorMessage = stepError instanceof Error ? stepError.message : 'Unknown error'
-          await this.logService.failStep(step2Log.id, errorMessage)
-          throw stepError
-        }
-      }
-
-      // Step 3: Queue audio generation
-      const step3Key = 'queue_audio'
-
-      await this.logService.advanceRun(runLog.id, step3Key, 80)
-
-      const step3Completed = await this.checkStepCompleted(bookId, step3Key, undefined, undefined)
-
-      if (step3Completed) {
-        logger.info({ bookId, step: step3Key }, 'Skipping already completed step')
-      } else {
-        const step3Log = await this.logService.startStep(
-          runLog.id,
-          bookId,
-          step3Key,
-          undefined,
-          undefined
-        )
-
-        try {
-          await book
-            .merge({
-              processingStep: 'generating_audio',
-              processingProgress: 80,
-            })
-            .save()
-
-          await pushStatus({
-            status: 'processing',
-            processingStep: 'generating_audio',
-            processingProgress: 80,
-            message: 'Queuing audio generation',
-          })
-
-          await GenerateBookAudioJob.dispatch({ bookId })
-
-          await this.logService.completeStep(step3Log.id, { audioJobDispatched: true })
-        } catch (stepError) {
-          const errorMessage = stepError instanceof Error ? stepError.message : 'Unknown error'
-          await this.logService.failStep(step3Log.id, errorMessage)
-          throw stepError
-        }
-      }
-
-      // Complete the run (but NOT the book status - audio is handled separately)
-      await this.logService.completeRun(runLog.id)
-
-      // Note: We do NOT set book.status = 'ready' here
-      // Audio generation is handled by GenerateBookAudioJob
-      // The book will be marked ready after audio generation completes
-
+      await book
+        .merge({
+          processingStep: BOOK_IMPORT_STEP.PERSISTING_BOOK,
+          processingProgress: 40,
+        })
+        .save()
       await pushStatus({
-        status: 'processing', // Keep as processing until audio is done
-        processingStep: 'audio_queued',
-        processingProgress: 100,
-        message: 'Audio generation queued',
+        status: 'processing',
+        processingStep: BOOK_IMPORT_STEP.PERSISTING_BOOK,
+        processingProgress: 40,
+        message: 'Persisting extracted vocabulary',
       })
+
+      const vocabulary = analyzer.extractVocabulary(fullContent)
+      const vocabularyWithMeaning = vocabulary.map((v) => ({
+        ...v,
+        meaning: '',
+        sentence: '',
+      }))
+      await analyzer.saveVocabulary(bookId, vocabularyWithMeaning)
+
+      await this.logService.completeStep(persistStep.id, {
+        vocabularyCount: vocabulary.length,
+      })
+
+      // Step 4: dispatch parallel jobs
+      const parallelInputHash = crypto
+        .createHash('md5')
+        .update(`${book.id}:${contentHash}:parallel`)
+        .digest('hex')
+
+      await this.logService.advanceRun(runLog.id, BOOK_IMPORT_STEP.PARALLEL_PROCESSING, 45)
+      const parallelStep = await this.logService.startStep(
+        runLog.id,
+        bookId,
+        BOOK_IMPORT_STEP.PARALLEL_PROCESSING,
+        undefined,
+        parallelInputHash
+      )
+
+      await book
+        .merge({
+          processingStep: BOOK_IMPORT_STEP.PARALLEL_PROCESSING,
+          processingProgress: 45,
+        })
+        .save()
+      await pushStatus({
+        status: 'processing',
+        processingStep: BOOK_IMPORT_STEP.PARALLEL_PROCESSING,
+        processingProgress: 45,
+        message: 'Dispatching audio and vocabulary jobs',
+      })
+
+      await Promise.all([
+        GenerateBookAudioJob.dispatch({ bookId }),
+        GenerateBookVocabularyJob.dispatch({ bookId }),
+      ])
+
+      await this.logService.completeStep(parallelStep.id, {
+        audioJobDispatched: true,
+        vocabularyJobDispatched: true,
+      })
+      await this.logService.completeRun(runLog.id)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
       logger.error({ err: error, bookId }, 'ProcessBookJob failed')
 
-      // Mark run as failed
       await this.logService.failRun(runLog.id, message)
-
       await book
         .merge({
           status: 'failed',
+          processingStep: BOOK_IMPORT_STEP.FAILED,
+          processingProgress: 100,
           processingError: message,
         })
         .save()
-
       await pushStatus({
         status: 'failed',
-        processingStep: book.processingStep || 'unknown',
-        processingProgress: book.processingProgress || 0,
+        processingStep: BOOK_IMPORT_STEP.FAILED,
+        processingProgress: 100,
         message: 'Book processing failed',
         processingError: message,
       })
-
       throw error
+    }
+  }
+
+  private computeChaptersHash(chapters: Array<{ title: string; content: string }>): string {
+    const payload = chapters.map((chapter) => `${chapter.title}\n${chapter.content}`).join('\n---\n')
+    return crypto.createHash('md5').update(payload).digest('hex')
+  }
+
+  private async cloneReusableResult(fromBookId: number, toBookId: number): Promise<void> {
+    const [sourceVocabularies, sourceAudios] = await Promise.all([
+      BookVocabulary.query().where('bookId', fromBookId),
+      BookChapterAudio.query().where('bookId', fromBookId),
+    ])
+
+    await BookVocabulary.query().where('bookId', toBookId).delete()
+    await BookChapterAudio.query().where('bookId', toBookId).delete()
+
+    if (sourceVocabularies.length > 0) {
+      await BookVocabulary.createMany(
+        sourceVocabularies.map((item) => ({
+          bookId: toBookId,
+          word: item.word,
+          lemma: item.lemma,
+          frequency: item.frequency,
+          meaning: item.meaning,
+          sentence: item.sentence,
+          phonetic: item.phonetic,
+          phoneticText: item.phoneticText,
+          phoneticAudio: item.phoneticAudio,
+          details: item.details,
+        }))
+      )
+    }
+
+    if (sourceAudios.length > 0) {
+      await BookChapterAudio.createMany(
+        sourceAudios.map((item) => ({
+          bookId: toBookId,
+          chapterIndex: item.chapterIndex,
+          textHash: item.textHash,
+          voiceHash: item.voiceHash,
+          audioPath: item.audioPath,
+          durationMs: item.durationMs,
+          status: item.status,
+          errorMessage: item.errorMessage,
+        }))
+      )
     }
   }
 }

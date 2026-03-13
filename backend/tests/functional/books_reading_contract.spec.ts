@@ -57,7 +57,9 @@ test.group('Books Reading API - Chapter Contract', () => {
     })
 
     // Request GET /api/books/:id/chapters/0
-    const response = await client.get(`/api/books/${book.id}/chapters/0`).header('Authorization', bearerAuthHeader(token))
+    const response = await client
+      .get(`/api/books/${book.id}/chapters/0`)
+      .header('Authorization', bearerAuthHeader(token))
 
     const body = response.body()
 
@@ -111,7 +113,9 @@ test.group('Books Reading API - Chapter Contract', () => {
     })
 
     // Request GET /api/books/:id/chapters/0 (no audio record created)
-    const response = await client.get(`/api/books/${book.id}/chapters/0`).header('Authorization', bearerAuthHeader(token))
+    const response = await client
+      .get(`/api/books/${book.id}/chapters/0`)
+      .header('Authorization', bearerAuthHeader(token))
 
     const body = response.body()
 
@@ -137,7 +141,9 @@ test.group('Books Reading API - Chapter Contract', () => {
     })
 
     // Request with non-existent book ID
-    const response = await client.get('/api/books/99999/chapters/0').header('Authorization', bearerAuthHeader(token))
+    const response = await client
+      .get('/api/books/99999/chapters/0')
+      .header('Authorization', bearerAuthHeader(token))
 
     response.assertStatus(404)
   })
@@ -179,7 +185,9 @@ test.group('Books Reading API - Chapter Contract', () => {
     })
 
     // Request non-existent chapter (chapterIndex = 5)
-    const response = await client.get(`/api/books/${book.id}/chapters/5`).header('Authorization', bearerAuthHeader(token))
+    const response = await client
+      .get(`/api/books/${book.id}/chapters/5`)
+      .header('Authorization', bearerAuthHeader(token))
 
     response.assertStatus(404)
   })

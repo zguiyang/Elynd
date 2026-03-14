@@ -2,6 +2,7 @@ import { DateTime } from 'luxon'
 import { BaseModel, column, belongsTo } from '@adonisjs/lucid/orm'
 import { type BelongsTo } from '@adonisjs/lucid/types/relations'
 import Book from '#models/book'
+import type { WordTiming } from '#types/tts'
 
 export type ChapterAudioStatus = 'pending' | 'processing' | 'completed' | 'failed'
 
@@ -27,8 +28,17 @@ export default class BookChapterAudio extends BaseModel {
   @column({ columnName: 'duration_ms' })
   declare durationMs: number | null
 
+  @column({ columnName: 'timing_words' })
+  declare timingWords: WordTiming[] | null
+
+  @column({ columnName: 'chunk_count' })
+  declare chunkCount: number | null
+
   @column()
   declare status: ChapterAudioStatus
+
+  @column({ columnName: 'error_code' })
+  declare errorCode: string | null
 
   @column({ columnName: 'error_message' })
   declare errorMessage: string | null

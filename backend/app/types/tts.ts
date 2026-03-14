@@ -53,6 +53,8 @@ export interface ChapterAudioResult {
   audioPath: string
   /** Duration of the chapter audio in milliseconds. */
   duration: number
+  /** Number of synthesized chunks for this chapter. */
+  chunkCount: number
   /** Timing metadata for words in this chapter. */
   timing: {
     words: WordTiming[]

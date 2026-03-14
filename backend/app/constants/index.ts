@@ -148,6 +148,17 @@ const BOOK_IMPORT_PROGRESS = {
 
 type BookImportProgress = (typeof BOOK_IMPORT_PROGRESS)[keyof typeof BOOK_IMPORT_PROGRESS]
 
+const TTS_CHUNK_STRATEGY = {
+  MIN_CHARS: 1200,
+  MAX_CHARS: 3500,
+  TARGET_CHUNK_MIN: 8,
+  TARGET_CHUNK_MAX: 24,
+  CHUNKER_VERSION: 'v1',
+  REUSE_AUDIO_STATUS: 'completed',
+} as const
+
+type TtsChunkStrategy = (typeof TTS_CHUNK_STRATEGY)[keyof typeof TTS_CHUNK_STRATEGY]
+
 export {
   ORDER_BY,
   PAGINATION,
@@ -164,6 +175,7 @@ export {
   VOCABULARY_ANALYZER,
   BOOK_IMPORT_STEP,
   BOOK_IMPORT_PROGRESS,
+  TTS_CHUNK_STRATEGY,
 }
 export type {
   OrderBy,
@@ -181,4 +193,5 @@ export type {
   VocabularyAnalyzer,
   BookImportStep,
   BookImportProgress,
+  TtsChunkStrategy,
 }

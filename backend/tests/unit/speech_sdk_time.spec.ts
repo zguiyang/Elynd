@@ -23,6 +23,7 @@ test.group('ChapterAudioResult type contract', () => {
       chapterIndex: 0,
       audioPath: 'book/voices/1/chapter-0.mp3',
       duration: 120000,
+      chunkCount: 3,
       timing: {
         words: [
           {
@@ -39,6 +40,7 @@ test.group('ChapterAudioResult type contract', () => {
     assert.equal(result.chapterIndex, 0)
     assert.equal(result.audioPath, 'book/voices/1/chapter-0.mp3')
     assert.equal(result.duration, 120000)
+    assert.equal(result.chunkCount, 3)
     assert.isArray(result.timing.words)
     assert.equal(result.timing.words[0].word, 'Hello')
   })

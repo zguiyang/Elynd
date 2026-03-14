@@ -5,19 +5,29 @@ import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import BookChapterAudio from '#models/book_chapter_audio'
 import { TtsService } from '#services/tts_service'
-import { BOOK_IMPORT_STEP } from '#constants'
+import { BOOK_IMPORT_STEP, TTS_CHUNK_STRATEGY } from '#constants'
 import { BookImportOrchestratorService } from '#services/book_import_orchestrator_service'
 import { ImportStateService } from '#services/import_state_service'
 import FinalizeImportJob from '#jobs/finalize_import_job'
 import type { SerialImportPayload } from '#types/book_import_pipeline'
 import type { ChapterInput, WordTiming } from '#types/tts'
 
-const DEFAULT_VOICE_HASH = 'default-voice'
 const MIN_WORD_BOUNDARIES = 20
 const HEAD_WORD_MATCH_SIZE = 30
 const HEAD_WORD_MATCH_RATE_MIN = 0.8
 const WORD_RATIO_MIN = 0.5
 const WORD_RATIO_MAX = 1.6
+
+type ChapterMetric = {
+  chapterIndex: number
+  textLength: number
+  chunkCount: number
+  chapterElapsedMs: number
+  audioDurationMs: number
+  rft: number | null
+  errorCode: string | null
+  reused: boolean
+}
 
 @inject()
 export class BookAudioPipelineService {
@@ -48,69 +58,199 @@ export class BookAudioPipelineService {
         .where('bookId', bookId)
         .orderBy('chapterIndex', 'asc')
       const aggregatedWords: Array<WordTiming & { chapterIndex: number }> = []
+      const chapterAudios: Array<{ chapterIndex: number; audioPath: string; durationMs: number }> =
+        []
+      const chapterMetrics: ChapterMetric[] = []
+      const voiceHash = this.computeVoiceHash(this.ttsService.getCurrentVoiceName())
       let cumulativeOffset = 0
+
       for (const chapter of chapters) {
         await this.importStateService.assertImportNotCancelled(runId, bookId)
+        const chapterStartAt = Date.now()
 
         const chapterInput: ChapterInput = {
           chapterIndex: chapter.chapterIndex,
           title: chapter.title,
           content: chapter.content,
         }
+
         this.assertTtsInput(chapterInput)
-        const generated = await this.ttsService.generateChapterAudio(chapterInput, bookId, {
-          beforeChunkSynthesis: async () => {
-            await this.importStateService.assertImportNotCancelled(runId, bookId)
-          },
-        })
-        await this.importStateService.assertImportNotCancelled(runId, bookId)
-        this.assertWordTimings(chapterInput, generated.timing.words)
         const textHash = this.computeTextHash(chapter.title, chapter.content)
+        await this.importStateService.assertImportNotCancelled(runId, bookId)
 
-        for (const item of generated.timing.words) {
-          aggregatedWords.push({
-            ...item,
+        const cacheHit = await this.findReusableChapterAudio(
+          bookId,
+          chapter.chapterIndex,
+          textHash,
+          voiceHash
+        )
+
+        if (cacheHit && (cacheHit.timingWords?.length || 0) > 0) {
+          await this.importStateService.assertImportNotCancelled(runId, bookId)
+          const words = cacheHit.timingWords || []
+          this.assertWordTimings(chapterInput, words)
+          this.appendAggregatedWords(aggregatedWords, chapter.chapterIndex, words, cumulativeOffset)
+          cumulativeOffset += cacheHit.durationMs || 0
+          chapterAudios.push({
             chapterIndex: chapter.chapterIndex,
-            audioOffset: item.audioOffset + cumulativeOffset,
+            audioPath: cacheHit.audioPath || '',
+            durationMs: cacheHit.durationMs || 0,
           })
+          const elapsedMs = Date.now() - chapterStartAt
+          const rft = this.computeRft(elapsedMs, cacheHit.durationMs)
+
+          chapterMetrics.push({
+            chapterIndex: chapter.chapterIndex,
+            textLength: chapterInput.content.length,
+            chunkCount: cacheHit.chunkCount || 0,
+            chapterElapsedMs: elapsedMs,
+            audioDurationMs: cacheHit.durationMs || 0,
+            rft,
+            errorCode: null,
+            reused: true,
+          })
+
+          logger.info(
+            {
+              bookId,
+              chapterIndex: chapter.chapterIndex,
+              textLength: chapterInput.content.length,
+              chunkCount: cacheHit.chunkCount,
+              chapterElapsedMs: elapsedMs,
+              audioDurationMs: cacheHit.durationMs,
+              rft,
+              cacheHit: true,
+              chunkerVersion: TTS_CHUNK_STRATEGY.CHUNKER_VERSION,
+            },
+            'Chapter audio reused from cache'
+          )
+
+          await this.importStateService.assertImportNotCancelled(runId, bookId)
+          continue
         }
-        cumulativeOffset += generated.duration
 
-        const existing = await BookChapterAudio.query()
-          .where('bookId', bookId)
-          .where('chapterIndex', chapter.chapterIndex)
-          .first()
+        if (cacheHit && (!cacheHit.timingWords || cacheHit.timingWords.length === 0)) {
+          logger.info(
+            {
+              bookId,
+              chapterIndex: chapter.chapterIndex,
+            },
+            'Skip cache reuse because timing words are missing; fallback to synthesis'
+          )
+        }
 
-        if (existing) {
-          await existing
-            .merge({
-              textHash,
-              voiceHash: DEFAULT_VOICE_HASH,
-              audioPath: generated.audioPath,
-              durationMs: generated.duration,
-              status: 'completed',
-              errorMessage: null,
-            })
-            .save()
-        } else {
-          await BookChapterAudio.create({
+        try {
+          const generated = await this.ttsService.generateChapterAudio(chapterInput, bookId, {
+            beforeChunkSynthesis: async () => {
+              await this.importStateService.assertImportNotCancelled(runId, bookId)
+            },
+          })
+
+          await this.importStateService.assertImportNotCancelled(runId, bookId)
+          this.assertWordTimings(chapterInput, generated.timing.words)
+          this.appendAggregatedWords(
+            aggregatedWords,
+            chapter.chapterIndex,
+            generated.timing.words,
+            cumulativeOffset
+          )
+          cumulativeOffset += generated.duration
+          chapterAudios.push({
+            chapterIndex: chapter.chapterIndex,
+            audioPath: generated.audioPath,
+            durationMs: generated.duration,
+          })
+
+          await this.importStateService.assertImportNotCancelled(runId, bookId)
+          await this.upsertChapterAudio({
             bookId,
             chapterIndex: chapter.chapterIndex,
             textHash,
-            voiceHash: DEFAULT_VOICE_HASH,
+            voiceHash,
             audioPath: generated.audioPath,
             durationMs: generated.duration,
-            status: 'completed',
+            timingWords: generated.timing.words,
+            chunkCount: generated.chunkCount,
+            status: TTS_CHUNK_STRATEGY.REUSE_AUDIO_STATUS,
+            errorCode: null,
             errorMessage: null,
           })
+          await this.importStateService.assertImportNotCancelled(runId, bookId)
+
+          const elapsedMs = Date.now() - chapterStartAt
+          const rft = this.computeRft(elapsedMs, generated.duration)
+
+          chapterMetrics.push({
+            chapterIndex: chapter.chapterIndex,
+            textLength: chapterInput.content.length,
+            chunkCount: generated.chunkCount,
+            chapterElapsedMs: elapsedMs,
+            audioDurationMs: generated.duration,
+            rft,
+            errorCode: null,
+            reused: false,
+          })
+
+          logger.info(
+            {
+              bookId,
+              chapterIndex: chapter.chapterIndex,
+              textLength: chapterInput.content.length,
+              chunkCount: generated.chunkCount,
+              chapterElapsedMs: elapsedMs,
+              audioDurationMs: generated.duration,
+              rft,
+              cacheHit: false,
+              chunkerVersion: TTS_CHUNK_STRATEGY.CHUNKER_VERSION,
+            },
+            'Chapter TTS metrics'
+          )
+        } catch (error) {
+          const elapsedMs = Date.now() - chapterStartAt
+          const errorCode = this.extractErrorCode(error)
+          logger.warn(
+            {
+              bookId,
+              chapterIndex: chapter.chapterIndex,
+              textLength: chapterInput.content.length,
+              chunkCount: 0,
+              chapterElapsedMs: elapsedMs,
+              audioDurationMs: 0,
+              rft: null,
+              errorCode,
+              cacheHit: false,
+            },
+            'Chapter TTS metrics (failed)'
+          )
+          chapterMetrics.push({
+            chapterIndex: chapter.chapterIndex,
+            textLength: chapterInput.content.length,
+            chunkCount: 0,
+            chapterElapsedMs: elapsedMs,
+            audioDurationMs: 0,
+            rft: null,
+            errorCode,
+            reused: false,
+          })
+
+          await this.upsertChapterAudio({
+            bookId,
+            chapterIndex: chapter.chapterIndex,
+            textHash,
+            voiceHash,
+            audioPath: null,
+            durationMs: null,
+            timingWords: null,
+            chunkCount: null,
+            status: 'failed',
+            errorCode,
+            errorMessage: error instanceof Error ? error.message : 'Unknown error',
+          })
+          throw error
         }
       }
-      await this.importStateService.assertImportNotCancelled(runId, bookId)
 
-      const chapterAudios = await BookChapterAudio.query()
-        .where('bookId', bookId)
-        .where('status', 'completed')
-        .orderBy('chapterIndex', 'asc')
+      await this.importStateService.assertImportNotCancelled(runId, bookId)
       const totalDuration = chapterAudios.reduce((sum, audio) => sum + (audio.durationMs || 0), 0)
       const audioUrl = chapterAudios[0]?.audioPath
         ? chapterAudios[0].audioPath.replace(/chapter-\d+\.mp3$/, `${book.id}.mp3`)
@@ -139,7 +279,13 @@ export class BookAudioPipelineService {
         bookId,
         BOOK_IMPORT_STEP.GENERATE_TTS,
         progress,
-        { chapterCount: chapterAudios.length, totalDuration, wordsCount: aggregatedWords.length }
+        {
+          chapterCount: chapterAudios.length,
+          totalDuration,
+          wordsCount: aggregatedWords.length,
+          chunkerVersion: TTS_CHUNK_STRATEGY.CHUNKER_VERSION,
+          chapterMetrics,
+        }
       )
 
       await FinalizeImportJob.dispatch(
@@ -191,6 +337,101 @@ export class BookAudioPipelineService {
     return createHash('sha256')
       .update(`${normalizedTitle}\n${normalizedContent}`, 'utf-8')
       .digest('hex')
+  }
+
+  private computeVoiceHash(voiceName: string): string {
+    return createHash('sha256')
+      .update(`azure_tts:${voiceName}:${TTS_CHUNK_STRATEGY.CHUNKER_VERSION}`, 'utf-8')
+      .digest('hex')
+  }
+
+  private async findReusableChapterAudio(
+    bookId: number,
+    chapterIndex: number,
+    textHash: string,
+    voiceHash: string
+  ) {
+    return await BookChapterAudio.query()
+      .where('bookId', bookId)
+      .where('chapterIndex', chapterIndex)
+      .where('textHash', textHash)
+      .where('voiceHash', voiceHash)
+      .where('status', TTS_CHUNK_STRATEGY.REUSE_AUDIO_STATUS)
+      .whereNotNull('audioPath')
+      .whereNotNull('durationMs')
+      .first()
+  }
+
+  private appendAggregatedWords(
+    aggregatedWords: Array<WordTiming & { chapterIndex: number }>,
+    chapterIndex: number,
+    words: WordTiming[],
+    cumulativeOffset: number
+  ) {
+    for (const item of words) {
+      aggregatedWords.push({
+        ...item,
+        chapterIndex,
+        audioOffset: item.audioOffset + cumulativeOffset,
+      })
+    }
+  }
+
+  private computeRft(chapterElapsedMs: number, audioDurationMs: number | null) {
+    if (!audioDurationMs || audioDurationMs <= 0) {
+      return null
+    }
+    return Number((chapterElapsedMs / audioDurationMs).toFixed(3))
+  }
+
+  private async upsertChapterAudio(payload: {
+    bookId: number
+    chapterIndex: number
+    textHash: string
+    voiceHash: string
+    audioPath: string | null
+    durationMs: number | null
+    timingWords: WordTiming[] | null
+    chunkCount: number | null
+    status: 'pending' | 'processing' | 'completed' | 'failed'
+    errorCode: string | null
+    errorMessage: string | null
+  }) {
+    const existing = await BookChapterAudio.query()
+      .where('bookId', payload.bookId)
+      .where('chapterIndex', payload.chapterIndex)
+      .where('textHash', payload.textHash)
+      .where('voiceHash', payload.voiceHash)
+      .first()
+
+    if (existing) {
+      await existing.merge(payload).save()
+      return
+    }
+
+    await BookChapterAudio.create(payload)
+  }
+
+  private extractErrorCode(error: unknown) {
+    if (ImportStateService.isImportCancelledError(error)) {
+      return 'import_cancelled'
+    }
+
+    if (typeof error === 'object' && error && 'ttsError' in error) {
+      const ttsError = (error as { ttsError?: { code?: string } }).ttsError
+      if (ttsError?.code) {
+        return ttsError.code
+      }
+    }
+
+    if (error instanceof Error) {
+      const matchedCode = error.message.match(/:\s*([a-z_]+)(?:\(|$)/i)
+      if (matchedCode?.[1]) {
+        return matchedCode[1].toLowerCase()
+      }
+    }
+
+    return 'unknown'
   }
 
   private assertTtsInput(chapter: ChapterInput) {

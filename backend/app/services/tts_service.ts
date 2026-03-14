@@ -4,6 +4,7 @@ import env from '#start/env'
 import drive from '@adonisjs/drive/services/main'
 import * as sdk from 'microsoft-cognitiveservices-speech-sdk'
 import { speechSdkTicksToMs } from '#utils/speech_sdk_time'
+import { TTS_CHUNK_STRATEGY } from '#constants'
 import type {
   TtsResult,
   AudioTiming,
@@ -46,9 +47,10 @@ export class TtsService {
     options?: GenerateChapterAudioOptions
   ): Promise<ChapterAudioResult> {
     const startTime = Date.now()
-    const textLength = chapter.content.length
-    const voiceName = this.speechConfig.speechSynthesisVoiceName || 'default'
-    const maxChunkChars = env.get('BOOK_AUDIO_CHUNK_MAX_CHARS', 3500)
+    const text = this.buildChapterText(chapter)
+    const textLength = text.length
+    const voiceName = this.getVoiceName(options)
+    const maxChunkChars = this.computeAdaptiveChunkMaxChars(textLength)
 
     logger.info(
       {
@@ -63,7 +65,6 @@ export class TtsService {
       'Generating chapter audio'
     )
 
-    const text = this.buildChapterText(chapter)
     const chunks = this.splitTextIntoChunks(text, maxChunkChars)
 
     logger.info(
@@ -91,7 +92,7 @@ export class TtsService {
         'Synthesizing chapter audio chunk'
       )
 
-      const result = await this.synthesizeTextChunk(chunk, chapter.chapterIndex)
+      const result = await this.synthesizeTextChunk(chunk, chapter.chapterIndex, voiceName)
       results.push(result)
     }
 
@@ -119,10 +120,15 @@ export class TtsService {
       chapterIndex: chapter.chapterIndex,
       audioPath,
       duration: merged.duration,
+      chunkCount: chunks.length,
       timing: {
         words: merged.wordTimings,
       },
     }
+  }
+
+  getCurrentVoiceName() {
+    return this.speechConfig.speechSynthesisVoiceName || 'default'
   }
 
   /**
@@ -141,52 +147,99 @@ export class TtsService {
    */
   private splitTextIntoChunks(text: string, maxChars: number): string[] {
     const chunks: string[] = []
-
-    // Split by blank lines (paragraph boundaries)
-    const paragraphs = text.split(/\n\s*\n/)
+    const paragraphs = text
+      .split(/\n\s*\n/)
+      .map((paragraph) => paragraph.trim())
+      .filter((paragraph) => paragraph.length > 0)
 
     for (const paragraph of paragraphs) {
       if (paragraph.length <= maxChars) {
-        if (paragraph.trim()) {
-          chunks.push(paragraph.trim())
-        }
+        chunks.push(paragraph)
         continue
       }
 
-      // Paragraph exceeds maxChars, try sentence splitting
-      const sentences = paragraph.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [paragraph]
+      const sentences = this.splitParagraphIntoSentences(paragraph)
 
       let currentChunk = ''
       for (const sentence of sentences) {
-        if ((currentChunk + sentence).length <= maxChars) {
-          currentChunk += sentence
-        } else {
-          // Current chunk is full
-          if (currentChunk.trim()) {
-            chunks.push(currentChunk.trim())
+        if (!currentChunk) {
+          if (sentence.length <= maxChars) {
+            currentChunk = sentence
+            continue
           }
 
-          // If single sentence exceeds maxChars, hard split
+          chunks.push(...this.hardSplitText(sentence, maxChars))
+          continue
+        }
+
+        const candidate = `${currentChunk} ${sentence}`.trim()
+        if (candidate.length <= maxChars) {
+          currentChunk = candidate
+        } else {
+          chunks.push(currentChunk)
           if (sentence.length > maxChars) {
-            let remaining = sentence
-            while (remaining.length > maxChars) {
-              chunks.push(remaining.slice(0, maxChars))
-              remaining = remaining.slice(maxChars)
-            }
-            currentChunk = remaining
+            chunks.push(...this.hardSplitText(sentence, maxChars))
+            currentChunk = ''
           } else {
             currentChunk = sentence
           }
         }
       }
 
-      if (currentChunk.trim()) {
-        chunks.push(currentChunk.trim())
+      if (currentChunk) {
+        chunks.push(currentChunk)
       }
     }
 
-    // Filter out empty chunks and trim
-    return chunks.filter((chunk) => chunk.length > 0)
+    return chunks
+  }
+
+  private getVoiceName(options?: GenerateChapterAudioOptions) {
+    return options?.voiceName || this.getCurrentVoiceName()
+  }
+
+  private computeAdaptiveChunkMaxChars(textLength: number) {
+    const minCharsForMaxChunkCount = Math.ceil(textLength / TTS_CHUNK_STRATEGY.TARGET_CHUNK_MAX)
+    const maxCharsForMinChunkCount = Math.ceil(textLength / TTS_CHUNK_STRATEGY.TARGET_CHUNK_MIN)
+    const adaptiveMid = Math.round((minCharsForMaxChunkCount + maxCharsForMinChunkCount) / 2)
+
+    return Math.max(
+      TTS_CHUNK_STRATEGY.MIN_CHARS,
+      Math.min(TTS_CHUNK_STRATEGY.MAX_CHARS, adaptiveMid)
+    )
+  }
+
+  private splitParagraphIntoSentences(paragraph: string): string[] {
+    return (
+      paragraph
+        .match(/[^.!?]+(?:[.!?]+|$)/g)
+        ?.map((sentence) => sentence.trim())
+        .filter(Boolean) || [paragraph]
+    )
+  }
+
+  private hardSplitText(text: string, maxChars: number): string[] {
+    const chunks: string[] = []
+    let remaining = text.trim()
+
+    while (remaining.length > maxChars) {
+      const slice = remaining.slice(0, maxChars)
+      const breakIndex = Math.max(slice.lastIndexOf(' '), slice.lastIndexOf('\n'))
+
+      if (breakIndex > Math.floor(maxChars * 0.6)) {
+        chunks.push(slice.slice(0, breakIndex).trim())
+        remaining = remaining.slice(breakIndex + 1).trim()
+      } else {
+        chunks.push(slice.trim())
+        remaining = remaining.slice(maxChars).trim()
+      }
+    }
+
+    if (remaining.length > 0) {
+      chunks.push(remaining)
+    }
+
+    return chunks
   }
 
   /**
@@ -256,7 +309,11 @@ export class TtsService {
       )
 
       const text = `${chapter.title}\n\n${chapter.content}`
-      const result = await this.synthesizeTextChunk(text, chapter.chapterIndex)
+      const result = await this.synthesizeTextChunk(
+        text,
+        chapter.chapterIndex,
+        this.getCurrentVoiceName()
+      )
 
       const adjustedWords = result.wordTimings.map((w) => ({
         ...w,
@@ -323,10 +380,12 @@ export class TtsService {
 
   private async synthesizeTextChunk(
     text: string,
-    chapterIndex?: number
+    chapterIndex?: number,
+    voiceName?: string
   ): Promise<SynthesizedChunkResult> {
     return new Promise((resolve, reject) => {
       const wordTimings: WordTiming[] = []
+      this.speechConfig.speechSynthesisVoiceName = voiceName || this.getCurrentVoiceName()
       const synthesizer = new sdk.SpeechSynthesizer(
         this.speechConfig,
         null as unknown as sdk.AudioConfig

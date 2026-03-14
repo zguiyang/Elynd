@@ -863,6 +863,49 @@ test.group('Admin Books Management API', () => {
     assert.equal(response.body().vocabularyStatus, 'pending')
   })
 
+  test('POST /api/admin/books/:id/retry-audio sets book to processing and clears processingError', async ({
+    assert,
+    client,
+    cleanup,
+  }) => {
+    const { user: admin, token } = await createAdminUser()
+    cleanup(async () => {
+      await admin.delete()
+    })
+
+    const book = await Book.create({
+      title: 'Audio Retry Test Book',
+      author: 'Test Author',
+      source: 'user_uploaded',
+      difficultyLevel: 'beginner',
+      status: 'failed',
+      processingStep: 'failed',
+      processingProgress: 100,
+      processingError: 'TTS failed previously',
+      wordCount: 1000,
+      readingTime: 5,
+      isPublished: false,
+      createdBy: admin.id,
+      contentHash: crypto.randomUUID(),
+      audioStatus: 'failed',
+      vocabularyStatus: 'pending',
+    })
+    cleanup(async () => await book.delete())
+
+    const response = await client
+      .post(`/api/admin/books/${book.id}/retry-audio`)
+      .header('Authorization', bearerAuthHeader(token))
+
+    response.assertStatus(200)
+    assert.equal(response.body().success, true)
+    assert.equal(response.body().status, 'processing')
+
+    const reloadedBook = await Book.findOrFail(book.id)
+    assert.equal(reloadedBook.status, 'processing')
+    assert.equal(reloadedBook.audioStatus, 'pending')
+    assert.isNull(reloadedBook.processingError)
+  })
+
   test('POST /api/admin/books/:id/retry-vocabulary returns 400 when vocabulary is not failed', async ({
     assert,
     client,

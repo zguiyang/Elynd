@@ -142,15 +142,28 @@ export class BookService {
       throw new Exception('Can only retry books with failed audio status', { status: 400 })
     }
 
+    const ttsBaseProgress = BookImportOrchestratorService.getBaseProgressByStep(
+      BOOK_IMPORT_STEP.GENERATE_TTS
+    )
+
     await db.transaction(async (trx) => {
-      await book.useTransaction(trx).merge({ audioStatus: 'pending' }).save()
+      await book
+        .useTransaction(trx)
+        .merge({
+          status: 'processing',
+          processingStep: BOOK_IMPORT_STEP.GENERATE_TTS,
+          processingProgress: ttsBaseProgress,
+          processingError: null,
+          audioStatus: 'pending',
+        })
+        .save()
     })
 
     await GenerateBookAudioJob.dispatch({ bookId: book.id })
 
     return {
       bookId: book.id,
-      status: 'pending',
+      status: 'processing',
     }
   }
 

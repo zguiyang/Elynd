@@ -33,7 +33,7 @@ export default class Book extends BaseModel {
   declare difficultyLevel: string
 
   @column()
-  declare status: 'processing' | 'ready' | 'failed'
+  declare status: 'processing' | 'ready' | 'failed' | 'cancelled'
 
   @column()
   declare processingStep: string | null

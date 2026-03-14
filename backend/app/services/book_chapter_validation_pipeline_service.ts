@@ -18,6 +18,7 @@ export class BookChapterValidationPipelineService {
   async run(payload: SerialImportPayload) {
     const { bookId, runId, userId } = payload
     await Book.findOrFail(bookId)
+    await this.importStateService.assertImportNotCancelled(runId, bookId)
 
     const progress = BookImportOrchestratorService.getBaseProgressByStep(
       BOOK_IMPORT_STEP.VALIDATE_CHAPTER_CONTENT
@@ -31,6 +32,7 @@ export class BookChapterValidationPipelineService {
     )
 
     try {
+      await this.importStateService.assertImportNotCancelled(runId, bookId)
       const semanticOutput = await this.orchestrator.getSuccessfulStepOutputRef(
         runId,
         BOOK_IMPORT_STEP.SEMANTIC_CLEAN
@@ -42,6 +44,7 @@ export class BookChapterValidationPipelineService {
       const cleanedChapters = await this.orchestrator.readChapterArtifact(cleanedArtifactPath)
 
       const validatedResult = await this.validationService.validateChapters(cleanedChapters)
+      await this.importStateService.assertImportNotCancelled(runId, bookId)
       const validatedArtifactPath = await this.orchestrator.writeChapterArtifact({
         runId,
         bookId,
@@ -72,6 +75,9 @@ export class BookChapterValidationPipelineService {
         }
       )
     } catch (error) {
+      if (ImportStateService.isImportCancelledError(error)) {
+        return
+      }
       const message = error instanceof Error ? error.message : 'Unknown error'
       await this.importStateService.failStep(
         runId,

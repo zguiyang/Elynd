@@ -11,6 +11,20 @@ import {
 } from '#types/book_import_pipeline'
 
 export class ImportStateService {
+  static createImportCancelledError(bookId: number): Error {
+    const error = new Error(`Import cancelled for book ${bookId}`)
+    error.name = 'ImportCancelledError'
+    return error
+  }
+
+  static isImportCancelledError(error: unknown): boolean {
+    return error instanceof Error && error.name === 'ImportCancelledError'
+  }
+
+  private static isCancelledRun(runLog: BookProcessingRunLog): boolean {
+    return runLog.status === 'failed' && runLog.errorCode === 'USER_ABORTED'
+  }
+
   static canTransition(fromStep: string | null, toStep: string): boolean {
     if (toStep === BOOK_IMPORT_STEP.FAILED) {
       return fromStep !== BOOK_IMPORT_STEP.COMPLETED
@@ -41,6 +55,10 @@ export class ImportStateService {
         .where('id', runId)
         .firstOrFail()
       const book = await Book.query({ client: trx }).where('id', bookId).firstOrFail()
+
+      if (book.status === 'cancelled' || ImportStateService.isCancelledRun(runLog)) {
+        throw ImportStateService.createImportCancelledError(bookId)
+      }
 
       if (!ImportStateService.canTransition(runLog.currentStep, stepKey)) {
         throw new Error(`Illegal step transition: ${runLog.currentStep ?? 'null'} -> ${stepKey}`)
@@ -113,6 +131,10 @@ export class ImportStateService {
         .where('id', runId)
         .firstOrFail()
       const book = await Book.query({ client: trx }).where('id', bookId).firstOrFail()
+
+      if (book.status === 'cancelled' || ImportStateService.isCancelledRun(runLog)) {
+        throw ImportStateService.createImportCancelledError(bookId)
+      }
 
       if (runLog.status !== 'processing' || book.status !== 'processing') {
         throw new Error(`Run ${runId} is no longer active`)
@@ -206,5 +228,14 @@ export class ImportStateService {
       })
       .save()
     return book
+  }
+
+  async assertImportNotCancelled(runId: number, bookId: number): Promise<void> {
+    const runLog = await BookProcessingRunLog.findOrFail(runId)
+    const book = await Book.findOrFail(bookId)
+
+    if (book.status === 'cancelled' || ImportStateService.isCancelledRun(runLog)) {
+      throw ImportStateService.createImportCancelledError(bookId)
+    }
   }
 }

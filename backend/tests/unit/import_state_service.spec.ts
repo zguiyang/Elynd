@@ -58,7 +58,7 @@ test.group('ImportStateService', () => {
     assert.isTrue(
       ImportStateService.canTransition(
         BOOK_IMPORT_STEP.SEMANTIC_CLEAN,
-        BOOK_IMPORT_STEP.BUILD_CONTENT_AND_VOCAB_SEED
+        BOOK_IMPORT_STEP.VALIDATE_CHAPTER_CONTENT
       )
     )
     assert.isFalse(
@@ -129,11 +129,25 @@ test.group('ImportStateService', () => {
     const completedStep = await BookProcessingStepLog.findOrFail(step.id)
     assert.equal(completedStep.status, 'success')
 
+    const validateStep = await service.startStep(
+      run.id,
+      book.id,
+      BOOK_IMPORT_STEP.VALIDATE_CHAPTER_CONTENT,
+      50
+    )
+    await service.completeStep(
+      run.id,
+      validateStep.id,
+      book.id,
+      BOOK_IMPORT_STEP.VALIDATE_CHAPTER_CONTENT,
+      60
+    )
+
     const failStep = await service.startStep(
       run.id,
       book.id,
       BOOK_IMPORT_STEP.BUILD_CONTENT_AND_VOCAB_SEED,
-      50
+      70
     )
     await service.failStep(
       run.id,
@@ -178,5 +192,47 @@ test.group('ImportStateService', () => {
     assert.equal(book.processingStep, BOOK_IMPORT_STEP.FAILED)
     assert.equal(book.processingProgress, 100)
     assert.equal(book.processingError, 'fatal import error')
+  })
+
+  test('blocks startStep when import is manually cancelled', async ({ assert, cleanup }) => {
+    const { user, book, run } = await createProcessingBook()
+    cleanup(async () => {
+      await BookProcessingStepLog.query().where('runLogId', run.id).delete()
+      await run.delete()
+      await book.delete()
+      await user.delete()
+    })
+
+    await run.merge({ status: 'failed', errorCode: 'USER_ABORTED' }).save()
+    const service = new ImportStateService()
+    try {
+      await service.startStep(run.id, book.id, BOOK_IMPORT_STEP.SEMANTIC_CLEAN, 20)
+      assert.fail('Expected startStep to throw ImportCancelledError')
+    } catch (error) {
+      assert.equal((error as Error).name, 'ImportCancelledError')
+      assert.include((error as Error).message, 'Import cancelled for book')
+    }
+  })
+
+  test('blocks completeStep when import is manually cancelled', async ({ assert, cleanup }) => {
+    const { user, book, run } = await createProcessingBook()
+    cleanup(async () => {
+      await BookProcessingStepLog.query().where('runLogId', run.id).delete()
+      await run.delete()
+      await book.delete()
+      await user.delete()
+    })
+
+    const service = new ImportStateService()
+    const step = await service.startStep(run.id, book.id, BOOK_IMPORT_STEP.PREPARE_IMPORT, 10)
+    await run.merge({ status: 'failed', errorCode: 'USER_ABORTED' }).save()
+
+    try {
+      await service.completeStep(run.id, step.id, book.id, BOOK_IMPORT_STEP.PREPARE_IMPORT, 20)
+      assert.fail('Expected completeStep to throw ImportCancelledError')
+    } catch (error) {
+      assert.equal((error as Error).name, 'ImportCancelledError')
+      assert.include((error as Error).message, 'Import cancelled for book')
+    }
   })
 })

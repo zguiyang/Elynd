@@ -37,6 +37,11 @@ export interface ChapterInput {
   content: string
 }
 
+export interface GenerateChapterAudioOptions {
+  voiceName?: string
+  beforeChunkSynthesis?: (chunkIndex: number, chunkCount: number) => Promise<void> | void
+}
+
 /**
  * Result of generating audio for a single chapter.
  * Each chapter gets its own audio file with deterministic path.

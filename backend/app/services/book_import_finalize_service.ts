@@ -16,6 +16,7 @@ export class BookImportFinalizeService {
   async run(payload: SerialImportPayload) {
     const { bookId, runId } = payload
     const book = await Book.findOrFail(bookId)
+    await this.importStateService.assertImportNotCancelled(runId, bookId)
     const progress = BookImportOrchestratorService.getBaseProgressByStep(
       BOOK_IMPORT_STEP.FINALIZE_IMPORT
     )
@@ -27,10 +28,12 @@ export class BookImportFinalizeService {
     )
 
     try {
+      await this.importStateService.assertImportNotCancelled(runId, bookId)
       const published = await this.orchestrator.finalizePublish(book)
       if (!published) {
         throw new Error('Finalize publish blocked by unfinished sub tasks')
       }
+      await this.importStateService.assertImportNotCancelled(runId, bookId)
 
       await this.importStateService.completeStep(
         runId,
@@ -53,6 +56,9 @@ export class BookImportFinalizeService {
       await this.importStateService.markBookReady(bookId)
       await Book.query().where('id', bookId).update({ isPublished: true })
     } catch (error) {
+      if (ImportStateService.isImportCancelledError(error)) {
+        return
+      }
       const message = error instanceof Error ? error.message : 'Unknown error'
       await this.importStateService.failStep(
         runId,

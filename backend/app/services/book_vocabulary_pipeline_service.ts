@@ -21,6 +21,7 @@ export class BookVocabularyPipelineService {
   async run(payload: SerialImportPayload) {
     const { bookId, runId, userId } = payload
     const book = await Book.findOrFail(bookId)
+    await this.importStateService.assertImportNotCancelled(runId, bookId)
     const progress = BookImportOrchestratorService.getBaseProgressByStep(
       BOOK_IMPORT_STEP.ENRICH_VOCABULARY
     )
@@ -35,10 +36,7 @@ export class BookVocabularyPipelineService {
     await book.merge({ vocabularyStatus: 'processing' }).save()
 
     try {
-      await book.refresh()
-      if (book.status !== 'processing') {
-        throw new Error(`Import stopped for book ${bookId}`)
-      }
+      await this.importStateService.assertImportNotCancelled(runId, bookId)
 
       let allVocabularies = await BookVocabulary.query().where('bookId', bookId)
 
@@ -60,10 +58,7 @@ export class BookVocabularyPipelineService {
 
       let enrichedWords = 0
       for (const vocabulary of allVocabularies) {
-        await book.refresh()
-        if (book.status !== 'processing') {
-          throw new Error(`Import stopped for book ${bookId}`)
-        }
+        await this.importStateService.assertImportNotCancelled(runId, bookId)
 
         const entry = results.get(vocabulary.word.toLowerCase())
         if (!entry) {
@@ -84,6 +79,7 @@ export class BookVocabularyPipelineService {
           })
           .save()
       }
+      await this.importStateService.assertImportNotCancelled(runId, bookId)
 
       if (allVocabularies.length > 0 && enrichedWords === 0) {
         throw new Error('All dictionary lookups failed')
@@ -114,6 +110,13 @@ export class BookVocabularyPipelineService {
         }
       )
     } catch (error) {
+      if (ImportStateService.isImportCancelledError(error)) {
+        await book.refresh()
+        if (book.vocabularyStatus === 'processing') {
+          await book.merge({ vocabularyStatus: 'pending' }).save()
+        }
+        return
+      }
       await book.merge({ vocabularyStatus: 'failed' }).save()
       const message = error instanceof Error ? error.message : 'Unknown error'
       await this.importStateService.failStep(

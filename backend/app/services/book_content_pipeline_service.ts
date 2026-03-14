@@ -16,6 +16,7 @@ export class BookContentPipelineService {
   async run(payload: SerialImportPayload) {
     const { bookId, runId, userId } = payload
     const book = await Book.findOrFail(bookId)
+    await this.importStateService.assertImportNotCancelled(runId, bookId)
     const progress = BookImportOrchestratorService.getBaseProgressByStep(
       BOOK_IMPORT_STEP.BUILD_CONTENT_AND_VOCAB_SEED
     )
@@ -27,6 +28,7 @@ export class BookContentPipelineService {
     )
 
     try {
+      await this.importStateService.assertImportNotCancelled(runId, bookId)
       const validationOutput = await this.orchestrator.getSuccessfulStepOutputRef(
         runId,
         BOOK_IMPORT_STEP.VALIDATE_CHAPTER_CONTENT
@@ -45,9 +47,11 @@ export class BookContentPipelineService {
         },
         cleanedChapters,
       })
+      await this.importStateService.assertImportNotCancelled(runId, bookId)
 
       const vocabulary = await this.orchestrator.extractVocabulary(book)
       const levelResult = await this.orchestrator.assignDifficultyLevel(book)
+      await this.importStateService.assertImportNotCancelled(runId, bookId)
 
       await this.importStateService.completeStep(
         runId,
@@ -73,6 +77,9 @@ export class BookContentPipelineService {
         }
       )
     } catch (error) {
+      if (ImportStateService.isImportCancelledError(error)) {
+        return
+      }
       const message = error instanceof Error ? error.message : 'Unknown error'
       await this.importStateService.failStep(
         runId,

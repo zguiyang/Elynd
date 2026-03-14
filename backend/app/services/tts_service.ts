@@ -11,6 +11,7 @@ import type {
   ChapterTiming,
   ChapterInput,
   ChapterAudioResult,
+  GenerateChapterAudioOptions,
   TtsErrorDetails,
   SynthesizedChunkResult,
 } from '#types/tts'
@@ -42,7 +43,7 @@ export class TtsService {
   async generateChapterAudio(
     chapter: ChapterInput,
     bookId: number,
-    _options?: { voiceName?: string }
+    options?: GenerateChapterAudioOptions
   ): Promise<ChapterAudioResult> {
     const startTime = Date.now()
     const textLength = chapter.content.length
@@ -77,6 +78,7 @@ export class TtsService {
     const results: SynthesizedChunkResult[] = []
 
     for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+      await options?.beforeChunkSynthesis?.(chunkIndex, chunks.length)
       const chunk = chunks[chunkIndex]
       logger.info(
         {

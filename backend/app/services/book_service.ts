@@ -470,7 +470,7 @@ export class BookService {
       await book
         .useTransaction(trx)
         .merge({
-          status: 'failed',
+          status: 'cancelled',
           processingStep: BOOK_IMPORT_STEP.FAILED,
           processingProgress: 100,
           processingError: errorMessage,

@@ -29,6 +29,7 @@ export class BookAudioPipelineService {
   async run(payload: SerialImportPayload) {
     const { bookId, runId, userId } = payload
     const book = await Book.findOrFail(bookId)
+    await this.importStateService.assertImportNotCancelled(runId, bookId)
     const progress = BookImportOrchestratorService.getBaseProgressByStep(
       BOOK_IMPORT_STEP.GENERATE_TTS
     )
@@ -42,16 +43,14 @@ export class BookAudioPipelineService {
     await book.merge({ audioStatus: 'processing' }).save()
 
     try {
+      await this.importStateService.assertImportNotCancelled(runId, bookId)
       const chapters = await BookChapter.query()
         .where('bookId', bookId)
         .orderBy('chapterIndex', 'asc')
       const aggregatedWords: Array<WordTiming & { chapterIndex: number }> = []
       let cumulativeOffset = 0
       for (const chapter of chapters) {
-        await book.refresh()
-        if (book.status !== 'processing') {
-          throw new Error(`Import stopped for book ${bookId}`)
-        }
+        await this.importStateService.assertImportNotCancelled(runId, bookId)
 
         const chapterInput: ChapterInput = {
           chapterIndex: chapter.chapterIndex,
@@ -59,7 +58,12 @@ export class BookAudioPipelineService {
           content: chapter.content,
         }
         this.assertTtsInput(chapterInput)
-        const generated = await this.ttsService.generateChapterAudio(chapterInput, bookId)
+        const generated = await this.ttsService.generateChapterAudio(chapterInput, bookId, {
+          beforeChunkSynthesis: async () => {
+            await this.importStateService.assertImportNotCancelled(runId, bookId)
+          },
+        })
+        await this.importStateService.assertImportNotCancelled(runId, bookId)
         this.assertWordTimings(chapterInput, generated.timing.words)
         const textHash = this.computeTextHash(chapter.title, chapter.content)
 
@@ -101,6 +105,7 @@ export class BookAudioPipelineService {
           })
         }
       }
+      await this.importStateService.assertImportNotCancelled(runId, bookId)
 
       const chapterAudios = await BookChapterAudio.query()
         .where('bookId', bookId)
@@ -126,6 +131,7 @@ export class BookAudioPipelineService {
           },
         })
         .save()
+      await this.importStateService.assertImportNotCancelled(runId, bookId)
 
       await this.importStateService.completeStep(
         runId,
@@ -147,6 +153,13 @@ export class BookAudioPipelineService {
         }
       )
     } catch (error) {
+      if (ImportStateService.isImportCancelledError(error)) {
+        await book.refresh()
+        if (book.audioStatus === 'processing') {
+          await book.merge({ audioStatus: 'pending' }).save()
+        }
+        return
+      }
       await book.merge({ audioStatus: 'failed' }).save()
       const message = error instanceof Error ? error.message : 'Unknown error'
       await this.importStateService.failStep(
@@ -198,7 +211,11 @@ export class BookAudioPipelineService {
       )
     }
 
-    const firstLine = content.split('\n').find((line) => line.trim().length > 0)?.trim() || ''
+    const firstLine =
+      content
+        .split('\n')
+        .find((line) => line.trim().length > 0)
+        ?.trim() || ''
     if (this.isSameTitle(firstLine, chapter.title)) {
       throw new Error(
         `Invalid TTS input for chapter ${chapter.chapterIndex}: duplicated_leading_title`
@@ -239,11 +256,7 @@ export class BookAudioPipelineService {
       )
     }
 
-    const headMatchResult = this.computeBestHeadMatch(
-      expectedWords,
-      actualWords,
-      compareCount
-    )
+    const headMatchResult = this.computeBestHeadMatch(expectedWords, actualWords, compareCount)
     const headMatchRate = headMatchResult.rate
     const expectedHeadPreview = expectedWords.slice(0, compareCount).join(' ')
     const actualHeadPreview = actualWords

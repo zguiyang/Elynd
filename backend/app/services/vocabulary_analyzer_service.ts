@@ -1,6 +1,25 @@
 import { inject } from '@adonisjs/core'
-import natural from 'natural'
+import { createRequire } from 'node:module'
 import BookVocabulary from '#models/book_vocabulary'
+
+type WordTokenizerShape = {
+  tokenize: (input: string) => string[]
+}
+
+type NounInflectorShape = {
+  singularize: (input: string) => string
+}
+
+const require = createRequire(import.meta.url)
+const tokenizers = require('natural/lib/natural/tokenizers') as {
+  WordTokenizer: new () => WordTokenizerShape
+}
+const inflectors = require('natural/lib/natural/inflectors') as {
+  NounInflector: new () => NounInflectorShape
+}
+const stopwordsModule = require('natural/lib/natural/util/stopwords') as {
+  words: string[]
+}
 
 export interface VocabularyCandidate {
   word: string
@@ -15,8 +34,8 @@ export interface VocabularyWithMeaning extends VocabularyCandidate {
 
 @inject()
 export class VocabularyAnalyzerService {
-  private tokenizer = new natural.WordTokenizer()
-  private nounInflector = new natural.NounInflector()
+  private tokenizer = new tokenizers.WordTokenizer()
+  private nounInflector = new inflectors.NounInflector()
   private irregularLemmas: Record<string, string> = {
     children: 'child',
     men: 'man',
@@ -68,7 +87,7 @@ export class VocabularyAnalyzerService {
   }
 
   filterStopWords(tokens: string[]): string[] {
-    const stopwordSet = new Set(natural.stopwords)
+    const stopwordSet = new Set(stopwordsModule.words)
 
     return tokens.filter((token) => token.length >= 3 && !stopwordSet.has(token))
   }

@@ -39,14 +39,15 @@ export class BookImportOrchestratorService {
 
   static getBaseProgressByStep(step: string): number {
     const weights: Array<{ key: string; weight: number }> = [
-      { key: BOOK_IMPORT_STEP.RECEIVED, weight: BOOK_IMPORT_PROGRESS.IMPORT_RECEIVED },
-      { key: BOOK_IMPORT_STEP.FILE_VALIDATING, weight: BOOK_IMPORT_PROGRESS.FILE_VALIDATING },
-      { key: BOOK_IMPORT_STEP.SEMANTIC_METADATA, weight: BOOK_IMPORT_PROGRESS.SEMANTIC_METADATA },
-      { key: BOOK_IMPORT_STEP.SEMANTIC_CHAPTERS, weight: BOOK_IMPORT_PROGRESS.SEMANTIC_CHAPTERS },
-      { key: BOOK_IMPORT_STEP.CONTENT_HASHING, weight: BOOK_IMPORT_PROGRESS.CONTENT_HASHING },
-      { key: BOOK_IMPORT_STEP.VOCABULARY_EXTRACTING, weight: BOOK_IMPORT_PROGRESS.VOCABULARY_EXTRACTING },
-      { key: BOOK_IMPORT_STEP.PARALLEL_PROCESSING, weight: BOOK_IMPORT_PROGRESS.PARALLEL_PROCESSING },
-      { key: BOOK_IMPORT_STEP.FINALIZING_PUBLISH, weight: BOOK_IMPORT_PROGRESS.FINALIZING_PUBLISH }
+      { key: BOOK_IMPORT_STEP.PREPARE_IMPORT, weight: BOOK_IMPORT_PROGRESS.PREPARE_IMPORT },
+      { key: BOOK_IMPORT_STEP.SEMANTIC_CLEAN, weight: BOOK_IMPORT_PROGRESS.SEMANTIC_CLEAN },
+      {
+        key: BOOK_IMPORT_STEP.BUILD_CONTENT_AND_VOCAB_SEED,
+        weight: BOOK_IMPORT_PROGRESS.BUILD_CONTENT_AND_VOCAB_SEED,
+      },
+      { key: BOOK_IMPORT_STEP.ENRICH_VOCABULARY, weight: BOOK_IMPORT_PROGRESS.ENRICH_VOCABULARY },
+      { key: BOOK_IMPORT_STEP.GENERATE_TTS, weight: BOOK_IMPORT_PROGRESS.GENERATE_TTS },
+      { key: BOOK_IMPORT_STEP.FINALIZE_IMPORT, weight: BOOK_IMPORT_PROGRESS.FINALIZE_IMPORT },
     ]
 
     let total = 0
@@ -60,7 +61,9 @@ export class BookImportOrchestratorService {
     return 0
   }
 
-  async validateSourceFile(book: Book): Promise<{ storagePath: string; absolutePath: string; ext: string }> {
+  async validateSourceFile(
+    book: Book
+  ): Promise<{ storagePath: string; absolutePath: string; ext: string }> {
     if (!book.rawFilePath || !book.rawFileExt) {
       throw new Error('Raw source file metadata missing')
     }
@@ -75,7 +78,11 @@ export class BookImportOrchestratorService {
     return { storagePath: book.rawFilePath, absolutePath, ext: book.rawFileExt.toLowerCase() }
   }
 
-  async parseSourceFile(params: { storagePath: string; absolutePath: string; ext: string }): Promise<ParsedSourceResult> {
+  async parseSourceFile(params: {
+    storagePath: string
+    absolutePath: string
+    ext: string
+  }): Promise<ParsedSourceResult> {
     const parsed = await this.parserService.parseFileFromStorage(
       params.storagePath,
       params.absolutePath,
@@ -88,9 +95,9 @@ export class BookImportOrchestratorService {
       chapters: parsed.chapters.map((chapter, index) => ({
         title: chapter.title,
         content: chapter.content,
-        chapterIndex: index
+        chapterIndex: index,
       })),
-      wordCount: parsed.wordCount
+      wordCount: parsed.wordCount,
     }
   }
 
@@ -103,7 +110,10 @@ export class BookImportOrchestratorService {
       fileName: params.book.rawFileName || params.parsed.title,
       sourceType: params.book.source,
       chapterTitles: params.parsed.chapters.slice(0, 30).map((item) => item.title),
-      sampleText: params.parsed.chapters.slice(0, 3).map((item) => item.content).join('\n\n')
+      sampleText: params.parsed.chapters
+        .slice(0, 3)
+        .map((item) => item.content)
+        .join('\n\n'),
     })
 
     return metadata
@@ -114,7 +124,7 @@ export class BookImportOrchestratorService {
     const cleaned = await cleaner.cleanChapters(
       parsed.chapters.map((chapter) => ({
         title: chapter.title,
-        content: chapter.content
+        content: chapter.content,
       }))
     )
 
@@ -138,7 +148,7 @@ export class BookImportOrchestratorService {
         bookId: book.id,
         chapterIndex: index,
         title: chapter.title,
-        content: chapter.content
+        content: chapter.content,
       }))
     )
 
@@ -156,7 +166,7 @@ export class BookImportOrchestratorService {
         description: metadata.description,
         contentHash,
         wordCount,
-        readingTime
+        readingTime,
       })
       .save()
 
@@ -164,7 +174,9 @@ export class BookImportOrchestratorService {
   }
 
   async extractVocabulary(book: Book) {
-    const chapters = await BookChapter.query().where('bookId', book.id).orderBy('chapterIndex', 'asc')
+    const chapters = await BookChapter.query()
+      .where('bookId', book.id)
+      .orderBy('chapterIndex', 'asc')
     const content = chapters.map((item) => item.content).join('\n\n')
     const vocabulary = this.analyzerService.extractVocabulary(content)
     await this.analyzerService.saveVocabulary(
@@ -172,13 +184,15 @@ export class BookImportOrchestratorService {
       vocabulary.map((item) => ({
         ...item,
         meaning: '',
-        sentence: ''
+        sentence: '',
       }))
     )
     return vocabulary
   }
 
-  async assignDifficultyLevel(book: Book): Promise<{ difficultyLevel: 'L1' | 'L2' | 'L3'; uniqueLemmaCount: number }> {
+  async assignDifficultyLevel(
+    book: Book
+  ): Promise<{ difficultyLevel: 'L1' | 'L2' | 'L3'; uniqueLemmaCount: number }> {
     const result = await BookVocabulary.query()
       .where('bookId', book.id)
       .countDistinct('lemma as total')
@@ -196,12 +210,15 @@ export class BookImportOrchestratorService {
   async dispatchParallelJobs(bookId: number) {
     await Promise.all([
       GenerateBookAudioJob.dispatch({ bookId }),
-      GenerateBookVocabularyJob.dispatch({ bookId })
+      GenerateBookVocabularyJob.dispatch({ bookId }),
     ])
   }
 
   async reconcileParallelProgress(book: Book) {
-    const totalChaptersResult = await BookChapter.query().where('bookId', book.id).count('* as total').firstOrFail()
+    const totalChaptersResult = await BookChapter.query()
+      .where('bookId', book.id)
+      .count('* as total')
+      .firstOrFail()
     const completedAudioResult = await BookChapterAudio.query()
       .where('bookId', book.id)
       .where('status', 'completed')
@@ -210,15 +227,12 @@ export class BookImportOrchestratorService {
 
     const totalChapters = Number(totalChaptersResult.$extras.total || 0)
     const completedChapters = Number(completedAudioResult.$extras.total || 0)
-    const audioProgress = totalChapters === 0 ? 0 : Math.round((completedChapters / totalChapters) * 100)
+    const audioProgress =
+      totalChapters === 0 ? 0 : Math.round((completedChapters / totalChapters) * 100)
 
     await book.refresh()
     const vocabularyProgress =
-      book.vocabularyStatus === 'completed'
-        ? 100
-        : book.vocabularyStatus === 'processing'
-          ? 50
-          : 0
+      book.vocabularyStatus === 'completed' ? 100 : book.vocabularyStatus === 'processing' ? 50 : 0
 
     const parallelProgress = Math.round(audioProgress * 0.5 + vocabularyProgress * 0.5)
     return {
@@ -226,7 +240,7 @@ export class BookImportOrchestratorService {
       vocabularyProgress,
       parallelProgress,
       audioDone: book.audioStatus === 'completed',
-      vocabularyDone: book.vocabularyStatus === 'completed'
+      vocabularyDone: book.vocabularyStatus === 'completed',
     }
   }
 
@@ -242,7 +256,7 @@ export class BookImportOrchestratorService {
         isPublished: true,
         processingStep: BOOK_IMPORT_STEP.COMPLETED,
         processingProgress: 100,
-        processingError: null
+        processingError: null,
       })
       .save()
     return true
@@ -255,8 +269,8 @@ export class BookImportOrchestratorService {
       output_ref: {
         inputSummary,
         resultSummary: resultSummary || null,
-        errorMeta: null
-      }
+        errorMeta: null,
+      },
     }
   }
 
@@ -268,8 +282,8 @@ export class BookImportOrchestratorService {
       output_ref: {
         inputSummary,
         resultSummary: null,
-        errorMeta: { message }
-      }
+        errorMeta: { message },
+      },
     }
   }
 

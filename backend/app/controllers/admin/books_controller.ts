@@ -24,6 +24,7 @@ import {
 } from '#validators/book_validator'
 import { Exception } from '@adonisjs/core/exceptions'
 import { BookHashService } from '#services/book_hash_service'
+import { BOOK_IMPORT_STEP } from '#constants'
 
 @inject()
 export default class AdminBooksController {
@@ -135,7 +136,7 @@ export default class AdminBooksController {
           wordCount: 0,
           readingTime: 1,
           status: 'processing',
-          processingStep: 'import_received',
+          processingStep: BOOK_IMPORT_STEP.PREPARE_IMPORT,
           processingProgress: 0,
           processingError: null,
           isPublished: false,

@@ -122,29 +122,25 @@ const VOCABULARY_ANALYZER = {
 type VocabularyAnalyzer = (typeof VOCABULARY_ANALYZER)[keyof typeof VOCABULARY_ANALYZER]
 
 const BOOK_IMPORT_STEP = {
-  RECEIVED: 'import_received',
-  FILE_VALIDATING: 'file_validating',
-  SEMANTIC_METADATA: 'semantic_metadata',
-  SEMANTIC_CHAPTERS: 'semantic_chapters',
-  CONTENT_HASHING: 'content_hashing',
-  VOCABULARY_EXTRACTING: 'vocabulary_extracting',
-  PARALLEL_PROCESSING: 'parallel_processing',
-  FINALIZING_PUBLISH: 'finalizing_publish',
+  PREPARE_IMPORT: 'prepare_import',
+  SEMANTIC_CLEAN: 'semantic_clean',
+  BUILD_CONTENT_AND_VOCAB_SEED: 'build_content_and_vocab_seed',
+  ENRICH_VOCABULARY: 'enrich_vocabulary',
+  GENERATE_TTS: 'generate_tts',
+  FINALIZE_IMPORT: 'finalize_import',
   COMPLETED: 'completed',
-  FAILED: 'failed'
+  FAILED: 'failed',
 } as const
 
 type BookImportStep = (typeof BOOK_IMPORT_STEP)[keyof typeof BOOK_IMPORT_STEP]
 
 const BOOK_IMPORT_PROGRESS = {
-  IMPORT_RECEIVED: 5,
-  FILE_VALIDATING: 5,
-  SEMANTIC_METADATA: 15,
-  SEMANTIC_CHAPTERS: 20,
-  CONTENT_HASHING: 5,
-  VOCABULARY_EXTRACTING: 15,
-  PARALLEL_PROCESSING: 30,
-  FINALIZING_PUBLISH: 5,
+  PREPARE_IMPORT: 10,
+  SEMANTIC_CLEAN: 20,
+  BUILD_CONTENT_AND_VOCAB_SEED: 25,
+  ENRICH_VOCABULARY: 20,
+  GENERATE_TTS: 20,
+  FINALIZE_IMPORT: 5,
   TOTAL_MAX: 100,
 } as const
 

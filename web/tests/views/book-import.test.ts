@@ -24,6 +24,12 @@ vi.mock('vue-sonner', () => ({
   },
 }))
 
+vi.mock('vue-router', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+  }),
+}))
+
 import { adminApi } from '@/api/admin'
 
 function mountView() {
@@ -73,5 +79,21 @@ describe('book-import-view.vue', () => {
     const wrapper = mountView()
     const vm = wrapper.vm as any
     expect(typeof vm.parseSelectedFile).toBe('undefined')
+  })
+
+  it('should show success state after import request succeeds', async () => {
+    const wrapper = mountView()
+    const vm = wrapper.vm as any
+
+    vm.selectedFile = {
+      name: 'book.txt',
+      arrayBuffer: vi.fn().mockResolvedValue(new TextEncoder().encode('hello').buffer),
+    } as unknown as File
+    await vm.importNow()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.text()).toContain('导入成功，任务已进入后台处理')
+    expect(wrapper.text()).toContain('继续导入书籍')
+    expect(wrapper.text()).toContain('查看进度')
   })
 })

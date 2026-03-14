@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import { Upload, Loader2, CheckCircle2, AlertCircle } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { adminApi } from '@/api/admin'
-import { useBookImportStatus, getStepText } from '@/composables/useBookImportStatus'
+import { useBookImportStatus } from '@/composables/useBookImportStatus'
 
 const isImporting = ref(false)
 const selectedFile = ref<File | null>(null)
 const bookHash = ref('')
 const submitError = ref<string | null>(null)
 const source = ref<'user_uploaded' | 'public_domain' | 'ai_generated'>('user_uploaded')
+const importedBookId = ref<number | null>(null)
 
+const router = useRouter()
 const importStatus = useBookImportStatus()
-const currentStatus = computed(() => unref(importStatus.status))
 
 async function computeFileHash(file: File): Promise<string> {
   const buffer = await file.arrayBuffer()
@@ -36,8 +38,9 @@ async function importNow() {
       source: source.value,
       bookHash: bookHash.value
     })
+    importedBookId.value = result.bookId
     await importStatus.startTracking(result.bookId)
-    toast.success('导入任务已创建，正在后台处理')
+    toast.success('导入成功')
   } catch (error) {
     const err = error as { response?: { data?: { message?: string } } }
     submitError.value = err.response?.data?.message || (error as Error).message || '导入失败'
@@ -50,6 +53,17 @@ function onFileChange(event: Event) {
   const target = event.target as HTMLInputElement
   selectedFile.value = target.files?.[0] || null
 }
+
+function resetImportForm() {
+  selectedFile.value = null
+  bookHash.value = ''
+  submitError.value = null
+  importedBookId.value = null
+}
+
+function goToBooksList() {
+  router.push('/admin/books')
+}
 </script>
 
 <template>
@@ -59,64 +73,58 @@ function onFileChange(event: Event) {
         <CardTitle>导入书籍</CardTitle>
       </CardHeader>
       <CardContent class="space-y-6">
-        <Alert v-if="submitError" variant="destructive">
-          <AlertCircle class="h-4 w-4" />
-          <AlertTitle>导入失败</AlertTitle>
-          <AlertDescription>{{ submitError }}</AlertDescription>
-        </Alert>
-
-        <label
-          class="flex min-h-52 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/40 bg-muted/20 p-6 text-center"
-        >
-          <Upload class="mb-3 size-8 text-muted-foreground" />
-          <p class="font-medium">拖拽文件到此处或点击上传</p>
-          <p class="mt-1 text-sm text-muted-foreground">仅支持 .epub 和 .txt，最大 4MB</p>
-          <input class="hidden" type="file" accept=".epub,.txt" @change="onFileChange" />
-        </label>
-
-        <div class="space-y-2">
-          <Label>来源</Label>
-          <Select v-model="source">
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="user_uploaded">user_uploaded</SelectItem>
-              <SelectItem value="public_domain">public_domain</SelectItem>
-              <SelectItem value="ai_generated">ai_generated</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div class="flex gap-3">
-          <Button :disabled="!selectedFile || isImporting" @click="importNow">
-            <Loader2 v-if="isImporting" class="mr-2 size-4 animate-spin" />
-            开始导入
-          </Button>
-          <span v-if="selectedFile" class="self-center text-sm text-muted-foreground">
-            {{ selectedFile.name }}
-          </span>
-        </div>
-
-        <div v-if="currentStatus" class="rounded-md border p-4">
-          <div class="mb-2 flex items-center gap-2 text-sm">
-            <Loader2
-              v-if="currentStatus.status === 'processing'"
-              class="size-4 animate-spin text-muted-foreground"
-            />
-            <CheckCircle2
-              v-else-if="currentStatus.status === 'ready'"
-              class="size-4 text-green-600"
-            />
-            <AlertCircle v-else class="size-4 text-red-600" />
-            <span>{{ getStepText(currentStatus.processingStep || '') }}</span>
+        <div v-if="importedBookId" class="space-y-4 rounded-lg border bg-muted/20 p-6">
+          <div class="flex items-center gap-2 text-green-600">
+            <CheckCircle2 class="size-5" />
+            <p class="font-medium">导入成功，任务已进入后台处理</p>
           </div>
-          <Progress :model-value="currentStatus.processingProgress" />
-          <p class="mt-2 text-xs text-muted-foreground">
-            {{ currentStatus.processingProgress }}%
+          <p class="text-sm text-muted-foreground">
+            你可以继续导入下一本书，或前往书籍列表查看处理进度。
           </p>
-          <p v-if="currentStatus.processingError" class="mt-2 text-sm text-red-600">
-            {{ currentStatus.processingError }}
-          </p>
+          <div class="flex gap-3">
+            <Button variant="outline" @click="resetImportForm">继续导入书籍</Button>
+            <Button @click="goToBooksList">查看进度</Button>
+          </div>
         </div>
+
+        <template v-else>
+          <Alert v-if="submitError" variant="destructive">
+            <AlertCircle class="h-4 w-4" />
+            <AlertTitle>导入失败</AlertTitle>
+            <AlertDescription>{{ submitError }}</AlertDescription>
+          </Alert>
+
+          <label
+            class="flex min-h-52 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-muted-foreground/40 bg-muted/20 p-6 text-center"
+          >
+            <Upload class="mb-3 size-8 text-muted-foreground" />
+            <p class="font-medium">拖拽文件到此处或点击上传</p>
+            <p class="mt-1 text-sm text-muted-foreground">仅支持 .epub 和 .txt，最大 4MB</p>
+            <input class="hidden" type="file" accept=".epub,.txt" @change="onFileChange" />
+          </label>
+
+          <div class="space-y-2">
+            <Label>来源</Label>
+            <Select v-model="source">
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="user_uploaded">user_uploaded</SelectItem>
+                <SelectItem value="public_domain">public_domain</SelectItem>
+                <SelectItem value="ai_generated">ai_generated</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div class="flex gap-3">
+            <Button :disabled="!selectedFile || isImporting" @click="importNow">
+              <Loader2 v-if="isImporting" class="mr-2 size-4 animate-spin" />
+              开始导入
+            </Button>
+            <span v-if="selectedFile" class="self-center text-sm text-muted-foreground">
+              {{ selectedFile.name }}
+            </span>
+          </div>
+        </template>
       </CardContent>
     </Card>
   </div>

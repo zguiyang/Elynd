@@ -61,7 +61,7 @@ onMounted(async () => {
 
 <template>
   <div class="max-w-xl mx-auto px-6 py-12 space-y-12">
-    <header class="text-center space-y-4">
+    <header class="text-center space-y-4 p-8 rounded-2xl bg-muted/20 border shadow-sm">
       <div class="inline-flex items-center justify-center">
         <img
           v-if="user?.avatar"

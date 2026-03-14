@@ -95,7 +95,7 @@ watch(
 
       <!-- Stats Cards -->
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card v-for="stat in stats" :key="stat.label">
+        <Card v-for="stat in stats" :key="stat.label" class="shadow-sm border-muted">
           <CardContent class="flex items-center gap-4 py-6">
             <div :class="['flex h-12 w-12 items-center justify-center rounded-lg bg-muted', stat.color]">
               <component :is="stat.icon" class="size-6" />
@@ -108,7 +108,6 @@ watch(
         </Card>
       </div>
 
-      <!-- Continue Reading -->
       <section v-if="continueReading.length > 0">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-xl font-semibold">继续阅读</h2>
@@ -123,7 +122,7 @@ watch(
           <Card
             v-for="book in continueReading"
             :key="book.id"
-            class="hover:shadow-md transition-shadow cursor-pointer"
+            class="hover:shadow-md transition-shadow cursor-pointer border-muted shadow-sm"
           >
             <CardHeader>
               <div class="flex items-start justify-between">
@@ -197,7 +196,7 @@ watch(
           <Card
             v-for="book in recommendedBooks"
             :key="book.id"
-            class="hover:shadow-md transition-shadow cursor-pointer group"
+            class="hover:shadow-md transition-shadow cursor-pointer group border-muted shadow-sm"
             as-child
           >
             <RouterLink :to="`/learning/book/${book.id}`">

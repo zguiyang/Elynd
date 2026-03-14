@@ -132,10 +132,16 @@ export class DictionaryService {
     const meaningResult = results[1].status === 'fulfilled' ? results[1].value : null
 
     if (results[0].status === 'rejected') {
-      logger.warn({ word, source: 'audio', reason: String(results[0].reason) }, 'Dictionary upstream failed')
+      logger.warn(
+        { word, source: 'audio', reason: String(results[0].reason) },
+        'Dictionary upstream failed'
+      )
     }
     if (results[1].status === 'rejected') {
-      logger.warn({ word, source: 'meaning', reason: String(results[1].reason) }, 'Dictionary upstream failed')
+      logger.warn(
+        { word, source: 'meaning', reason: String(results[1].reason) },
+        'Dictionary upstream failed'
+      )
     }
 
     if (!audioResult && !meaningResult) {

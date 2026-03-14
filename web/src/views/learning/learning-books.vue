@@ -128,8 +128,9 @@ const getDifficultyVariant = (difficulty: string): 'default' | 'secondary' | 'ou
           v-for="book in books"
           :key="book.id"
           :to="`/learning/book/${book.id}`"
+          class="h-full"
         >
-          <Card class="h-full hover:shadow-md transition-all cursor-pointer group">
+          <Card class="h-full border-muted shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer group">
             <CardHeader>
               <div class="flex items-start justify-between">
                 <CardTitle class="text-lg group-hover:text-primary transition-colors line-clamp-2">

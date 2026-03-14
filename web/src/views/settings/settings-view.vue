@@ -135,9 +135,9 @@ onMounted(async () => {
     </div>
 
     <template v-else>
-      <section class="bg-muted/30 rounded-lg p-6 space-y-4">
-        <h2 class="text-base font-medium">个人资料</h2>
-        <div class="divide-y">
+      <section class="bg-card border rounded-xl p-6 shadow-sm space-y-4">
+        <h2 class="text-base font-semibold">个人资料</h2>
+        <div class="divide-y divide-border/50">
           <div class="flex justify-between py-3">
             <span class="text-sm text-muted-foreground">用户名</span>
             <span class="text-sm font-medium">{{ user?.fullName || '-' }}</span>
@@ -159,8 +159,8 @@ onMounted(async () => {
         </div>
       </section>
 
-      <section class="bg-muted/30 rounded-lg p-6 space-y-5">
-        <h2 class="text-base font-medium">学习设置</h2>
+      <section class="bg-card border rounded-xl p-6 shadow-sm space-y-6">
+        <h2 class="text-base font-semibold">学习设置</h2>
         
         <div class="space-y-4">
           <div class="space-y-1.5">

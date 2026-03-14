@@ -91,10 +91,10 @@ export default class GenerateBookAudioJob extends Job {
             chapters: chapterAudios.map((audio) => ({
               chapterIndex: audio.chapterIndex,
               audioPath: audio.audioPath,
-              durationMs: audio.durationMs
+              durationMs: audio.durationMs,
             })),
-            totalDuration
-          }
+            totalDuration,
+          },
         })
         .save()
 

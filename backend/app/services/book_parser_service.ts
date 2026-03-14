@@ -23,10 +23,7 @@ export interface ParsedBookResult {
 export class BookParserService {
   private static readonly MAX_FILE_SIZE = 4 * 1024 * 1024
   private static readonly ALLOWED_EXTENSIONS = ['epub', 'txt']
-  private static readonly EPUB_CONTENT_MEDIA_TYPES = new Set([
-    'application/xhtml+xml',
-    'text/html',
-  ])
+  private static readonly EPUB_CONTENT_MEDIA_TYPES = new Set(['application/xhtml+xml', 'text/html'])
 
   validateFile(file: MultipartFile) {
     const ext = (file.extname || '').toLowerCase()
@@ -95,7 +92,12 @@ export class BookParserService {
         continue
       }
 
-      const title = this.resolveEpubChapterTitle(item, tocTitleById, tocTitleByHref, chapters.length)
+      const title = this.resolveEpubChapterTitle(
+        item,
+        tocTitleById,
+        tocTitleByHref,
+        chapters.length
+      )
 
       chapters.push({
         chapterIndex: chapters.length,
@@ -105,7 +107,10 @@ export class BookParserService {
       })
     }
 
-    const fallbackContent = chapters.map((chapter) => chapter.content).join('\n\n').trim()
+    const fallbackContent = chapters
+      .map((chapter) => chapter.content)
+      .join('\n\n')
+      .trim()
     const metadataTitle = this.normalizeEpubMetadataField(epub.metadata?.title) || 'Untitled'
     const metadataAuthor = this.normalizeEpubMetadataField(epub.metadata?.creator)
     const metadataDescription = this.normalizeEpubMetadataField(epub.metadata?.description)
@@ -191,7 +196,9 @@ export class BookParserService {
   }
 
   private isEpubContentManifestItem(item: ManifestItem): boolean {
-    const mediaType = String(item['media-type'] || '').trim().toLowerCase()
+    const mediaType = String(item['media-type'] || '')
+      .trim()
+      .toLowerCase()
     if (!mediaType) {
       return true
     }

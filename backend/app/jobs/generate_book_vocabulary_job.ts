@@ -38,7 +38,9 @@ export default class GenerateBookVocabularyJob extends Job {
 
     try {
       // Step 1: extract vocabulary seed
-      const chapters = await BookChapter.query().where('bookId', bookId).orderBy('chapterIndex', 'asc')
+      const chapters = await BookChapter.query()
+        .where('bookId', bookId)
+        .orderBy('chapterIndex', 'asc')
       const extractInputHash = crypto
         .createHash('md5')
         .update(chapters.map((chapter) => `${chapter.title}\n${chapter.content}`).join('\n---\n'))
@@ -133,7 +135,7 @@ export default class GenerateBookVocabularyJob extends Job {
           extractedWords,
           lookedUpWords,
           enrichedWords,
-          missingEntries
+          missingEntries,
         },
         'Vocabulary generation completed'
       )

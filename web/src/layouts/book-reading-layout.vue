@@ -339,7 +339,7 @@ watch(book, (newBook) => {
     </header>
 
     <div class="flex-1 min-h-0 flex">
-      <aside v-if="book" class="hidden md:flex w-60 flex-col border-r bg-muted/30">
+      <aside v-if="book" class="hidden md:flex w-60 flex-col border-r bg-muted/20">
         <ChapterSidebar
           :chapters="chapters"
           :current-index="currentChapterIndex"

@@ -57,7 +57,7 @@ export class BookSemanticCleanService {
     return {
       ...config,
       timeout: AI.DEFAULT_TIMEOUT,
-      maxRetries: AI.DEFAULT_MAX_RETRIES
+      maxRetries: AI.DEFAULT_MAX_RETRIES,
     }
   }
 
@@ -68,11 +68,11 @@ export class BookSemanticCleanService {
     const params: AiChatParams = {
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
+        { role: 'user', content: userPrompt },
       ],
       maxTokens: 4000,
       temperature: 0.2,
-      responseFormat: { type: 'json_object' }
+      responseFormat: { type: 'json_object' },
     }
 
     const result = await this.aiService.chatJson<MetadataResponse>(aiConfig, params)
@@ -80,7 +80,7 @@ export class BookSemanticCleanService {
     return {
       title: (result.title || input.fileName || 'Untitled').trim(),
       author: result.author?.trim() || null,
-      description: result.description?.trim() || null
+      description: result.description?.trim() || null,
     }
   }
 
@@ -91,11 +91,11 @@ export class BookSemanticCleanService {
     const params: AiChatParams = {
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
+        { role: 'user', content: userPrompt },
       ],
       maxTokens: 16000,
       temperature: 0.2,
-      responseFormat: { type: 'json_object' }
+      responseFormat: { type: 'json_object' },
     }
 
     try {
@@ -104,7 +104,7 @@ export class BookSemanticCleanService {
         .map((chapter, index) => ({
           title: chapter.title?.trim() || `Chapter ${index + 1}`,
           content: chapter.content?.trim() || '',
-          chapterIndex: index
+          chapterIndex: index,
         }))
         .filter((chapter) => chapter.content.length > 0)
 
@@ -119,7 +119,7 @@ export class BookSemanticCleanService {
     return fallback.cleanedChapters.map((chapter, index) => ({
       title: chapter.title,
       content: chapter.content,
-      chapterIndex: index
+      chapterIndex: index,
     }))
   }
 }

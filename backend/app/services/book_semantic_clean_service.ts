@@ -101,11 +101,22 @@ export class BookSemanticCleanService {
     try {
       const result = await this.aiService.chatJson<ChapterResponse>(aiConfig, params)
       const cleaned = (result.cleanedChapters || [])
-        .map((chapter, index) => ({
-          title: chapter.title?.trim() || `Chapter ${index + 1}`,
-          content: chapter.content?.trim() || '',
-          chapterIndex: index,
-        }))
+        .map((chapter, index) => {
+          const rawContent = chapter.content?.trim() || ''
+          const titleMatch = rawContent.match(/^#\s+(.+)$/m)
+          const title = titleMatch
+            ? titleMatch[1].trim()
+            : chapter.title?.trim() || `Chapter ${index + 1}`
+
+          const contentBody = rawContent.replace(/^#\s+.+$/m, '').trim()
+          const content = contentBody ? `# ${title}\n\n${contentBody}` : `# ${title}`
+
+          return {
+            title,
+            content,
+            chapterIndex: index,
+          }
+        })
         .filter((chapter) => chapter.content.length > 0)
 
       if (cleaned.length > 0) {
@@ -118,7 +129,7 @@ export class BookSemanticCleanService {
     const fallback = this.ruleCleaner.clean(chapters)
     return fallback.cleanedChapters.map((chapter, index) => ({
       title: chapter.title,
-      content: chapter.content,
+      content: `# ${chapter.title}\n\n${chapter.content.trim()}`,
       chapterIndex: index,
     }))
   }

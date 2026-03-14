@@ -6,8 +6,8 @@ import drive from '@adonisjs/drive/services/main'
 import { extname, basename } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import GenerateBookJob from '#jobs/generate_book_job'
-import ProcessBookJob from '#jobs/process_book_job'
 import { BookService } from '#services/book_service'
+import { BookImportOrchestratorService } from '#services/book_import_orchestrator_service'
 import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import BookChapterAudio from '#models/book_chapter_audio'
@@ -33,7 +33,8 @@ export default class AdminBooksController {
   constructor(
     private transmitService: TransmitService,
     private bookService: BookService,
-    private bookParserService: BookParserService
+    private bookParserService: BookParserService,
+    private bookImportOrchestratorService: BookImportOrchestratorService
   ) {}
 
   async generate({ auth, request }: HttpContext) {
@@ -84,6 +85,19 @@ export default class AdminBooksController {
     return {
       success: true,
       message: 'Vocabulary retry task added to queue',
+      ...result,
+    }
+  }
+
+  async rebuildChapters({ auth, params }: HttpContext) {
+    const user = auth.getUserOrFail()
+    logger.info({ bookId: params.id }, 'Chapter rebuild requested')
+
+    const result = await this.bookService.rebuildChapters(params.id, user.id)
+
+    return {
+      success: true,
+      message: 'Chapter rebuild task added to queue',
       ...result,
     }
   }
@@ -155,7 +169,7 @@ export default class AdminBooksController {
       )
     })
 
-    await dispatch(ProcessBookJob, {
+    await this.bookImportOrchestratorService.scheduleImportPipeline({
       bookId: book.id,
       userId: user.id,
     })

@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { useReadingSettingsStore } from '@/stores/reading-settings'
+import MarkdownRenderer from '@/components/shared/MarkdownRenderer.vue'
 
 interface Props {
   paragraphs: string[]
   chapterTitle?: string
+  markdownContent?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
   chapterTitle: undefined,
+  markdownContent: '',
 })
 
 const readingSettings = useReadingSettingsStore()
@@ -28,13 +31,16 @@ const contentStyle = computed(() => ({
       }"
     >
       <h2
-        v-if="props.chapterTitle"
+        v-if="props.chapterTitle && !props.markdownContent"
         class="text-2xl font-bold text-foreground mb-8"
       >
         {{ props.chapterTitle }}
       </h2>
 
-      <div class="text-foreground">
+      <div v-if="props.markdownContent" class="text-foreground">
+        <MarkdownRenderer :content="props.markdownContent" />
+      </div>
+      <div v-else class="text-foreground">
         <p
           v-for="(paragraph, index) in paragraphs"
           :key="index"

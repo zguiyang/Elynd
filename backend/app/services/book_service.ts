@@ -8,6 +8,8 @@ import BookChapterAudio from '#models/book_chapter_audio'
 import BookProcessingRunLog from '#models/book_processing_run_log'
 import GenerateBookAudioJob from '#jobs/generate_book_audio_job'
 import GenerateBookVocabularyJob from '#jobs/generate_book_vocabulary_job'
+import { BookImportOrchestratorService } from '#services/book_import_orchestrator_service'
+import { BOOK_IMPORT_STEP } from '#constants'
 import type { ListPublishedParams } from '#types/book'
 
 export interface ChapterAudioSummary {
@@ -50,6 +52,8 @@ export interface EnrichedBookStatus {
 
 @inject()
 export class BookService {
+  constructor(private bookImportOrchestratorService: BookImportOrchestratorService) {}
+
   async listPublished(params: ListPublishedParams) {
     const query = Book.query()
       .where('isPublished', true)
@@ -341,6 +345,61 @@ export class BookService {
         pending: vocabPending,
         failed: vocabFailed,
       },
+    }
+  }
+
+  /**
+   * Rebuild chapters from source file
+   * Reuses import pipeline from raw source (without upload step)
+   */
+  async rebuildChapters(bookId: number, userId: number) {
+    const book = await Book.find(bookId)
+
+    if (!book) {
+      throw new Exception('Book not found', { status: 404 })
+    }
+
+    if (!book.rawFilePath) {
+      throw new Exception('Book has no source file to rebuild from', { status: 400 })
+    }
+
+    if (book.status === 'processing') {
+      throw new Exception('Book is already processing', { status: 400 })
+    }
+
+    await db.transaction(async (trx) => {
+      await BookChapter.query({ client: trx }).where('bookId', book.id).delete()
+      await BookChapterAudio.query({ client: trx }).where('bookId', book.id).delete()
+      await BookVocabulary.query({ client: trx }).where('bookId', book.id).delete()
+
+      await book
+        .useTransaction(trx)
+        .merge({
+          status: 'processing',
+          processingStep: BOOK_IMPORT_STEP.PREPARE_IMPORT,
+          processingProgress: 0,
+          processingError: null,
+          contentHash: null,
+          wordCount: 0,
+          readingTime: 1,
+          audioUrl: null,
+          audioTiming: null,
+          audioGeneratedAt: null,
+          audioStatus: 'pending',
+          vocabularyStatus: 'pending',
+        })
+        .save()
+    })
+
+    const jobId = await this.bookImportOrchestratorService.scheduleImportPipeline({
+      bookId: book.id,
+      userId,
+    })
+
+    return {
+      bookId: book.id,
+      jobId,
+      status: 'queued',
     }
   }
 }

@@ -1,7 +1,9 @@
 import { inject } from '@adonisjs/core'
+import { dispatch } from 'adonisjs-jobs/services/main'
 import { createHash } from 'node:crypto'
 import app from '@adonisjs/core/services/app'
 import drive from '@adonisjs/drive/services/main'
+import logger from '@adonisjs/core/services/logger'
 import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import BookChapterAudio from '#models/book_chapter_audio'
@@ -13,6 +15,7 @@ import { BookHashService } from '#services/book_hash_service'
 import PromptService from '#services/prompt_service'
 import { AiService } from '#services/ai_service'
 import { BookChapterCleanerService } from '#services/book_chapter_cleaner_service'
+import { BookContentGuardService } from '#services/book_content_guard_service'
 import { ConfigService } from '#services/config_service'
 import GenerateBookAudioJob from '#jobs/generate_book_audio_job'
 import GenerateBookVocabularyJob from '#jobs/generate_book_vocabulary_job'
@@ -59,6 +62,12 @@ export class BookImportOrchestratorService {
     }
 
     return 0
+  }
+
+  async scheduleImportPipeline(payload: { bookId: number; userId: number }) {
+    const { default: ProcessBookJob } = await import('#jobs/process_book_job')
+    const jobId = (await dispatch(ProcessBookJob, payload)) as string | undefined
+    return jobId || `manual-import-${Date.now()}`
   }
 
   async validateSourceFile(
@@ -142,9 +151,45 @@ export class BookImportOrchestratorService {
   }): Promise<{ contentHash: string; wordCount: number; readingTime: number }> {
     const { book, metadata, cleanedChapters } = params
 
+    // Validate chapters using Content Guard Service before persistence
+    const guardService = new BookContentGuardService()
+    const validChapters: Array<{ title: string; content: string; chapterIndex: number }> = []
+    const validationErrors: Array<{ chapterIndex: number; errors: string[] }> = []
+
+    for (const chapter of cleanedChapters) {
+      const result = guardService.validate(chapter.content)
+      if (result.valid) {
+        validChapters.push(chapter)
+      } else {
+        validationErrors.push({
+          chapterIndex: chapter.chapterIndex,
+          errors: result.errors,
+        })
+      }
+    }
+
+    // Log validation errors for debugging
+    if (validationErrors.length > 0) {
+      logger.warn(
+        { bookId: book.id, rejectedChapterCount: validationErrors.length, validationErrors },
+        '[ContentGuard] Some chapters were rejected during import'
+      )
+    }
+
+    // Ensure we still have valid chapters after filtering
+    if (validChapters.length === 0) {
+      throw new Error('No valid chapters remaining after content validation')
+    }
+
+    // Re-index chapters after filtering
+    const finalChapters = validChapters.map((chapter, index) => ({
+      ...chapter,
+      chapterIndex: index,
+    }))
+
     await BookChapter.query().where('bookId', book.id).delete()
     await BookChapter.createMany(
-      cleanedChapters.map((chapter, index) => ({
+      finalChapters.map((chapter, index) => ({
         bookId: book.id,
         chapterIndex: index,
         title: chapter.title,
@@ -152,12 +197,12 @@ export class BookImportOrchestratorService {
       }))
     )
 
-    const wordCount = cleanedChapters.reduce(
+    const wordCount = finalChapters.reduce(
       (sum, chapter) => sum + chapter.content.split(/\s+/).filter(Boolean).length,
       0
     )
     const readingTime = Math.max(1, Math.ceil(wordCount / 200))
-    const contentHash = this.hashService.hashNormalizedBook(cleanedChapters)
+    const contentHash = this.hashService.hashNormalizedBook(finalChapters)
 
     await book
       .merge({

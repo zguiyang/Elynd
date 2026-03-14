@@ -151,6 +151,7 @@ defineExpose({
         v-else-if="props.chapter"
         :paragraphs="paragraphs"
         :chapter-title="props.chapter?.title"
+        :markdown-content="props.chapter?.content"
       />
     </div>
 

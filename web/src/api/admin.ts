@@ -92,6 +92,11 @@ export interface RetryAudioResponse {
   status: string
 }
 
+export interface RebuildChaptersResponse {
+  success: boolean
+  message: string
+}
+
 export const adminApi = {
   generateBook: (data: GenerateBookData) =>
     request<GenerateBookResponse>({ method: 'POST', url: '/api/admin/books/generate', data }),
@@ -101,6 +106,9 @@ export const adminApi = {
 
   retryVocabulary: (bookId: number) =>
     request<RetryVocabularyResponse>({ method: 'POST', url: `/api/admin/books/${bookId}/retry-vocabulary` }),
+
+  rebuildChapters: (bookId: number) =>
+    request<RebuildChaptersResponse>({ method: 'POST', url: `/api/admin/books/${bookId}/rebuild-chapters` }),
 
   importBook: (data: ImportBookPayload) => {
     const formData = new FormData()

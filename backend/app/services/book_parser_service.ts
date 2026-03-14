@@ -19,6 +19,12 @@ export interface ParsedBookResult {
   wordCount: number
 }
 
+interface EpubTocItem {
+  title: string
+  hrefBase: string
+  anchor: string | null
+}
+
 @inject()
 export class BookParserService {
   private static readonly MAX_FILE_SIZE = 4 * 1024 * 1024
@@ -63,49 +69,11 @@ export class BookParserService {
 
     const flow = Array.isArray(epub.flow) ? epub.flow : []
     const toc = Array.isArray(epub.toc) ? epub.toc : []
-    const tocTitleById = new Map<string, string>()
-    const tocTitleByHref = new Map<string, string>()
-    const chapters: ParsedBookChapter[] = []
-
-    for (const tocItem of toc) {
-      if (tocItem.id) {
-        tocTitleById.set(String(tocItem.id), String(tocItem.title || ''))
-      }
-
-      if (tocItem.href) {
-        tocTitleByHref.set(this.normalizeEpubHref(tocItem.href), String(tocItem.title || ''))
-      }
-    }
-
-    for (const item of flow) {
-      if (!this.isEpubContentManifestItem(item)) {
-        continue
-      }
-
-      const rawContent = await this.readEpubChapterRaw(epub, item.id)
-      if (!rawContent) {
-        continue
-      }
-
-      const content = this.cleanContent(rawContent.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' '))
-      if (!content) {
-        continue
-      }
-
-      const title = this.resolveEpubChapterTitle(
-        item,
-        tocTitleById,
-        tocTitleByHref,
-        chapters.length
-      )
-
-      chapters.push({
-        chapterIndex: chapters.length,
-        title,
-        content,
-        wordCount: this.countWords(content),
-      })
-    }
+    const tocItems = this.flattenEpubToc(toc)
+    const chapters =
+      tocItems.length > 0
+        ? await this.parseEpubByToc(epub, flow, tocItems)
+        : await this.parseEpubByFlow(epub, flow)
 
     const fallbackContent = chapters
       .map((chapter) => chapter.content)
@@ -191,6 +159,8 @@ export class BookParserService {
       .replace(/\*{3}\s*START OF (THE|THIS) PROJECT GUTENBERG EBOOK[\s\S]*?\n/i, '')
       .replace(/\n[\s\S]*?END OF (THE|THIS) PROJECT GUTENBERG EBOOK[\s\S]*$/i, '')
       .replace(/[ \t]+\n/g, '\n')
+      .replace(/\n[ \t]+/g, '\n')
+      .replace(/[ \t]{2,}/g, ' ')
       .replace(/\n{3,}/g, '\n\n')
       .trim()
   }
@@ -217,32 +187,205 @@ export class BookParserService {
     }
   }
 
-  private resolveEpubChapterTitle(
-    item: ManifestItem,
-    tocTitleById: Map<string, string>,
-    tocTitleByHref: Map<string, string>,
-    chapterIndex: number
-  ): string {
-    const itemTitle = (item as { title?: unknown }).title
-    if (typeof itemTitle === 'string' && itemTitle.trim()) {
-      return itemTitle.trim()
-    }
-
-    const byId = item.id ? tocTitleById.get(item.id) : null
-    if (byId && byId.trim()) {
-      return byId.trim()
-    }
-
-    const byHref = item.href ? tocTitleByHref.get(this.normalizeEpubHref(item.href)) : null
-    if (byHref && byHref.trim()) {
-      return byHref.trim()
-    }
-
-    return `Chapter ${chapterIndex + 1}`
-  }
-
   private normalizeEpubHref(href: string): string {
     return href.split('#')[0].trim().toLowerCase()
+  }
+
+  private extractEpubAnchor(href: string): string | null {
+    const parts = href.split('#')
+    if (parts.length < 2) {
+      return null
+    }
+    const anchor = parts[1].trim()
+    return anchor ? anchor : null
+  }
+
+  private flattenEpubToc(items: unknown[]): EpubTocItem[] {
+    const flattened: EpubTocItem[] = []
+
+    const visit = (node: unknown) => {
+      if (!node || typeof node !== 'object') {
+        return
+      }
+
+      const item = node as {
+        title?: unknown
+        href?: unknown
+        subitems?: unknown[]
+        children?: unknown[]
+      }
+      const hrefRaw = typeof item.href === 'string' ? item.href.trim() : ''
+      if (hrefRaw) {
+        flattened.push({
+          title: typeof item.title === 'string' ? item.title.trim() : '',
+          hrefBase: this.normalizeEpubHref(hrefRaw),
+          anchor: this.extractEpubAnchor(hrefRaw),
+        })
+      }
+
+      if (Array.isArray(item.subitems)) {
+        item.subitems.forEach(visit)
+      }
+      if (Array.isArray(item.children)) {
+        item.children.forEach(visit)
+      }
+    }
+
+    items.forEach(visit)
+    return flattened
+  }
+
+  private async parseEpubByToc(
+    epub: EPub,
+    flow: ManifestItem[],
+    tocItems: EpubTocItem[]
+  ): Promise<ParsedBookChapter[]> {
+    const flowByHref = new Map<string, ManifestItem>()
+    for (const item of flow) {
+      if (!this.isEpubContentManifestItem(item) || !item.href) {
+        continue
+      }
+      flowByHref.set(this.normalizeEpubHref(item.href), item)
+    }
+
+    const rawCache = new Map<string, string>()
+    const chapters: ParsedBookChapter[] = []
+
+    for (let i = 0; i < tocItems.length; i++) {
+      const current = tocItems[i]
+      const next = i + 1 < tocItems.length ? tocItems[i + 1] : null
+      const raw = await this.readRawByHref(epub, flowByHref, rawCache, current.hrefBase)
+      if (!raw) {
+        continue
+      }
+
+      const sectionRaw = this.sliceHtmlSectionByAnchors(
+        raw,
+        current.anchor,
+        next && next.hrefBase === current.hrefBase ? next.anchor : null
+      )
+      const content = this.cleanContent(this.htmlToText(sectionRaw))
+      if (!content) {
+        continue
+      }
+
+      chapters.push({
+        chapterIndex: chapters.length,
+        title: current.title || `Chapter ${chapters.length + 1}`,
+        content,
+        wordCount: this.countWords(content),
+      })
+    }
+
+    if (chapters.length > 0) {
+      return chapters
+    }
+
+    return this.parseEpubByFlow(epub, flow)
+  }
+
+  private async parseEpubByFlow(epub: EPub, flow: ManifestItem[]): Promise<ParsedBookChapter[]> {
+    const chapters: ParsedBookChapter[] = []
+
+    for (const item of flow) {
+      if (!this.isEpubContentManifestItem(item)) {
+        continue
+      }
+
+      const rawContent = await this.readEpubChapterRaw(epub, item.id)
+      if (!rawContent) {
+        continue
+      }
+
+      const content = this.cleanContent(this.htmlToText(rawContent))
+      if (!content) {
+        continue
+      }
+
+      chapters.push({
+        chapterIndex: chapters.length,
+        title: `Chapter ${chapters.length + 1}`,
+        content,
+        wordCount: this.countWords(content),
+      })
+    }
+
+    return chapters
+  }
+
+  private async readRawByHref(
+    epub: EPub,
+    flowByHref: Map<string, ManifestItem>,
+    rawCache: Map<string, string>,
+    hrefBase: string
+  ): Promise<string | null> {
+    if (rawCache.has(hrefBase)) {
+      return rawCache.get(hrefBase) || null
+    }
+
+    const flowItem = flowByHref.get(hrefBase)
+    if (!flowItem) {
+      rawCache.set(hrefBase, '')
+      return null
+    }
+
+    const raw = await this.readEpubChapterRaw(epub, flowItem.id)
+    rawCache.set(hrefBase, raw || '')
+    return raw || null
+  }
+
+  private sliceHtmlSectionByAnchors(
+    rawHtml: string,
+    currentAnchor: string | null,
+    nextAnchor: string | null
+  ): string {
+    const start = currentAnchor ? this.findAnchorIndex(rawHtml, currentAnchor, 0) : 0
+    const safeStart = start >= 0 ? start : 0
+    const end =
+      nextAnchor && nextAnchor !== currentAnchor
+        ? this.findAnchorIndex(rawHtml, nextAnchor, safeStart + 1)
+        : -1
+
+    if (end > safeStart) {
+      return rawHtml.slice(safeStart, end)
+    }
+
+    return rawHtml.slice(safeStart)
+  }
+
+  private findAnchorIndex(rawHtml: string, anchor: string, fromIndex: number): number {
+    const escaped = anchor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const patterns = [
+      new RegExp(`\\sid\\s*=\\s*["']${escaped}["']`, 'i'),
+      new RegExp(`\\sname\\s*=\\s*["']${escaped}["']`, 'i'),
+      new RegExp(`\\shref\\s*=\\s*["']#${escaped}["']`, 'i'),
+    ]
+    const haystack = rawHtml.slice(Math.max(0, fromIndex))
+
+    for (const pattern of patterns) {
+      const relative = haystack.search(pattern)
+      if (relative >= 0) {
+        return Math.max(0, fromIndex) + relative
+      }
+    }
+
+    return -1
+  }
+
+  private htmlToText(rawHtml: string): string {
+    return rawHtml
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/(p|div|section|article|h1|h2|h3|h4|h5|h6|li|blockquote)>/gi, '\n\n')
+      .replace(/<li\b[^>]*>/gi, '\n- ')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'")
   }
 
   private normalizeEpubMetadataField(value: unknown): string | null {

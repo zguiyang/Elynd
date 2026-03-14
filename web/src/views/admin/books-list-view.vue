@@ -153,6 +153,18 @@ const retryAudio = async (book: AdminBook) => {
   }
 }
 
+// Rebuild chapters
+const rebuildChapters = async (book: AdminBook) => {
+  try {
+    await adminApi.rebuildChapters(book.id)
+    toast.success('重建任务已添加')
+    fetchBooks()
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { message?: string } } }
+    toast.error(err.response?.data?.message || '重建失败')
+  }
+}
+
 // Pagination
 const goToPage = (newPage: number) => {
   page.value = newPage
@@ -353,6 +365,16 @@ onUnmounted(() => {
               <TableCell>{{ new Date(book.createdAt).toLocaleString('zh-CN') }}</TableCell>
               <TableCell>
                 <div class="flex items-center gap-2">
+                  <!-- Rebuild chapters button -->
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    :disabled="book.status !== 'ready'"
+                    @click="rebuildChapters(book)"
+                    :title="book.status !== 'ready' ? '仅已完成状态可重建' : '重建章节'"
+                  >
+                    <RefreshCw class="h-4 w-4" />
+                  </Button>
                   <!-- Audio retry button -->
                   <Button
                     v-if="canRetryAudio(book)"

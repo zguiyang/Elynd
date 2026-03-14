@@ -20,7 +20,7 @@ export class AiService {
     const response = await this.doChat(config, params, false)
 
     try {
-      return JSON.parse(response.content)
+      return this.parseJsonFromResponse<T>(response.content)
     } catch (error) {
       throw new AiServiceError(
         AI_ERROR_CODES.PARSE_ERROR,
@@ -28,6 +28,42 @@ export class AiService {
         error as Error
       )
     }
+  }
+
+  private parseJsonFromResponse<T>(content: string): T {
+    const candidates = new Set<string>()
+    const trimmed = content.trim()
+
+    if (trimmed) {
+      candidates.add(trimmed)
+    }
+
+    const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i)?.[1]?.trim()
+    if (fenced) {
+      candidates.add(fenced)
+    }
+
+    const firstObjectStart = trimmed.indexOf('{')
+    const lastObjectEnd = trimmed.lastIndexOf('}')
+    if (firstObjectStart >= 0 && lastObjectEnd > firstObjectStart) {
+      candidates.add(trimmed.slice(firstObjectStart, lastObjectEnd + 1))
+    }
+
+    const firstArrayStart = trimmed.indexOf('[')
+    const lastArrayEnd = trimmed.lastIndexOf(']')
+    if (firstArrayStart >= 0 && lastArrayEnd > firstArrayStart) {
+      candidates.add(trimmed.slice(firstArrayStart, lastArrayEnd + 1))
+    }
+
+    for (const candidate of candidates) {
+      try {
+        return JSON.parse(candidate) as T
+      } catch {
+        continue
+      }
+    }
+
+    throw new Error('No valid JSON payload found in AI response')
   }
 
   async streamChat(

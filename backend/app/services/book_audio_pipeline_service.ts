@@ -40,6 +40,11 @@ export class BookAudioPipelineService {
         .where('bookId', bookId)
         .orderBy('chapterIndex', 'asc')
       for (const chapter of chapters) {
+        await book.refresh()
+        if (book.status !== 'processing') {
+          throw new Error(`Import stopped for book ${bookId}`)
+        }
+
         const textHash = this.computeTextHash(chapter.content)
         const existingAudio = await BookChapterAudio.query()
           .where('bookId', bookId)
@@ -123,7 +128,16 @@ export class BookAudioPipelineService {
         { chapterCount: chapterAudios.length, totalDuration }
       )
 
-      await FinalizeImportJob.dispatch({ bookId, runId, userId })
+      await FinalizeImportJob.dispatch(
+        { bookId, runId, userId },
+        {
+          jobId: BookImportOrchestratorService.buildPipelineJobId({
+            runId,
+            bookId,
+            stepKey: BOOK_IMPORT_STEP.FINALIZE_IMPORT,
+          }),
+        }
+      )
     } catch (error) {
       await book.merge({ audioStatus: 'failed' }).save()
       const message = error instanceof Error ? error.message : 'Unknown error'

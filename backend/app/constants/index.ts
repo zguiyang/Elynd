@@ -124,6 +124,7 @@ type VocabularyAnalyzer = (typeof VOCABULARY_ANALYZER)[keyof typeof VOCABULARY_A
 const BOOK_IMPORT_STEP = {
   PREPARE_IMPORT: 'prepare_import',
   SEMANTIC_CLEAN: 'semantic_clean',
+  VALIDATE_CHAPTER_CONTENT: 'validate_chapter_content',
   BUILD_CONTENT_AND_VOCAB_SEED: 'build_content_and_vocab_seed',
   ENRICH_VOCABULARY: 'enrich_vocabulary',
   GENERATE_TTS: 'generate_tts',
@@ -137,9 +138,10 @@ type BookImportStep = (typeof BOOK_IMPORT_STEP)[keyof typeof BOOK_IMPORT_STEP]
 const BOOK_IMPORT_PROGRESS = {
   PREPARE_IMPORT: 10,
   SEMANTIC_CLEAN: 20,
-  BUILD_CONTENT_AND_VOCAB_SEED: 25,
+  VALIDATE_CHAPTER_CONTENT: 20,
+  BUILD_CONTENT_AND_VOCAB_SEED: 15,
   ENRICH_VOCABULARY: 20,
-  GENERATE_TTS: 20,
+  GENERATE_TTS: 10,
   FINALIZE_IMPORT: 5,
   TOTAL_MAX: 100,
 } as const

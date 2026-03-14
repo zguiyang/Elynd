@@ -35,6 +35,11 @@ export class BookVocabularyPipelineService {
     await book.merge({ vocabularyStatus: 'processing' }).save()
 
     try {
+      await book.refresh()
+      if (book.status !== 'processing') {
+        throw new Error(`Import stopped for book ${bookId}`)
+      }
+
       let allVocabularies = await BookVocabulary.query().where('bookId', bookId)
 
       if (allVocabularies.length === 0) {
@@ -55,6 +60,11 @@ export class BookVocabularyPipelineService {
 
       let enrichedWords = 0
       for (const vocabulary of allVocabularies) {
+        await book.refresh()
+        if (book.status !== 'processing') {
+          throw new Error(`Import stopped for book ${bookId}`)
+        }
+
         const entry = results.get(vocabulary.word.toLowerCase())
         if (!entry) {
           continue
@@ -93,7 +103,16 @@ export class BookVocabularyPipelineService {
         }
       )
 
-      await GenerateTtsJob.dispatch({ bookId, runId, userId })
+      await GenerateTtsJob.dispatch(
+        { bookId, runId, userId },
+        {
+          jobId: BookImportOrchestratorService.buildPipelineJobId({
+            runId,
+            bookId,
+            stepKey: BOOK_IMPORT_STEP.GENERATE_TTS,
+          }),
+        }
+      )
     } catch (error) {
       await book.merge({ vocabularyStatus: 'failed' }).save()
       const message = error instanceof Error ? error.message : 'Unknown error'

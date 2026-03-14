@@ -112,11 +112,16 @@ export class ImportStateService {
       const runLog = await BookProcessingRunLog.query({ client: trx })
         .where('id', runId)
         .firstOrFail()
+      const book = await Book.query({ client: trx }).where('id', bookId).firstOrFail()
+
+      if (runLog.status !== 'processing' || book.status !== 'processing') {
+        throw new Error(`Run ${runId} is no longer active`)
+      }
+
       runLog.currentStep = stepKey
       runLog.progress = progress
       await runLog.save()
 
-      const book = await Book.query({ client: trx }).where('id', bookId).firstOrFail()
       book.status = 'processing'
       book.processingStep = stepKey
       book.processingProgress = progress

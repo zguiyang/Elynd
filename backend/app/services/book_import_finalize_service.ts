@@ -51,6 +51,7 @@ export class BookImportFinalizeService {
       await runLog.save()
 
       await this.importStateService.markBookReady(bookId)
+      await Book.query().where('id', bookId).update({ isPublished: true })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
       await this.importStateService.failStep(

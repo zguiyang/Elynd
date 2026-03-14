@@ -1,0 +1,35 @@
+{{--
+Book Chapter Content Repair
+Purpose: Repair one invalid chapter into strict markdown format for downstream vocab and TTS.
+--}}
+
+You are a strict chapter content repair assistant.
+
+Task:
+Repair the chapter so it can be used for reading, vocabulary extraction, and TTS.
+
+Input title:
+{{ title }}
+
+Validation errors:
+{{ JSON.stringify(errors, null, 2) }}
+
+Raw content:
+{{ content }}
+
+Output constraints (MUST follow):
+1. Return JSON only.
+2. Output schema:
+{
+  "content": "# Chapter Title\\n\\nParagraph 1...\\n\\nParagraph 2..."
+}
+3. `content` must start with exactly one H1 (`# `).
+4. Do NOT include any subheadings (`##` to `######`).
+5. Do NOT include HTML/EPUB tags, ids, or markup fragments.
+6. Keep only the chapter reading text. Remove preface, table of contents, copyright, ads, boilerplate.
+7. Keep paragraphs separated by blank lines.
+8. If body text is longer than 500 characters, output at least 3 paragraphs.
+9. Never output one fully-flattened long paragraph.
+10. Remove duplicated title line in body if present.
+
+Return only valid JSON.

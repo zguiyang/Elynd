@@ -3,7 +3,9 @@ import { Exception } from '@adonisjs/core/exceptions'
 import logger from '@adonisjs/core/services/logger'
 import Book from '#models/book'
 import { BookProcessingLogService } from '#services/book_processing_log_service'
+import { BookImportOrchestratorService } from '#services/book_import_orchestrator_service'
 import PrepareImportJob from '#jobs/prepare_import_job'
+import { BOOK_IMPORT_STEP } from '#constants'
 
 interface ProcessBookPayload {
   bookId: number
@@ -28,10 +30,19 @@ export default class ProcessBookJob extends Job {
 
     logger.info({ bookId, runId: runLog.id }, 'Starting serial book import pipeline')
 
-    await PrepareImportJob.dispatch({
-      bookId,
-      userId,
-      runId: runLog.id,
-    })
+    await PrepareImportJob.dispatch(
+      {
+        bookId,
+        userId,
+        runId: runLog.id,
+      },
+      {
+        jobId: BookImportOrchestratorService.buildPipelineJobId({
+          runId: runLog.id,
+          bookId,
+          stepKey: BOOK_IMPORT_STEP.PREPARE_IMPORT,
+        }),
+      }
+    )
   }
 }

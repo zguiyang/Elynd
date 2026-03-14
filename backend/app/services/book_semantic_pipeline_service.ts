@@ -3,7 +3,7 @@ import Book from '#models/book'
 import { BOOK_IMPORT_STEP } from '#constants'
 import { BookImportOrchestratorService } from '#services/book_import_orchestrator_service'
 import { ImportStateService } from '#services/import_state_service'
-import BuildContentAndVocabSeedJob from '#jobs/build_content_and_vocab_seed_job'
+import ValidateChapterContentJob from '#jobs/validate_chapter_content_job'
 import type { SerialImportPayload } from '#types/book_import_pipeline'
 
 @inject()
@@ -31,6 +31,12 @@ export class BookSemanticPipelineService {
       const parsed = await this.orchestrator.parseSourceFile(sourceFile)
       const metadata = await this.orchestrator.semanticExtractMetadata({ book, parsed })
       const cleanedChapters = await this.orchestrator.semanticCleanChapters(parsed)
+      const cleanedArtifactPath = await this.orchestrator.writeChapterArtifact({
+        runId,
+        bookId,
+        stepKey: BOOK_IMPORT_STEP.SEMANTIC_CLEAN,
+        chapters: cleanedChapters,
+      })
 
       await book
         .merge({
@@ -50,10 +56,20 @@ export class BookSemanticPipelineService {
           title: metadata.title,
           author: metadata.author,
           chapterCount: cleanedChapters.length,
+          cleanedChaptersArtifactPath: cleanedArtifactPath,
         }
       )
 
-      await BuildContentAndVocabSeedJob.dispatch({ bookId, runId, userId })
+      await ValidateChapterContentJob.dispatch(
+        { bookId, runId, userId },
+        {
+          jobId: BookImportOrchestratorService.buildPipelineJobId({
+            runId,
+            bookId,
+            stepKey: BOOK_IMPORT_STEP.VALIDATE_CHAPTER_CONTENT,
+          }),
+        }
+      )
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
       await this.importStateService.failStep(

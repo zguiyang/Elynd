@@ -43,7 +43,16 @@ export class BookImportPreparationService {
         }
       )
 
-      await SemanticCleanJob.dispatch({ bookId, runId, userId })
+      await SemanticCleanJob.dispatch(
+        { bookId, runId, userId },
+        {
+          jobId: BookImportOrchestratorService.buildPipelineJobId({
+            runId,
+            bookId,
+            stepKey: BOOK_IMPORT_STEP.SEMANTIC_CLEAN,
+          }),
+        }
+      )
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
       await this.importStateService.failStep(

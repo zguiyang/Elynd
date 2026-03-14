@@ -27,13 +27,22 @@ export class BookContentPipelineService {
     )
 
     try {
-      const sourceFile = await this.orchestrator.validateSourceFile(book)
-      const parsed = await this.orchestrator.parseSourceFile(sourceFile)
-      const metadata = await this.orchestrator.semanticExtractMetadata({ book, parsed })
-      const cleanedChapters = await this.orchestrator.semanticCleanChapters(parsed)
+      const validationOutput = await this.orchestrator.getSuccessfulStepOutputRef(
+        runId,
+        BOOK_IMPORT_STEP.VALIDATE_CHAPTER_CONTENT
+      )
+      const validatedArtifactPath = this.orchestrator.requireOutputRefString(
+        validationOutput,
+        'validatedChaptersArtifactPath'
+      )
+      const cleanedChapters = await this.orchestrator.readChapterArtifact(validatedArtifactPath)
       const persisted = await this.orchestrator.persistChaptersAndContentHash({
         book,
-        metadata,
+        metadata: {
+          title: book.title,
+          author: book.author,
+          description: book.description,
+        },
         cleanedChapters,
       })
 
@@ -53,7 +62,16 @@ export class BookContentPipelineService {
         }
       )
 
-      await EnrichVocabularyJob.dispatch({ bookId, runId, userId })
+      await EnrichVocabularyJob.dispatch(
+        { bookId, runId, userId },
+        {
+          jobId: BookImportOrchestratorService.buildPipelineJobId({
+            runId,
+            bookId,
+            stepKey: BOOK_IMPORT_STEP.ENRICH_VOCABULARY,
+          }),
+        }
+      )
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
       await this.importStateService.failStep(

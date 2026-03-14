@@ -76,6 +76,8 @@ router
     router.post('/admin/books/:id/retry-audio', [AdminBooksController, 'retryAudio'])
     router.post('/admin/books/:id/retry-vocabulary', [AdminBooksController, 'retryVocabulary'])
     router.post('/admin/books/:id/rebuild-chapters', [AdminBooksController, 'rebuildChapters'])
+    router.post('/admin/books/:id/stop-import', [AdminBooksController, 'stopImport'])
+    router.post('/admin/books/:id/continue-import', [AdminBooksController, 'continueImport'])
     router.post('/admin/books/import', [AdminBooksController, 'import'])
     router.get('/admin/books', [AdminBooksController, 'index'])
     router.get('/admin/books/:id/status', [AdminBooksController, 'status'])

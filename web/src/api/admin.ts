@@ -97,6 +97,25 @@ export interface RebuildChaptersResponse {
   message: string
 }
 
+export interface StopImportResponse {
+  success: boolean
+  message: string
+  bookId: number
+  runId: number | null
+  status: 'stopped'
+  removedQueuedJobs: number
+}
+
+export interface ContinueImportResponse {
+  success: boolean
+  message: string
+  bookId: number
+  runId: number
+  status: 'queued'
+  jobId: string
+  resumeStep: string
+}
+
 export const adminApi = {
   generateBook: (data: GenerateBookData) =>
     request<GenerateBookResponse>({ method: 'POST', url: '/api/admin/books/generate', data }),
@@ -109,6 +128,15 @@ export const adminApi = {
 
   rebuildChapters: (bookId: number) =>
     request<RebuildChaptersResponse>({ method: 'POST', url: `/api/admin/books/${bookId}/rebuild-chapters` }),
+
+  stopImport: (bookId: number) =>
+    request<StopImportResponse>({ method: 'POST', url: `/api/admin/books/${bookId}/stop-import` }),
+
+  continueImport: (bookId: number) =>
+    request<ContinueImportResponse>({
+      method: 'POST',
+      url: `/api/admin/books/${bookId}/continue-import`,
+    }),
 
   importBook: (data: ImportBookPayload) => {
     const formData = new FormData()

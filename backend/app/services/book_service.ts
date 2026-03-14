@@ -1,6 +1,8 @@
 import { inject } from '@adonisjs/core'
 import { Exception } from '@adonisjs/core/exceptions'
+import { DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
+import app from '@adonisjs/core/services/app'
 import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import BookVocabulary from '#models/book_vocabulary'
@@ -364,7 +366,7 @@ export class BookService {
     }
 
     if (book.status === 'processing') {
-      throw new Exception('Book is already processing', { status: 400 })
+      throw new Exception('Book is processing, stop it first before rebuild', { status: 400 })
     }
 
     await db.transaction(async (trx) => {
@@ -379,6 +381,8 @@ export class BookService {
           processingStep: BOOK_IMPORT_STEP.PREPARE_IMPORT,
           processingProgress: 0,
           processingError: null,
+          isPublished: false,
+          difficultyLevel: 'L1',
           contentHash: null,
           wordCount: 0,
           readingTime: 1,
@@ -391,6 +395,9 @@ export class BookService {
         .save()
     })
 
+    // Ensure no stale queued jobs from previous runs can continue after rebuild starts.
+    await this.removeQueuedJobsForBook(book.id, null)
+
     const jobId = await this.bookImportOrchestratorService.scheduleImportPipeline({
       bookId: book.id,
       userId,
@@ -401,5 +408,271 @@ export class BookService {
       jobId,
       status: 'queued',
     }
+  }
+
+  async stopImport(bookId: number, userId: number) {
+    const book = await Book.find(bookId)
+
+    if (!book) {
+      throw new Exception('Book not found', { status: 404 })
+    }
+
+    if (book.status !== 'processing') {
+      throw new Exception('Book is not processing', { status: 400 })
+    }
+
+    const now = DateTime.now()
+    const errorMessage = `Import stopped manually by user ${userId}`
+    let stoppedRunId: number | null = null
+
+    await db.transaction(async (trx) => {
+      const activeRun = await BookProcessingRunLog.query({ client: trx })
+        .where('bookId', book.id)
+        .where('jobType', 'import')
+        .where('status', 'processing')
+        .orderBy('id', 'desc')
+        .first()
+
+      if (activeRun) {
+        stoppedRunId = activeRun.id
+        const nextMetadata: Record<string, unknown> = {
+          ...(activeRun.metadata || {}),
+          cancelRequestedAt: now.toISO(),
+          cancelledBy: userId,
+          cancelFromStep: activeRun.currentStep,
+          cancelReason: 'manual_stop',
+        }
+
+        activeRun.useTransaction(trx).merge({
+          status: 'failed',
+          currentStep: BOOK_IMPORT_STEP.FAILED,
+          finishedAt: now,
+          durationMs: activeRun.startedAt ? now.toMillis() - activeRun.startedAt.toMillis() : null,
+          errorCode: 'USER_ABORTED',
+          errorMessage,
+          metadata: nextMetadata,
+        })
+        await activeRun.save()
+
+        await db
+          .from('book_processing_step_logs')
+          .where('run_log_id', activeRun.id)
+          .where('status', 'processing')
+          .update({
+            status: 'failed',
+            finished_at: now.toSQL(),
+            error_code: 'USER_ABORTED',
+            error_message: errorMessage,
+            updated_at: now.toSQL(),
+          })
+      }
+
+      await book
+        .useTransaction(trx)
+        .merge({
+          status: 'failed',
+          processingStep: BOOK_IMPORT_STEP.FAILED,
+          processingProgress: 100,
+          processingError: errorMessage,
+          audioStatus: book.audioStatus === 'processing' ? 'failed' : book.audioStatus,
+          vocabularyStatus:
+            book.vocabularyStatus === 'processing' ? 'failed' : book.vocabularyStatus,
+        })
+        .save()
+    })
+
+    const activeRunId = await BookProcessingRunLog.query()
+      .where('bookId', book.id)
+      .where('jobType', 'import')
+      .orderBy('id', 'desc')
+      .first()
+
+    const removedQueuedJobs = await this.removeQueuedJobsForBook(book.id, activeRunId?.id ?? null)
+
+    if (stoppedRunId) {
+      const stoppedRun = await BookProcessingRunLog.find(stoppedRunId)
+      if (stoppedRun) {
+        await stoppedRun
+          .merge({
+            metadata: {
+              ...(stoppedRun.metadata || {}),
+              removedQueuedJobs,
+              queueCleanupAt: DateTime.now().toISO(),
+            },
+          })
+          .save()
+      }
+    }
+
+    return {
+      bookId: book.id,
+      status: 'stopped',
+      runId: stoppedRunId,
+      removedQueuedJobs,
+    }
+  }
+
+  async continueImport(bookId: number, userId: number) {
+    const book = await Book.find(bookId)
+
+    if (!book) {
+      throw new Exception('Book not found', { status: 404 })
+    }
+
+    if (book.status === 'processing') {
+      throw new Exception('Book is already processing', { status: 400 })
+    }
+
+    if (book.status === 'ready') {
+      throw new Exception('Book import is already completed', { status: 400 })
+    }
+
+    const chapterCountResult = await BookChapter.query()
+      .where('bookId', book.id)
+      .count('* as total')
+      .firstOrFail()
+    const chapterCount = Number(chapterCountResult.$extras.total || 0)
+
+    if (chapterCount === 0) {
+      throw new Exception('No chapters found, use rebuild instead of continue', { status: 400 })
+    }
+
+    const allAudioReady = await this.areAllChaptersReady(book.id)
+    const vocabularyCompleted = book.vocabularyStatus === 'completed'
+
+    const resumeStep =
+      allAudioReady && vocabularyCompleted
+        ? BOOK_IMPORT_STEP.FINALIZE_IMPORT
+        : vocabularyCompleted
+          ? BOOK_IMPORT_STEP.GENERATE_TTS
+          : BOOK_IMPORT_STEP.ENRICH_VOCABULARY
+
+    const previousStep =
+      resumeStep === BOOK_IMPORT_STEP.FINALIZE_IMPORT
+        ? BOOK_IMPORT_STEP.GENERATE_TTS
+        : resumeStep === BOOK_IMPORT_STEP.GENERATE_TTS
+          ? BOOK_IMPORT_STEP.ENRICH_VOCABULARY
+          : BOOK_IMPORT_STEP.BUILD_CONTENT_AND_VOCAB_SEED
+
+    const previousProgress = BookImportOrchestratorService.getBaseProgressByStep(previousStep)
+
+    await this.removeQueuedJobsForBook(book.id, null)
+
+    const run = await db.transaction(async (trx) => {
+      const runLog = await BookProcessingRunLog.create(
+        {
+          bookId: book.id,
+          jobType: 'import',
+          status: 'processing',
+          currentStep: previousStep,
+          progress: previousProgress,
+          startedAt: DateTime.now(),
+          metadata: {
+            resumeRequestedAt: DateTime.now().toISO(),
+            resumeRequestedBy: userId,
+            resumeStep,
+            continueMode: 'resume_remaining_pipeline',
+          },
+        },
+        { client: trx }
+      )
+
+      await book
+        .useTransaction(trx)
+        .merge({
+          status: 'processing',
+          processingStep: previousStep,
+          processingProgress: previousProgress,
+          processingError: null,
+        })
+        .save()
+
+      return runLog
+    })
+
+    const jobId = await this.bookImportOrchestratorService.scheduleImportPipelineFromStep({
+      bookId: book.id,
+      userId,
+      runId: run.id,
+      stepKey: resumeStep,
+    })
+
+    return {
+      bookId: book.id,
+      runId: run.id,
+      status: 'queued',
+      jobId,
+      resumeStep,
+    }
+  }
+
+  private async removeQueuedJobsForBook(bookId: number, runId: number | null): Promise<number> {
+    type QueueJob = { id?: string | number; data: unknown; remove: () => Promise<void> }
+    type QueueLike = {
+      getJobs: (
+        statuses: string[],
+        start?: number,
+        end?: number,
+        asc?: boolean
+      ) => Promise<QueueJob[]>
+    }
+
+    const queues = (await app.container.make('jobs.queues')) as Record<string, QueueLike>
+    const statuses = ['waiting', 'delayed', 'paused', 'prioritized', 'waiting-children'] as const
+    let removed = 0
+
+    for (const queue of Object.values(queues)) {
+      const queuedJobs = await queue.getJobs([...statuses], 0, 2000, true)
+      for (const job of queuedJobs) {
+        const payload = this.decodeJobPayload(job.data)
+        if (!payload) {
+          continue
+        }
+
+        const payloadBookId = payload.bookId
+        const rawPayload = typeof payload.__raw === 'string' ? payload.__raw : ''
+        const rawPayloadMatches =
+          rawPayload.includes(`\"bookId\":${bookId}`) ||
+          rawPayload.includes(`\"bookId\": ${bookId}`) ||
+          rawPayload.includes(`bookId:${bookId}`) ||
+          rawPayload.includes(`bookId: ${bookId}`)
+
+        const idText = String(job.id ?? '')
+        const runScopedIdPrefix = runId ? `import-run-${runId}-book-${bookId}-step-` : ''
+        const idMatches = runScopedIdPrefix ? idText.startsWith(runScopedIdPrefix) : false
+
+        if (
+          (typeof payloadBookId === 'number' && payloadBookId === bookId) ||
+          rawPayloadMatches ||
+          idMatches
+        ) {
+          await job.remove()
+          removed++
+        }
+      }
+    }
+
+    return removed
+  }
+
+  private decodeJobPayload(data: unknown): Record<string, unknown> | null {
+    if (typeof data === 'string') {
+      try {
+        const parsed = JSON.parse(data)
+        if (parsed && typeof parsed === 'object') {
+          return parsed as Record<string, unknown>
+        }
+      } catch {
+        // fallthrough
+      }
+
+      return { __raw: data }
+    }
+
+    if (data && typeof data === 'object') {
+      return data as Record<string, unknown>
+    }
+
+    return null
   }
 }

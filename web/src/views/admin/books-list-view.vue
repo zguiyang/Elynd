@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { toast } from 'vue-sonner'
 import { adminApi, type AdminBook, type AdminUpdateBookPayload } from '@/api/admin'
-import { RefreshCw, Loader2, Pencil, Trash2, Clock, CheckCircle, XCircle, AlertCircle, Upload, BookOpen, Volume2 } from 'lucide-vue-next'
+import { RefreshCw, Loader2, Pencil, Trash2, Clock, CheckCircle, XCircle, AlertCircle, Upload, BookOpen, Volume2, Square, Play } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { getStepText, getProgressComposition, getTaskSummary, canRetryVocabulary, canRetryAudio } from '@/composables/useBookImportStatus'
 
@@ -162,6 +162,31 @@ const rebuildChapters = async (book: AdminBook) => {
   } catch (error: unknown) {
     const err = error as { response?: { data?: { message?: string } } }
     toast.error(err.response?.data?.message || '重建失败')
+  }
+}
+
+const stopImport = async (book: AdminBook) => {
+  const confirmed = window.confirm(`确定要停止《${book.title}》当前导入流程吗？`)
+  if (!confirmed) return
+
+  try {
+    await adminApi.stopImport(book.id)
+    toast.success('已停止导入流程')
+    fetchBooks()
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { message?: string } } }
+    toast.error(err.response?.data?.message || '停止失败')
+  }
+}
+
+const continueImport = async (book: AdminBook) => {
+  try {
+    const result = await adminApi.continueImport(book.id)
+    toast.success(`已继续导入（${result.resumeStep}）`)
+    fetchBooks()
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: { message?: string } } }
+    toast.error(err.response?.data?.message || '继续导入失败')
   }
 }
 
@@ -369,11 +394,29 @@ onUnmounted(() => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    :disabled="book.status !== 'ready'"
+                    :disabled="book.status === 'processing'"
                     @click="rebuildChapters(book)"
-                    :title="book.status !== 'ready' ? '仅已完成状态可重建' : '重建章节'"
+                    :title="book.status === 'processing' ? '处理中请先停止导入' : '重建章节'"
                   >
                     <RefreshCw class="h-4 w-4" />
+                  </Button>
+                  <Button
+                    v-if="book.status === 'processing'"
+                    variant="ghost"
+                    size="icon"
+                    @click="stopImport(book)"
+                    title="停止导入"
+                  >
+                    <Square class="h-4 w-4" />
+                  </Button>
+                  <Button
+                    v-if="book.status === 'failed'"
+                    variant="ghost"
+                    size="icon"
+                    @click="continueImport(book)"
+                    title="继续导入"
+                  >
+                    <Play class="h-4 w-4" />
                   </Button>
                   <!-- Audio retry button -->
                   <Button

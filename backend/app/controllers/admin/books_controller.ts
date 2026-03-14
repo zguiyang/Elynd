@@ -102,6 +102,32 @@ export default class AdminBooksController {
     }
   }
 
+  async stopImport({ auth, params }: HttpContext) {
+    const user = auth.getUserOrFail()
+    logger.info({ bookId: params.id, userId: user.id }, 'Import stop requested')
+
+    const result = await this.bookService.stopImport(params.id, user.id)
+
+    return {
+      success: true,
+      message: `Import flow stopped, removed ${result.removedQueuedJobs} queued jobs`,
+      ...result,
+    }
+  }
+
+  async continueImport({ auth, params }: HttpContext) {
+    const user = auth.getUserOrFail()
+    logger.info({ bookId: params.id, userId: user.id }, 'Import continue requested')
+
+    const result = await this.bookService.continueImport(params.id, user.id)
+
+    return {
+      success: true,
+      message: `Import resumed from step: ${result.resumeStep}`,
+      ...result,
+    }
+  }
+
   async import({ auth, request }: HttpContext) {
     const user = auth.getUserOrFail()
     const data = await request.validateUsing(importBookValidator)

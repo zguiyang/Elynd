@@ -102,14 +102,8 @@ export class BookSemanticCleanService {
       const result = await this.aiService.chatJson<ChapterResponse>(aiConfig, params)
       const cleaned = (result.cleanedChapters || [])
         .map((chapter, index) => {
-          const rawContent = chapter.content?.trim() || ''
-          const titleMatch = rawContent.match(/^#\s+(.+)$/m)
-          const title = titleMatch
-            ? titleMatch[1].trim()
-            : chapter.title?.trim() || `Chapter ${index + 1}`
-
-          const contentBody = rawContent.replace(/^#\s+.+$/m, '').trim()
-          const content = contentBody ? `# ${title}\n\n${contentBody}` : `# ${title}`
+          const title = chapter.title?.trim() || `Chapter ${index + 1}`
+          const content = this.toPlainBody(chapter.content || '', title)
 
           return {
             title,
@@ -129,8 +123,41 @@ export class BookSemanticCleanService {
     const fallback = this.ruleCleaner.clean(chapters)
     return fallback.cleanedChapters.map((chapter, index) => ({
       title: chapter.title,
-      content: `# ${chapter.title}\n\n${chapter.content.trim()}`,
+      content: chapter.content.trim(),
       chapterIndex: index,
     }))
+  }
+
+  private toPlainBody(rawContent: string, title: string): string {
+    let content = rawContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim()
+    if (!content) {
+      return ''
+    }
+
+    if (/^#\s+/.test(content)) {
+      content = content.replace(/^#\s+.+$/m, '').trim()
+    }
+
+    const firstLine = content.split('\n').find((line) => line.trim().length > 0)?.trim() || ''
+    if (this.isSameTitle(firstLine, title)) {
+      content = content
+        .split('\n')
+        .slice(1)
+        .join('\n')
+        .trim()
+    }
+
+    return content
+  }
+
+  private isSameTitle(line: string, title: string): boolean {
+    const normalize = (value: string) =>
+      value
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+
+    return normalize(line) === normalize(title)
   }
 }

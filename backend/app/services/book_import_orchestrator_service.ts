@@ -342,7 +342,8 @@ export class BookImportOrchestratorService {
     const validationErrors: Array<{ chapterIndex: number; errors: string[] }> = []
 
     for (const chapter of cleanedChapters) {
-      const result = guardService.validate(chapter.content)
+      const guardInput = `# ${chapter.title}\n\n${chapter.content}`
+      const result = guardService.validate(guardInput)
       if (result.valid) {
         validChapters.push(chapter)
       } else {

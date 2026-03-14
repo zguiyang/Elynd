@@ -75,6 +75,15 @@ const paragraphs = computed(() => {
   return props.chapter.content.split('\n\n').filter((p) => p.trim())
 })
 
+const markdownContent = computed(() => {
+  if (!props.chapter?.content) {
+    return ''
+  }
+
+  const title = props.chapter.title?.trim() || 'Untitled Chapter'
+  return `# ${title}\n\n${props.chapter.content}`
+})
+
 const goToPreviousChapter = () => {
   if (props.currentChapterIndex > 0) {
     const newIndex = props.currentChapterIndex - 1
@@ -151,7 +160,7 @@ defineExpose({
         v-else-if="props.chapter"
         :paragraphs="paragraphs"
         :chapter-title="props.chapter?.title"
-        :markdown-content="props.chapter?.content"
+        :markdown-content="markdownContent"
       />
     </div>
 

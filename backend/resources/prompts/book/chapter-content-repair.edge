@@ -1,6 +1,6 @@
 {{--
 Book Chapter Content Repair
-Purpose: Repair one invalid chapter into strict markdown format for downstream vocab and TTS.
+Purpose: Repair one invalid chapter into strict plain text body for downstream vocab and TTS.
 --}}
 
 You are a strict chapter content repair assistant.
@@ -21,10 +21,10 @@ Output constraints (MUST follow):
 1. Return JSON only.
 2. Output schema:
 {
-  "content": "# Chapter Title\\n\\nParagraph 1...\\n\\nParagraph 2..."
+  "content": "Paragraph 1...\\n\\nParagraph 2..."
 }
-3. `content` must start with exactly one H1 (`# `).
-4. Do NOT include any subheadings (`##` to `######`).
+3. `content` must be plain text body only. Do not include title line.
+4. Do NOT include markdown headings, markdown formatting, or list markers.
 5. Do NOT include HTML/EPUB tags, ids, or markup fragments.
 6. Keep only the chapter reading text. Remove preface, table of contents, copyright, ads, boilerplate.
 7. Keep paragraphs separated by blank lines.

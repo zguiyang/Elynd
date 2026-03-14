@@ -66,12 +66,12 @@ export class BookChapterValidationService {
 
     for (const chapter of chapters) {
       const normalized = this.normalizeChapter(chapter, stats)
-      if (!this.shouldKeepChapter(normalized.content, stats)) {
+      if (!this.shouldKeepChapter(normalized, stats)) {
         stats.removedChapters++
         continue
       }
 
-      if (normalized.content !== chapter.content.trim()) {
+      if (normalized.content !== this.normalizeNewlines(chapter.content)) {
         stats.fixedByRules++
       }
 
@@ -103,7 +103,7 @@ export class BookChapterValidationService {
             candidate = this.normalizeChapter(
               {
                 ...candidate,
-                content: `# ${candidate.title}\n\n${recoveredBody}`,
+                content: recoveredBody,
               },
               stats
             )
@@ -138,22 +138,21 @@ export class BookChapterValidationService {
 
   private collectSoftIssues(content: string): string[] {
     const issues: string[] = []
-    const body = content.replace(/^#\s+.+$/m, '').trim()
 
-    if (!body.includes('\n\n') && body.length > 300) {
+    if (!content.includes('\n\n') && content.length > 300) {
       issues.push('paragraph_structure_missing')
     }
 
-    if (/id=(\"|')pgepubid/i.test(content) || /pgepubid\d+/i.test(content)) {
+    if (/id=("|')pgepubid/i.test(content) || /pgepubid\d+/i.test(content)) {
       issues.push('epub_id_residue')
     }
 
-    if (/<[^>]+>/.test(content)) {
+    if (this.hasHtmlResidue(content)) {
       issues.push('html_residue')
     }
 
-    if (/^#{2,}\s+\S/m.test(content)) {
-      issues.push('subheading_detected')
+    if (this.hasMarkdownResidue(content)) {
+      issues.push('markdown_residue')
     }
 
     return issues
@@ -162,24 +161,19 @@ export class BookChapterValidationService {
   private validateHardConstraints(content: string): string[] {
     const errors: string[] = []
 
-    if (!this.contentGuardService.validateFirstLineIsH1(content)) {
-      errors.push('first_line_not_h1')
-    }
-
-    if (this.contentGuardService.hasSubheadings(content)) {
-      errors.push('contains_subheadings')
-    }
-
-    if (/<[^>]+>/.test(content)) {
+    if (this.hasHtmlResidue(content)) {
       errors.push('contains_html')
     }
 
-    if (/pgepubid\d+/i.test(content) || /id=(\"|')pgepubid/i.test(content)) {
+    if (this.hasMarkdownResidue(content)) {
+      errors.push('contains_markdown')
+    }
+
+    if (/pgepubid\d+/i.test(content) || /id=("|')pgepubid/i.test(content)) {
       errors.push('contains_epub_id_residue')
     }
 
-    const body = content.replace(/^#\s+.+$/m, '').trim()
-    if (!body) {
+    if (!content.trim()) {
       errors.push('empty_body')
     }
 
@@ -187,23 +181,26 @@ export class BookChapterValidationService {
   }
 
   private extractBody(content: string): string {
-    return content.replace(/^#\s+.+$/m, '').trim()
+    return content.trim()
   }
 
   private normalizeChapter(chapter: ChapterContentInput, stats: ChapterValidationStats) {
     const title = this.normalizeTitle(chapter.title)
     let normalized = this.normalizeNewlines(chapter.content)
 
-    if (/pgepubid\d+/i.test(normalized)) {
+    if (/pgepubid\d+/i.test(normalized) || /id=("|')pgepubid/i.test(normalized)) {
       stats.ruleHits.pgepubid++
       normalized = normalized.replace(/id=("|')pgepubid[^"']*("|')>?/gi, '')
       normalized = normalized.replace(/pgepubid\d+/gi, '')
     }
 
-    if (/<[^>]+>/g.test(normalized)) {
+    if (this.hasHtmlResidue(normalized)) {
       stats.ruleHits.htmlTag++
       normalized = normalized.replace(/<[^>]+>/g, ' ')
+      normalized = normalized.replace(/<\/?[a-z][^>\n]*(?=\n|$)/gi, ' ')
     }
+
+    normalized = this.stripMarkdownSyntax(normalized)
 
     normalized = normalized
       .split('')
@@ -241,6 +238,15 @@ export class BookChapterValidationService {
         stats.ruleHits.subheading++
         return line.replace(/^#{2,}\s+/, '')
       }
+
+      if (/^[-*+]\s+/.test(line)) {
+        return line.replace(/^[-*+]\s+/, '')
+      }
+
+      if (/^\d+\.\s+/.test(line)) {
+        return line.replace(/^\d+\.\s+/, '')
+      }
+
       return line
     })
 
@@ -251,24 +257,23 @@ export class BookChapterValidationService {
 
     body = this.normalizeParagraphStructure(body)
 
-    const content = body ? `# ${heading}\n\n${body}` : `# ${heading}`
-
     return {
       chapterIndex: chapter.chapterIndex,
       title: heading,
-      content,
+      content: body,
     }
   }
 
-  private shouldKeepChapter(content: string, stats: ChapterValidationStats): boolean {
-    const nonReadingKeyword = this.contentGuardService.checkNonReadingSection(content)
+  private shouldKeepChapter(chapter: ChapterContentInput, stats: ChapterValidationStats): boolean {
+    const nonReadingKeyword = this.contentGuardService.checkNonReadingSection(
+      `# ${chapter.title}\n\n${chapter.content}`
+    )
     if (nonReadingKeyword) {
       stats.ruleHits.nonReading++
       return false
     }
 
-    const body = content.replace(/^#\s+.+$/m, '').trim()
-    if (body.length < 50) {
+    if (chapter.content.length < 50) {
       return false
     }
 
@@ -285,16 +290,14 @@ export class BookChapterValidationService {
       const repairedBodies: string[] = []
 
       for (const chunk of chunks) {
-        const chunkContent = `# ${chapter.title}\n\n${chunk}`
         const repairedChunk = await this.repairSingleChapterWithAi(
-          { ...chapter, content: chunkContent },
+          { ...chapter, content: chunk },
           errors
         )
-        const repairedBody = this.extractBody(repairedChunk)
-        repairedBodies.push(this.normalizeParagraphStructure(repairedBody || chunk))
+        repairedBodies.push(this.normalizeParagraphStructure(repairedChunk || chunk))
       }
 
-      return `# ${chapter.title}\n\n${repairedBodies.join('\n\n').trim()}`
+      return repairedBodies.join('\n\n').trim()
     }
 
     return this.repairSingleChapterWithAi(chapter, errors)
@@ -491,6 +494,40 @@ export class BookChapterValidationService {
     }
 
     return trimmed
+  }
+
+  private stripMarkdownSyntax(content: string): string {
+    return content
+      .replace(/```[\s\S]*?```/g, ' ')
+      .replace(/^#{1,6}\s+/gm, '')
+      .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/^>\s?/gm, '')
+      .replace(/^[-*+]\s+/gm, '')
+      .replace(/^\d+\.\s+/gm, '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/__([^_]+)__/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/_([^_]+)_/g, '$1')
+      .replace(/~~([^~]+)~~/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/^[#*_`~\-]+$/gm, '')
+      .trim()
+  }
+
+  private hasHtmlResidue(content: string): boolean {
+    return /<[^>]+>/.test(content) || /<\/?[a-z][^>\n]*(?=\n|$)/i.test(content)
+  }
+
+  private hasMarkdownResidue(content: string): boolean {
+    return (
+      /^\s{0,3}#{1,6}\s+/m.test(content) ||
+      /```/.test(content) ||
+      /^\s*[-*+]\s+/m.test(content) ||
+      /^\s*\d+\.\s+/m.test(content) ||
+      /!\[[^\]]*\]\([^)]+\)/.test(content) ||
+      /\[[^\]]+\]\([^)]+\)/.test(content)
+    )
   }
 
   private isSameTitle(line: string, title: string): boolean {

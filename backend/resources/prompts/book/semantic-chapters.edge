@@ -11,8 +11,8 @@ Task:
 3. Preserve original chapter order for kept chapters.
 
 Output Format (MUST follow):
-- Each chapter's content must use H1 format: `# Title` followed by paragraphs
-- **STRICTLY FORBIDDEN**: Do NOT use `##`, `###`, or any sub-headers - only use `#` for chapter titles
+- Each chapter's `content` must be plain reading text body only (no heading line inside content)
+- **STRICTLY FORBIDDEN**: markdown headings, markdown formatting, html tags, or epub fragments
 - Content must be paragraph-based, not bullet points or lists
 - Keep line breaks (`\n`) between paragraphs to preserve reading structure
 
@@ -21,7 +21,7 @@ Output JSON schema (strict):
   "cleanedChapters": [
     {
       "title": "string",
-      "content": "# Chapter Title\n\nParagraph 1 text here.\n\nParagraph 2 text here.",
+      "content": "Paragraph 1 text here.\n\nParagraph 2 text here.",
       "dropReason": null
     }
   ],
@@ -37,8 +37,8 @@ Rules:
 - Return only JSON.
 - `cleanedChapters` must not contain empty content.
 - Keep language/content unchanged except trimming noise.
-- Title in content must start with `# ` (H1 format).
 - Preserve `\n\n` between paragraphs for readability.
+- Do not include the chapter title line inside `content`.
 
 Input chapters:
 {{ JSON.stringify(chapters, null, 2) }}

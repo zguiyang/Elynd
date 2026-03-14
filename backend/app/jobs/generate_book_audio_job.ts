@@ -44,7 +44,8 @@ export default class GenerateBookAudioJob extends Job {
     const book = await Book.find(bookId)
 
     if (!book) {
-      throw new Exception(`Book ${bookId} not found`, { status: 404 })
+      logger.warn({ bookId }, 'Skip audio job because book no longer exists')
+      return
     }
 
     const runLog = await this.logService.getOrCreateActiveRun(bookId, 'import')

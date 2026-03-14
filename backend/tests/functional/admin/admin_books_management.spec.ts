@@ -3,6 +3,7 @@ import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import BookChapterAudio from '#models/book_chapter_audio'
 import BookVocabulary from '#models/book_vocabulary'
+import drive from '@adonisjs/drive/services/main'
 import crypto from 'node:crypto'
 import { bearerAuthHeader, createAuthenticatedUser } from '#tests/helpers/auth'
 
@@ -887,10 +888,34 @@ test.group('Admin Books Management API', () => {
       isPublished: false,
       createdBy: admin.id,
       contentHash: crypto.randomUUID(),
+      audioUrl: `book/voices/retry-audio-${crypto.randomUUID()}.mp3`,
       audioStatus: 'failed',
       vocabularyStatus: 'pending',
     })
     cleanup(async () => await book.delete())
+
+    const chapterAudioPath = `book/voices/retry-audio-${book.id}-chapter-0.mp3`
+    await drive.use().put(chapterAudioPath, Buffer.from('fake-audio-data'))
+    if (book.audioUrl) {
+      await drive.use().put(book.audioUrl, Buffer.from('fake-book-audio'))
+    }
+    cleanup(async () => {
+      await drive.use().delete(chapterAudioPath)
+      if (book.audioUrl) {
+        await drive.use().delete(book.audioUrl)
+      }
+    })
+
+    await BookChapterAudio.create({
+      bookId: book.id,
+      chapterIndex: 0,
+      textHash: crypto.randomUUID().replace(/-/g, ''),
+      voiceHash: 'default-voice',
+      audioPath: chapterAudioPath,
+      durationMs: 1200,
+      status: 'completed',
+      errorMessage: null,
+    })
 
     const response = await client
       .post(`/api/admin/books/${book.id}/retry-audio`)
@@ -904,6 +929,128 @@ test.group('Admin Books Management API', () => {
     assert.equal(reloadedBook.status, 'processing')
     assert.equal(reloadedBook.audioStatus, 'pending')
     assert.isNull(reloadedBook.processingError)
+    assert.isNull(reloadedBook.audioUrl)
+    assert.isNull(reloadedBook.audioTiming)
+
+    const chapterAudioRows = await BookChapterAudio.query().where('bookId', book.id)
+    assert.equal(chapterAudioRows.length, 0, 'Old chapter audio rows should be deleted')
+
+    const chapterAudioExists = await drive.use().exists(chapterAudioPath)
+    assert.isFalse(chapterAudioExists, 'Old chapter audio file should be deleted')
+    if (book.audioUrl) {
+      const bookAudioExists = await drive.use().exists(book.audioUrl)
+      assert.isFalse(bookAudioExists, 'Old merged book audio file should be deleted')
+    }
+  })
+
+  test('POST /api/admin/books/:id/rebuild-chapters deletes old chapters, audio, and vocabulary', async ({
+    assert,
+    client,
+    cleanup,
+  }) => {
+    const { user: admin, token } = await createAdminUser()
+    cleanup(async () => {
+      await admin.delete()
+    })
+
+    const bookAudioPath = `book/voices/rebuild-book-${crypto.randomUUID()}.mp3`
+    const chapterAudioPath = `book/voices/rebuild-book-${crypto.randomUUID()}-chapter-0.mp3`
+
+    const book = await Book.create({
+      title: 'Rebuild Source Book',
+      author: 'Source Author',
+      source: 'user_uploaded',
+      difficultyLevel: 'beginner',
+      status: 'ready',
+      processingStep: null,
+      processingProgress: 100,
+      processingError: 'old error',
+      wordCount: 1200,
+      readingTime: 8,
+      isPublished: true,
+      createdBy: admin.id,
+      contentHash: crypto.randomUUID(),
+      rawFilePath: `book/raw/${crypto.randomUUID()}.epub`,
+      rawFileName: 'source.epub',
+      rawFileExt: 'epub',
+      rawFileSize: 1024,
+      rawFileHash: crypto.randomUUID().replace(/-/g, ''),
+      audioUrl: bookAudioPath,
+      audioStatus: 'completed',
+      vocabularyStatus: 'completed',
+    })
+
+    cleanup(async () => {
+      await BookChapter.query().where('bookId', book.id).delete()
+      await BookChapterAudio.query().where('bookId', book.id).delete()
+      await BookVocabulary.query().where('bookId', book.id).delete()
+      await book.delete()
+      await drive.use().delete(chapterAudioPath)
+      await drive.use().delete(bookAudioPath)
+    })
+
+    await BookChapter.createMany([
+      {
+        bookId: book.id,
+        chapterIndex: 0,
+        title: 'Old chapter 1',
+        content: 'old content 1',
+      },
+      {
+        bookId: book.id,
+        chapterIndex: 1,
+        title: 'Old chapter 2',
+        content: 'old content 2',
+      },
+    ])
+    await BookVocabulary.create({
+      bookId: book.id,
+      word: 'legacy',
+      lemma: 'legacy',
+      frequency: 1,
+      meaning: 'old',
+      sentence: 'old sentence',
+    })
+    await BookChapterAudio.create({
+      bookId: book.id,
+      chapterIndex: 0,
+      textHash: crypto.randomUUID().replace(/-/g, ''),
+      voiceHash: 'default-voice',
+      audioPath: chapterAudioPath,
+      durationMs: 888,
+      status: 'completed',
+      errorMessage: null,
+    })
+    await drive.use().put(chapterAudioPath, Buffer.from('old-chapter-audio'))
+    await drive.use().put(bookAudioPath, Buffer.from('old-book-audio'))
+
+    const response = await client
+      .post(`/api/admin/books/${book.id}/rebuild-chapters`)
+      .header('Authorization', bearerAuthHeader(token))
+
+    response.assertStatus(200)
+    assert.equal(response.body().success, true)
+
+    const chapters = await BookChapter.query().where('bookId', book.id)
+    const audios = await BookChapterAudio.query().where('bookId', book.id)
+    const vocabulary = await BookVocabulary.query().where('bookId', book.id)
+
+    assert.equal(chapters.length, 0, 'Old chapters should be deleted')
+    assert.equal(audios.length, 0, 'Old chapter audio rows should be deleted')
+    assert.equal(vocabulary.length, 0, 'Old vocabulary should be deleted')
+
+    const reloadedBook = await Book.findOrFail(book.id)
+    assert.equal(reloadedBook.status, 'processing')
+    assert.equal(reloadedBook.audioStatus, 'pending')
+    assert.equal(reloadedBook.vocabularyStatus, 'pending')
+    assert.isNull(reloadedBook.audioUrl)
+    assert.isNull(reloadedBook.audioTiming)
+    assert.isNull(reloadedBook.processingError)
+
+    const chapterAudioExists = await drive.use().exists(chapterAudioPath)
+    assert.isFalse(chapterAudioExists, 'Old chapter audio file should be deleted')
+    const bookAudioExists = await drive.use().exists(bookAudioPath)
+    assert.isFalse(bookAudioExists, 'Old book audio file should be deleted')
   })
 
   test('POST /api/admin/books/:id/retry-vocabulary returns 400 when vocabulary is not failed', async ({

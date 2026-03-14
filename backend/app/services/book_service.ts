@@ -3,6 +3,8 @@ import { Exception } from '@adonisjs/core/exceptions'
 import { DateTime } from 'luxon'
 import db from '@adonisjs/lucid/services/db'
 import app from '@adonisjs/core/services/app'
+import drive from '@adonisjs/drive/services/main'
+import logger from '@adonisjs/core/services/logger'
 import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import BookVocabulary from '#models/book_vocabulary'
@@ -142,11 +144,15 @@ export class BookService {
       throw new Exception('Can only retry books with failed audio status', { status: 400 })
     }
 
+    await this.clearBookAudioFiles(book.id, book.audioUrl)
+
     const ttsBaseProgress = BookImportOrchestratorService.getBaseProgressByStep(
       BOOK_IMPORT_STEP.GENERATE_TTS
     )
 
     await db.transaction(async (trx) => {
+      await BookChapterAudio.query({ client: trx }).where('bookId', book.id).delete()
+
       await book
         .useTransaction(trx)
         .merge({
@@ -154,6 +160,9 @@ export class BookService {
           processingStep: BOOK_IMPORT_STEP.GENERATE_TTS,
           processingProgress: ttsBaseProgress,
           processingError: null,
+          audioUrl: null,
+          audioTiming: null,
+          audioGeneratedAt: null,
           audioStatus: 'pending',
         })
         .save()
@@ -382,6 +391,8 @@ export class BookService {
       throw new Exception('Book is processing, stop it first before rebuild', { status: 400 })
     }
 
+    await this.clearBookAudioFiles(book.id, book.audioUrl)
+
     await db.transaction(async (trx) => {
       await BookChapter.query({ client: trx }).where('bookId', book.id).delete()
       await BookChapterAudio.query({ client: trx }).where('bookId', book.id).delete()
@@ -420,6 +431,42 @@ export class BookService {
       bookId: book.id,
       jobId,
       status: 'queued',
+    }
+  }
+
+  private async clearBookAudioFiles(bookId: number, audioUrl: string | null) {
+    const pathsResult = await BookChapterAudio.query()
+      .where('bookId', bookId)
+      .whereNotNull('audioPath')
+      .select('audioPath')
+
+    const chapterAudioPaths = pathsResult
+      .map((item) => item.audioPath)
+      .filter((path): path is string => Boolean(path))
+
+    const paths = new Set<string>([
+      `book/voices/${bookId}.mp3`,
+      ...(audioUrl ? [audioUrl] : []),
+      ...chapterAudioPaths,
+    ])
+
+    for (const path of paths) {
+      try {
+        const exists = await drive.use().exists(path)
+        if (!exists) {
+          continue
+        }
+        await drive.use().delete(path)
+      } catch (error) {
+        logger.warn(
+          {
+            bookId,
+            audioPath: path,
+            err: error,
+          },
+          'Failed to delete stale book audio file'
+        )
+      }
     }
   }
 

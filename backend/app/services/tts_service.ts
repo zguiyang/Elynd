@@ -191,7 +191,7 @@ export class TtsService {
       }
     }
 
-    return chunks
+    return this.mergeSmallAdjacentChunks(chunks, maxChars)
   }
 
   private getVoiceName(options?: GenerateChapterAudioOptions) {
@@ -240,6 +240,41 @@ export class TtsService {
     }
 
     return chunks
+  }
+
+  /**
+   * Merge adjacent small chunks to avoid over-fragmented chapters.
+   * Deterministic: stable input order + fixed separator strategy.
+   */
+  private mergeSmallAdjacentChunks(chunks: string[], maxChars: number): string[] {
+    if (chunks.length <= 1) {
+      return chunks
+    }
+
+    const merged: string[] = []
+    let current = ''
+
+    for (const chunk of chunks) {
+      if (!current) {
+        current = chunk
+        continue
+      }
+
+      const candidate = `${current}\n\n${chunk}`
+      if (candidate.length <= maxChars) {
+        current = candidate
+        continue
+      }
+
+      merged.push(current)
+      current = chunk
+    }
+
+    if (current) {
+      merged.push(current)
+    }
+
+    return merged
   }
 
   /**

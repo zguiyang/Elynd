@@ -74,7 +74,7 @@ test.group('TtsService chunking', () => {
     assert.equal(merged.duration, 1800)
   })
 
-  test('splits by paragraph boundaries first', async ({ assert }) => {
+  test('merges adjacent small paragraphs to reduce over-fragmentation', async ({ assert }) => {
     const { TtsService } = await import('#services/tts_service')
 
     const service = new TtsService()
@@ -85,7 +85,21 @@ test.group('TtsService chunking', () => {
       service as unknown as { splitTextIntoChunks: (text: string, maxChars: number) => string[] }
     )['splitTextIntoChunks'](text, 100)
 
-    // Should split into 3 paragraphs
+    // With enough headroom, adjacent short paragraphs should be merged.
+    assert.equal(chunks.length, 1)
+  })
+
+  test('keeps paragraph-first behavior when maxChars is tight', async ({ assert }) => {
+    const { TtsService } = await import('#services/tts_service')
+
+    const service = new TtsService()
+
+    const text = 'Short paragraph.\n\nAnother short paragraph.\n\nYet another paragraph.'
+
+    const chunks = (
+      service as unknown as { splitTextIntoChunks: (text: string, maxChars: number) => string[] }
+    )['splitTextIntoChunks'](text, 30)
+
     assert.equal(chunks.length, 3)
   })
 

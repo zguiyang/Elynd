@@ -1,6 +1,5 @@
 import { Job } from 'adonisjs-jobs'
 import app from '@adonisjs/core/services/app'
-import { Exception } from '@adonisjs/core/exceptions'
 import logger from '@adonisjs/core/services/logger'
 import crypto from 'node:crypto'
 import { DictionaryService } from '#services/dictionary_service'
@@ -29,7 +28,8 @@ export default class GenerateBookVocabularyJob extends Job {
 
     const book = await Book.find(bookId)
     if (!book) {
-      throw new Exception(`Book ${bookId} not found`, { status: 404 })
+      logger.warn({ bookId }, 'Skip vocabulary job because book no longer exists')
+      return
     }
 
     const runLog = await this.logService.getOrCreateActiveRun(bookId, 'import')

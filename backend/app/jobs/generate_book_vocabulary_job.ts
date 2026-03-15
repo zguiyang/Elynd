@@ -2,6 +2,7 @@ import { Job } from 'adonisjs-jobs'
 import app from '@adonisjs/core/services/app'
 import logger from '@adonisjs/core/services/logger'
 import crypto from 'node:crypto'
+import { BOOK_IMPORT_STEP } from '#constants'
 import { DictionaryService } from '#services/dictionary_service'
 import { VocabularyAnalyzerService } from '#services/vocabulary_analyzer_service'
 import Book from '#models/book'
@@ -128,6 +129,7 @@ export default class GenerateBookVocabularyJob extends Job {
       })
 
       await book.merge({ vocabularyStatus: 'completed' }).save()
+      await this.finalizeIfParallelTasksCompleted(book, runLog.id)
 
       logger.info(
         {
@@ -155,5 +157,32 @@ export default class GenerateBookVocabularyJob extends Job {
       await book.merge({ vocabularyStatus: 'failed' }).save()
       throw error
     }
+  }
+
+  private async finalizeIfParallelTasksCompleted(book: Book, runId: number) {
+    await book.refresh()
+
+    if (book.status === 'cancelled') {
+      logger.info({ bookId: book.id, runId }, 'Skip finalize because import is cancelled')
+      return
+    }
+
+    if (book.audioStatus !== 'completed' || book.vocabularyStatus !== 'completed') {
+      return
+    }
+
+    await this.logService.completeRun(runId)
+
+    await book
+      .merge({
+        status: 'ready',
+        processingStep: BOOK_IMPORT_STEP.COMPLETED,
+        processingProgress: 100,
+        processingError: null,
+        isPublished: true,
+      })
+      .save()
+
+    logger.info({ bookId: book.id, runId }, 'Parallel import tasks finalized')
   }
 }

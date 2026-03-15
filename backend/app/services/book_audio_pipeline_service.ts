@@ -85,7 +85,34 @@ export class BookAudioPipelineService {
           voiceHash
         )
 
+        if (!cacheHit) {
+          logger.info(
+            {
+              bookId,
+              chapterIndex: chapter.chapterIndex,
+              textHash,
+              voiceHash,
+              reason: 'no_matching_completed_cache_record',
+            },
+            'TTS cache lookup miss'
+          )
+        }
+
         if (cacheHit && (cacheHit.timingWords?.length || 0) > 0) {
+          logger.info(
+            {
+              bookId,
+              chapterIndex: chapter.chapterIndex,
+              textHash,
+              voiceHash,
+              cachedAudioPath: cacheHit.audioPath,
+              cachedDurationMs: cacheHit.durationMs,
+              cachedChunkCount: cacheHit.chunkCount,
+              cachedTimingWordsCount: cacheHit.timingWords?.length || 0,
+              cacheStatus: cacheHit.status,
+            },
+            'TTS cache lookup hit'
+          )
           await this.importStateService.assertImportNotCancelled(runId, bookId)
           const words = cacheHit.timingWords || []
           this.assertWordTimings(chapterInput, words)
@@ -134,6 +161,13 @@ export class BookAudioPipelineService {
             {
               bookId,
               chapterIndex: chapter.chapterIndex,
+              textHash,
+              voiceHash,
+              cachedAudioPath: cacheHit.audioPath,
+              cachedDurationMs: cacheHit.durationMs,
+              cachedChunkCount: cacheHit.chunkCount,
+              cacheStatus: cacheHit.status,
+              reason: 'timing_words_missing',
             },
             'Skip cache reuse because timing words are missing; fallback to synthesis'
           )

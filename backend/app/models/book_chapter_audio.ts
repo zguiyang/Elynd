@@ -28,7 +28,19 @@ export default class BookChapterAudio extends BaseModel {
   @column({ columnName: 'duration_ms' })
   declare durationMs: number | null
 
-  @column({ columnName: 'timing_words' })
+  @column({
+    columnName: 'timing_words',
+    prepare: (value: WordTiming[] | null) => (value === null ? null : JSON.stringify(value)),
+    consume: (value: unknown) => {
+      if (value === null || value === undefined) {
+        return null
+      }
+      if (typeof value === 'string') {
+        return JSON.parse(value) as WordTiming[]
+      }
+      return value as WordTiming[]
+    },
+  })
   declare timingWords: WordTiming[] | null
 
   @column({ columnName: 'chunk_count' })

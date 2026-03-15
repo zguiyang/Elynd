@@ -15,7 +15,7 @@ export interface AdminBook {
   description: string | null
   source: 'user_uploaded' | 'public_domain' | 'ai_generated'
   difficultyLevel: string
-  status: 'processing' | 'ready' | 'failed'
+  status: 'processing' | 'ready' | 'failed' | 'cancelled'
   processingStep: string | null
   processingProgress: number
   processingError: string | null

@@ -4,6 +4,7 @@ import { Exception } from '@adonisjs/core/exceptions'
 import logger from '@adonisjs/core/services/logger'
 import env from '#start/env'
 import { TtsService } from '#services/tts_service'
+import { BOOK_IMPORT_STEP } from '#constants'
 import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import BookChapterAudio from '#models/book_chapter_audio'
@@ -99,6 +100,7 @@ export default class GenerateBookAudioJob extends Job {
         })
         .save()
 
+      await this.finalizeIfParallelTasksCompleted(book, runLog.id)
       logger.info({ bookId }, 'All chapter audio generation completed')
     } catch (error) {
       logger.error({ err: error, bookId }, 'Audio generation failed')
@@ -107,6 +109,33 @@ export default class GenerateBookAudioJob extends Job {
 
       throw error
     }
+  }
+
+  private async finalizeIfParallelTasksCompleted(book: Book, runId: number) {
+    await book.refresh()
+
+    if (book.status === 'cancelled') {
+      logger.info({ bookId: book.id, runId }, 'Skip finalize because import is cancelled')
+      return
+    }
+
+    if (book.audioStatus !== 'completed' || book.vocabularyStatus !== 'completed') {
+      return
+    }
+
+    await this.logService.completeRun(runId)
+
+    await book
+      .merge({
+        status: 'ready',
+        processingStep: BOOK_IMPORT_STEP.COMPLETED,
+        processingProgress: 100,
+        processingError: null,
+        isPublished: true,
+      })
+      .save()
+
+    logger.info({ bookId: book.id, runId }, 'Parallel import tasks finalized')
   }
 
   /**

@@ -2,9 +2,10 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { toast } from 'vue-sonner'
 import { adminApi, type AdminBook, type AdminUpdateBookPayload } from '@/api/admin'
-import { RefreshCw, Loader2, Pencil, Trash2, Clock, CheckCircle, XCircle, AlertCircle, Upload, BookOpen, Volume2, Square, Play } from 'lucide-vue-next'
+import { RefreshCw, Loader2, Clock, CheckCircle, XCircle, AlertCircle, Upload } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { getStepText, getProgressComposition, getTaskSummary, canRetryVocabulary, canRetryAudio } from '@/composables/useBookImportStatus'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 const router = useRouter()
 
@@ -207,6 +208,8 @@ const getStatusVariant = (status: string): BadgeVariant => {
       return 'secondary'
     case 'ready':
       return 'default'
+    case 'cancelled':
+      return 'outline'
     case 'failed':
       return 'destructive'
     default:
@@ -220,6 +223,8 @@ const getStatusText = (status: string) => {
       return '处理中'
     case 'ready':
       return '已完成'
+    case 'cancelled':
+      return '已停止'
     case 'failed':
       return '失败'
     default:
@@ -233,6 +238,8 @@ const getStatusIcon = (status: string) => {
       return Clock
     case 'ready':
       return CheckCircle
+    case 'cancelled':
+      return AlertCircle
     case 'failed':
       return XCircle
     default:
@@ -319,7 +326,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <TooltipProvider>
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-bold">书籍任务</h1>
@@ -339,17 +347,17 @@ onUnmounted(() => {
     <!-- Table -->
     <Card>
       <CardContent class="p-0">
-        <Table>
+        <Table class="w-full table-fixed min-w-[1180px]">
           <TableHeader>
             <TableRow>
-              <TableHead>书名</TableHead>
-              <TableHead>作者</TableHead>
-              <TableHead>状态</TableHead>
-              <TableHead>进度</TableHead>
-              <TableHead>步骤</TableHead>
-              <TableHead>错误</TableHead>
-              <TableHead>创建时间</TableHead>
-              <TableHead>操作</TableHead>
+              <TableHead class="w-[190px]">书名</TableHead>
+              <TableHead class="w-[110px]">作者</TableHead>
+              <TableHead class="w-[90px]">状态</TableHead>
+              <TableHead class="w-[110px]">进度</TableHead>
+              <TableHead class="w-[140px]">步骤</TableHead>
+              <TableHead class="w-[220px]">错误</TableHead>
+              <TableHead class="w-[170px]">创建时间</TableHead>
+              <TableHead class="sticky right-0 z-20 w-[270px] bg-background text-right">操作</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -364,8 +372,26 @@ onUnmounted(() => {
               </TableCell>
             </TableRow>
             <TableRow v-for="book in list" :key="book.id">
-              <TableCell class="font-medium">{{ book.title }}</TableCell>
-              <TableCell>{{ book.author || '-' }}</TableCell>
+              <TableCell class="font-medium">
+                <Tooltip>
+                  <TooltipTrigger as-child>
+                    <div class="w-full truncate">{{ book.title }}</div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {{ book.title }}
+                  </TooltipContent>
+                </Tooltip>
+              </TableCell>
+              <TableCell>
+                <Tooltip>
+                  <TooltipTrigger as-child>
+                    <div class="w-full truncate">{{ book.author || '-' }}</div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {{ book.author || '-' }}
+                  </TooltipContent>
+                </Tooltip>
+              </TableCell>
               <TableCell>
                 <Badge :variant="getStatusVariant(book.status)">
                   <component :is="getStatusIcon(book.status)" class="h-3 w-3 mr-1" />
@@ -375,86 +401,116 @@ onUnmounted(() => {
               <TableCell>
                 <div class="space-y-1">
                   <div class="font-medium">{{ getDisplayProgress(book) }}%</div>
-                  <p v-if="getProgressSummary(book)" class="text-xs text-muted-foreground">
-                    {{ getProgressSummary(book) }}
-                  </p>
+                  <Tooltip v-if="getProgressSummary(book)">
+                    <TooltipTrigger as-child>
+                      <p class="w-full truncate text-xs text-muted-foreground">
+                        {{ getProgressSummary(book) }}
+                      </p>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {{ getProgressSummary(book) }}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </TableCell>
-              <TableCell>{{ getDisplayStep(book) }}</TableCell>
               <TableCell>
-                <span v-if="book.processingError" class="text-destructive text-sm line-clamp-1" :title="book.processingError">
-                  {{ book.processingError }}
-                </span>
+                <Tooltip>
+                  <TooltipTrigger as-child>
+                    <div class="w-full truncate">{{ getDisplayStep(book) }}</div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {{ getDisplayStep(book) }}
+                  </TooltipContent>
+                </Tooltip>
+              </TableCell>
+              <TableCell>
+                <Tooltip v-if="book.processingError">
+                  <TooltipTrigger as-child>
+                    <span class="block w-full truncate text-sm text-destructive">
+                      {{ book.processingError }}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {{ book.processingError }}
+                  </TooltipContent>
+                </Tooltip>
                 <span v-else class="text-muted-foreground">-</span>
               </TableCell>
               <TableCell>{{ new Date(book.createdAt).toLocaleString('zh-CN') }}</TableCell>
-              <TableCell>
-                <div class="flex items-center gap-2">
+              <TableCell class="sticky right-0 z-10 bg-background shadow-[-8px_0_12px_-10px_hsl(var(--border))]">
+                <div class="flex flex-wrap justify-end gap-1">
                   <!-- Rebuild chapters button -->
                   <Button
-                    variant="ghost"
-                    size="icon"
+                    variant="outline"
+                    size="sm"
+                    class="h-7 px-2 text-xs"
                     :disabled="book.status === 'processing'"
                     @click="rebuildChapters(book)"
-                    :title="book.status === 'processing' ? '处理中请先停止导入' : '重建章节'"
+                    :title="book.status === 'processing' ? '处理中请先停止导入' : '重建'"
                   >
-                    <RefreshCw class="h-4 w-4" />
+                    重建
                   </Button>
                   <Button
                     v-if="book.status === 'processing'"
-                    variant="ghost"
-                    size="icon"
+                    variant="outline"
+                    size="sm"
+                    class="h-7 px-2 text-xs"
                     @click="stopImport(book)"
                     title="停止导入"
                   >
-                    <Square class="h-4 w-4" />
+                    停止
                   </Button>
                   <Button
-                    v-if="book.status === 'failed'"
-                    variant="ghost"
-                    size="icon"
+                    v-if="book.status === 'failed' || book.status === 'cancelled'"
+                    variant="outline"
+                    size="sm"
+                    class="h-7 px-2 text-xs"
                     @click="continueImport(book)"
                     title="继续导入"
                   >
-                    <Play class="h-4 w-4" />
+                    继续
                   </Button>
                   <!-- Audio retry button -->
                   <Button
                     v-if="canRetryAudio(book)"
-                    variant="ghost"
-                    size="icon"
+                    variant="outline"
+                    size="sm"
+                    class="h-7 px-2 text-xs"
                     @click="retryAudio(book)"
                     title="重试音频生成"
                   >
-                    <Volume2 class="h-4 w-4" />
+                    重试音频
                   </Button>
                   <!-- Vocabulary retry button -->
                   <Button
                     v-if="canRetryVocabulary(book)"
-                    variant="ghost"
-                    size="icon"
+                    variant="outline"
+                    size="sm"
+                    class="h-7 px-2 text-xs"
                     @click="retryVocabulary(book)"
                     title="重试词汇表生成"
                   >
-                    <BookOpen class="h-4 w-4" />
+                    重试词汇
                   </Button>
                   <Button
-                    variant="ghost"
-                    size="icon"
+                    variant="outline"
+                    size="sm"
+                    class="h-7 px-2 text-xs"
                     :disabled="book.status === 'processing'"
                     @click="openEditDialog(book)"
                     :title="book.status === 'processing' ? '处理中不可操作' : '编辑'"
                   >
-                    <Pencil class="h-4 w-4" />
+                    编辑
                   </Button>
                   <Button
-                    variant="ghost"
-                    size="icon"
+                    variant="outline"
+                    size="sm"
+                    class="h-7 px-2 text-xs"
                     :disabled="book.status === 'processing'"
                     @click="openDeleteDialog(book)"
                     :title="book.status === 'processing' ? '处理中不可操作' : '删除'"
                   >
-                    <Trash2 class="h-4 w-4" />
+                    删除
                   </Button>
                 </div>
               </TableCell>
@@ -563,5 +619,6 @@ onUnmounted(() => {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  </div>
+    </div>
+  </TooltipProvider>
 </template>

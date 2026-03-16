@@ -21,8 +21,10 @@ test.group('BookParserService.parseEpub', () => {
       assert.equal(result.description, 'Test EPUB Description')
       assert.equal(result.chapters.length, 2)
       assert.equal(result.chapters[0].title, 'First Chapter')
+      assert.isFalse(result.chapters[0].content.startsWith('First Chapter'))
       assert.isTrue(result.chapters[0].content.includes('Hello from chapter one'))
       assert.equal(result.chapters[1].title, 'Second Chapter')
+      assert.isFalse(result.chapters[1].content.startsWith('Second Chapter'))
       assert.isTrue(result.wordCount > 0)
     } finally {
       await fixture.cleanup()

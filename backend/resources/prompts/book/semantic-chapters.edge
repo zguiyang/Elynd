@@ -39,6 +39,10 @@ Rules:
 - Keep language/content unchanged except trimming noise.
 - Preserve `\n\n` between paragraphs for readability.
 - Do not include the chapter title line inside `content`.
+- If chapter title is split across two lines in source (for example `CHAPTER II.` + `The Pool of Tears`),
+  remove both title lines from `content`.
+- Keep poem/verse line breaks as-is inside a paragraph block (do not flatten each verse line).
+- Apply minimum edits only. Do not rewrite style, tone, facts, or wording.
 
 Input chapters:
 {{ JSON.stringify(chapters, null, 2) }}

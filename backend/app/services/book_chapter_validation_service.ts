@@ -224,14 +224,7 @@ export class BookChapterValidationService {
       bodyLines.splice(bodyLines.indexOf(firstLine), 1)
     }
 
-    while (bodyLines.length > 0 && bodyLines[0] === '') {
-      bodyLines.shift()
-    }
-
-    if (bodyLines[0] && this.isSameTitle(bodyLines[0], heading)) {
-      stats.ruleHits.duplicateTitle++
-      bodyLines.shift()
-    }
+    this.stripLeadingHeadingBlock(bodyLines, heading, stats)
 
     const normalizedBodyLines = bodyLines.map((line) => {
       if (/^#{2,}\s+/.test(line)) {
@@ -368,8 +361,12 @@ export class BookChapterValidationService {
     }
 
     // Collapse hard line-wraps inside paragraphs, while keeping explicit paragraph breaks.
-    let normalized = body.replace(/([^\n])\n([^\n])/g, '$1 $2')
+    const lineBreakToken = '__ELYND_LINE_BREAK__'
+    let normalized = this
+      .protectVerseLineBreaks(body, lineBreakToken)
+      .replace(/([^\n])\n([^\n])/g, '$1 $2')
     normalized = normalized.replace(/[ \t]+/g, ' ').trim()
+    normalized = normalized.split(lineBreakToken).join('\n')
 
     if (normalized.includes('\n\n') || normalized.length <= 300) {
       return normalized
@@ -404,6 +401,60 @@ export class BookChapterValidationService {
     }
 
     return wordChunks.join('\n\n').trim()
+  }
+
+  /**
+   * Preserve line breaks for verse-like short line blocks (e.g. poems in classic novels).
+   */
+  private protectVerseLineBreaks(body: string, lineBreakToken: string): string {
+    const lines = body.split('\n')
+    if (lines.length < 3) {
+      return body
+    }
+
+    const shortLineIndexes = new Set<number>()
+    const isShortTextLine = (line: string) => {
+      const trimmed = line.trim()
+      return trimmed.length > 0 && trimmed.length <= 70
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+      if (!isShortTextLine(lines[i])) {
+        continue
+      }
+
+      let j = i
+      while (j + 1 < lines.length && isShortTextLine(lines[j + 1])) {
+        j++
+      }
+
+      if (j - i + 1 >= 3) {
+        for (let k = i; k <= j; k++) {
+          shortLineIndexes.add(k)
+        }
+      }
+      i = j
+    }
+
+    if (shortLineIndexes.size === 0) {
+      return body
+    }
+
+    let result = lines[0] || ''
+    for (let i = 1; i < lines.length; i++) {
+      const prevTrimmed = lines[i - 1]?.trim() || ''
+      const currentTrimmed = lines[i]?.trim() || ''
+      const shouldPreserve =
+        prevTrimmed &&
+        currentTrimmed &&
+        shortLineIndexes.has(i - 1) &&
+        shortLineIndexes.has(i)
+
+      result += shouldPreserve ? lineBreakToken : '\n'
+      result += lines[i]
+    }
+
+    return result
   }
 
   private splitBodyIntoChunks(body: string, maxChars: number): string[] {
@@ -517,6 +568,93 @@ export class BookChapterValidationService {
 
   private hasHtmlResidue(content: string): boolean {
     return /<[^>]+>/.test(content) || /<\/?[a-z][^>\n]*(?=\n|$)/i.test(content)
+  }
+
+  private stripLeadingHeadingBlock(
+    bodyLines: string[],
+    heading: string,
+    stats: ChapterValidationStats
+  ): void {
+    const normalizedHeading = this.normalizeTitleForCompare(heading)
+    if (!normalizedHeading) {
+      return
+    }
+
+    let changed = true
+    while (changed && bodyLines.length > 0) {
+      changed = false
+      while (bodyLines.length > 0 && bodyLines[0] === '') {
+        bodyLines.shift()
+      }
+      if (bodyLines.length === 0) {
+        break
+      }
+
+      const first = bodyLines[0]
+      if (first && this.isSameTitle(first, heading)) {
+        stats.ruleHits.duplicateTitle++
+        bodyLines.shift()
+        changed = true
+        continue
+      }
+
+      let secondIndex = -1
+      for (let i = 1; i < bodyLines.length; i++) {
+        if (bodyLines[i]) {
+          secondIndex = i
+          break
+        }
+      }
+      if (secondIndex < 0) {
+        break
+      }
+
+      const second = bodyLines[secondIndex]
+      if (!second) {
+        break
+      }
+
+      const combined = `${first} ${second}`.trim()
+      if (
+        this.normalizeTitleForCompare(combined) === normalizedHeading ||
+        this.matchesSplitHeading(first, second, normalizedHeading)
+      ) {
+        stats.ruleHits.duplicateTitle++
+        bodyLines.splice(secondIndex, 1)
+        bodyLines.shift()
+        changed = true
+      }
+    }
+  }
+
+  private matchesSplitHeading(
+    firstLine: string,
+    secondLine: string,
+    normalizedHeading: string
+  ): boolean {
+    const prefixMatch = firstLine.match(/^chapter\s+([0-9ivxlcdm]+)\b[.\-:]*$/i)
+    if (!prefixMatch) {
+      return false
+    }
+
+    const chapterToken = prefixMatch[1]?.toLowerCase() || ''
+    const normalizedSecond = this.normalizeTitleForCompare(secondLine)
+    if (!normalizedSecond) {
+      return false
+    }
+
+    return (
+      normalizedHeading.startsWith(`chapter ${chapterToken}`) &&
+      normalizedHeading.includes(normalizedSecond)
+    )
+  }
+
+  private normalizeTitleForCompare(value: string): string {
+    return value
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
   }
 
   private hasMarkdownResidue(content: string): boolean {

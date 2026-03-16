@@ -264,7 +264,10 @@ export class BookParserService {
         current.anchor,
         next && next.hrefBase === current.hrefBase ? next.anchor : null
       )
-      const content = this.cleanContent(this.htmlToText(sectionRaw))
+      const content = this.stripLeadingTitleBlock(
+        this.cleanContent(this.htmlToText(sectionRaw)),
+        current.title
+      )
       if (!content) {
         continue
       }
@@ -297,14 +300,18 @@ export class BookParserService {
         continue
       }
 
-      const content = this.cleanContent(this.htmlToText(rawContent))
+      const generatedTitle = `Chapter ${chapters.length + 1}`
+      const content = this.stripLeadingTitleBlock(
+        this.cleanContent(this.htmlToText(rawContent)),
+        generatedTitle
+      )
       if (!content) {
         continue
       }
 
       chapters.push({
         chapterIndex: chapters.length,
-        title: `Chapter ${chapters.length + 1}`,
+        title: generatedTitle,
         content,
         wordCount: this.countWords(content),
       })
@@ -414,7 +421,7 @@ export class BookParserService {
       const block = content.slice(start, end).trim()
       const lines = block.split('\n').map((line) => line.trim())
       const title = lines[0] || `Chapter ${i + 1}`
-      const chapterContent = lines.slice(1).join('\n').trim()
+      const chapterContent = this.stripLeadingTitleBlock(lines.slice(1).join('\n').trim(), title)
 
       chapters.push({
         chapterIndex: i,
@@ -430,5 +437,95 @@ export class BookParserService {
   private countWords(content: string): number {
     const words = content.match(/\b[a-zA-Z][a-zA-Z'-]*\b/g)
     return words?.length ?? 0
+  }
+
+  private stripLeadingTitleBlock(content: string, title: string): string {
+    const normalizedTitle = this.normalizeForTitleCompare(title)
+    if (!content || !normalizedTitle) {
+      return content
+    }
+
+    const lines = content.split('\n')
+    while (lines.length > 0 && lines[0].trim() === '') {
+      lines.shift()
+    }
+
+    if (lines.length === 0) {
+      return ''
+    }
+
+    let changed = true
+    while (changed && lines.length > 0) {
+      changed = false
+      while (lines.length > 0 && lines[0].trim() === '') {
+        lines.shift()
+      }
+
+      if (lines.length === 0) {
+        break
+      }
+
+      const first = lines[0].trim()
+      if (this.isTitleEquivalent(first, title)) {
+        lines.shift()
+        changed = true
+        continue
+      }
+
+      let secondIndex = -1
+      for (let i = 1; i < lines.length; i++) {
+        if (lines[i].trim()) {
+          secondIndex = i
+          break
+        }
+      }
+      if (secondIndex < 0) {
+        break
+      }
+
+      const second = lines[secondIndex].trim()
+      const combined = `${first} ${second}`.trim()
+      if (
+        this.normalizeForTitleCompare(combined) === normalizedTitle ||
+        this.matchesTitlePrefixAndSuffix(first, second, normalizedTitle)
+      ) {
+        lines.splice(secondIndex, 1)
+        lines.shift()
+        changed = true
+      }
+    }
+
+    return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+  }
+
+  private matchesTitlePrefixAndSuffix(
+    firstLine: string,
+    secondLine: string,
+    normalizedTitle: string
+  ): boolean {
+    const prefixMatch = firstLine.match(/^chapter\s+([0-9ivxlcdm]+)\b[.\-:]*$/i)
+    if (!prefixMatch) {
+      return false
+    }
+
+    const chapterToken = prefixMatch[1]?.toLowerCase() || ''
+    const suffixToken = this.normalizeForTitleCompare(secondLine)
+    if (!suffixToken) {
+      return false
+    }
+
+    return normalizedTitle.startsWith(`chapter ${chapterToken}`) && normalizedTitle.includes(suffixToken)
+  }
+
+  private isTitleEquivalent(line: string, title: string): boolean {
+    return this.normalizeForTitleCompare(line) === this.normalizeForTitleCompare(title)
+  }
+
+  private normalizeForTitleCompare(value: string): string {
+    return value
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
   }
 }

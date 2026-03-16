@@ -514,7 +514,7 @@ export class BookAudioPipelineService {
     }
 
     const expectedWords = this.extractWords(chapter.content)
-    const actualWords = words.map((item) => this.normalizeToken(item.word)).filter(Boolean)
+    const actualWords = words.flatMap((item) => this.extractWords(item.word))
 
     const compareCount = Math.min(HEAD_WORD_MATCH_SIZE, expectedWords.length, actualWords.length)
     if (compareCount === 0) {
@@ -621,16 +621,14 @@ export class BookAudioPipelineService {
 
   private extractWords(text: string): string[] {
     return text
-      .split(/\s+/)
-      .map((token) => this.normalizeToken(token))
-      .filter(Boolean)
-  }
-
-  private normalizeToken(token: string): string {
-    return token
       .toLowerCase()
-      .replace(/[^a-z0-9']/g, '')
-      .trim()
+      .replace(/[’']/g, "'")
+      .replace(/([a-z0-9])\-([a-z0-9])/g, '$1$2')
+      .replace(/[—–]/g, ' ')
+      .replace(/[^a-z0-9']+/g, ' ')
+      .split(/\s+/)
+      .map((token) => token.trim())
+      .filter(Boolean)
   }
 
   private hasHtmlResidue(content: string): boolean {

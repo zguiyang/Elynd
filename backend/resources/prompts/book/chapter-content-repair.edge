@@ -31,5 +31,9 @@ Output constraints (MUST follow):
 8. If body text is longer than 500 characters, output at least 3 paragraphs.
 9. Never output one fully-flattened long paragraph.
 10. Remove duplicated title line in body if present.
+11. If title appears as split heading lines at the start (e.g. `CHAPTER II.` and subtitle line),
+    remove all heading lines from `content`.
+12. Keep poem/verse line breaks intact (do not flatten verse into one sentence).
+13. Apply minimum edits only. Do not rewrite wording, facts, or style.
 
 Return only valid JSON.

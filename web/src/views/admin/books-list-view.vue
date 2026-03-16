@@ -1,13 +1,21 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { adminApi, type AdminBook, type AdminUpdateBookPayload } from '@/api/admin'
-import { RefreshCw, Loader2, Clock, CheckCircle, XCircle, AlertCircle, Upload } from 'lucide-vue-next'
+import { RefreshCw, Loader2, CheckCircle, XCircle, AlertCircle, Upload } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { getStepText, getProgressComposition, getTaskSummary, canRetryVocabulary, canRetryAudio } from '@/composables/useBookImportStatus'
+import { useBookImportSse } from '@/composables/useBookImportSse'
+import { useAuthStore } from '@/stores/auth'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 const router = useRouter()
+const authStore = useAuthStore()
+
+if (!authStore.user) {
+  toast.error('用户信息加载失败')
+  throw new Error('User not loaded')
+}
 
 // State
 const page = ref(1)
@@ -20,8 +28,7 @@ const meta = ref<{
   lastPage: number
 } | null>(null)
 const isLoading = ref(false)
-const isPolling = ref(false)
-let pollInterval: ReturnType<typeof setInterval> | null = null
+let sseRefreshTimer: ReturnType<typeof setTimeout> | null = null
 
 // Edit dialog state
 const showEditDialog = ref(false)
@@ -34,9 +41,25 @@ const showDeleteDialog = ref(false)
 const deletingBook = ref<AdminBook | null>(null)
 const deleteLoading = ref(false)
 
+// Action confirm dialog state
+type ConfirmAction = 'stop-import' | 'rebuild-chapters'
+const showActionConfirmDialog = ref(false)
+const confirmAction = ref<ConfirmAction | null>(null)
+const confirmingBook = ref<AdminBook | null>(null)
+const actionConfirmLoading = ref(false)
+
+const {
+  event: importSseEvent,
+  subscribe: subscribeImportSse,
+  unsubscribe: unsubscribeImportSse,
+} = useBookImportSse(authStore.user.id)
+
 // Fetch data
-const fetchBooks = async () => {
-  isLoading.value = true
+const fetchBooks = async (options?: { silent?: boolean }) => {
+  const silent = options?.silent === true
+  if (!silent) {
+    isLoading.value = true
+  }
   try {
     const data = await adminApi.listBooks({ page: page.value, perPage: perPage.value })
     list.value = data.data
@@ -44,38 +67,28 @@ const fetchBooks = async () => {
   } catch {
     toast.error('加载书籍列表失败')
   } finally {
-    isLoading.value = false
-  }
-}
-
-// Polling
-const startPolling = () => {
-  if (pollInterval) return
-  isPolling.value = true
-  pollInterval = setInterval(() => {
-    if (!document.hidden) {
-      fetchBooks()
+    if (!silent) {
+      isLoading.value = false
     }
-  }, 5000)
-}
-
-const stopPolling = () => {
-  if (pollInterval) {
-    clearInterval(pollInterval)
-    pollInterval = null
-  }
-  isPolling.value = false
-}
-
-// Visibility handling
-const handleVisibilityChange = () => {
-  if (document.hidden) {
-    stopPolling()
-  } else {
-    fetchBooks()
-    startPolling()
   }
 }
+
+const scheduleSseRefresh = () => {
+  if (sseRefreshTimer) {
+    return
+  }
+  sseRefreshTimer = setTimeout(async () => {
+    sseRefreshTimer = null
+    await fetchBooks({ silent: true })
+  }, 500)
+}
+
+watch(importSseEvent, (event) => {
+  if (!event) {
+    return
+  }
+  scheduleSseRefresh()
+})
 
 // Edit functions
 const openEditDialog = (book: AdminBook) => {
@@ -154,8 +167,7 @@ const retryAudio = async (book: AdminBook) => {
   }
 }
 
-// Rebuild chapters
-const rebuildChapters = async (book: AdminBook) => {
+const runRebuildChapters = async (book: AdminBook) => {
   try {
     await adminApi.rebuildChapters(book.id)
     toast.success('重建任务已添加')
@@ -166,10 +178,7 @@ const rebuildChapters = async (book: AdminBook) => {
   }
 }
 
-const stopImport = async (book: AdminBook) => {
-  const confirmed = window.confirm(`确定要停止《${book.title}》当前导入流程吗？`)
-  if (!confirmed) return
-
+const runStopImport = async (book: AdminBook) => {
   try {
     await adminApi.stopImport(book.id)
     toast.success('已停止导入流程')
@@ -177,6 +186,67 @@ const stopImport = async (book: AdminBook) => {
   } catch (error: unknown) {
     const err = error as { response?: { data?: { message?: string } } }
     toast.error(err.response?.data?.message || '停止失败')
+  }
+}
+
+const openActionConfirmDialog = (action: ConfirmAction, book: AdminBook) => {
+  confirmAction.value = action
+  confirmingBook.value = book
+  showActionConfirmDialog.value = true
+}
+
+const closeActionConfirmDialog = () => {
+  showActionConfirmDialog.value = false
+  confirmAction.value = null
+  confirmingBook.value = null
+}
+
+const getActionConfirmTitle = computed(() => {
+  if (confirmAction.value === 'stop-import') {
+    return '确认停止导入'
+  }
+  if (confirmAction.value === 'rebuild-chapters') {
+    return '确认重建'
+  }
+  return '请确认操作'
+})
+
+const getActionConfirmDescription = computed(() => {
+  const title = confirmingBook.value?.title ?? '-'
+  if (confirmAction.value === 'stop-import') {
+    return `确定要停止《${title}》当前导入流程吗？`
+  }
+  if (confirmAction.value === 'rebuild-chapters') {
+    return `确定要重建《${title}》的章节内容吗？该操作会重新创建重建任务。`
+  }
+  return '确定要继续吗？'
+})
+
+const getActionConfirmButtonText = computed(() => {
+  if (confirmAction.value === 'stop-import') {
+    return '停止导入'
+  }
+  if (confirmAction.value === 'rebuild-chapters') {
+    return '确认重建'
+  }
+  return '确认'
+})
+
+const handleActionConfirm = async () => {
+  if (!confirmAction.value || !confirmingBook.value) {
+    return
+  }
+
+  actionConfirmLoading.value = true
+  try {
+    if (confirmAction.value === 'stop-import') {
+      await runStopImport(confirmingBook.value)
+    } else if (confirmAction.value === 'rebuild-chapters') {
+      await runRebuildChapters(confirmingBook.value)
+    }
+    closeActionConfirmDialog()
+  } finally {
+    actionConfirmLoading.value = false
   }
 }
 
@@ -235,7 +305,7 @@ const getStatusText = (status: string) => {
 const getStatusIcon = (status: string) => {
   switch (status) {
     case 'processing':
-      return Clock
+      return Loader2
     case 'ready':
       return CheckCircle
     case 'cancelled':
@@ -245,6 +315,13 @@ const getStatusIcon = (status: string) => {
     default:
       return AlertCircle
   }
+}
+
+const getStatusIconClass = (status: string) => {
+  if (status === 'processing') {
+    return 'h-3 w-3 mr-1 animate-spin'
+  }
+  return 'h-3 w-3 mr-1'
 }
 
 const isAudioPhase = (book: AdminBook) => {
@@ -312,16 +389,27 @@ const getProgressSummary = (book: AdminBook) => {
   return parts.join('，')
 }
 
+const getProgressValue = (book: AdminBook) => {
+  const progress = getDisplayProgress(book)
+  return Math.max(0, Math.min(100, progress))
+}
+
 // Lifecycle
-onMounted(() => {
-  fetchBooks()
-  startPolling()
-  document.addEventListener('visibilitychange', handleVisibilityChange)
+onMounted(async () => {
+  await fetchBooks()
+  try {
+    await subscribeImportSse()
+  } catch {
+    toast.error('状态订阅失败，可点击刷新获取最新数据')
+  }
 })
 
 onUnmounted(() => {
-  stopPolling()
-  document.removeEventListener('visibilitychange', handleVisibilityChange)
+  if (sseRefreshTimer) {
+    clearTimeout(sseRefreshTimer)
+    sseRefreshTimer = null
+  }
+  void unsubscribeImportSse()
 })
 </script>
 
@@ -347,13 +435,13 @@ onUnmounted(() => {
     <!-- Table -->
     <Card>
       <CardContent class="p-0">
-        <Table class="w-full table-fixed min-w-[1180px]">
+        <Table class="w-full table-fixed min-w-[1260px]">
           <TableHeader>
             <TableRow>
               <TableHead class="w-[190px]">书名</TableHead>
               <TableHead class="w-[110px]">作者</TableHead>
               <TableHead class="w-[90px]">状态</TableHead>
-              <TableHead class="w-[110px]">进度</TableHead>
+              <TableHead class="w-[180px]">进度</TableHead>
               <TableHead class="w-[140px]">步骤</TableHead>
               <TableHead class="w-[220px]">错误</TableHead>
               <TableHead class="w-[170px]">创建时间</TableHead>
@@ -394,13 +482,17 @@ onUnmounted(() => {
               </TableCell>
               <TableCell>
                 <Badge :variant="getStatusVariant(book.status)">
-                  <component :is="getStatusIcon(book.status)" class="h-3 w-3 mr-1" />
+                  <component :is="getStatusIcon(book.status)" :class="getStatusIconClass(book.status)" />
                   {{ getStatusText(book.status) }}
                 </Badge>
               </TableCell>
               <TableCell>
                 <div class="space-y-1">
-                  <div class="font-medium">{{ getDisplayProgress(book) }}%</div>
+                  <div class="flex items-center justify-between text-xs font-medium">
+                    <span>进度</span>
+                    <span>{{ getProgressValue(book) }}%</span>
+                  </div>
+                  <Progress :model-value="getProgressValue(book)" class="h-2" />
                   <Tooltip v-if="getProgressSummary(book)">
                     <TooltipTrigger as-child>
                       <p class="w-full truncate text-xs text-muted-foreground">
@@ -445,7 +537,7 @@ onUnmounted(() => {
                     size="sm"
                     class="h-7 px-2 text-xs"
                     :disabled="book.status === 'processing'"
-                    @click="rebuildChapters(book)"
+                    @click="openActionConfirmDialog('rebuild-chapters', book)"
                     :title="book.status === 'processing' ? '处理中请先停止导入' : '重建'"
                   >
                     重建
@@ -455,7 +547,7 @@ onUnmounted(() => {
                     variant="outline"
                     size="sm"
                     class="h-7 px-2 text-xs"
-                    @click="stopImport(book)"
+                    @click="openActionConfirmDialog('stop-import', book)"
                     title="停止导入"
                   >
                     停止
@@ -612,9 +704,32 @@ onUnmounted(() => {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel @click="showDeleteDialog = false">取消</AlertDialogCancel>
-          <AlertDialogAction @click="handleDelete" :disabled="deleteLoading" class="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-            <Loader2 v-if="deleteLoading" class="h-4 w-4 mr-2 animate-spin" />
-            删除
+          <AlertDialogAction as-child>
+            <Button variant="destructive" @click="handleDelete" :disabled="deleteLoading">
+              <Loader2 v-if="deleteLoading" class="h-4 w-4 mr-2 animate-spin" />
+              删除
+            </Button>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <!-- Action Confirm Dialog -->
+    <AlertDialog v-model:open="showActionConfirmDialog">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{{ getActionConfirmTitle }}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {{ getActionConfirmDescription }}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel @click="closeActionConfirmDialog">取消</AlertDialogCancel>
+          <AlertDialogAction as-child>
+            <Button variant="destructive" @click="handleActionConfirm" :disabled="actionConfirmLoading">
+              <Loader2 v-if="actionConfirmLoading" class="h-4 w-4 mr-2 animate-spin" />
+              {{ getActionConfirmButtonText }}
+            </Button>
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

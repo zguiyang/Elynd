@@ -30,15 +30,15 @@ test.group('Admin Book Import Pipeline Contract', () => {
 
   test('book model should expose raw file persistence fields', async ({ assert }) => {
     const book = new Book()
-    book.rawFilePath = 'book/raw/test.txt'
-    book.rawFileName = 'test.txt'
-    book.rawFileExt = 'txt'
+    book.rawFilePath = 'book/raw/test.epub'
+    book.rawFileName = 'test.epub'
+    book.rawFileExt = 'epub'
     book.rawFileSize = 1234
     book.rawFileHash = 'abc'
 
-    assert.equal(book.rawFilePath, 'book/raw/test.txt')
-    assert.equal(book.rawFileName, 'test.txt')
-    assert.equal(book.rawFileExt, 'txt')
+    assert.equal(book.rawFilePath, 'book/raw/test.epub')
+    assert.equal(book.rawFileName, 'test.epub')
+    assert.equal(book.rawFileExt, 'epub')
     assert.equal(book.rawFileSize, 1234)
     assert.equal(book.rawFileHash, 'abc')
   })

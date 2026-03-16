@@ -28,7 +28,7 @@ interface EpubTocItem {
 @inject()
 export class BookParserService {
   private static readonly MAX_FILE_SIZE = 4 * 1024 * 1024
-  private static readonly ALLOWED_EXTENSIONS = ['epub', 'txt']
+  private static readonly ALLOWED_EXTENSIONS = ['epub']
   private static readonly EPUB_CONTENT_MEDIA_TYPES = new Set(['application/xhtml+xml', 'text/html'])
 
   validateFile(file: MultipartFile) {
@@ -36,7 +36,7 @@ export class BookParserService {
     const size = file.size ?? 0
 
     if (!BookParserService.ALLOWED_EXTENSIONS.includes(ext)) {
-      throw new Exception('Only .epub and .txt files are supported', { status: 400 })
+      throw new Exception('Only .epub files are supported', { status: 400 })
     }
 
     if (size > BookParserService.MAX_FILE_SIZE) {
@@ -49,7 +49,7 @@ export class BookParserService {
   }
 
   async parseFileFromStorage(
-    storagePath: string,
+    _storagePath: string,
     absolutePath: string,
     extname: string
   ): Promise<ParsedBookResult> {
@@ -57,10 +57,7 @@ export class BookParserService {
     if (ext === 'epub') {
       return this.parseEpub(absolutePath)
     }
-    if (ext === 'txt') {
-      return this.parseTxtFromStorage(storagePath)
-    }
-    throw new Exception('Only .epub and .txt files are supported', { status: 400 })
+    throw new Exception('Only .epub files are supported', { status: 400 })
   }
 
   async parseEpub(path: string): Promise<ParsedBookResult> {

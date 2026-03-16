@@ -132,7 +132,7 @@ export default class AdminBooksController {
     const user = auth.getUserOrFail()
     const data = await request.validateUsing(importBookValidator)
     const file = request.file('file', {
-      extnames: ['epub', 'txt'],
+      extnames: ['epub'],
       size: '4mb',
     })
 

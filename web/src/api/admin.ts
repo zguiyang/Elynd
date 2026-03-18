@@ -13,7 +13,7 @@ export interface AdminBook {
   title: string
   author: string | null
   description: string | null
-  source: 'user_uploaded' | 'public_domain' | 'ai_generated'
+  source: 'user_uploaded' | 'public_domain'
   difficultyLevel: string
   status: 'processing' | 'ready' | 'failed' | 'cancelled'
   processingStep: string | null
@@ -47,18 +47,7 @@ export interface AdminUpdateBookPayload {
   author?: string
   description?: string
   difficultyLevel?: 'L1' | 'L2' | 'L3'
-  source?: 'user_uploaded' | 'public_domain' | 'ai_generated'
-}
-
-export interface GenerateBookData {
-  difficultyLevel: 'L1' | 'L2' | 'L3'
-  topic: string
-  extraInstructions?: string
-}
-
-export interface GenerateBookResponse {
-  jobId: string
-  status: 'queued'
+  source?: 'user_uploaded' | 'public_domain'
 }
 
 export interface SystemConfig {
@@ -69,7 +58,7 @@ export interface SystemConfig {
 
 export interface ImportBookPayload {
   file: File
-  source: 'user_uploaded' | 'public_domain' | 'ai_generated'
+  source: 'user_uploaded' | 'public_domain'
   bookHash: string
 }
 
@@ -117,9 +106,6 @@ export interface ContinueImportResponse {
 }
 
 export const adminApi = {
-  generateBook: (data: GenerateBookData) =>
-    request<GenerateBookResponse>({ method: 'POST', url: '/api/admin/books/generate', data }),
-
   retryAudio: (bookId: number) =>
     request<RetryAudioResponse>({ method: 'POST', url: `/api/admin/books/${bookId}/retry-audio` }),
 

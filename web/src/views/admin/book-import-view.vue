@@ -9,7 +9,7 @@ const isImporting = ref(false)
 const selectedFile = ref<File | null>(null)
 const bookHash = ref('')
 const submitError = ref<string | null>(null)
-const source = ref<'user_uploaded' | 'public_domain' | 'ai_generated'>('user_uploaded')
+const source = ref<'user_uploaded' | 'public_domain'>('user_uploaded')
 const importedBookId = ref<number | null>(null)
 
 const router = useRouter()
@@ -110,7 +110,6 @@ function goToBooksList() {
               <SelectContent>
                 <SelectItem value="user_uploaded">user_uploaded</SelectItem>
                 <SelectItem value="public_domain">public_domain</SelectItem>
-                <SelectItem value="ai_generated">ai_generated</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -7,8 +7,6 @@ const authStore = useAuthStore()
 
 const navigation = [
   { name: '书籍任务', path: '/admin/books', icon: ListTodo },
-  // { name: '生成书籍', path: '/admin/books/generate', icon: FileText },
-  // { name: '导入书籍', path: '/admin/books/import', icon: Upload },
   { name: '系统设置', path: '/admin/settings', icon: Settings },
 ]
 

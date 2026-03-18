@@ -98,11 +98,6 @@ const router = createRouter({
           name: 'admin-books-list',
           component: () => import('@/views/admin/books-list-view.vue'),
         },
-      // {
-      //   path: 'books/generate',
-      //   name: 'admin-books-generate',
-      //   component: () => import('@/views/admin/books-generate-view.vue'),
-      // },
         {
           path: 'books/import',
           name: 'admin-books-import',

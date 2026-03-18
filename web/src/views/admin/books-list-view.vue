@@ -678,7 +678,6 @@ onUnmounted(() => {
               <SelectContent>
                 <SelectItem value="user_uploaded">用户上传</SelectItem>
                 <SelectItem value="public_domain">公版领域</SelectItem>
-                <SelectItem value="ai_generated">AI 生成</SelectItem>
               </SelectContent>
             </Select>
           </div>

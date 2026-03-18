@@ -82,7 +82,7 @@ export interface BookStatusResponse {
 export interface Book {
   id: number
   title: string
-  source: 'user_uploaded' | 'public_domain' | 'ai_generated'
+  source: 'user_uploaded' | 'public_domain'
   author: string | null
   description: string | null
   difficultyLevel: string
@@ -105,7 +105,7 @@ export interface Book {
 export interface BookListItem {
   id: number
   title: string
-  source: 'user_uploaded' | 'public_domain' | 'ai_generated'
+  source: 'user_uploaded' | 'public_domain'
   author: string | null
   description: string | null
   difficultyLevel: string

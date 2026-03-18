@@ -3,7 +3,7 @@ import { test } from '@japa/runner'
 test.group('TtsService chunking', () => {
   test('splits oversized chapter text into multiple chunks', async ({ assert }) => {
     // Import after app boots
-    const { TtsService } = await import('#services/tts_service')
+    const { TtsService } = await import('#services/shared/tts_service')
 
     const service = new TtsService()
     const chapter = {
@@ -23,7 +23,7 @@ test.group('TtsService chunking', () => {
   })
 
   test('merges chunk results with correct word timing offsets', async ({ assert }) => {
-    const { TtsService } = await import('#services/tts_service')
+    const { TtsService } = await import('#services/shared/tts_service')
 
     const service = new TtsService()
 
@@ -75,7 +75,7 @@ test.group('TtsService chunking', () => {
   })
 
   test('merges adjacent small paragraphs to reduce over-fragmentation', async ({ assert }) => {
-    const { TtsService } = await import('#services/tts_service')
+    const { TtsService } = await import('#services/shared/tts_service')
 
     const service = new TtsService()
 
@@ -90,7 +90,7 @@ test.group('TtsService chunking', () => {
   })
 
   test('keeps paragraph-first behavior when maxChars is tight', async ({ assert }) => {
-    const { TtsService } = await import('#services/tts_service')
+    const { TtsService } = await import('#services/shared/tts_service')
 
     const service = new TtsService()
 
@@ -104,7 +104,7 @@ test.group('TtsService chunking', () => {
   })
 
   test('hard splits when paragraph exceeds maxChars', async ({ assert }) => {
-    const { TtsService } = await import('#services/tts_service')
+    const { TtsService } = await import('#services/shared/tts_service')
 
     const service = new TtsService()
 

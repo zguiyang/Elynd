@@ -1,6 +1,6 @@
 import { Job } from 'adonisjs-jobs'
 import { inject } from '@adonisjs/core'
-import { BookImportPreparationService } from '#services/book_import_preparation_service'
+import { BookImportPreparationService } from '#services/book-import/book_import_preparation_service'
 import type { SerialImportPayload } from '#types/book_import_pipeline'
 
 @inject()

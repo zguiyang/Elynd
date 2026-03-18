@@ -6,7 +6,7 @@ import {
   resetPasswordValidator,
   forgotPasswordValidator,
 } from '#validators/auth_validator'
-import { AuthService } from '#services/auth_service'
+import { AuthService } from '#services/user/auth_service'
 
 @inject()
 export default class AuthController {

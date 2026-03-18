@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { VocabularyAnalyzerService } from '#services/vocabulary_analyzer_service'
+import { VocabularyAnalyzerService } from '#services/book-parse/vocabulary_analyzer_service'
 
 test.group('VocabularyAnalyzerService.extractVocabulary', () => {
   test('extracts stable lemma-frequency pairs from content', async ({ assert }) => {

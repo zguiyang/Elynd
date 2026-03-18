@@ -1,8 +1,8 @@
 import { inject } from '@adonisjs/core'
 import Book from '#models/book'
 import { BOOK_IMPORT_STEP } from '#constants'
-import { BookImportOrchestratorService } from '#services/book_import_orchestrator_service'
-import { ImportStateService } from '#services/import_state_service'
+import { BookImportOrchestratorService } from '#services/book-import/book_import_orchestrator_service'
+import { ImportStateService } from '#services/book-import/import_state_service'
 import ValidateChapterContentJob from '#jobs/validate_chapter_content_job'
 import type { SerialImportPayload } from '#types/book_import_pipeline'
 

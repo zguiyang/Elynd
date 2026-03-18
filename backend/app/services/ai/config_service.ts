@@ -1,7 +1,7 @@
 import { inject } from '@adonisjs/core'
 import { Exception } from '@adonisjs/core/exceptions'
 import SystemConfig from '#models/system_config'
-import { UserConfigService } from '#services/user_config_service'
+import { UserConfigService } from '#services/user/user_config_service'
 import { AI } from '#constants'
 import type { AiClientConfig } from '#types/ai'
 import type { UserLanguageConfig } from '#types/book'

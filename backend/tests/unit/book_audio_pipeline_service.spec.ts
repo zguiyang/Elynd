@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { BookAudioPipelineService } from '#services/book_audio_pipeline_service'
+import { BookAudioPipelineService } from '#services/book-import/book_audio_pipeline_service'
 import type { ChapterInput, WordTiming } from '#types/tts'
 
 function createService() {
@@ -7,7 +7,9 @@ function createService() {
 }
 
 test.group('BookAudioPipelineService word alignment', () => {
-  test('does not merge words connected by em dash when extracting expected words', async ({ assert }) => {
+  test('does not merge words connected by em dash when extracting expected words', async ({
+    assert,
+  }) => {
     const service = createService() as any
 
     const words = service.extractWords('the bank—the birds were dripping wet and cold')
@@ -15,7 +17,9 @@ test.group('BookAudioPipelineService word alignment', () => {
     assert.deepEqual(words.slice(0, 5), ['the', 'bank', 'the', 'birds', 'were'])
   })
 
-  test('accepts head alignment when timing words split punctuation-separated terms', async ({ assert }) => {
+  test('accepts head alignment when timing words split punctuation-separated terms', async ({
+    assert,
+  }) => {
     const service = createService() as any
 
     const chapter: ChapterInput = {

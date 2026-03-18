@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto'
 import redis from '@adonisjs/redis/services/main'
 import User from '#models/user'
 import { EMAIL_VERIFICATION } from '#constants'
-import { NotificationService } from '#services/notification_service'
+import { NotificationService } from '#services/user/notification_service'
 
 @inject()
 export class UserService {

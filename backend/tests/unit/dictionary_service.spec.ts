@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import redis from '@adonisjs/redis/services/main'
-import { DictionaryService } from '#services/dictionary_service'
+import { DictionaryService } from '#services/shared/dictionary_service'
 import { DICTIONARY } from '#constants'
 
 test.group('DictionaryService.lookup', (group) => {

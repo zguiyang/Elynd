@@ -1,5 +1,5 @@
 import cron from 'node-cron'
-import { DictionaryService } from '#services/dictionary_service'
+import { DictionaryService } from '#services/shared/dictionary_service'
 
 export async function registerCronTasks() {
   const { default: logger } = await import('@adonisjs/core/services/logger')

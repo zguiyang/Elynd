@@ -1,6 +1,6 @@
 import { Job } from 'adonisjs-jobs'
 import { inject } from '@adonisjs/core'
-import { BookAudioPipelineService } from '#services/book_audio_pipeline_service'
+import { BookAudioPipelineService } from '#services/book-import/book_audio_pipeline_service'
 import type { SerialImportPayload } from '#types/book_import_pipeline'
 
 @inject()

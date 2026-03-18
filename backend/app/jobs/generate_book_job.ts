@@ -1,8 +1,8 @@
 import { Job } from 'adonisjs-jobs'
 import app from '@adonisjs/core/services/app'
 import logger from '@adonisjs/core/services/logger'
-import { BookGenerationService } from '#services/book_generation_service'
-import { TransmitService } from '#services/transmit_service'
+import { BookGenerationService } from '#services/book/book_generation_service'
+import { TransmitService } from '#services/shared/transmit_service'
 import GenerateBookAudioJob from '#jobs/generate_book_audio_job'
 import GenerateBookVocabularyJob from '#jobs/generate_book_vocabulary_job'
 

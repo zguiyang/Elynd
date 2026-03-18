@@ -1,7 +1,7 @@
 import { inject } from '@adonisjs/core'
 import logger from '@adonisjs/core/services/logger'
 import User from '#models/user'
-import { UserService } from '#services/user_service'
+import { UserService } from '#services/user/user_service'
 
 @inject()
 export class AuthService {

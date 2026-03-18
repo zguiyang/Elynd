@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { DictionaryService } from '#services/dictionary_service'
+import { DictionaryService } from '#services/shared/dictionary_service'
 import { bearerAuthHeader, createAuthenticatedUser } from '#tests/helpers/auth'
 
 test.group('Dictionary API contract', () => {

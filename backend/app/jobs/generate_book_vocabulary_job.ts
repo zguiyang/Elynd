@@ -3,13 +3,13 @@ import app from '@adonisjs/core/services/app'
 import logger from '@adonisjs/core/services/logger'
 import crypto from 'node:crypto'
 import { BOOK_IMPORT_STEP } from '#constants'
-import { DictionaryService } from '#services/dictionary_service'
-import { VocabularyAnalyzerService } from '#services/vocabulary_analyzer_service'
+import { DictionaryService } from '#services/shared/dictionary_service'
+import { VocabularyAnalyzerService } from '#services/book-parse/vocabulary_analyzer_service'
 import Book from '#models/book'
 import BookVocabulary from '#models/book_vocabulary'
 import BookChapter from '#models/book_chapter'
 import BookProcessingStepLog from '#models/book_processing_step_log'
-import { BookProcessingLogService } from '#services/book_processing_log_service'
+import { BookProcessingLogService } from '#services/book-import/book_processing_log_service'
 
 interface GenerateVocabularyPayload {
   bookId: number

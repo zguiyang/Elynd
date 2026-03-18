@@ -12,7 +12,7 @@ import BookChapterAudio from '#models/book_chapter_audio'
 import BookProcessingRunLog from '#models/book_processing_run_log'
 import GenerateBookAudioJob from '#jobs/generate_book_audio_job'
 import GenerateBookVocabularyJob from '#jobs/generate_book_vocabulary_job'
-import { BookImportOrchestratorService } from '#services/book_import_orchestrator_service'
+import { BookImportOrchestratorService } from '#services/book-import/book_import_orchestrator_service'
 import { BOOK_IMPORT_STEP } from '#constants'
 import type { ListPublishedParams } from '#types/book'
 

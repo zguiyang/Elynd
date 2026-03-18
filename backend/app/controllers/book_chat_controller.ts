@@ -1,6 +1,6 @@
 import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
-import { BookChatService } from '#services/book_chat_service'
+import { BookChatService } from '#services/book/book_chat_service'
 import { bookChatValidator } from '#validators/book_chat_validator'
 import { createSseWriter } from '#utils/sse'
 

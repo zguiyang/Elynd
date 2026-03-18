@@ -3,7 +3,7 @@ import crypto from 'node:crypto'
 import redis from '@adonisjs/redis/services/main'
 import { EMAIL_VERIFICATION } from '#constants'
 import User from '#models/user'
-import { NotificationService } from '#services/notification_service'
+import { NotificationService } from '#services/user/notification_service'
 import { makeForwardedFor, makeTestEmail } from '#tests/helpers/auth'
 
 function getTokenKey(token: string) {

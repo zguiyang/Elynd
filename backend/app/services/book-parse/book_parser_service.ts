@@ -492,7 +492,10 @@ export class BookParserService {
       }
     }
 
-    return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+    return lines
+      .join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
   }
 
   private matchesTitlePrefixAndSuffix(
@@ -511,7 +514,9 @@ export class BookParserService {
       return false
     }
 
-    return normalizedTitle.startsWith(`chapter ${chapterToken}`) && normalizedTitle.includes(suffixToken)
+    return (
+      normalizedTitle.startsWith(`chapter ${chapterToken}`) && normalizedTitle.includes(suffixToken)
+    )
   }
 
   private isTitleEquivalent(line: string, title: string): boolean {

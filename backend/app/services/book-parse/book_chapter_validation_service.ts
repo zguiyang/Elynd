@@ -1,9 +1,9 @@
 import { inject } from '@adonisjs/core'
 import { AI } from '#constants'
-import { AiService } from '#services/ai_service'
-import { ConfigService } from '#services/config_service'
-import PromptService from '#services/prompt_service'
-import { BookContentGuardService } from '#services/book_content_guard_service'
+import { AiService } from '#services/ai/ai_service'
+import { ConfigService } from '#services/ai/config_service'
+import PromptService from '#services/ai/prompt_service'
+import { BookContentGuardService } from '#services/book-parse/book_content_guard_service'
 import type { AiChatParams, AiClientConfig } from '#types/ai'
 
 export interface ChapterContentInput {
@@ -362,9 +362,10 @@ export class BookChapterValidationService {
 
     // Collapse hard line-wraps inside paragraphs, while keeping explicit paragraph breaks.
     const lineBreakToken = '__ELYND_LINE_BREAK__'
-    let normalized = this
-      .protectVerseLineBreaks(body, lineBreakToken)
-      .replace(/([^\n])\n([^\n])/g, '$1 $2')
+    let normalized = this.protectVerseLineBreaks(body, lineBreakToken).replace(
+      /([^\n])\n([^\n])/g,
+      '$1 $2'
+    )
     normalized = normalized.replace(/[ \t]+/g, ' ').trim()
     normalized = normalized.split(lineBreakToken).join('\n')
 
@@ -445,10 +446,7 @@ export class BookChapterValidationService {
       const prevTrimmed = lines[i - 1]?.trim() || ''
       const currentTrimmed = lines[i]?.trim() || ''
       const shouldPreserve =
-        prevTrimmed &&
-        currentTrimmed &&
-        shortLineIndexes.has(i - 1) &&
-        shortLineIndexes.has(i)
+        prevTrimmed && currentTrimmed && shortLineIndexes.has(i - 1) && shortLineIndexes.has(i)
 
       result += shouldPreserve ? lineBreakToken : '\n'
       result += lines[i]

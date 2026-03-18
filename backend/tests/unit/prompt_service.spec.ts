@@ -2,7 +2,7 @@ import { test } from '@japa/runner'
 
 test.group('PromptService', () => {
   test('renders the book chat prompt template', async ({ assert }) => {
-    const { default: PromptService } = await import('#services/prompt_service')
+    const { default: PromptService } = await import('#services/ai/prompt_service')
 
     const promptService = new PromptService()
     const rendered = promptService.render('book/chat', {
@@ -20,7 +20,7 @@ test.group('PromptService', () => {
   })
 
   test('renders the semantic metadata prompt template without throwing', async ({ assert }) => {
-    const { default: PromptService } = await import('#services/prompt_service')
+    const { default: PromptService } = await import('#services/ai/prompt_service')
 
     const promptService = new PromptService()
     const rendered = promptService.render('book/semantic-metadata', {
@@ -36,7 +36,7 @@ test.group('PromptService', () => {
   })
 
   test('renders the semantic chapters prompt template without throwing', async ({ assert }) => {
-    const { default: PromptService } = await import('#services/prompt_service')
+    const { default: PromptService } = await import('#services/ai/prompt_service')
 
     const promptService = new PromptService()
     const rendered = promptService.render('book/semantic-chapters', {

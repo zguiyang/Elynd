@@ -1,9 +1,9 @@
 import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
-import { LearningService } from '#services/learning_service'
-import { BookProgressService } from '#services/book_progress_service'
-import { RecommendationService } from '#services/recommendation_service'
-import { progressValidator } from '#validators/learning'
+import { LearningService } from '#services/learning/learning_service'
+import { BookProgressService } from '#services/book/book_progress_service'
+import { RecommendationService } from '#services/book/recommendation_service'
+import { progressValidator } from '#validators/learning_validator'
 
 @inject()
 export default class LearningsController {

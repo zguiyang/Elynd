@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
-import { BookChapterCleanerService } from '#services/book_chapter_cleaner_service'
-import { BookSemanticCleanService } from '#services/book_semantic_clean_service'
+import { BookChapterCleanerService } from '#services/book-parse/book_chapter_cleaner_service'
+import { BookSemanticCleanService } from '#services/book-parse/book_semantic_clean_service'
 
 test.group('BookChapterCleanerService.clean', () => {
   test('drops empty chapters', async ({ assert }) => {

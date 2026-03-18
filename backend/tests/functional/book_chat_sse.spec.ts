@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
 import crypto from 'node:crypto'
 import Book from '#models/book'
-import { BookChatService } from '#services/book_chat_service'
+import { BookChatService } from '#services/book/book_chat_service'
 import { bearerAuthHeader, createAuthenticatedUser } from '#tests/helpers/auth'
 
 test.group('Book Chat SSE API', () => {

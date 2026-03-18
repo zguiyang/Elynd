@@ -57,8 +57,8 @@ Using `app.container.make()` ensures that:
 import { Job } from 'adonisjs-jobs'
 import app from '@adonisjs/core/services/app'
 import logger from '@adonisjs/core/services/logger'
-import { BookService } from '#services/book_service'
-import { TransmitService } from '#services/transmit_service'
+import { BookService } from '#services/book/book_service'
+import { TransmitService } from '#services/shared/transmit_service'
 
 export default class GenerateBook extends Job {
   async handle(payload: GenerateBookPayload) {
@@ -76,9 +76,9 @@ export default class GenerateBook extends Job {
 import { Job } from 'adonisjs-jobs'
 import app from '@adonisjs/core/services/app'
 import logger from '@adonisjs/core/services/logger'
-import { AiService } from '#services/ai_service'
+import { AiService } from '#services/ai/ai_service'
 import { SettingService } from '#services/setting_service'
-import PromptService from '#services/prompt_service'
+import PromptService from '#services/ai/prompt_service'
 
 export default class GenerateAiTags extends Job {
   async handle(payload: GenerateAiTagsPayload) {

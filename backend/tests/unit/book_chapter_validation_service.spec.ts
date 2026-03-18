@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { BookChapterValidationService } from '#services/book_chapter_validation_service'
+import { BookChapterValidationService } from '#services/book-parse/book_chapter_validation_service'
 
 function createService() {
   const mockAiService = {

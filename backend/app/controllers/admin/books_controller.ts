@@ -6,14 +6,14 @@ import drive from '@adonisjs/drive/services/main'
 import { extname, basename } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import GenerateBookJob from '#jobs/generate_book_job'
-import { BookService } from '#services/book_service'
-import { BookImportOrchestratorService } from '#services/book_import_orchestrator_service'
+import { BookService } from '#services/book/book_service'
+import { BookImportOrchestratorService } from '#services/book-import/book_import_orchestrator_service'
 import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import BookChapterAudio from '#models/book_chapter_audio'
 import db from '@adonisjs/lucid/services/db'
-import { TransmitService } from '#services/transmit_service'
-import { BookParserService } from '#services/book_parser_service'
+import { TransmitService } from '#services/shared/transmit_service'
+import { BookParserService } from '#services/book-parse/book_parser_service'
 import {
   generateBookValidator,
   importBookValidator,
@@ -23,7 +23,7 @@ import {
   adminUpdateBookValidator,
 } from '#validators/book_validator'
 import { Exception } from '@adonisjs/core/exceptions'
-import { BookHashService } from '#services/book_hash_service'
+import { BookHashService } from '#services/book-parse/book_hash_service'
 import { BOOK_IMPORT_STEP } from '#constants'
 
 @inject()

@@ -1,8 +1,11 @@
 import { AI } from '#constants'
-import { AiService } from './ai_service.js'
+import { AiService } from '#services/ai/ai_service'
 import type { AiChatParams, AiClientConfig } from '#types/ai'
-import { BookChapterCleanerService, type ChapterOutput } from './book_chapter_cleaner_service.js'
-import { ConfigService } from '#services/config_service'
+import {
+  BookChapterCleanerService,
+  type ChapterOutput,
+} from '#services/book-parse/book_chapter_cleaner_service'
+import { ConfigService } from '#services/ai/config_service'
 
 export interface SemanticMetadataInput {
   fileName: string
@@ -138,13 +141,13 @@ export class BookSemanticCleanService {
       content = content.replace(/^#\s+.+$/m, '').trim()
     }
 
-    const firstLine = content.split('\n').find((line) => line.trim().length > 0)?.trim() || ''
-    if (this.isSameTitle(firstLine, title)) {
-      content = content
+    const firstLine =
+      content
         .split('\n')
-        .slice(1)
-        .join('\n')
-        .trim()
+        .find((line) => line.trim().length > 0)
+        ?.trim() || ''
+    if (this.isSameTitle(firstLine, title)) {
+      content = content.split('\n').slice(1).join('\n').trim()
     }
 
     return content

@@ -5,7 +5,7 @@ import BookProcessingRunLog from '#models/book_processing_run_log'
 import BookProcessingStepLog from '#models/book_processing_step_log'
 import { createAuthenticatedUser } from '#tests/helpers/auth'
 import { BOOK_IMPORT_STEP } from '#constants'
-import { ImportStateService } from '#services/import_state_service'
+import { ImportStateService } from '#services/book-import/import_state_service'
 
 const createProcessingBook = async (currentStep: string | null = null) => {
   const { user } = await createAuthenticatedUser({ isAdmin: true, emailPrefix: 'import-state' })

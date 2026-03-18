@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { BookParserService } from '#services/book_parser_service'
+import { BookParserService } from '#services/book-parse/book_parser_service'
 
 const execFileAsync = promisify(execFile)
 

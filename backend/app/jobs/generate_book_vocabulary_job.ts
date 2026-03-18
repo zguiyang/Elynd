@@ -20,10 +20,9 @@ export default class GenerateBookVocabularyJob extends Job {
     return 3
   }
 
-  private logService = new BookProcessingLogService()
-
   async handle(payload: GenerateVocabularyPayload) {
     const { bookId } = payload
+    const logService = await app.container.make(BookProcessingLogService)
 
     logger.info({ bookId }, 'Starting vocabulary generation with dictionary-only pipeline')
 
@@ -33,7 +32,7 @@ export default class GenerateBookVocabularyJob extends Job {
       return
     }
 
-    const runLog = await this.logService.getOrCreateActiveRun(bookId, 'import')
+    const runLog = await logService.getOrCreateActiveRun(bookId, 'import')
 
     await book.merge({ vocabularyStatus: 'processing' }).save()
 
@@ -46,7 +45,7 @@ export default class GenerateBookVocabularyJob extends Job {
         .createHash('md5')
         .update(chapters.map((chapter) => `${chapter.title}\n${chapter.content}`).join('\n---\n'))
         .digest('hex')
-      const extractStep = await this.logService.startStep(
+      const extractStep = await logService.startStep(
         runLog.id,
         bookId,
         'vocab_extract',
@@ -70,7 +69,7 @@ export default class GenerateBookVocabularyJob extends Job {
         extractedWords = extracted.length
       }
 
-      await this.logService.completeStep(extractStep.id, {
+      await logService.completeStep(extractStep.id, {
         extractedWords,
       })
 
@@ -78,7 +77,7 @@ export default class GenerateBookVocabularyJob extends Job {
       const allVocabularies = await BookVocabulary.query().where('bookId', bookId)
       const words = allVocabularies.map((item) => item.word)
       const lookupInputHash = crypto.createHash('md5').update(words.join('|')).digest('hex')
-      const lookupStep = await this.logService.startStep(
+      const lookupStep = await logService.startStep(
         runLog.id,
         bookId,
         'vocab_lookup_batch',
@@ -118,18 +117,18 @@ export default class GenerateBookVocabularyJob extends Job {
 
       if (enrichedWords === 0 && allVocabularies.length > 0) {
         const errorMessage = 'All dictionary lookups failed'
-        await this.logService.failStep(lookupStep.id, errorMessage)
+        await logService.failStep(lookupStep.id, errorMessage)
         throw new Error(errorMessage)
       }
 
-      await this.logService.completeStep(lookupStep.id, {
+      await logService.completeStep(lookupStep.id, {
         lookedUpWords,
         enrichedWords,
         missingEntries,
       })
 
       await book.merge({ vocabularyStatus: 'completed' }).save()
-      await this.finalizeIfParallelTasksCompleted(book, runLog.id)
+      await this.finalizeIfParallelTasksCompleted(book, runLog.id, logService)
 
       logger.info(
         {
@@ -150,16 +149,20 @@ export default class GenerateBookVocabularyJob extends Job {
         .where('status', 'processing')
         .first()
       if (currentStep) {
-        await this.logService.failStep(currentStep.id, errorMessage)
+        await logService.failStep(currentStep.id, errorMessage)
       }
 
-      await this.logService.failRun(runLog.id, errorMessage)
+      await logService.failRun(runLog.id, errorMessage)
       await book.merge({ vocabularyStatus: 'failed' }).save()
       throw error
     }
   }
 
-  private async finalizeIfParallelTasksCompleted(book: Book, runId: number) {
+  private async finalizeIfParallelTasksCompleted(
+    book: Book,
+    runId: number,
+    logService: BookProcessingLogService
+  ) {
     await book.refresh()
 
     if (book.status === 'cancelled') {
@@ -171,7 +174,7 @@ export default class GenerateBookVocabularyJob extends Job {
       return
     }
 
-    await this.logService.completeRun(runId)
+    await logService.completeRun(runId)
 
     await book
       .merge({

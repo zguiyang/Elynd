@@ -28,13 +28,12 @@ import { BOOK_IMPORT_STEP } from '#constants'
 
 @inject()
 export default class AdminBooksController {
-  private readonly hashService = new BookHashService()
-
   constructor(
     private transmitService: TransmitService,
     private bookService: BookService,
     private bookParserService: BookParserService,
-    private bookImportOrchestratorService: BookImportOrchestratorService
+    private bookImportOrchestratorService: BookImportOrchestratorService,
+    private bookHashService: BookHashService
   ) {}
 
   async generate({ auth, request }: HttpContext) {
@@ -162,7 +161,7 @@ export default class AdminBooksController {
     }
 
     const rawBuffer = await drive.use().get(relativePath)
-    const rawFileHash = this.hashService.hashRawFile(rawBuffer)
+    const rawFileHash = this.bookHashService.hashRawFile(rawBuffer)
     const fallbackTitle = basename(file.clientName, extname(file.clientName)) || 'Untitled'
 
     const book = await db.transaction(async (trx) => {

@@ -1,4 +1,5 @@
 import { Job } from 'adonisjs-jobs'
+import app from '@adonisjs/core/services/app'
 import { Exception } from '@adonisjs/core/exceptions'
 import logger from '@adonisjs/core/services/logger'
 import Book from '#models/book'
@@ -17,8 +18,6 @@ export default class ProcessBookJob extends Job {
     return 2
   }
 
-  private logService = new BookProcessingLogService()
-
   async handle(payload: ProcessBookPayload) {
     const { bookId, userId } = payload
     const book = await Book.find(bookId)
@@ -26,7 +25,8 @@ export default class ProcessBookJob extends Job {
       throw new Exception(`Book ${bookId} not found`, { status: 404 })
     }
 
-    const runLog = await this.logService.getOrCreateActiveRun(bookId, 'import')
+    const logService = await app.container.make(BookProcessingLogService)
+    const runLog = await logService.getOrCreateActiveRun(bookId, 'import')
 
     logger.info({ bookId, runId: runLog.id }, 'Starting serial book import pipeline')
 

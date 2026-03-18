@@ -35,10 +35,9 @@ export default class GenerateBookAudioJob extends Job {
     return 1
   }
 
-  private logService = new BookProcessingLogService()
-
   async handle(payload: GenerateBookAudioPayload) {
     const { bookId } = payload
+    const logService = await app.container.make(BookProcessingLogService)
 
     logger.info({ bookId }, 'Starting chapter-level audio generation')
 
@@ -49,13 +48,13 @@ export default class GenerateBookAudioJob extends Job {
       return
     }
 
-    const runLog = await this.logService.getOrCreateActiveRun(bookId, 'import')
+    const runLog = await logService.getOrCreateActiveRun(bookId, 'import')
 
     try {
       await book.merge({ audioStatus: 'processing' }).save()
 
       // Process chapters and collect results with step logging
-      const results = await this.processChapters(bookId, runLog.id)
+      const results = await this.processChapters(bookId, runLog.id, logService)
 
       // Calculate summary
       // Check if all chapters succeeded
@@ -100,7 +99,7 @@ export default class GenerateBookAudioJob extends Job {
         })
         .save()
 
-      await this.finalizeIfParallelTasksCompleted(book, runLog.id)
+      await this.finalizeIfParallelTasksCompleted(book, runLog.id, logService)
       logger.info({ bookId }, 'All chapter audio generation completed')
     } catch (error) {
       logger.error({ err: error, bookId }, 'Audio generation failed')
@@ -111,7 +110,11 @@ export default class GenerateBookAudioJob extends Job {
     }
   }
 
-  private async finalizeIfParallelTasksCompleted(book: Book, runId: number) {
+  private async finalizeIfParallelTasksCompleted(
+    book: Book,
+    runId: number,
+    logService: BookProcessingLogService
+  ) {
     await book.refresh()
 
     if (book.status === 'cancelled') {
@@ -123,7 +126,7 @@ export default class GenerateBookAudioJob extends Job {
       return
     }
 
-    await this.logService.completeRun(runId)
+    await logService.completeRun(runId)
 
     await book
       .merge({
@@ -143,7 +146,8 @@ export default class GenerateBookAudioJob extends Job {
    */
   private async processChapters(
     bookId: number,
-    runLogId: number
+    runLogId: number,
+    logService: BookProcessingLogService
   ): Promise<ChapterProcessingResult[]> {
     // Get all chapters for this book
     const chapters = await BookChapter.query()
@@ -160,7 +164,7 @@ export default class GenerateBookAudioJob extends Job {
 
     // Process chapters with bounded concurrency
     return await this.runWithConcurrency(chapters, concurrency, async (chapter) => {
-      return await this.processChapter(chapter, bookId, runLogId)
+      return await this.processChapter(chapter, bookId, runLogId, logService)
     })
   }
 
@@ -170,7 +174,8 @@ export default class GenerateBookAudioJob extends Job {
   private async processChapter(
     chapter: BookChapter,
     bookId: number,
-    runLogId: number
+    runLogId: number,
+    logService: BookProcessingLogService
   ): Promise<ChapterProcessingResult> {
     const chapterIndex = chapter.chapterIndex
     const itemKey = `chapter:${chapterIndex}`
@@ -186,7 +191,7 @@ export default class GenerateBookAudioJob extends Job {
       .digest('hex')
 
     // Start step log for this chapter
-    const stepLog = await this.logService.startStep(
+    const stepLog = await logService.startStep(
       runLogId,
       bookId,
       'audio_generate_chapter',
@@ -210,7 +215,7 @@ export default class GenerateBookAudioJob extends Job {
       )
 
       // Mark step as skipped since we're reusing
-      await this.logService.skipStep(stepLog.id)
+      await logService.skipStep(stepLog.id)
 
       return {
         chapterIndex,
@@ -256,7 +261,7 @@ export default class GenerateBookAudioJob extends Job {
       )
 
       // Mark step as successful
-      await this.logService.completeStep(stepLog.id, {
+      await logService.completeStep(stepLog.id, {
         audioPath: result.audioPath,
         durationMs: result.duration,
       })
@@ -278,7 +283,7 @@ export default class GenerateBookAudioJob extends Job {
       logger.error({ err: error, bookId, chapterIndex }, 'Chapter audio generation failed')
 
       // Mark step as failed
-      await this.logService.failStep(stepLog.id, errorMessage, 'AUDIO_GENERATION_FAILED')
+      await logService.failStep(stepLog.id, errorMessage, 'AUDIO_GENERATION_FAILED')
 
       // Upsert failed record
       await this.upsertChapterAudio(

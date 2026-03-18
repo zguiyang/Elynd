@@ -5,7 +5,6 @@ import { UserConfigService } from '#services/user/user_config_service'
 import { AI } from '#constants'
 import type { AiClientConfig } from '#types/ai'
 import type { UserLanguageConfig } from '#types/book'
-import type { FullUserConfig } from '#types/book_generation'
 
 @inject()
 export class ConfigService {
@@ -33,17 +32,6 @@ export class ConfigService {
       nativeLanguage: userConfig?.nativeLanguage || 'zh',
       targetLanguage: userConfig?.targetLanguage || 'en',
       englishVariant: userConfig?.englishVariant || 'en-US',
-    }
-  }
-
-  async getFullUserConfig(userId: number): Promise<FullUserConfig> {
-    const userConfig = await this.userConfigService.getConfigByUserId(userId)
-
-    return {
-      nativeLanguage: userConfig?.nativeLanguage || 'zh',
-      targetLanguage: userConfig?.targetLanguage || 'en',
-      englishVariant: userConfig?.englishVariant || 'en-US',
-      vocabularyLevel: userConfig?.vocabularyLevel || 'intermediate',
     }
   }
 }

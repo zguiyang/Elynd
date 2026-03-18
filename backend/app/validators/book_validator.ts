@@ -2,18 +2,6 @@ import vine from '@vinejs/vine'
 import { Infer } from '@vinejs/vine/types'
 import { ARTICLE_DIFFICULTY } from '#constants'
 
-export const generateBookValidator = vine.compile(
-  vine.object({
-    difficultyLevel: vine.enum([
-      ARTICLE_DIFFICULTY.L1,
-      ARTICLE_DIFFICULTY.L2,
-      ARTICLE_DIFFICULTY.L3,
-    ]),
-    topic: vine.string().trim().minLength(5).maxLength(200),
-    extraInstructions: vine.string().trim().maxLength(500).optional(),
-  })
-)
-
 export const listBookValidator = vine.compile(
   vine.object({
     difficulty: vine
@@ -27,7 +15,7 @@ export const listBookValidator = vine.compile(
 
 export const importBookValidator = vine.compile(
   vine.object({
-    source: vine.enum(['user_uploaded', 'public_domain', 'ai_generated']),
+    source: vine.enum(['user_uploaded', 'public_domain']),
     bookHash: vine.string().trim().minLength(1).maxLength(128),
   })
 )
@@ -59,11 +47,10 @@ export const adminUpdateBookValidator = vine.compile(
     difficultyLevel: vine
       .enum([ARTICLE_DIFFICULTY.L1, ARTICLE_DIFFICULTY.L2, ARTICLE_DIFFICULTY.L3])
       .optional(),
-    source: vine.enum(['user_uploaded', 'public_domain', 'ai_generated']).optional(),
+    source: vine.enum(['user_uploaded', 'public_domain']).optional(),
   })
 )
 
-export type GenerateBookValidator = Infer<typeof generateBookValidator>
 export type ListBookValidator = Infer<typeof listBookValidator>
 export type ImportBookValidator = Infer<typeof importBookValidator>
 export type QueryBookStatusValidator = Infer<typeof queryBookStatusValidator>

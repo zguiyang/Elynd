@@ -21,7 +21,7 @@ export default class Book extends BaseModel {
   declare title: string
 
   @column()
-  declare source: 'user_uploaded' | 'public_domain' | 'ai_generated'
+  declare source: 'user_uploaded' | 'public_domain'
 
   @column()
   declare author: string | null

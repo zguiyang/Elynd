@@ -72,7 +72,6 @@ router
 // ===== 管理员路由组 (需要认证 + 管理员权限) =====
 router
   .group(() => {
-    router.post('/admin/books/generate', [AdminBooksController, 'generate'])
     router.post('/admin/books/:id/retry-audio', [AdminBooksController, 'retryAudio'])
     router.post('/admin/books/:id/retry-vocabulary', [AdminBooksController, 'retryVocabulary'])
     router.post('/admin/books/:id/rebuild-chapters', [AdminBooksController, 'rebuildChapters'])

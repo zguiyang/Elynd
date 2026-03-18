@@ -1,21 +1,17 @@
 import { inject } from '@adonisjs/core'
 import logger from '@adonisjs/core/services/logger'
 import type { HttpContext } from '@adonisjs/core/http'
-import { dispatch } from 'adonisjs-jobs/services/main'
 import drive from '@adonisjs/drive/services/main'
 import { extname, basename } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import GenerateBookJob from '#jobs/generate_book_job'
 import { BookService } from '#services/book/book_service'
 import { BookImportOrchestratorService } from '#services/book-import/book_import_orchestrator_service'
 import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import BookChapterAudio from '#models/book_chapter_audio'
 import db from '@adonisjs/lucid/services/db'
-import { TransmitService } from '#services/shared/transmit_service'
 import { BookParserService } from '#services/book-parse/book_parser_service'
 import {
-  generateBookValidator,
   importBookValidator,
   queryBookStatusValidator,
   adminListBooksValidator,
@@ -29,40 +25,11 @@ import { BOOK_IMPORT_STEP } from '#constants'
 @inject()
 export default class AdminBooksController {
   constructor(
-    private transmitService: TransmitService,
     private bookService: BookService,
     private bookParserService: BookParserService,
     private bookImportOrchestratorService: BookImportOrchestratorService,
     private bookHashService: BookHashService
   ) {}
-
-  async generate({ auth, request }: HttpContext) {
-    const user = auth.getUserOrFail()
-    const data = await request.validateUsing(generateBookValidator)
-
-    logger.info(
-      { userId: user.id, difficultyLevel: data.difficultyLevel, topic: data.topic },
-      'Book generation requested'
-    )
-
-    const jobId = (await dispatch(GenerateBookJob, {
-      userId: user.id,
-      difficultyLevel: data.difficultyLevel,
-      topic: data.topic,
-      extraInstructions: data.extraInstructions,
-    })) as string | undefined
-
-    const resolvedJobId = jobId || `manual-${Date.now()}`
-
-    await this.transmitService.toUser(`user:${user.id}:book`, 'book:status', {
-      jobId: resolvedJobId,
-      status: 'queued',
-      progress: 0,
-      message: 'Added to generation queue',
-    })
-
-    return { jobId: resolvedJobId, status: 'queued' }
-  }
 
   async retryAudio({ params }: HttpContext) {
     logger.info({ bookId: params.id }, 'Audio retry requested')

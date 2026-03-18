@@ -7,6 +7,7 @@ test.group('Admin Book Import Pipeline Contract', () => {
   test('canonical scheduler step keys should match final pipeline', async ({ assert }) => {
     assert.equal(BOOK_IMPORT_STEP.PREPARE_IMPORT, 'prepare_import')
     assert.equal(BOOK_IMPORT_STEP.SEMANTIC_CLEAN, 'semantic_clean')
+    assert.equal(BOOK_IMPORT_STEP.VALIDATE_CHAPTER_CONTENT, 'validate_chapter_content')
     assert.equal(BOOK_IMPORT_STEP.BUILD_CONTENT_AND_VOCAB_SEED, 'build_content_and_vocab_seed')
     assert.equal(BOOK_IMPORT_STEP.ENRICH_VOCABULARY, 'enrich_vocabulary')
     assert.equal(BOOK_IMPORT_STEP.GENERATE_TTS, 'generate_tts')
@@ -19,6 +20,7 @@ test.group('Admin Book Import Pipeline Contract', () => {
     const sum =
       BOOK_IMPORT_PROGRESS.PREPARE_IMPORT +
       BOOK_IMPORT_PROGRESS.SEMANTIC_CLEAN +
+      BOOK_IMPORT_PROGRESS.VALIDATE_CHAPTER_CONTENT +
       BOOK_IMPORT_PROGRESS.BUILD_CONTENT_AND_VOCAB_SEED +
       BOOK_IMPORT_PROGRESS.ENRICH_VOCABULARY +
       BOOK_IMPORT_PROGRESS.GENERATE_TTS +

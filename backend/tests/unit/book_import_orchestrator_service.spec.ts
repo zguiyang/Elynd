@@ -10,6 +10,10 @@ test.group('BookImportOrchestratorService serial contract', () => {
     )
     assert.equal(
       BOOK_IMPORT_STEP_TRANSITIONS[BOOK_IMPORT_STEP.SEMANTIC_CLEAN],
+      BOOK_IMPORT_STEP.VALIDATE_CHAPTER_CONTENT
+    )
+    assert.equal(
+      BOOK_IMPORT_STEP_TRANSITIONS[BOOK_IMPORT_STEP.VALIDATE_CHAPTER_CONTENT],
       BOOK_IMPORT_STEP.BUILD_CONTENT_AND_VOCAB_SEED
     )
     assert.equal(

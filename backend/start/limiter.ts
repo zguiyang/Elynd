@@ -15,3 +15,7 @@ export const searchLimiter = limiter.define('search', () => {
 export const aiChatLimiter = limiter.define('aiChat', () => {
   return limiter.allowRequests(10).every('1 minute')
 })
+
+export const dictionaryLimiter = limiter.define('dictionary', () => {
+  return limiter.allowRequests(20).every('1 minute')
+})

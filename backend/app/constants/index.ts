@@ -109,6 +109,8 @@ const DICTIONARY = {
   CACHE_PREFIX: 'dictionary:',
   DEFAULT_TTL_DAYS: 7,
   EXPIRING_DAYS: 1,
+  LOOKUP_TIMEOUT_MS: 5000,
+  WORD_MAX_LENGTH: 64,
 } as const
 
 type Dictionary = (typeof DICTIONARY)[keyof typeof DICTIONARY]

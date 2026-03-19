@@ -10,10 +10,11 @@ import BookChapter from '#models/book_chapter'
 import BookVocabulary from '#models/book_vocabulary'
 import BookChapterAudio from '#models/book_chapter_audio'
 import BookProcessingRunLog from '#models/book_processing_run_log'
-import GenerateBookAudioJob from '#jobs/generate_book_audio_job'
+import GenerateTtsJob from '#jobs/generate_tts_job'
 import GenerateBookVocabularyJob from '#jobs/generate_book_vocabulary_job'
 import { BookImportOrchestratorService } from '#services/book-import/book_import_orchestrator_service'
 import { BOOK_IMPORT_STEP } from '#constants'
+import type { BookImportStep } from '#constants'
 import type { ListPublishedParams } from '#types/book'
 
 export interface ChapterAudioSummary {
@@ -100,6 +101,14 @@ export class BookService {
     return book
   }
 
+  async findReadableBookById(id: number, requester: { isAdmin: boolean }): Promise<Book> {
+    if (requester.isAdmin) {
+      return this.findById(id)
+    }
+
+    return this.findPublishedById(id)
+  }
+
   private buildBookQuery(requirePublished: boolean) {
     const query = Book.query()
       .preload('tags')
@@ -133,7 +142,7 @@ export class BookService {
     return vocabularies
   }
 
-  async retryAudioGeneration(bookId: number) {
+  async retryAudioGeneration(bookId: number, userId: number) {
     const book = await Book.find(bookId)
 
     if (!book) {
@@ -146,19 +155,38 @@ export class BookService {
 
     await this.clearBookAudioFiles(book.id, book.audioUrl)
 
-    const ttsBaseProgress = BookImportOrchestratorService.getBaseProgressByStep(
-      BOOK_IMPORT_STEP.GENERATE_TTS
-    )
+    const previousStep: BookImportStep = BOOK_IMPORT_STEP.ENRICH_VOCABULARY
+    const previousProgress = BookImportOrchestratorService.getBaseProgressByStep(previousStep)
+    let runId = 0
 
     await db.transaction(async (trx) => {
       await BookChapterAudio.query({ client: trx }).where('bookId', book.id).delete()
+
+      const runLog = await BookProcessingRunLog.create(
+        {
+          bookId: book.id,
+          jobType: 'import',
+          status: 'processing',
+          currentStep: previousStep,
+          progress: previousProgress,
+          startedAt: DateTime.now(),
+          metadata: {
+            retryRequestedAt: DateTime.now().toISO(),
+            retryRequestedBy: userId,
+            retryStep: BOOK_IMPORT_STEP.GENERATE_TTS,
+            retryMode: 'audio_only',
+          },
+        },
+        { client: trx }
+      )
+      runId = runLog.id
 
       await book
         .useTransaction(trx)
         .merge({
           status: 'processing',
-          processingStep: BOOK_IMPORT_STEP.GENERATE_TTS,
-          processingProgress: ttsBaseProgress,
+          processingStep: previousStep,
+          processingProgress: previousProgress,
           processingError: null,
           audioUrl: null,
           audioTiming: null,
@@ -168,7 +196,11 @@ export class BookService {
         .save()
     })
 
-    await GenerateBookAudioJob.dispatch({ bookId: book.id })
+    await GenerateTtsJob.dispatch({
+      bookId: book.id,
+      userId,
+      runId,
+    })
 
     return {
       bookId: book.id,

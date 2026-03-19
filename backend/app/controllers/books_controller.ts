@@ -85,6 +85,26 @@ export default class BooksController {
     }
   }
 
+  async bookAudio({ auth, params, response }: HttpContext) {
+    const user = auth.getUserOrFail()
+    const bookId = Number(params.id)
+
+    await this.bookService.findReadableBookById(bookId, {
+      isAdmin: user.isAdmin,
+    })
+
+    const filePath = `book/voices/${bookId}.mp3`
+
+    try {
+      const fileBuffer = await drive.use().get(filePath)
+      response.header('Content-Type', 'audio/mpeg')
+      response.header('Content-Disposition', `inline; filename="book-${bookId}.mp3"`)
+      return response.send(fileBuffer)
+    } catch {
+      return response.notFound({ error: 'Audio file not found' })
+    }
+  }
+
   async vocabulary({ params }: HttpContext) {
     const bookId = params.id
 

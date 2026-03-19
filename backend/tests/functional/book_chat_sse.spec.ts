@@ -73,4 +73,40 @@ test.group('Book Chat SSE API', () => {
       'Response should emit a done event'
     )
   })
+
+  test('GET /api/books/:id/chats forbids non-admin user to read unpublished books', async ({
+    client,
+    cleanup,
+  }) => {
+    const { user, token } = await createAuthenticatedUser({
+      fullName: 'SSE Restricted User',
+      emailPrefix: 'sse-restricted',
+    })
+    cleanup(async () => {
+      await user.delete()
+    })
+
+    const book = await Book.create({
+      title: 'SSE Unpublished Book',
+      author: 'Test Author',
+      source: 'user_uploaded',
+      difficultyLevel: 'intermediate',
+      status: 'ready',
+      wordCount: 1200,
+      readingTime: 8,
+      isPublished: false,
+      createdBy: user.id,
+      contentHash: crypto.randomUUID(),
+    })
+    cleanup(async () => {
+      await book.delete()
+    })
+
+    const response = await client
+      .get(`/api/books/${book.id}/chats`)
+      .qs({ message: 'Explain this chapter' })
+      .header('Authorization', bearerAuthHeader(token))
+
+    response.assertStatus(404)
+  })
 })

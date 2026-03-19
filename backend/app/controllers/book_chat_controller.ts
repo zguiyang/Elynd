@@ -1,12 +1,16 @@
 import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
 import { BookChatService } from '#services/book/book_chat_service'
+import { BookService } from '#services/book/book_service'
 import { bookChatValidator } from '#validators/book_chat_validator'
 import { createSseWriter } from '#utils/sse'
 
 @inject()
 export default class BookChatController {
-  constructor(private bookChatService: BookChatService) {}
+  constructor(
+    private bookChatService: BookChatService,
+    private bookService: BookService
+  ) {}
 
   async chat({ params, request, response, auth }: HttpContext) {
     const data = await request.validateUsing(bookChatValidator, {
@@ -17,6 +21,7 @@ export default class BookChatController {
     const userId = user.id
     const message = data.message
     const chapterIndex = data.chapterIndex
+    await this.bookService.findReadableBookById(bookId, { isAdmin: user.isAdmin })
 
     const sse = createSseWriter({ request, response } as HttpContext)
     sse.comment('connected')
@@ -33,6 +38,7 @@ export default class BookChatController {
       {
         userId,
         bookId,
+        isAdmin: user.isAdmin,
         message,
         chapterIndex,
       },
@@ -48,9 +54,9 @@ export default class BookChatController {
           sse.send({ type: 'done', content: completeData.content, usage: completeData.usage })
           sse.close()
         },
-        onError: (error) => {
+        onError: () => {
           if (sse.isClosed()) return
-          sse.send({ type: 'error', message: error.message })
+          sse.send({ type: 'error', message: 'Request failed' })
           sse.close()
         },
         isAborted: () => abortController.signal.aborted,

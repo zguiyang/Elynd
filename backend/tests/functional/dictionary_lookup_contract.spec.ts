@@ -68,4 +68,31 @@ test.group('Dictionary API contract', () => {
 
     response.assertStatus(404)
   })
+
+  test('GET /api/dictionary/:word validates word format and length', async ({
+    client,
+    cleanup,
+  }) => {
+    const { user, token } = await createAuthenticatedUser({
+      fullName: 'Dictionary Validate User',
+      emailPrefix: 'dictionary-validate',
+    })
+
+    cleanup(async () => {
+      await user.delete()
+    })
+
+    const invalidFormatResponse = await client
+      .get('/api/dictionary/invalid!')
+      .header('Authorization', bearerAuthHeader(token))
+
+    invalidFormatResponse.assertStatus(422)
+
+    const tooLongWord = 'a'.repeat(65)
+    const tooLongResponse = await client
+      .get(`/api/dictionary/${tooLongWord}`)
+      .header('Authorization', bearerAuthHeader(token))
+
+    tooLongResponse.assertStatus(422)
+  })
 })

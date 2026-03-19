@@ -3,6 +3,8 @@ import { Exception } from '@adonisjs/core/exceptions'
 import logger from '@adonisjs/core/services/logger'
 import { randomUUID } from 'node:crypto'
 import redis from '@adonisjs/redis/services/main'
+import db from '@adonisjs/lucid/services/db'
+import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
 import User from '#models/user'
 import { EMAIL_VERIFICATION } from '#constants'
 import { NotificationService } from '#services/user/notification_service'
@@ -24,18 +26,26 @@ export class UserService {
     const avatarSeed = randomUUID()
     const avatarUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=${avatarSeed}`
 
-    const userCount = await User.query().count('* as total').first()
-    const isFirstUser = Number(userCount?.$extras.total) === 0
+    const user = await db.transaction(async (trx) => {
+      // Serialize bootstrap-admin assignment to avoid concurrent first-user escalation.
+      await trx.rawQuery('LOCK TABLE users IN EXCLUSIVE MODE')
 
-    const user = await User.create({
-      email: data.email,
-      fullName: data.name,
-      password: data.password,
-      avatar: avatarUrl,
-      isAdmin: isFirstUser,
+      const userCount = await User.query({ client: trx }).count('* as total').first()
+      const isFirstUser = Number(userCount?.$extras.total) === 0
+
+      return await User.create(
+        {
+          email: data.email,
+          fullName: data.name,
+          password: data.password,
+          avatar: avatarUrl,
+          isAdmin: isFirstUser,
+        },
+        { client: trx }
+      )
     })
 
-    logger.info({ userId: user.id, isFirstUser }, 'User created')
+    logger.info({ userId: user.id, isFirstUser: user.isAdmin }, 'User created')
 
     return user
   }
@@ -53,8 +63,13 @@ export class UserService {
       throw new Exception('User not found', { status: 404 })
     }
 
-    user.password = newPassword
-    await user.save()
+    await db.transaction(async (trx) => {
+      user.useTransaction(trx)
+      user.password = newPassword
+      await user.save()
+
+      await this.revokeAllAccessTokens(user.id, trx)
+    })
 
     logger.info({ userId: user.id }, 'Password reset')
 
@@ -163,11 +178,25 @@ export class UserService {
       throw new Exception('Current password is incorrect', { status: 400 })
     }
 
-    user.password = newPassword
-    await user.save()
+    await db.transaction(async (trx) => {
+      user.useTransaction(trx)
+      user.password = newPassword
+      await user.save()
+
+      await this.revokeAllAccessTokens(user.id, trx)
+    })
 
     logger.info({ userId }, 'Password changed successfully')
 
     return user
+  }
+
+  private async revokeAllAccessTokens(userId: number, trx?: TransactionClientContract) {
+    if (trx) {
+      await db.from('auth_access_tokens').useTransaction(trx).where('tokenable_id', userId).delete()
+      return
+    }
+
+    await db.from('auth_access_tokens').where('tokenable_id', userId).delete()
   }
 }

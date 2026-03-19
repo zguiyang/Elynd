@@ -45,17 +45,33 @@ export default class HttpExceptionHandler extends ExceptionHandler {
     }
 
     const status = getStatus(error)
-    const message = getMessage(error)
+    const rawMessage = getMessage(error)
+
+    const sanitizeMessage = (code: number, message: string): string => {
+      if (code >= 500) {
+        return 'Internal Server Error'
+      }
+      if (code === 401) {
+        return 'Unauthenticated'
+      }
+      if (code === 403) {
+        return 'Forbidden'
+      }
+      if (code === 404) {
+        return 'Not found'
+      }
+      return message
+    }
 
     if (app.inProduction) {
       return ctx.response.status(status).send({
-        message: message,
+        message: sanitizeMessage(status, rawMessage),
       })
     }
 
     return ctx.response.status(status).send({
       error: error,
-      message: message,
+      message: rawMessage,
     })
   }
 

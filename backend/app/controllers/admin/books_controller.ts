@@ -31,10 +31,11 @@ export default class AdminBooksController {
     private bookHashService: BookHashService
   ) {}
 
-  async retryAudio({ params }: HttpContext) {
-    logger.info({ bookId: params.id }, 'Audio retry requested')
+  async retryAudio({ auth, params }: HttpContext) {
+    const user = auth.getUserOrFail()
+    logger.info({ bookId: params.id, userId: user.id }, 'Audio retry requested')
 
-    const result = await this.bookService.retryAudioGeneration(params.id)
+    const result = await this.bookService.retryAudioGeneration(params.id, user.id)
 
     return {
       success: true,

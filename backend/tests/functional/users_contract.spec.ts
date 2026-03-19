@@ -41,6 +41,7 @@ test.group('Users API contract', () => {
   })
 
   test('POST /api/user/change-password invalidates the old password and accepts the new one', async ({
+    assert,
     client,
     cleanup,
   }) => {
@@ -63,6 +64,13 @@ test.group('Users API contract', () => {
       })
 
     changePasswordResponse.assertStatus(200)
+
+    const oldTokenAccessResponse = await client
+      .get('/api/user/me')
+      .header('Authorization', bearerAuthHeader(token))
+
+    oldTokenAccessResponse.assertStatus(401)
+    assert.equal(oldTokenAccessResponse.body().message, 'Unauthenticated')
 
     const oldPasswordLoginResponse = await client
       .post('/api/auth/login')

@@ -10,8 +10,7 @@ import router from '@adonisjs/core/services/router'
 import { middleware } from '#start/kernel'
 import env from '#start/env'
 import transmit from '@adonisjs/transmit/services/main'
-import { apiLimiter, authLimiter, aiChatLimiter } from '#start/limiter'
-import drive from '@adonisjs/drive/services/main'
+import { apiLimiter, authLimiter, aiChatLimiter, dictionaryLimiter } from '#start/limiter'
 
 const AuthController = () => import('#controllers/auth_controller')
 const UsersController = () => import('#controllers/users_controller')
@@ -57,7 +56,7 @@ router
     router.get('/books/:id/chats', [BookChatController, 'chat'])
 
     // Dictionary
-    router.get('/dictionary/:word', [DictionaryController, 'lookup'])
+    router.get('/dictionary/:word', [DictionaryController, 'lookup']).use(dictionaryLimiter)
 
     // Learning
     router.post('/learning/login', [LearningsController, 'login'])
@@ -127,26 +126,4 @@ transmit.authorize('user:userId:book_import', (ctx, { userId }) => {
 })
 
 // ===== 静态资源路由 =====
-router.get('/audio/books/:id', async ({ params, response, auth }) => {
-  try {
-    await auth.authenticateUsing(['api'])
-  } catch {
-    return response.unauthorized({ error: 'Unauthenticated' })
-  }
-
-  if (!auth.isAuthenticated) {
-    return response.unauthorized({ error: 'Unauthenticated' })
-  }
-
-  const bookId = params.id
-  const filePath = `book/voices/${bookId}.mp3`
-
-  try {
-    const fileBuffer = await drive.use().get(filePath)
-    response.header('Content-Type', 'audio/mpeg')
-    response.header('Content-Disposition', `inline; filename="book-${bookId}.mp3"`)
-    return response.send(fileBuffer)
-  } catch {
-    return response.notFound({ error: 'Audio file not found' })
-  }
-})
+router.get('/audio/books/:id', [BooksController, 'bookAudio']).middleware(middleware.auth())

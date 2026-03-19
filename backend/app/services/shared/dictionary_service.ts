@@ -61,9 +61,22 @@ export class DictionaryService {
     return `${DICTIONARY.CACHE_PREFIX}${word.toLowerCase()}`
   }
 
+  private async fetchWithTimeout(url: string): Promise<Response> {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), DICTIONARY.LOOKUP_TIMEOUT_MS)
+
+    try {
+      return await fetch(url, { signal: controller.signal })
+    } finally {
+      clearTimeout(timeout)
+    }
+  }
+
   async getAudio(word: string): Promise<AudioResult | null> {
     try {
-      const response = await fetch(`${this.audioApiUrl}/${encodeURIComponent(word.toLowerCase())}`)
+      const response = await this.fetchWithTimeout(
+        `${this.audioApiUrl}/${encodeURIComponent(word.toLowerCase())}`
+      )
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -87,7 +100,7 @@ export class DictionaryService {
 
   async getMeaning(word: string): Promise<MeaningResult | null> {
     try {
-      const response = await fetch(
+      const response = await this.fetchWithTimeout(
         `${this.meaningApiUrl}/${encodeURIComponent(word.toLowerCase())}`
       )
 

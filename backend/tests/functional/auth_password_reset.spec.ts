@@ -74,6 +74,7 @@ test.group('Auth API password reset contract', () => {
   })
 
   test('POST /api/auth/reset-password consumes a reset token and only the new password can log in afterwards', async ({
+    assert,
     client,
     cleanup,
   }) => {
@@ -93,6 +94,17 @@ test.group('Auth API password reset contract', () => {
       'EX',
       EMAIL_VERIFICATION.EXPIRY_MINUTES * 60
     )
+
+    const beforeResetLoginResponse = await client
+      .post('/api/auth/login')
+      .header('x-forwarded-for', makeForwardedFor())
+      .json({
+        email,
+        password: 'password123',
+        rememberMe: false,
+      })
+    beforeResetLoginResponse.assertStatus(200)
+    const beforeResetToken = beforeResetLoginResponse.body().token as string
 
     cleanup(async () => {
       await redis.del(getTokenKey(resetToken))
@@ -131,6 +143,13 @@ test.group('Auth API password reset contract', () => {
       })
 
     newPasswordLoginResponse.assertStatus(200)
+
+    const oldTokenAccessResponse = await client
+      .get('/api/user/me')
+      .header('Authorization', `Bearer ${beforeResetToken}`)
+
+    oldTokenAccessResponse.assertStatus(401)
+    assert.equal(oldTokenAccessResponse.body().message, 'Unauthenticated')
 
     const reusedTokenResponse = await client
       .post('/api/auth/reset-password')

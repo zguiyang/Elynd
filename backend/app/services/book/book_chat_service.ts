@@ -7,10 +7,12 @@ import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import BookChat from '#models/book_chat'
 import logger from '@adonisjs/core/services/logger'
+import { BookService } from '#services/book/book_service'
 
 export interface ChatParams {
   userId: number
   bookId: number
+  isAdmin: boolean
   message: string
   chapterIndex?: number | undefined
 }
@@ -40,7 +42,8 @@ export class BookChatService {
     private aiService: AiService,
     private configService: ConfigService,
     private userConfigService: UserConfigService,
-    private promptService: PromptService
+    private promptService: PromptService,
+    private bookService: BookService
   ) {}
 
   async chat(params: SimpleChatParams): Promise<string> {
@@ -79,11 +82,11 @@ export class BookChatService {
     handlers: StreamHandlers,
     signal?: AbortSignal
   ): Promise<void> {
-    const { userId, bookId, message, chapterIndex } = params
+    const { userId, bookId, isAdmin, message, chapterIndex } = params
 
     const [userConfig, book] = await Promise.all([
       this.userConfigService.getConfigByUserId(userId),
-      Book.findOrFail(bookId),
+      this.bookService.findReadableBookById(bookId, { isAdmin }),
     ])
 
     const nativeLanguage = userConfig?.nativeLanguage ?? 'zh'

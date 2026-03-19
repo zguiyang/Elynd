@@ -5,6 +5,8 @@
  * only valid reading content is stored.
  */
 
+import { inject } from '@adonisjs/core'
+
 export interface ValidationResult {
   valid: boolean
   errors: string[]
@@ -51,6 +53,7 @@ const CHAPTER_MARKERS = [
   /(^|\n)\s*ch\.\s*\d+\b/gim,
 ]
 
+@inject()
 export class BookContentGuardService {
   /**
    * Validate chapter content and return validation result
@@ -221,5 +224,3 @@ export class BookContentGuardService {
     return this.hasMergedChapters(content)
   }
 }
-
-export default new BookContentGuardService()

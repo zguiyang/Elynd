@@ -1,3 +1,4 @@
+import { inject } from '@adonisjs/core'
 import { AI } from '#constants'
 import { AiService } from '#services/ai/ai_service'
 import type { AiChatParams, AiClientConfig } from '#types/ai'
@@ -5,6 +6,7 @@ import {
   BookChapterCleanerService,
   type ChapterOutput,
 } from '#services/book-parse/book_chapter_cleaner_service'
+import PromptService from '#services/ai/prompt_service'
 import { ConfigService } from '#services/ai/config_service'
 
 export interface SemanticMetadataInput {
@@ -47,10 +49,11 @@ interface ChapterResponse {
   }>
 }
 
+@inject()
 export class BookSemanticCleanService {
   constructor(
     private aiService: AiService,
-    private promptService: { render: (name: string, data: Record<string, any>) => string },
+    private promptService: PromptService,
     private ruleCleaner: BookChapterCleanerService,
     private configService: ConfigService
   ) {}

@@ -1,7 +1,9 @@
 import { DateTime } from 'luxon'
+import { inject } from '@adonisjs/core'
 import BookProcessingRunLog, { type JobType } from '#models/book_processing_run_log'
 import BookProcessingStepLog from '#models/book_processing_step_log'
 
+@inject()
 export class BookProcessingLogService {
   /**
    * Get or create an active run log for the given book and job type

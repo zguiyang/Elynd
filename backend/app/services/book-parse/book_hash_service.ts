@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto'
+import { inject } from '@adonisjs/core'
 
+@inject()
 export class BookHashService {
   /**
    * Generate a hash for raw file content (buffer or string)

@@ -16,11 +16,7 @@ import { BookParserService } from '#services/book-parse/book_parser_service'
 import { BookSemanticCleanService } from '#services/book-parse/book_semantic_clean_service'
 import { VocabularyAnalyzerService } from '#services/book-parse/vocabulary_analyzer_service'
 import { BookHashService } from '#services/book-parse/book_hash_service'
-import PromptService from '#services/ai/prompt_service'
-import { AiService } from '#services/ai/ai_service'
-import { BookChapterCleanerService } from '#services/book-parse/book_chapter_cleaner_service'
 import { BookContentGuardService } from '#services/book-parse/book_content_guard_service'
-import { ConfigService } from '#services/ai/config_service'
 import GenerateBookAudioJob from '#jobs/generate_book_audio_job'
 import GenerateBookVocabularyJob from '#jobs/generate_book_vocabulary_job'
 import { BOOK_IMPORT_PROGRESS, BOOK_IMPORT_STEP } from '#constants'
@@ -52,13 +48,10 @@ type DispatchableImportStep =
 export class BookImportOrchestratorService {
   constructor(
     private parserService: BookParserService,
-    private aiService: AiService,
     private analyzerService: VocabularyAnalyzerService,
-    private configService: ConfigService,
     private hashService: BookHashService,
     private guardService: BookContentGuardService,
-    private semanticCleanPromptService: PromptService,
-    private chapterCleanerService: BookChapterCleanerService
+    private semanticCleaner: BookSemanticCleanService
   ) {}
 
   static getBaseProgressByStep(step: string): number {
@@ -217,8 +210,7 @@ export class BookImportOrchestratorService {
     book: Book
     parsed: ParsedSourceResult
   }): Promise<{ title: string; author: string | null; description: string | null }> {
-    const cleaner = this.buildSemanticCleaner()
-    const metadata = await cleaner.extractMetadata({
+    const metadata = await this.semanticCleaner.extractMetadata({
       fileName: params.book.rawFileName || params.parsed.title,
       sourceType: params.book.source,
       chapterTitles: params.parsed.chapters.slice(0, 30).map((item) => item.title),
@@ -232,8 +224,7 @@ export class BookImportOrchestratorService {
   }
 
   async semanticCleanChapters(parsed: ParsedSourceResult) {
-    const cleaner = this.buildSemanticCleaner()
-    const cleaned = await cleaner.cleanChapters(
+    const cleaned = await this.semanticCleaner.cleanChapters(
       parsed.chapters.map((chapter) => ({
         title: chapter.title,
         content: chapter.content,
@@ -513,14 +504,5 @@ export class BookImportOrchestratorService {
         errorMeta: { message },
       },
     }
-  }
-
-  private buildSemanticCleaner() {
-    return new BookSemanticCleanService(
-      this.aiService,
-      this.semanticCleanPromptService,
-      this.chapterCleanerService,
-      this.configService
-    )
   }
 }

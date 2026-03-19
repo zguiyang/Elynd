@@ -1,8 +1,10 @@
 import cron from 'node-cron'
+import app from '@adonisjs/core/services/app'
 import { DictionaryService } from '#services/shared/dictionary_service'
 
 export async function registerCronTasks() {
   const { default: logger } = await import('@adonisjs/core/services/logger')
+  const dictionaryService = await app.container.make(DictionaryService)
 
   logger.info('Registering cron tasks')
 
@@ -10,7 +12,6 @@ export async function registerCronTasks() {
     logger.info('Starting dictionary cache refresh task')
 
     try {
-      const dictionaryService = new DictionaryService()
       const expiringKeys = await dictionaryService.getExpiringKeys()
 
       logger.info({ count: expiringKeys.length }, 'Found expiring dictionary cache keys')

@@ -1,5 +1,6 @@
 import { DateTime } from 'luxon'
 import { createHash } from 'node:crypto'
+import { inject } from '@adonisjs/core'
 import db from '@adonisjs/lucid/services/db'
 import Book from '#models/book'
 import BookProcessingRunLog from '#models/book_processing_run_log'
@@ -10,6 +11,7 @@ import {
   type BookImportPipelineStep,
 } from '#types/book_import_pipeline'
 
+@inject()
 export class ImportStateService {
   static createImportCancelledError(bookId: number): Error {
     const error = new Error(`Import cancelled for book ${bookId}`)

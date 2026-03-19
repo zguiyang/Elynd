@@ -1,3 +1,5 @@
+import { inject } from '@adonisjs/core'
+
 export interface ChapterInput {
   title: string
   content: string
@@ -20,6 +22,7 @@ export interface CleanResult {
   stats: CleanStats
 }
 
+@inject()
 export class BookChapterCleanerService {
   private static readonly MIN_CONTENT_LENGTH = 30
 

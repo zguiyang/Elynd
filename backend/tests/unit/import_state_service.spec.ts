@@ -6,6 +6,15 @@ import BookProcessingStepLog from '#models/book_processing_step_log'
 import { createAuthenticatedUser } from '#tests/helpers/auth'
 import { BOOK_IMPORT_STEP } from '#constants'
 import { ImportStateService } from '#services/book-import/import_state_service'
+import type { TransmitService } from '#services/shared/transmit_service'
+
+const createImportStateService = () => {
+  const transmitServiceMock = {
+    toUser: async () => {},
+  } as unknown as TransmitService
+
+  return new ImportStateService(transmitServiceMock)
+}
 
 const createProcessingBook = async (currentStep: string | null = null) => {
   const { user } = await createAuthenticatedUser({ isAdmin: true, emailPrefix: 'import-state' })
@@ -84,7 +93,7 @@ test.group('ImportStateService', () => {
       await user.delete()
     })
 
-    const service = new ImportStateService()
+    const service = createImportStateService()
     const step = await service.startStep(run.id, book.id, BOOK_IMPORT_STEP.PREPARE_IMPORT, 10, {
       source: 'upload',
     })
@@ -120,7 +129,7 @@ test.group('ImportStateService', () => {
       await user.delete()
     })
 
-    const service = new ImportStateService()
+    const service = createImportStateService()
     const step = await service.startStep(run.id, book.id, BOOK_IMPORT_STEP.SEMANTIC_CLEAN, 30)
 
     await service.completeStep(run.id, step.id, book.id, BOOK_IMPORT_STEP.SEMANTIC_CLEAN, 40)
@@ -177,7 +186,7 @@ test.group('ImportStateService', () => {
       await user.delete()
     })
 
-    const service = new ImportStateService()
+    const service = createImportStateService()
 
     await service.markBookReady(book.id)
     await book.refresh()
@@ -204,7 +213,7 @@ test.group('ImportStateService', () => {
     })
 
     await run.merge({ status: 'failed', errorCode: 'USER_ABORTED' }).save()
-    const service = new ImportStateService()
+    const service = createImportStateService()
     try {
       await service.startStep(run.id, book.id, BOOK_IMPORT_STEP.SEMANTIC_CLEAN, 20)
       assert.fail('Expected startStep to throw ImportCancelledError')
@@ -223,7 +232,7 @@ test.group('ImportStateService', () => {
       await user.delete()
     })
 
-    const service = new ImportStateService()
+    const service = createImportStateService()
     const step = await service.startStep(run.id, book.id, BOOK_IMPORT_STEP.PREPARE_IMPORT, 10)
     await run.merge({ status: 'failed', errorCode: 'USER_ABORTED' }).save()
 

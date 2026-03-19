@@ -5,12 +5,34 @@ import db from '@adonisjs/lucid/services/db'
 import Book from '#models/book'
 import BookProcessingRunLog from '#models/book_processing_run_log'
 import BookProcessingStepLog from '#models/book_processing_step_log'
+import { TransmitService } from '#services/shared/transmit_service'
 import { BOOK_IMPORT_STEP } from '#constants'
 import { BOOK_IMPORT_STEP_TRANSITIONS } from '#types/book_import_pipeline'
 import type { BookImportPipelineStep } from '#types/book_import_pipeline'
 
 @inject()
 export class ImportStateService {
+  constructor(private transmitService: TransmitService) {}
+
+  private async publishBookImportStatus(book: Book): Promise<void> {
+    if (!book.createdBy) {
+      return
+    }
+
+    await this.transmitService.toUser(
+      `user:${book.createdBy}:book_import`,
+      'book.import.status.updated',
+      {
+        bookId: book.id,
+        status: book.status,
+        processingStep: book.processingStep || '',
+        processingProgress: book.processingProgress,
+        processingError: book.processingError,
+        message: book.processingStep || book.status,
+      }
+    )
+  }
+
   static createImportCancelledError(bookId: number): Error {
     const error = new Error(`Import cancelled for book ${bookId}`)
     error.name = 'ImportCancelledError'
@@ -50,7 +72,7 @@ export class ImportStateService {
     inputSummary?: Record<string, unknown>,
     itemKey?: string
   ): Promise<BookProcessingStepLog> {
-    return await db.transaction(async (trx) => {
+    const stepLog = await db.transaction(async (trx) => {
       const runLog = await BookProcessingRunLog.query({ client: trx })
         .where('id', runId)
         .firstOrFail()
@@ -102,6 +124,13 @@ export class ImportStateService {
 
       return stepLog
     })
+
+    const latestBook = await Book.find(bookId)
+    if (latestBook) {
+      await this.publishBookImportStatus(latestBook)
+    }
+
+    return stepLog
   }
 
   async completeStep(
@@ -112,7 +141,7 @@ export class ImportStateService {
     progress: number,
     outputRef?: Record<string, unknown>
   ): Promise<BookProcessingStepLog> {
-    return await db.transaction(async (trx) => {
+    const stepLog = await db.transaction(async (trx) => {
       const stepLog = await BookProcessingStepLog.query({ client: trx })
         .where('id', stepLogId)
         .firstOrFail()
@@ -152,6 +181,13 @@ export class ImportStateService {
 
       return stepLog
     })
+
+    const latestBook = await Book.find(bookId)
+    if (latestBook) {
+      await this.publishBookImportStatus(latestBook)
+    }
+
+    return stepLog
   }
 
   async failStep(
@@ -163,7 +199,7 @@ export class ImportStateService {
     errorCode?: string,
     outputRef?: Record<string, unknown>
   ): Promise<BookProcessingStepLog> {
-    return await db.transaction(async (trx) => {
+    const stepLog = await db.transaction(async (trx) => {
       const stepLog = await BookProcessingStepLog.query({ client: trx })
         .where('id', stepLogId)
         .firstOrFail()
@@ -202,11 +238,18 @@ export class ImportStateService {
 
       return stepLog
     })
+
+    const latestBook = await Book.find(bookId)
+    if (latestBook) {
+      await this.publishBookImportStatus(latestBook)
+    }
+
+    return stepLog
   }
 
   async markBookReady(bookId: number): Promise<Book> {
     const book = await Book.findOrFail(bookId)
-    await book
+    const savedBook = await book
       .merge({
         status: 'ready',
         processingStep: BOOK_IMPORT_STEP.COMPLETED,
@@ -214,12 +257,14 @@ export class ImportStateService {
         processingError: null,
       })
       .save()
-    return book
+
+    await this.publishBookImportStatus(savedBook)
+    return savedBook
   }
 
   async markBookFailed(bookId: number, errorMessage: string): Promise<Book> {
     const book = await Book.findOrFail(bookId)
-    await book
+    const savedBook = await book
       .merge({
         status: 'failed',
         processingStep: BOOK_IMPORT_STEP.FAILED,
@@ -227,7 +272,9 @@ export class ImportStateService {
         processingError: errorMessage,
       })
       .save()
-    return book
+
+    await this.publishBookImportStatus(savedBook)
+    return savedBook
   }
 
   async assertImportNotCancelled(runId: number, bookId: number): Promise<void> {

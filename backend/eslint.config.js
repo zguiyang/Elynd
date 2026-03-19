@@ -1,10 +1,14 @@
 import { configApp } from '@adonisjs/eslint-config'
+import pluginImport from 'eslint-plugin-import'
 
 export default [
   ...configApp(),
   {
     name: 'app/type-import-rules',
     files: ['**/*.{ts,mts,tsx}'],
+    plugins: {
+      import: pluginImport,
+    },
     rules: {
       '@typescript-eslint/consistent-type-imports': [
         'error',
@@ -14,7 +18,8 @@ export default [
           disallowTypeAnnotations: false,
         },
       ],
-      'no-duplicate-imports': ['error', { allowSeparateTypeImports: true }],
+      'import/consistent-type-specifier-style': ['error', 'prefer-top-level'],
+      'import/no-duplicates': 'error',
     },
   },
 ]

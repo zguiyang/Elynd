@@ -172,3 +172,33 @@ export interface VocabularyItem {
     }>
   } | null
 }
+
+export type ChapterTranslationStatus = 'queued' | 'processing' | 'completed' | 'failed'
+
+export interface ChapterTranslationSentence {
+  sentenceIndex: number
+  original: string
+  translated: string
+  sourceOffsets: [number, number] | null
+  targetOffsets: [number, number] | null
+  tokensMap: Array<{ sourceToken: string; targetToken: string }> | null
+}
+
+export interface ChapterTranslationParagraph {
+  paragraphIndex: number
+  sentences: ChapterTranslationSentence[]
+}
+
+export interface ChapterTranslationResult {
+  title: {
+    original: string
+    translated: string
+  }
+  paragraphs: ChapterTranslationParagraph[]
+}
+
+export interface ChapterTranslationResponse {
+  status: ChapterTranslationStatus
+  translationId: number | null
+  data: ChapterTranslationResult | null
+}

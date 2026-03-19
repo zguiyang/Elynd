@@ -18,15 +18,9 @@ export default class HttpExceptionHandler extends ExceptionHandler {
       const firstField = Object.keys(error.messages)[0]
       const message = error.messages[firstField]?.[0] || '参数验证失败，请检查输入'
 
-      if (!app.inProduction) {
-        return ctx.response.status(422).send({
-          error: error,
-          message: message,
-        })
-      }
-
       return ctx.response.status(422).send({
-        message: message,
+        error: true,
+        message,
       })
     }
 
@@ -63,15 +57,11 @@ export default class HttpExceptionHandler extends ExceptionHandler {
       return message
     }
 
-    if (app.inProduction) {
-      return ctx.response.status(status).send({
-        message: sanitizeMessage(status, rawMessage),
-      })
-    }
+    const message = app.inProduction ? sanitizeMessage(status, rawMessage) : rawMessage
 
     return ctx.response.status(status).send({
-      error: error,
-      message: rawMessage,
+      error: true,
+      message,
     })
   }
 

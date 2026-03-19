@@ -9,7 +9,7 @@ test.group('GET /audio/books/:id access contract', () => {
     const response = await client.get('/audio/books/999999')
 
     response.assertStatus(401)
-    response.assertBodyContains({ message: 'Unauthenticated' })
+    response.assertBodyContains({ error: true, message: 'Unauthenticated' })
   })
 
   test('普通用户访问未发布书籍音频返回 404', async ({ client, cleanup }) => {
@@ -38,7 +38,7 @@ test.group('GET /audio/books/:id access contract', () => {
       .header('Authorization', bearerAuthHeader(token))
 
     response.assertStatus(404)
-    response.assertBodyContains({ message: 'Book not found' })
+    response.assertBodyContains({ error: true, message: 'Book not found' })
   })
 
   test('已登录访问已发布书籍且文件存在返回 200 + audio/mpeg', async ({ client, cleanup }) => {

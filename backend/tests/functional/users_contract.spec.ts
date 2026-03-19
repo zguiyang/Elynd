@@ -70,6 +70,7 @@ test.group('Users API contract', () => {
       .header('Authorization', bearerAuthHeader(token))
 
     oldTokenAccessResponse.assertStatus(401)
+    assert.isTrue(oldTokenAccessResponse.body().error)
     assert.equal(oldTokenAccessResponse.body().message, 'Unauthenticated')
 
     const oldPasswordLoginResponse = await client

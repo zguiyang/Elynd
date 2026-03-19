@@ -149,6 +149,7 @@ test.group('Auth API password reset contract', () => {
       .header('Authorization', `Bearer ${beforeResetToken}`)
 
     oldTokenAccessResponse.assertStatus(401)
+    assert.isTrue(oldTokenAccessResponse.body().error)
     assert.equal(oldTokenAccessResponse.body().message, 'Unauthenticated')
 
     const reusedTokenResponse = await client

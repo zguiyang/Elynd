@@ -38,7 +38,6 @@ export default class AdminBooksController {
     const result = await this.bookService.retryAudioGeneration(params.id, user.id)
 
     return {
-      success: true,
       message: 'Audio retry task added to queue',
       ...result,
     }
@@ -50,7 +49,6 @@ export default class AdminBooksController {
     const result = await this.bookService.retryVocabularyGeneration(params.id)
 
     return {
-      success: true,
       message: 'Vocabulary retry task added to queue',
       ...result,
     }
@@ -63,7 +61,6 @@ export default class AdminBooksController {
     const result = await this.bookService.rebuildChapters(params.id, user.id)
 
     return {
-      success: true,
       message: 'Chapter rebuild task added to queue',
       ...result,
     }
@@ -76,7 +73,6 @@ export default class AdminBooksController {
     const result = await this.bookService.stopImport(params.id, user.id)
 
     return {
-      success: true,
       message: `Import flow stopped, removed ${result.removedQueuedJobs} queued jobs`,
       ...result,
     }
@@ -89,7 +85,6 @@ export default class AdminBooksController {
     const result = await this.bookService.continueImport(params.id, user.id)
 
     return {
-      success: true,
       message: `Import resumed from step: ${result.resumeStep}`,
       ...result,
     }
@@ -308,6 +303,6 @@ export default class AdminBooksController {
 
     await book.delete()
 
-    return { success: true }
+    return {}
   }
 }

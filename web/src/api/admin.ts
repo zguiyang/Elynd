@@ -70,24 +70,20 @@ export interface ImportBookResponse {
 }
 
 export interface RetryVocabularyResponse {
-  success: boolean
   message: string
   vocabularyStatus: string
 }
 
 export interface RetryAudioResponse {
-  success: boolean
   message: string
   status: string
 }
 
 export interface RebuildChaptersResponse {
-  success: boolean
   message: string
 }
 
 export interface StopImportResponse {
-  success: boolean
   message: string
   bookId: number
   runId: number | null
@@ -96,7 +92,6 @@ export interface StopImportResponse {
 }
 
 export interface ContinueImportResponse {
-  success: boolean
   message: string
   bookId: number
   runId: number
@@ -163,5 +158,5 @@ export const adminApi = {
     request<AdminBook>({ method: 'PATCH', url: `/api/admin/books/${id}`, data }),
 
   deleteBook: (id: number) =>
-    request<{ success: boolean }>({ method: 'DELETE', url: `/api/admin/books/${id}` }),
+    request<Record<string, never>>({ method: 'DELETE', url: `/api/admin/books/${id}` }),
 }

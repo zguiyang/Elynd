@@ -681,7 +681,7 @@ test.group('Admin Books Management API', () => {
       .header('Authorization', bearerAuthHeader(token))
 
     response.assertStatus(200)
-    assert.equal(response.body().success, true)
+    assert.deepEqual(response.body(), {})
 
     // Verify book is deleted
     const deletedBook = await Book.find(bookId)
@@ -758,7 +758,7 @@ test.group('Admin Books Management API', () => {
       .header('Authorization', bearerAuthHeader(token))
 
     response.assertStatus(200)
-    assert.equal(response.body().success, true)
+    assert.deepEqual(response.body(), {})
   })
 
   test('DELETE /api/admin/books/:id returns 404 for non-existent book', async ({
@@ -859,7 +859,6 @@ test.group('Admin Books Management API', () => {
       .header('Authorization', bearerAuthHeader(token))
 
     response.assertStatus(200)
-    assert.equal(response.body().success, true)
     assert.equal(response.body().message, 'Vocabulary retry task added to queue')
     assert.equal(response.body().vocabularyStatus, 'pending')
   })
@@ -922,7 +921,6 @@ test.group('Admin Books Management API', () => {
       .header('Authorization', bearerAuthHeader(token))
 
     response.assertStatus(200)
-    assert.equal(response.body().success, true)
     assert.equal(response.body().status, 'processing')
 
     const reloadedBook = await Book.findOrFail(book.id)
@@ -1029,7 +1027,6 @@ test.group('Admin Books Management API', () => {
       .header('Authorization', bearerAuthHeader(token))
 
     response.assertStatus(200)
-    assert.equal(response.body().success, true)
 
     const chapters = await BookChapter.query().where('bookId', book.id)
     const audios = await BookChapterAudio.query().where('bookId', book.id)

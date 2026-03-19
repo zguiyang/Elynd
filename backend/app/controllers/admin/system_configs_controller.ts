@@ -35,7 +35,7 @@ export default class SystemConfigsController {
         aiModelName: data.aiModelName ?? null,
       })
     } else {
-      const updates: Record<string, any> = {}
+      const updates: Record<string, string | null> = {}
 
       if (data.aiBaseUrl !== undefined) {
         updates.aiBaseUrl = data.aiBaseUrl || null

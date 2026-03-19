@@ -4,6 +4,7 @@ import { adminApi   } from '@/api/admin'
 import type {AdminBook, AdminUpdateBookPayload} from '@/api/admin';
 import { bookApi } from '@/api/book'
 import type { BookLevel } from '@/types/book'
+import { formatBookLevelRange } from '@/lib/book-level'
 import { RefreshCw, Loader2, CheckCircle, XCircle, AlertCircle, Upload } from 'lucide-vue-next'
 import { getStepText, getProgressComposition, getTaskSummary, canRetryVocabulary, canRetryAudio } from '@/composables/useBookImportStatus'
 import { useBookImportSse } from '@/composables/useBookImportSse'
@@ -694,7 +695,7 @@ onUnmounted(() => {
                   :key="level.id"
                   :value="level.id"
                 >
-                  {{ `${level.code} - ${level.description}` }}
+                  {{ `${level.code} - ${formatBookLevelRange(level)}` }}
                 </SelectItem>
               </SelectContent>
             </Select>

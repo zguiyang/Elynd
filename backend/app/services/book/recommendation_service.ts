@@ -10,6 +10,8 @@ export interface RecommendedBook {
     id: number
     code: string
     description: string
+    minWords: number | null
+    maxWords: number | null
     sortOrder: number
   }
   description: string | null
@@ -66,6 +68,8 @@ export class RecommendationService {
         id: book.level.id,
         code: book.level.code,
         description: book.level.description,
+        minWords: book.level.minWords,
+        maxWords: book.level.maxWords,
         sortOrder: book.level.sortOrder,
       },
       description: book.description,
@@ -88,6 +92,8 @@ export class RecommendationService {
             id: book.level.id,
             code: book.level.code,
             description: book.level.description,
+            minWords: book.level.minWords,
+            maxWords: book.level.maxWords,
             sortOrder: book.level.sortOrder,
           },
           description: book.description,
@@ -114,6 +120,8 @@ export class RecommendationService {
         id: book.level.id,
         code: book.level.code,
         description: book.level.description,
+        minWords: book.level.minWords,
+        maxWords: book.level.maxWords,
         sortOrder: book.level.sortOrder,
       },
       description: book.description,

@@ -10,6 +10,8 @@ export interface LearningIndexData {
       id: number
       code: string
       description: string
+      minWords: number | null
+      maxWords: number | null
       sortOrder: number
     }
     category: string
@@ -22,6 +24,8 @@ export interface LearningIndexData {
       id: number
       code: string
       description: string
+      minWords: number | null
+      maxWords: number | null
       sortOrder: number
     }
     category: string
@@ -36,6 +40,8 @@ export interface RecommendedBook {
     id: number
     code: string
     description: string
+    minWords: number | null
+    maxWords: number | null
     sortOrder: number
   }
   category: string

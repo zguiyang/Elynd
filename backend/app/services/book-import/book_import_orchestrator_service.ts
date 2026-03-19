@@ -453,7 +453,8 @@ export class BookImportOrchestratorService {
       .slice(0, 5000)
 
     const activeLevels = await this.bookLevelService.listActiveLevels()
-    let selectedLevel = await this.bookLevelService.getFallbackLevelByWords(uniqueLemmaCount)
+    const fallbackLevel = await this.bookLevelService.getFallbackLevelByWords(uniqueLemmaCount)
+    let selectedLevel = fallbackLevel
     let classifiedBy: 'ai' | 'rule' = 'rule'
     let reason = 'Fallback by unique lemma count'
 
@@ -472,7 +473,10 @@ export class BookImportOrchestratorService {
         })),
       })
       const match = activeLevels.find((level) => level.id === aiResult.levelId)
-      if (match) {
+      const withinOneLevel =
+        match &&
+        Math.abs((match.sortOrder || 0) - (fallbackLevel.sortOrder || 0)) <= 1
+      if (match && withinOneLevel) {
         selectedLevel = match
         classifiedBy = 'ai'
         reason = aiResult.reason

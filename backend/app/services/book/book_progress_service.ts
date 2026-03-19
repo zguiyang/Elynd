@@ -10,6 +10,8 @@ export interface BookWithProgress {
     id: number
     code: string
     description: string
+    minWords: number | null
+    maxWords: number | null
     sortOrder: number
   }
   progress: number
@@ -73,6 +75,8 @@ export class BookProgressService {
             id: book.level.id,
             code: book.level.code,
             description: book.level.description,
+            minWords: book.level.minWords,
+            maxWords: book.level.maxWords,
             sortOrder: book.level.sortOrder,
           },
           progress: record.progress,

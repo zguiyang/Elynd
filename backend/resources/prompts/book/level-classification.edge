@@ -16,9 +16,11 @@ Output JSON schema (strict):
 }
 
 Rules:
+- Use uniqueLemmaCount as the primary signal; use wordCount and sampleText as secondary signals.
 - levelId must be one of candidate ids.
 - reason should be concise (<= 120 chars).
-- Do not create new levels.
+- Never create, infer, or output any new level outside candidates.
+- If uncertain, choose the nearest candidate by provided ranges and counts.
 
 Input:
 {

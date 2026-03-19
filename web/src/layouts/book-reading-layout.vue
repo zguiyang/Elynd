@@ -5,6 +5,7 @@ import { useReadingSettingsStore } from '@/stores/reading-settings'
 import { learningApi } from '@/api/learning'
 import AiChatPanel from '@/components/shared/AiChatPanel.vue'
 import type { ChapterListItem } from '@/types/book'
+import { formatBookLevelRange } from '@/lib/book-level'
 import { toast } from 'vue-sonner'
 
 const route = useRoute()
@@ -225,7 +226,7 @@ watch(book, (newBook) => {
 
       <template v-if="book">
         <Badge v-if="book.level" :variant="getLevelVariant(book.level.sortOrder)">
-          {{ book.level.description }}
+          {{ formatBookLevelRange(book.level) }}
         </Badge>
         <Badge
           v-for="tag in book.tags.slice(0, 2)"

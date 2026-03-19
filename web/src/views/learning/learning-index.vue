@@ -4,6 +4,7 @@ import type { LearningIndexData } from '@/api/learning'
 import { learningApi } from '@/api/learning'
 import { useAuthStore } from '@/stores/auth'
 import { useRequest } from '@/composables/useRequest'
+import { formatBookLevelRange } from '@/lib/book-level'
 import { toast } from 'vue-sonner'
 
 const authStore = useAuthStore()
@@ -23,6 +24,8 @@ const continueReading = ref<
       id: number
       code: string
       description: string
+      minWords: number | null
+      maxWords: number | null
       sortOrder: number
     }
     category: string
@@ -38,6 +41,8 @@ const recommendedBooks = ref<
       id: number
       code: string
       description: string
+      minWords: number | null
+      maxWords: number | null
       sortOrder: number
     }
     category: string
@@ -137,7 +142,7 @@ watch(
                   <CardTitle class="text-lg">{{ book.title }}</CardTitle>
                   <div class="flex items-center gap-2">
                     <Badge :variant="getLevelVariant(book.level.sortOrder)">
-                      {{ book.level.description }}
+                      {{ formatBookLevelRange(book.level) }}
                     </Badge>
                     <Badge variant="outline">{{ book.category }}</Badge>
                   </div>
@@ -215,7 +220,7 @@ watch(
                 </div>
                 <div class="flex items-center gap-2 mt-2">
                   <Badge :variant="getLevelVariant(book.level.sortOrder)">
-                    {{ book.level.description }}
+                    {{ formatBookLevelRange(book.level) }}
                   </Badge>
                   <Badge variant="outline">{{ book.category }}</Badge>
                 </div>

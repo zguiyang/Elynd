@@ -3,6 +3,7 @@ import { BookOpen, ArrowLeft, Loader2 } from 'lucide-vue-next'
 import { useBooks } from '@/composables/useBook'
 import { bookApi } from '@/api/book'
 import type { BookLevel } from '@/types/book'
+import { formatBookLevelRange } from '@/lib/book-level'
 import { toast } from 'vue-sonner'
 
 const { books, tags, isLoading, error, pagination, fetchBooks, fetchTags, goToPage } = useBooks()
@@ -88,7 +89,7 @@ const getLevelVariant = (sortOrder: number): 'default' | 'secondary' | 'outline'
             size="sm"
             @click="onLevelChange(level.id)"
           >
-            {{ level.description }}
+            {{ formatBookLevelRange(level) }}
           </Button>
         </div>
       </div>
@@ -140,7 +141,7 @@ const getLevelVariant = (sortOrder: number): 'default' | 'secondary' | 'outline'
               </div>
               <div class="flex items-center gap-2 mt-2 flex-wrap">
                 <Badge :variant="getLevelVariant(book.level.sortOrder)">
-                  {{ book.level.description }}
+                  {{ formatBookLevelRange(book.level) }}
                 </Badge>
                 <Badge
                   v-for="tag in book.tags"

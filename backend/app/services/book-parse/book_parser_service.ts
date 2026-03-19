@@ -2,7 +2,8 @@ import { inject } from '@adonisjs/core'
 import drive from '@adonisjs/drive/services/main'
 import { Exception } from '@adonisjs/core/exceptions'
 import type { MultipartFile } from '@adonisjs/core/bodyparser'
-import EPub, { type ManifestItem } from 'epub'
+import EPub from 'epub'
+import type { ManifestItem } from 'epub'
 
 export interface ParsedBookChapter {
   chapterIndex: number

@@ -1,5 +1,5 @@
 import vine from '@vinejs/vine'
-import { type Infer } from '@vinejs/vine/types'
+import type { Infer } from '@vinejs/vine/types'
 import { ARTICLE_DIFFICULTY } from '#constants'
 
 export const listBookValidator = vine.compile(

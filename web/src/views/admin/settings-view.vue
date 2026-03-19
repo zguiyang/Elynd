@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
-import { adminApi, type SystemConfig } from '@/api/admin'
+import { adminApi  } from '@/api/admin'
+import type {SystemConfig} from '@/api/admin';
 import { Eye, EyeOff, Loader2 } from 'lucide-vue-next'
 import { useRequest } from '@/composables/useRequest'
 

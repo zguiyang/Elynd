@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 import { BaseModel, column, manyToMany, belongsTo, hasMany } from '@adonisjs/lucid/orm'
-import { type ManyToMany, type BelongsTo, type HasMany } from '@adonisjs/lucid/types/relations'
+import type { ManyToMany, BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import type { AudioStatus } from '#types/tts'
 import Tag from '#models/tag'
 import User from '#models/user'

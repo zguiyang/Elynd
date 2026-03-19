@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
-import { userApi, type UserConfig, type UpdateUserConfigData } from '@/api/user'
+import { userApi   } from '@/api/user'
+import type {UserConfig, UpdateUserConfigData} from '@/api/user';
 import { useAuthStore } from '@/stores/auth'
 import { useRequest } from '@/composables/useRequest'
 

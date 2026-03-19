@@ -1,4 +1,5 @@
-import { createSSE, type SseHandle } from '@/lib/sse'
+import { createSSE  } from '@/lib/sse'
+import type {SseHandle} from '@/lib/sse';
 
 export interface ChatMessage {
   role: 'user' | 'assistant'

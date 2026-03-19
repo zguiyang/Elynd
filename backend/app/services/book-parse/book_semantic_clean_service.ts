@@ -2,10 +2,8 @@ import { inject } from '@adonisjs/core'
 import { AI } from '#constants'
 import { AiService } from '#services/ai/ai_service'
 import type { AiChatParams, AiClientConfig } from '#types/ai'
-import {
-  BookChapterCleanerService,
-  type ChapterOutput,
-} from '#services/book-parse/book_chapter_cleaner_service'
+import { BookChapterCleanerService } from '#services/book-parse/book_chapter_cleaner_service'
+import type { ChapterOutput } from '#services/book-parse/book_chapter_cleaner_service'
 import PromptService from '#services/ai/prompt_service'
 import { ConfigService } from '#services/ai/config_service'
 

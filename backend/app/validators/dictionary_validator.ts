@@ -1,5 +1,5 @@
 import vine from '@vinejs/vine'
-import { type Infer } from '@vinejs/vine/types'
+import type { Infer } from '@vinejs/vine/types'
 import { DICTIONARY } from '#constants'
 
 export const dictionaryLookupValidator = vine.compile(

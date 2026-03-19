@@ -1,4 +1,5 @@
-import { authApi, type LoginData, type RegisterData, type AuthResponse, type ForgotPasswordResponse, type ResetPasswordData } from '@/api/auth'
+import { authApi      } from '@/api/auth'
+import type {LoginData, RegisterData, AuthResponse, ForgotPasswordResponse, ResetPasswordData} from '@/api/auth';
 import { userApi } from '@/api/user';
 import type { User } from '@/api/user'
 

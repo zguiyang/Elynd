@@ -1,4 +1,5 @@
-import { createBookChat, type ChatMessage } from '@/api/book-chat'
+import { createBookChat  } from '@/api/book-chat'
+import type {ChatMessage} from '@/api/book-chat';
 import { updateAssistantMessageContent } from '@/lib/chat-stream-message'
 import type { ComputedRef, Ref } from 'vue'
 

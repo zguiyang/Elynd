@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
-import { adminApi, type AdminBook, type AdminUpdateBookPayload } from '@/api/admin'
+import { adminApi   } from '@/api/admin'
+import type {AdminBook, AdminUpdateBookPayload} from '@/api/admin';
 import { RefreshCw, Loader2, CheckCircle, XCircle, AlertCircle, Upload } from 'lucide-vue-next'
 import { getStepText, getProgressComposition, getTaskSummary, canRetryVocabulary, canRetryAudio } from '@/composables/useBookImportStatus'
 import { useBookImportSse } from '@/composables/useBookImportSse'

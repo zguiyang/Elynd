@@ -6,10 +6,8 @@ import Book from '#models/book'
 import BookProcessingRunLog from '#models/book_processing_run_log'
 import BookProcessingStepLog from '#models/book_processing_step_log'
 import { BOOK_IMPORT_STEP } from '#constants'
-import {
-  BOOK_IMPORT_STEP_TRANSITIONS,
-  type BookImportPipelineStep,
-} from '#types/book_import_pipeline'
+import { BOOK_IMPORT_STEP_TRANSITIONS } from '#types/book_import_pipeline'
+import type { BookImportPipelineStep } from '#types/book_import_pipeline'
 
 @inject()
 export class ImportStateService {

@@ -26,6 +26,10 @@ test.group('BookImportOrchestratorService serial contract', () => {
     )
     assert.equal(
       BOOK_IMPORT_STEP_TRANSITIONS[BOOK_IMPORT_STEP.ENRICH_VOCABULARY],
+      BOOK_IMPORT_STEP.GENERATE_TAGS
+    )
+    assert.equal(
+      BOOK_IMPORT_STEP_TRANSITIONS[BOOK_IMPORT_STEP.GENERATE_TAGS],
       BOOK_IMPORT_STEP.GENERATE_TTS
     )
     assert.equal(
@@ -41,6 +45,10 @@ test.group('BookImportOrchestratorService serial contract', () => {
   test('vocabulary step runs before tts step', async ({ assert }) => {
     assert.equal(
       BOOK_IMPORT_STEP_TRANSITIONS[BOOK_IMPORT_STEP.ENRICH_VOCABULARY],
+      BOOK_IMPORT_STEP.GENERATE_TAGS
+    )
+    assert.equal(
+      BOOK_IMPORT_STEP_TRANSITIONS[BOOK_IMPORT_STEP.GENERATE_TAGS],
       BOOK_IMPORT_STEP.GENERATE_TTS
     )
   })

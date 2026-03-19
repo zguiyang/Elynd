@@ -43,6 +43,7 @@ type DispatchableImportStep =
   | typeof BOOK_IMPORT_STEP.VALIDATE_CHAPTER_CONTENT
   | typeof BOOK_IMPORT_STEP.BUILD_CONTENT_AND_VOCAB_SEED
   | typeof BOOK_IMPORT_STEP.ENRICH_VOCABULARY
+  | typeof BOOK_IMPORT_STEP.GENERATE_TAGS
   | typeof BOOK_IMPORT_STEP.GENERATE_TTS
   | typeof BOOK_IMPORT_STEP.FINALIZE_IMPORT
 
@@ -70,6 +71,7 @@ export class BookImportOrchestratorService {
         weight: BOOK_IMPORT_PROGRESS.BUILD_CONTENT_AND_VOCAB_SEED,
       },
       { key: BOOK_IMPORT_STEP.ENRICH_VOCABULARY, weight: BOOK_IMPORT_PROGRESS.ENRICH_VOCABULARY },
+      { key: BOOK_IMPORT_STEP.GENERATE_TAGS, weight: BOOK_IMPORT_PROGRESS.GENERATE_TAGS },
       { key: BOOK_IMPORT_STEP.GENERATE_TTS, weight: BOOK_IMPORT_PROGRESS.GENERATE_TTS },
       { key: BOOK_IMPORT_STEP.FINALIZE_IMPORT, weight: BOOK_IMPORT_PROGRESS.FINALIZE_IMPORT },
     ]
@@ -147,6 +149,13 @@ export class BookImportOrchestratorService {
         const { default: EnrichVocabularyJob } = await import('#jobs/enrich_vocabulary_job')
         return (
           ((await dispatch(EnrichVocabularyJob, commonPayload, { jobId })) as string | undefined) ||
+          jobId
+        )
+      }
+      case BOOK_IMPORT_STEP.GENERATE_TAGS: {
+        const { default: GenerateTagsJob } = await import('#jobs/generate_tags_job')
+        return (
+          ((await dispatch(GenerateTagsJob, commonPayload, { jobId })) as string | undefined) ||
           jobId
         )
       }

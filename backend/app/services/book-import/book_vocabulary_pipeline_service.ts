@@ -7,7 +7,7 @@ import { DictionaryService } from '#services/shared/dictionary_service'
 import { VocabularyAnalyzerService } from '#services/book-parse/vocabulary_analyzer_service'
 import { BookImportOrchestratorService } from '#services/book-import/book_import_orchestrator_service'
 import { ImportStateService } from '#services/book-import/import_state_service'
-import GenerateTtsJob from '#jobs/generate_tts_job'
+import GenerateTagsJob from '#jobs/generate_tags_job'
 import type { SerialImportPayload } from '#types/book_import_pipeline'
 
 @inject()
@@ -99,13 +99,13 @@ export class BookVocabularyPipelineService {
         }
       )
 
-      await GenerateTtsJob.dispatch(
+      await GenerateTagsJob.dispatch(
         { bookId, runId, userId },
         {
           jobId: BookImportOrchestratorService.buildPipelineJobId({
             runId,
             bookId,
-            stepKey: BOOK_IMPORT_STEP.GENERATE_TTS,
+            stepKey: BOOK_IMPORT_STEP.GENERATE_TAGS,
           }),
         }
       )

@@ -10,6 +10,7 @@ test.group('Admin Book Import Pipeline Contract', () => {
     assert.equal(BOOK_IMPORT_STEP.VALIDATE_CHAPTER_CONTENT, 'validate_chapter_content')
     assert.equal(BOOK_IMPORT_STEP.BUILD_CONTENT_AND_VOCAB_SEED, 'build_content_and_vocab_seed')
     assert.equal(BOOK_IMPORT_STEP.ENRICH_VOCABULARY, 'enrich_vocabulary')
+    assert.equal(BOOK_IMPORT_STEP.GENERATE_TAGS, 'generate_tags')
     assert.equal(BOOK_IMPORT_STEP.GENERATE_TTS, 'generate_tts')
     assert.equal(BOOK_IMPORT_STEP.FINALIZE_IMPORT, 'finalize_import')
     assert.equal(BOOK_IMPORT_STEP.COMPLETED, 'completed')
@@ -23,6 +24,7 @@ test.group('Admin Book Import Pipeline Contract', () => {
       BOOK_IMPORT_PROGRESS.VALIDATE_CHAPTER_CONTENT +
       BOOK_IMPORT_PROGRESS.BUILD_CONTENT_AND_VOCAB_SEED +
       BOOK_IMPORT_PROGRESS.ENRICH_VOCABULARY +
+      BOOK_IMPORT_PROGRESS.GENERATE_TAGS +
       BOOK_IMPORT_PROGRESS.GENERATE_TTS +
       BOOK_IMPORT_PROGRESS.FINALIZE_IMPORT
 

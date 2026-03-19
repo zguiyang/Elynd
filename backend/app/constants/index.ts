@@ -155,6 +155,14 @@ const TTS_CHUNK_STRATEGY = {
 
 type TtsChunkStrategy = (typeof TTS_CHUNK_STRATEGY)[keyof typeof TTS_CHUNK_STRATEGY]
 
+const CHAPTER_TRANSLATION = {
+  CACHE_PREFIX: 'chapter_translation:v1',
+  PROMPT_VERSION: 'v1',
+  RESULT_TTL_SECONDS: 60 * 60 * 24 * 30,
+} as const
+
+type ChapterTranslation = (typeof CHAPTER_TRANSLATION)[keyof typeof CHAPTER_TRANSLATION]
+
 export {
   ORDER_BY,
   PAGINATION,
@@ -171,6 +179,7 @@ export {
   BOOK_IMPORT_STEP,
   BOOK_IMPORT_PROGRESS,
   TTS_CHUNK_STRATEGY,
+  CHAPTER_TRANSLATION,
 }
 export type {
   OrderBy,
@@ -188,4 +197,5 @@ export type {
   BookImportStep,
   BookImportProgress,
   TtsChunkStrategy,
+  ChapterTranslation,
 }

@@ -20,6 +20,7 @@ const DictionaryController = () => import('#controllers/dictionary_controller')
 const AdminBooksController = () => import('#controllers/admin/books_controller')
 const AdminSystemConfigsController = () => import('#controllers/admin/system_configs_controller')
 const LearningsController = () => import('#controllers/learnings_controller')
+const ChapterTranslationsController = () => import('#controllers/chapter_translations_controller')
 
 // ===== 公开路由组 (需要限流) =====
 router
@@ -55,6 +56,9 @@ router
     router.get('/tags', [BooksController, 'tags'])
     router.post('/books/:id/ai-chat', [BooksController, 'aiChat']).use(aiChatLimiter)
     router.get('/books/:id/chats', [BookChatController, 'chat'])
+    router.post('/chapters/:chapterId/translations', [ChapterTranslationsController, 'trigger'])
+    router.get('/chapters/:chapterId/translations', [ChapterTranslationsController, 'show'])
+    router.get('/chapter-translations/:id/status', [ChapterTranslationsController, 'status'])
 
     // Dictionary
     router.get('/dictionary/:word', [DictionaryController, 'lookup']).use(dictionaryLimiter)

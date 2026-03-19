@@ -50,4 +50,23 @@ test.group('PromptService', () => {
     assert.include(rendered, 'Preface')
     assert.include(rendered, 'Chapter 1')
   })
+
+  test('renders the tag selection prompt template without throwing', async ({ assert }) => {
+    const { default: PromptService } = await import('#services/ai/prompt_service')
+
+    const promptService = new PromptService()
+    const rendered = promptService.render('book/tag-selection', {
+      title: 'Alice in Wonderland',
+      author: 'Lewis Carroll',
+      description: 'A classic fantasy adventure.',
+      chapterTitles: ['Down the Rabbit-Hole'],
+      sampleText: 'Alice was beginning to get very tired...',
+      vocabulary: ['rabbit', 'curious', 'wonderland'],
+      existingTags: ['Fantasy', 'Classic', 'Children'],
+    })
+
+    assert.isString(rendered)
+    assert.include(rendered, 'Alice in Wonderland')
+    assert.include(rendered, 'Fantasy')
+  })
 })

@@ -1,0 +1,35 @@
+{{-- Book Tag Selection
+Purpose: Pick 1-2 tags for a book. Prefer existing tags, create new only when truly necessary.
+--}}
+
+You are a strict tag selector for Elynd books.
+
+Task:
+1. Analyze book metadata, chapter sample, and vocabulary sample.
+2. Select 1-2 best tags from the existing tags whenever possible.
+3. Only propose new tags when existing tags are clearly not suitable.
+4. Return valid JSON only.
+
+Output JSON schema (strict):
+{
+  "existingTags": ["string"],
+  "newTags": ["string"]
+}
+
+Rules:
+- existingTags: 0-2 items, each must come from the provided existingTags list.
+- newTags: 0-2 items, concise noun phrases, no duplicates.
+- Total selected tags (existing + new) must be 1-2.
+- Prefer existing tags over new tags.
+- Do not return explanations, markdown, or extra keys.
+
+Input:
+{
+  "title": {{ JSON.stringify(title) }},
+  "author": {{ JSON.stringify(author) }},
+  "description": {{ JSON.stringify(description) }},
+  "chapterTitles": {{ JSON.stringify(chapterTitles) }},
+  "sampleText": {{ JSON.stringify(sampleText) }},
+  "vocabulary": {{ JSON.stringify(vocabulary) }},
+  "existingTags": {{ JSON.stringify(existingTags) }}
+}

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { RouteLocationNormalized } from 'vue-router'
 import { setupAuthGuard } from '@/router/guards/auth'
 import { useAuthStore } from '@/stores/auth'
 
@@ -6,6 +7,21 @@ import { useAuthStore } from '@/stores/auth'
 vi.mock('@/stores/auth', () => ({
   useAuthStore: vi.fn()
 }))
+
+const createRoute = (
+  path: string,
+  meta: RouteLocationNormalized['meta'] = {}
+): RouteLocationNormalized => ({
+  fullPath: path,
+  hash: '',
+  query: {},
+  name: undefined,
+  path,
+  params: {},
+  matched: [],
+  meta,
+  redirectedFrom: undefined,
+} as unknown as RouteLocationNormalized)
 
 describe('auth guard', () => {
   beforeEach(() => {
@@ -22,8 +38,8 @@ describe('auth guard', () => {
       }
       vi.mocked(useAuthStore).mockReturnValue(mockStore as any)
 
-      const to = { path: '/learning', meta: { requiresAuth: true } }
-      const from = { path: '/' }
+      const to = createRoute('/learning', { requiresAuth: true })
+      const from = createRoute('/')
 
       const result = await setupAuthGuard(to, from)
 
@@ -42,8 +58,8 @@ describe('auth guard', () => {
       vi.mocked(useAuthStore).mockReturnValue(mockStore as any)
 
       // 需要设置 requiresAuth: false 让guard检查auth路径
-      const to = { path: '/auth/sign-in', meta: { requiresAuth: false } }
-      const from = { path: '/' }
+      const to = createRoute('/auth/sign-in', { requiresAuth: false })
+      const from = createRoute('/')
 
       const result = await setupAuthGuard(to, from)
 
@@ -62,8 +78,8 @@ describe('auth guard', () => {
       }
       vi.mocked(useAuthStore).mockReturnValue(mockStore as any)
 
-      const to = { path: '/learning', meta: { requiresAuth: true } }
-      const from = { path: '/' }
+      const to = createRoute('/learning', { requiresAuth: true })
+      const from = createRoute('/')
 
       const result = await setupAuthGuard(to, from)
 
@@ -73,7 +89,7 @@ describe('auth guard', () => {
 
     it('should redirect to /auth/sign-in when fetchUser fails', async () => {
       // 使用ref来模拟fetchUser失败后token被清除的效果
-      const tokenRef = ref('some-token')
+      const tokenRef = ref<string | null>('some-token')
       const mockFetchUser = vi.fn().mockImplementation(() => {
         // 模拟fetchUser失败后清除token
         tokenRef.value = null
@@ -87,8 +103,8 @@ describe('auth guard', () => {
       }
       vi.mocked(useAuthStore).mockReturnValue(mockStore as any)
 
-      const to = { path: '/learning', meta: { requiresAuth: true } }
-      const from = { path: '/' }
+      const to = createRoute('/learning', { requiresAuth: true })
+      const from = createRoute('/')
 
       const result = await setupAuthGuard(to, from)
 
@@ -107,8 +123,8 @@ describe('auth guard', () => {
       }
       vi.mocked(useAuthStore).mockReturnValue(mockStore as any)
 
-      const to = { path: '/admin', meta: { requiresAuth: true, requiresAdmin: true } }
-      const from = { path: '/' }
+      const to = createRoute('/admin', { requiresAuth: true, requiresAdmin: true })
+      const from = createRoute('/')
 
       const result = await setupAuthGuard(to, from)
 
@@ -124,8 +140,8 @@ describe('auth guard', () => {
       }
       vi.mocked(useAuthStore).mockReturnValue(mockStore as any)
 
-      const to = { path: '/admin', meta: { requiresAuth: true, requiresAdmin: true } }
-      const from = { path: '/' }
+      const to = createRoute('/admin', { requiresAuth: true, requiresAdmin: true })
+      const from = createRoute('/')
 
       const result = await setupAuthGuard(to, from)
 

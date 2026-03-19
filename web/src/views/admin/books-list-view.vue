@@ -1,21 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { adminApi, type AdminBook, type AdminUpdateBookPayload } from '@/api/admin'
 import { RefreshCw, Loader2, CheckCircle, XCircle, AlertCircle, Upload } from 'lucide-vue-next'
-import { useRouter } from 'vue-router'
 import { getStepText, getProgressComposition, getTaskSummary, canRetryVocabulary, canRetryAudio } from '@/composables/useBookImportStatus'
 import { useBookImportSse } from '@/composables/useBookImportSse'
 import { useAuthStore } from '@/stores/auth'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 const router = useRouter()
 const authStore = useAuthStore()
-
-if (!authStore.user) {
-  toast.error('用户信息加载失败')
-  throw new Error('User not loaded')
-}
 
 // State
 const page = ref(1)
@@ -52,7 +44,7 @@ const {
   event: importSseEvent,
   subscribe: subscribeImportSse,
   unsubscribe: unsubscribeImportSse,
-} = useBookImportSse(authStore.user.id)
+} = useBookImportSse(() => authStore.user?.id ?? null)
 
 // Fetch data
 const fetchBooks = async (options?: { silent?: boolean }) => {
@@ -89,6 +81,26 @@ watch(importSseEvent, (event) => {
   }
   scheduleSseRefresh()
 })
+
+const ensureAuthUserReady = async () => {
+  if (authStore.user) {
+    return true
+  }
+
+  if (!authStore.token) {
+    await router.replace('/auth/sign-in')
+    return false
+  }
+
+  await authStore.fetchUser()
+  if (authStore.user) {
+    return true
+  }
+
+  toast.error('登录状态已失效，请重新登录')
+  await router.replace('/auth/sign-in')
+  return false
+}
 
 // Edit functions
 const openEditDialog = (book: AdminBook) => {
@@ -396,6 +408,11 @@ const getProgressValue = (book: AdminBook) => {
 
 // Lifecycle
 onMounted(async () => {
+  const canLoad = await ensureAuthUserReady()
+  if (!canLoad) {
+    return
+  }
+
   await fetchBooks()
   try {
     await subscribeImportSse()

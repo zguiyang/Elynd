@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Upload, Loader2, CheckCircle2, AlertCircle } from 'lucide-vue-next'
-import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 import { adminApi } from '@/api/admin'
 import { useBookImportStatus } from '@/composables/useBookImportStatus'

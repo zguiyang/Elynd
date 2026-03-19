@@ -3,6 +3,7 @@ import { defineComponent } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import LearningBook from '@/views/learning/learning-book.vue'
+import type { Book, Chapter } from '@/types/book'
 
 vi.mock('@/api/book', () => ({
   bookApi: {
@@ -92,24 +93,49 @@ const DropdownMenuTriggerStub = defineComponent({ template: '<div><slot /></div>
 const DropdownMenuContentStub = defineComponent({ template: '<div />' })
 const DropdownMenuItemStub = defineComponent({ template: '<div />' })
 
+const createMockBook = (): Book => ({
+  id: 12,
+  title: 'Test Book',
+  source: 'user_uploaded',
+  author: null,
+  description: null,
+  difficultyLevel: 'L1',
+  status: 'ready',
+  processingStep: null,
+  processingProgress: 100,
+  processingError: null,
+  wordCount: 1000,
+  readingTime: 120,
+  isPublished: true,
+  createdBy: 1,
+  createdAt: '2024-01-01T00:00:00.000Z',
+  updatedAt: '2024-01-01T00:00:00.000Z',
+  tags: [],
+  chapters: [
+    { id: 1, chapterIndex: 0, title: 'Chapter 1' },
+    { id: 2, chapterIndex: 1, title: 'Chapter 2' },
+  ],
+  audioUrl: null,
+  audioStatus: null,
+})
+
+const createMockChapter = (): Chapter => ({
+  id: 101,
+  chapterIndex: 0,
+  title: 'Chapter 1',
+  content: 'Paragraph 1\n\nParagraph 2',
+  audioUrl: null,
+  audioStatus: null,
+  audioDurationMs: null,
+})
+
 function mountLearningBook(props?: Record<string, unknown>) {
   setActivePinia(createPinia())
 
   return mount(LearningBook, {
     props: {
-      book: {
-        id: 12,
-        title: 'Test Book',
-        chapters: [
-          { id: 1, chapterIndex: 0, title: 'Chapter 1' },
-          { id: 2, chapterIndex: 1, title: 'Chapter 2' },
-        ],
-      },
-      chapter: {
-        id: 101,
-        title: 'Chapter 1',
-        content: 'Paragraph 1\n\nParagraph 2',
-      },
+      book: createMockBook(),
+      chapter: createMockChapter(),
       currentChapterIndex: 0,
       isPlaying: false,
       currentTime: 45,

@@ -14,6 +14,14 @@ vi.mock('@/lib/chat-stream-message', () => ({
 import { createBookChat } from '@/api/book-chat'
 import { updateAssistantMessageContent } from '@/lib/chat-stream-message'
 
+const getMessages = (exposed: ReturnType<typeof useBookChat>) => {
+  const source = exposed.messages as unknown
+  if (Array.isArray(source)) {
+    return source
+  }
+  return (source as { value: { role: 'user' | 'assistant'; content: string }[] }).value
+}
+
 function mountUseBookChat(bookId = 1) {
   const Harness = defineComponent({
     setup(_, { expose }) {
@@ -47,9 +55,10 @@ describe('useBookChat', () => {
 
     exposed.sendMessage('Hello')
 
-    expect(exposed.messages).toHaveLength(2)
-    expect(exposed.messages[0]).toEqual({ role: 'user', content: 'Hello' })
-    expect(exposed.messages[1]).toEqual({ role: 'assistant', content: '' })
+    const messages = getMessages(exposed)
+    expect(messages).toHaveLength(2)
+    expect(messages[0]).toEqual({ role: 'user', content: 'Hello' })
+    expect(messages[1]).toEqual({ role: 'assistant', content: '' })
 
     wrapper.unmount()
   })
@@ -119,7 +128,7 @@ describe('useBookChat', () => {
     const call = vi.mocked(createBookChat).mock.calls[0]
     const onError = call?.[1].onError
 
-    onError?.(new Error('Network error'))
+    onError?.('Network error')
 
     expect(exposed.isLoading).toBe(false)
     expect(exposed.isWaitingForResponse).toBe(false)
@@ -139,7 +148,7 @@ describe('useBookChat', () => {
     exposed.sendMessage('Hello')
     exposed.clearMessages()
 
-    expect(exposed.messages).toEqual([])
+    expect(getMessages(exposed)).toEqual([])
     expect(exposed.isWaitingForResponse).toBe(false)
     expect(mockEventSource.close).toHaveBeenCalledTimes(1)
 

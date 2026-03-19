@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useAuthStore } from '@/stores/auth'
+import type { User } from '@/api/user'
 
 // Mock API modules
 vi.mock('@/api/auth', () => ({
@@ -20,9 +21,12 @@ vi.mock('@/api/user', () => ({
 }))
 
 // Stub browser APIs
-vi.stubGlobal('localStorage', {
-  clear: vi.fn()
-})
+const localStorageMock = {
+  clear: vi.fn(),
+  removeItem: vi.fn(),
+}
+
+vi.stubGlobal('localStorage', localStorageMock)
 
 vi.stubGlobal('window', {
   location: {
@@ -38,14 +42,22 @@ describe('auth store', () => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
     window.location.href = ''
-    localStorage.clear.mockClear()
+    localStorageMock.clear.mockClear()
+    localStorageMock.removeItem.mockClear()
   })
 
   describe('login', () => {
     it('should store token and user on successful login', async () => {
       const mockResponse = {
         token: 'test-token-123',
-        user: { id: 1, name: 'Test User', isAdmin: false }
+        user: {
+          id: 1,
+          fullName: 'Test User',
+          email: 'test@example.com',
+          avatar: null,
+          isAdmin: false,
+          createdAt: '2024-01-01T00:00:00.000Z',
+        } satisfies User
       }
       vi.mocked(authApi.login).mockResolvedValue(mockResponse as any)
 
@@ -76,7 +88,14 @@ describe('auth store', () => {
       const authStore = useAuthStore()
       // 先设置登录状态
       authStore.token = 'expired-token'
-      authStore.user = { id: 1, name: 'Old User', isAdmin: false }
+      authStore.user = {
+        id: 1,
+        fullName: 'Old User',
+        email: 'old@example.com',
+        avatar: null,
+        isAdmin: false,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      }
 
       vi.mocked(userApi.me).mockRejectedValue(new Error('Token expired'))
 
@@ -90,8 +109,15 @@ describe('auth store', () => {
       const authStore = useAuthStore()
       authStore.token = 'valid-token'
 
-      const mockUser = { id: 1, name: 'Updated User', isAdmin: false }
-      vi.mocked(userApi.me).mockResolvedValue(mockUser as any)
+      const mockUser: User = {
+        id: 1,
+        fullName: 'Updated User',
+        email: 'updated@example.com',
+        avatar: null,
+        isAdmin: false,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      }
+      vi.mocked(userApi.me).mockResolvedValue(mockUser)
 
       await authStore.fetchUser()
 
@@ -103,15 +129,24 @@ describe('auth store', () => {
     it('should clear state and redirect to /auth/sign-in', async () => {
       const authStore = useAuthStore()
       authStore.token = 'some-token'
-      authStore.user = { id: 1, name: 'Test User', isAdmin: false }
+      authStore.user = {
+        id: 1,
+        fullName: 'Test User',
+        email: 'test@example.com',
+        avatar: null,
+        isAdmin: false,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      }
 
-      vi.mocked(authApi.logout).mockResolvedValue(null)
+      vi.mocked(authApi.logout).mockResolvedValue(undefined)
 
       await authStore.logout()
 
       expect(authStore.token).toBeNull()
       expect(authStore.user).toBeNull()
-      expect(localStorage.clear).toHaveBeenCalled()
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('__Elynd__auth')
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('book-import-tracking-id')
+      expect(localStorageMock.clear).not.toHaveBeenCalled()
       expect(window.location.href).toBe('/auth/sign-in')
     })
   })

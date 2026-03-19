@@ -13,7 +13,6 @@ import { useReadingSettingsStore } from '@/stores/reading-settings'
 import { bookApi } from '@/api/book'
 import type { LineHeight, ContentWidth } from '@/stores/reading-settings'
 import type { Book, Chapter, VocabularyItem } from '@/types/book'
-import VocabularyPreview from '@/components/shared/VocabularyPreview.vue'
 import { toast } from 'vue-sonner'
 
 interface Props {

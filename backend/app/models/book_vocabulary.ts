@@ -35,7 +35,7 @@ export default class BookVocabulary extends BaseModel {
   declare phoneticAudio: string | null
 
   @column()
-  declare details: any | null
+  declare details: Record<string, unknown> | null
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

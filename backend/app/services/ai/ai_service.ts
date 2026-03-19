@@ -183,11 +183,20 @@ export class AiService {
     }
   }
 
-  private parseUsage(usage: any): AiResponse['usage'] {
+  private parseUsage(usage: unknown): AiResponse['usage'] {
+    const payload =
+      usage && typeof usage === 'object'
+        ? (usage as {
+            prompt_tokens?: number
+            completion_tokens?: number
+            total_tokens?: number
+          })
+        : {}
+
     return {
-      promptTokens: usage?.prompt_tokens ?? 0,
-      completionTokens: usage?.completion_tokens ?? 0,
-      totalTokens: usage?.total_tokens ?? 0,
+      promptTokens: payload.prompt_tokens ?? 0,
+      completionTokens: payload.completion_tokens ?? 0,
+      totalTokens: payload.total_tokens ?? 0,
     }
   }
 

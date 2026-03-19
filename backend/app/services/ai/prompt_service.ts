@@ -14,7 +14,7 @@ export default class PromptService {
     this.edge.mount(app.makePath(PROMPTS_PATH))
   }
 
-  render(name: string, data: Record<string, any> = {}): string {
+  render(name: string, data: object = {}): string {
     try {
       return this.edge.renderSync(`${name}`, data)
     } catch (error) {

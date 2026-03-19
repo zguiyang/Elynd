@@ -1,5 +1,5 @@
 import vine from '@vinejs/vine'
-import { Infer } from '@vinejs/vine/types'
+import { type Infer } from '@vinejs/vine/types'
 import { VALIDATION } from '#constants'
 
 export const changePasswordValidator = vine.compile(

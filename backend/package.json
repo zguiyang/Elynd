@@ -93,5 +93,8 @@
       "./app/middleware/*.ts"
     ]
   },
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "prettier": "@adonisjs/prettier-config"
 }

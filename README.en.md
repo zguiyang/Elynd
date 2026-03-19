@@ -25,7 +25,7 @@ Our target users are: **Adults with basic English skills who need to learn Engli
 
 | Tool | Version |
 |-----|---------|
-| Node.js | ≥ 20.0.0 |
+| Node.js | ≥ 24.0.0 |
 | pnpm | ≥ 10.0.0 |
 | PostgreSQL | ≥ 15 |
 | Redis | Latest |

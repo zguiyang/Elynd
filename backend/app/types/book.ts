@@ -1,5 +1,5 @@
 export interface GenerateBookParams {
-  difficultyLevel: string
+  levelId: number
   topic: string
   extraInstructions?: string
 }
@@ -34,7 +34,7 @@ export interface ParsedBookResponse {
 }
 
 export interface ListPublishedParams {
-  difficulty?: string
+  levelId?: number
   tagId?: number
   page?: number
   perPage?: number

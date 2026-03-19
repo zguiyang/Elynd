@@ -7,6 +7,7 @@ import app from '@adonisjs/core/services/app'
 import drive from '@adonisjs/drive/services/main'
 import logger from '@adonisjs/core/services/logger'
 import db from '@adonisjs/lucid/services/db'
+import { DateTime } from 'luxon'
 import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import BookChapterAudio from '#models/book_chapter_audio'
@@ -17,6 +18,7 @@ import { BookSemanticCleanService } from '#services/book-parse/book_semantic_cle
 import { VocabularyAnalyzerService } from '#services/book-parse/vocabulary_analyzer_service'
 import { BookHashService } from '#services/book-parse/book_hash_service'
 import { BookContentGuardService } from '#services/book-parse/book_content_guard_service'
+import { BookLevelService } from '#services/book/book_level_service'
 import GenerateBookAudioJob from '#jobs/generate_book_audio_job'
 import GenerateBookVocabularyJob from '#jobs/generate_book_vocabulary_job'
 import { BOOK_IMPORT_PROGRESS, BOOK_IMPORT_STEP } from '#constants'
@@ -51,7 +53,8 @@ export class BookImportOrchestratorService {
     private analyzerService: VocabularyAnalyzerService,
     private hashService: BookHashService,
     private guardService: BookContentGuardService,
-    private semanticCleaner: BookSemanticCleanService
+    private semanticCleaner: BookSemanticCleanService,
+    private bookLevelService: BookLevelService
   ) {}
 
   static getBaseProgressByStep(step: string): number {
@@ -419,21 +422,71 @@ export class BookImportOrchestratorService {
     return vocabulary
   }
 
-  async assignDifficultyLevel(
-    book: Book
-  ): Promise<{ difficultyLevel: 'L1' | 'L2' | 'L3'; uniqueLemmaCount: number }> {
+  async assignBookLevel(book: Book): Promise<{
+    levelId: number
+    levelCode: string
+    uniqueLemmaCount: number
+    classifiedBy: 'ai' | 'rule'
+    reason: string
+  }> {
     const result = await BookVocabulary.query()
       .where('bookId', book.id)
       .countDistinct('lemma as total')
       .firstOrFail()
     const uniqueLemmaCount = Number(result.$extras.total || 0)
+    const chapters = await BookChapter.query()
+      .where('bookId', book.id)
+      .orderBy('chapterIndex', 'asc')
+      .limit(3)
+    const sampleText = chapters
+      .map((item) => item.content)
+      .join('\n\n')
+      .slice(0, 5000)
 
-    const difficultyLevel: 'L1' | 'L2' | 'L3' =
-      uniqueLemmaCount <= 1000 ? 'L1' : uniqueLemmaCount <= 2000 ? 'L2' : 'L3'
+    const activeLevels = await this.bookLevelService.listActiveLevels()
+    let selectedLevel = await this.bookLevelService.getFallbackLevelByWords(uniqueLemmaCount)
+    let classifiedBy: 'ai' | 'rule' = 'rule'
+    let reason = 'Fallback by unique lemma count'
 
-    await book.merge({ difficultyLevel }).save()
+    try {
+      const aiResult = await this.semanticCleaner.classifyBookLevel({
+        wordCount: book.wordCount,
+        uniqueLemmaCount,
+        sampleText,
+        candidates: activeLevels.map((level) => ({
+          id: level.id,
+          code: level.code,
+          description: level.description,
+          minWords: level.minWords,
+          maxWords: level.maxWords,
+          sortOrder: level.sortOrder,
+        })),
+      })
+      const match = activeLevels.find((level) => level.id === aiResult.levelId)
+      if (match) {
+        selectedLevel = match
+        classifiedBy = 'ai'
+        reason = aiResult.reason
+      }
+    } catch {
+      // fallback selected above
+    }
 
-    return { difficultyLevel, uniqueLemmaCount }
+    await book
+      .merge({
+        levelId: selectedLevel.id,
+        levelClassifiedBy: classifiedBy,
+        levelClassifiedAt: DateTime.now(),
+      })
+      .save()
+
+    return {
+      levelId: selectedLevel.id,
+      levelCode: selectedLevel.code,
+      uniqueLemmaCount,
+      classifiedBy,
+      reason,
+    }
   }
 
   async dispatchParallelJobs(bookId: number) {

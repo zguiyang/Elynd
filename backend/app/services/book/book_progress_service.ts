@@ -6,7 +6,12 @@ import Tag from '#models/tag'
 export interface BookWithProgress {
   id: number
   title: string
-  difficultyLevel: string
+  level: {
+    id: number
+    code: string
+    description: string
+    sortOrder: number
+  }
   progress: number
   tags: Tag[]
 }
@@ -58,12 +63,18 @@ export class BookProgressService {
     for (const record of progressRecords) {
       const book = await Book.find(record.bookId)
       if (book) {
+        await book.load('level')
         await book.load('tags')
         const tags = book.tags
         result.push({
           id: book.id,
           title: book.title,
-          difficultyLevel: book.difficultyLevel,
+          level: {
+            id: book.level.id,
+            code: book.level.code,
+            description: book.level.description,
+            sortOrder: book.level.sortOrder,
+          },
           progress: record.progress,
           tags,
         })
@@ -116,16 +127,15 @@ export class BookProgressService {
     const records = await BookReadProgress.query()
       .where('userId', userId)
       .where('progress', '>', 0)
-      .preload('book')
+      .preload('book', (query) => {
+        query.preload('level')
+      })
 
     let maxLevel = 0
     for (const record of records) {
-      const book = record.book as unknown as { difficultyLevel: string }
-      if (book?.difficultyLevel) {
-        const level = Number.parseInt(book.difficultyLevel.replace('L', ''), 10)
-        if (!Number.isNaN(level) && level > maxLevel) {
-          maxLevel = level
-        }
+      const levelOrder = record.book?.level?.sortOrder || 0
+      if (levelOrder > maxLevel) {
+        maxLevel = levelOrder
       }
     }
 

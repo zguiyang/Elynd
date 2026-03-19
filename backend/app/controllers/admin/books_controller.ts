@@ -21,6 +21,7 @@ import {
 import { Exception } from '@adonisjs/core/exceptions'
 import { BookHashService } from '#services/book-parse/book_hash_service'
 import { BOOK_IMPORT_STEP } from '#constants'
+import { BookLevelService } from '#services/book/book_level_service'
 
 @inject()
 export default class AdminBooksController {
@@ -28,7 +29,8 @@ export default class AdminBooksController {
     private bookService: BookService,
     private bookParserService: BookParserService,
     private bookImportOrchestratorService: BookImportOrchestratorService,
-    private bookHashService: BookHashService
+    private bookHashService: BookHashService,
+    private bookLevelService: BookLevelService
   ) {}
 
   async retryAudio({ auth, params }: HttpContext) {
@@ -126,6 +128,7 @@ export default class AdminBooksController {
     const rawBuffer = await drive.use().get(relativePath)
     const rawFileHash = this.bookHashService.hashRawFile(rawBuffer)
     const fallbackTitle = basename(file.clientName, extname(file.clientName)) || 'Untitled'
+    const defaultLevel = await this.bookLevelService.getDefaultLevel()
 
     const book = await db.transaction(async (trx) => {
       return await Book.create(
@@ -134,7 +137,7 @@ export default class AdminBooksController {
           author: null,
           description: null,
           source: data.source,
-          difficultyLevel: 'L1',
+          levelId: defaultLevel.id,
           wordCount: 0,
           readingTime: 1,
           status: 'processing',
@@ -188,7 +191,10 @@ export default class AdminBooksController {
     const page = data.page || 1
     const perPage = data.perPage || 20
 
-    const books = await Book.query().orderBy('createdAt', 'desc').paginate(page, perPage)
+    const books = await Book.query()
+      .preload('level')
+      .orderBy('createdAt', 'desc')
+      .paginate(page, perPage)
 
     const serialized = books.serialize()
     const bookIds = serialized.data.map((book) => book.id)
@@ -274,8 +280,8 @@ export default class AdminBooksController {
     if (data.description !== undefined) {
       book.description = data.description
     }
-    if (data.difficultyLevel !== undefined) {
-      book.difficultyLevel = data.difficultyLevel
+    if (data.levelId !== undefined) {
+      book.levelId = data.levelId
     }
     if (data.source !== undefined) {
       book.source = data.source

@@ -19,7 +19,12 @@ const continueReading = ref<
   Array<{
     id: number
     title: string
-    difficulty: string
+    level: {
+      id: number
+      code: string
+      description: string
+      sortOrder: number
+    }
     category: string
     progress: number
   }>
@@ -29,19 +34,21 @@ const recommendedBooks = ref<
   Array<{
     id: number
     title: string
-    difficulty: string
+    level: {
+      id: number
+      code: string
+      description: string
+      sortOrder: number
+    }
     category: string
     description: string | null
   }>
 >([])
 
-const getDifficultyVariant = (difficulty: string) => {
-  const variants: Record<string, 'default' | 'secondary' | 'outline'> = {
-    L1: 'secondary',
-    L2: 'default',
-    L3: 'outline',
-  }
-  return variants[difficulty] || 'secondary'
+const getLevelVariant = (sortOrder: number): 'default' | 'secondary' | 'outline' => {
+  if (sortOrder === 1) return 'secondary'
+  if (sortOrder === 2) return 'default'
+  return 'outline'
 }
 
 const { execute, error } = useRequest<LearningIndexData>({
@@ -129,8 +136,8 @@ watch(
                 <div class="space-y-2">
                   <CardTitle class="text-lg">{{ book.title }}</CardTitle>
                   <div class="flex items-center gap-2">
-                    <Badge :variant="getDifficultyVariant(book.difficulty)">
-                      {{ book.difficulty }}
+                    <Badge :variant="getLevelVariant(book.level.sortOrder)">
+                      {{ book.level.description }}
                     </Badge>
                     <Badge variant="outline">{{ book.category }}</Badge>
                   </div>
@@ -207,8 +214,8 @@ watch(
                   </CardTitle>
                 </div>
                 <div class="flex items-center gap-2 mt-2">
-                  <Badge :variant="getDifficultyVariant(book.difficulty)">
-                    {{ book.difficulty }}
+                  <Badge :variant="getLevelVariant(book.level.sortOrder)">
+                    {{ book.level.description }}
                   </Badge>
                   <Badge variant="outline">{{ book.category }}</Badge>
                 </div>

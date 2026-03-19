@@ -14,7 +14,14 @@ export interface AdminBook {
   author: string | null
   description: string | null
   source: 'user_uploaded' | 'public_domain'
-  difficultyLevel: string
+  levelId: number
+  level: {
+    id: number
+    code: string
+    name: string
+    description: string
+    sortOrder: number
+  }
   status: 'processing' | 'ready' | 'failed' | 'cancelled'
   processingStep: string | null
   processingProgress: number
@@ -46,7 +53,7 @@ export interface AdminUpdateBookPayload {
   title?: string
   author?: string
   description?: string
-  difficultyLevel?: 'L1' | 'L2' | 'L3'
+  levelId?: number
   source?: 'user_uploaded' | 'public_domain'
 }
 

@@ -6,7 +6,12 @@ import Tag from '#models/tag'
 export interface RecommendedBook {
   id: number
   title: string
-  difficultyLevel: string
+  level: {
+    id: number
+    code: string
+    description: string
+    sortOrder: number
+  }
   description: string | null
   tags: Tag[]
 }
@@ -22,6 +27,7 @@ export class RecommendationService {
 
     const books = await Book.query()
       .where('isPublished', true)
+      .preload('level')
       .preload('tags')
       .orderBy('createdAt', 'desc')
       .limit(50)
@@ -43,8 +49,8 @@ export class RecommendationService {
         }
       }
 
-      const bookLevel = Number.parseInt(book.difficultyLevel.replace('L', ''), 10)
-      if (!Number.isNaN(bookLevel) && bookLevel <= userMaxDifficulty + 1) {
+      const bookLevel = book.level?.sortOrder || 0
+      if (bookLevel <= userMaxDifficulty + 1) {
         score += 1
       }
 
@@ -56,7 +62,12 @@ export class RecommendationService {
     const recommendations: RecommendedBook[] = scoredBooks.slice(0, limit).map(({ book }) => ({
       id: book.id,
       title: book.title,
-      difficultyLevel: book.difficultyLevel,
+      level: {
+        id: book.level.id,
+        code: book.level.code,
+        description: book.level.description,
+        sortOrder: book.level.sortOrder,
+      },
       description: book.description,
       tags: (book as unknown as { tags: Tag[] }).tags || [],
     }))
@@ -73,7 +84,12 @@ export class RecommendationService {
         recommendations.push({
           id: book.id,
           title: book.title,
-          difficultyLevel: book.difficultyLevel,
+          level: {
+            id: book.level.id,
+            code: book.level.code,
+            description: book.level.description,
+            sortOrder: book.level.sortOrder,
+          },
           description: book.description,
           tags: (book as unknown as { tags: Tag[] }).tags || [],
         })
@@ -86,6 +102,7 @@ export class RecommendationService {
   async getRecommendationsForNewUser(limit = 6): Promise<RecommendedBook[]> {
     const books = await Book.query()
       .where('isPublished', true)
+      .preload('level')
       .preload('tags')
       .orderBy('createdAt', 'desc')
       .limit(limit)
@@ -93,7 +110,12 @@ export class RecommendationService {
     return books.map((book) => ({
       id: book.id,
       title: book.title,
-      difficultyLevel: book.difficultyLevel,
+      level: {
+        id: book.level.id,
+        code: book.level.code,
+        description: book.level.description,
+        sortOrder: book.level.sortOrder,
+      },
       description: book.description,
       tags: (book as unknown as { tags: Tag[] }).tags || [],
     }))

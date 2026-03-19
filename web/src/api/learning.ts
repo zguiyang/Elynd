@@ -6,14 +6,24 @@ export interface LearningIndexData {
   continueReading: Array<{
     id: number
     title: string
-    difficulty: string
+    level: {
+      id: number
+      code: string
+      description: string
+      sortOrder: number
+    }
     category: string
     progress: number
   }>
   recommendedBooks: Array<{
     id: number
     title: string
-    difficulty: string
+    level: {
+      id: number
+      code: string
+      description: string
+      sortOrder: number
+    }
     category: string
     description: string | null
   }>
@@ -22,7 +32,12 @@ export interface LearningIndexData {
 export interface RecommendedBook {
   id: number
   title: string
-  difficulty: string
+  level: {
+    id: number
+    code: string
+    description: string
+    sortOrder: number
+  }
   category: string
   description: string | null
 }

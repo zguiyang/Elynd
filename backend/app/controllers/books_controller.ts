@@ -3,6 +3,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { BookService } from '#services/book/book_service'
 import { TagService } from '#services/book/tag_service'
 import { BookChatService } from '#services/book/book_chat_service'
+import { BookLevelService } from '#services/book/book_level_service'
 import { listBookValidator } from '#validators/book_validator'
 import { bookChatValidator } from '#validators/ai_validator'
 import drive from '@adonisjs/drive/services/main'
@@ -12,14 +13,15 @@ export default class BooksController {
   constructor(
     private bookService: BookService,
     private tagService: TagService,
-    private bookChatService: BookChatService
+    private bookChatService: BookChatService,
+    private bookLevelService: BookLevelService
   ) {}
 
   async index({ request }: HttpContext) {
     const data = await request.validateUsing(listBookValidator)
 
     const books = await this.bookService.listPublished({
-      difficulty: data.difficulty,
+      levelId: data.levelId,
       tagId: data.tagId,
       page: data.page,
       perPage: data.perPage,
@@ -119,6 +121,11 @@ export default class BooksController {
     const tags = await this.tagService.listAll()
 
     return tags.map((tag) => tag.serialize())
+  }
+
+  async levels({}: HttpContext) {
+    const levels = await this.bookLevelService.listActiveLevels()
+    return levels.map((level) => level.serialize())
   }
 
   async aiChat({ auth, params, request }: HttpContext) {

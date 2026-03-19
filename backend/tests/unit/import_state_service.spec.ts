@@ -14,7 +14,7 @@ const createProcessingBook = async (currentStep: string | null = null) => {
     author: null,
     description: null,
     source: 'user_uploaded',
-    difficultyLevel: 'L1',
+    levelId: 1,
     wordCount: 0,
     readingTime: 1,
     status: 'processing',

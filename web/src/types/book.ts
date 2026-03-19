@@ -4,6 +4,17 @@ export interface Tag {
   slug: string
 }
 
+export interface BookLevel {
+  id: number
+  code: string
+  name: string
+  description: string
+  minWords: number | null
+  maxWords: number | null
+  sortOrder: number
+  isActive: boolean
+}
+
 export interface Chapter {
   id: number
   chapterIndex: number
@@ -85,7 +96,8 @@ export interface Book {
   source: 'user_uploaded' | 'public_domain'
   author: string | null
   description: string | null
-  difficultyLevel: string
+  levelId: number
+  level: BookLevel
   status: 'processing' | 'ready' | 'failed'
   processingStep: string | null
   processingProgress: number
@@ -108,7 +120,8 @@ export interface BookListItem {
   source: 'user_uploaded' | 'public_domain'
   author: string | null
   description: string | null
-  difficultyLevel: string
+  levelId: number
+  level: BookLevel
   status: 'processing' | 'ready' | 'failed'
   processingStep: string | null
   processingProgress: number
@@ -132,7 +145,7 @@ export interface PaginatedResponse<T> {
 }
 
 export interface BookListParams {
-  difficulty?: 'L1' | 'L2' | 'L3'
+  levelId?: number
   tagId?: number
   page?: number
   perPage?: number

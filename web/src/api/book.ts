@@ -22,6 +22,9 @@ export const bookApi = {
   getTags: () =>
     request<Tag[]>({ method: 'GET', url: '/api/tags' }),
 
+  getLevels: () =>
+    request<Book['level'][]>({ method: 'GET', url: '/api/book-levels' }),
+
   getVocabulary: (bookId: number) =>
     request<VocabularyItem[]>({ method: 'GET', url: `/api/books/${bookId}/vocabulary` }),
 }

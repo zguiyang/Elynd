@@ -55,14 +55,14 @@ export default class LearningsController {
       continueReading: continueReading.map((book) => ({
         id: book.id,
         title: book.title,
-        difficulty: book.difficultyLevel,
+        level: book.level,
         category: book.tags[0]?.name || '未分类',
         progress: book.progress,
       })),
       recommendedBooks: recommendations.map((book) => ({
         id: book.id,
         title: book.title,
-        difficulty: book.difficultyLevel,
+        level: book.level,
         category: book.tags[0]?.name || '未分类',
         description: book.description,
       })),
@@ -76,7 +76,7 @@ export default class LearningsController {
     return recommendations.map((book) => ({
       id: book.id,
       title: book.title,
-      difficulty: book.difficultyLevel,
+      level: book.level,
       category: book.tags[0]?.name || '未分类',
       description: book.description,
     }))

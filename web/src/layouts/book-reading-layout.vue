@@ -183,13 +183,10 @@ const handleAudioCanPlay = () => {
   isAudioLoading.value = false
 }
 
-const getDifficultyVariant = (difficulty: string): 'default' | 'secondary' | 'outline' => {
-  const variants: Record<string, 'default' | 'secondary' | 'outline'> = {
-    L1: 'secondary',
-    L2: 'default',
-    L3: 'outline',
-  }
-  return variants[difficulty] || 'secondary'
+const getLevelVariant = (sortOrder: number): 'default' | 'secondary' | 'outline' => {
+  if (sortOrder === 1) return 'secondary'
+  if (sortOrder === 2) return 'default'
+  return 'outline'
 }
 
 onMounted(async () => {
@@ -227,8 +224,8 @@ watch(book, (newBook) => {
       </h1>
 
       <template v-if="book">
-        <Badge v-if="book.difficultyLevel" :variant="getDifficultyVariant(book.difficultyLevel)">
-          {{ book.difficultyLevel }}
+        <Badge v-if="book.level" :variant="getLevelVariant(book.level.sortOrder)">
+          {{ book.level.description }}
         </Badge>
         <Badge
           v-for="tag in book.tags.slice(0, 2)"

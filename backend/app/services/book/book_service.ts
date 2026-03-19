@@ -62,13 +62,14 @@ export class BookService {
   async listPublished(params: ListPublishedParams) {
     const query = Book.query()
       .where('isPublished', true)
+      .preload('level')
       .preload('tags')
       .preload('chapters', (chapterQuery) => {
         chapterQuery.select('id', 'bookId', 'chapterIndex', 'title')
       })
 
-    if (params.difficulty) {
-      query.where('difficultyLevel', params.difficulty)
+    if (params.levelId) {
+      query.where('levelId', params.levelId)
     }
 
     if (params.tagId) {
@@ -111,6 +112,7 @@ export class BookService {
 
   private buildBookQuery(requirePublished: boolean) {
     const query = Book.query()
+      .preload('level')
       .preload('tags')
       .preload('chapters', (chapterQuery) => {
         chapterQuery.select('id', 'bookId', 'chapterIndex', 'title')
@@ -438,7 +440,7 @@ export class BookService {
           processingProgress: 0,
           processingError: null,
           isPublished: false,
-          difficultyLevel: 'L1',
+          levelId: book.levelId,
           contentHash: null,
           wordCount: 0,
           readingTime: 1,

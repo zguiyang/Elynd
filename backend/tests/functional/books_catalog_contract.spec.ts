@@ -14,7 +14,7 @@ async function createPublishedBook(userId: number, attributes?: Partial<Book>) {
     title: `Book ${crypto.randomUUID()}`,
     author: 'Catalog Author',
     source: 'user_uploaded',
-    difficultyLevel: 'L1',
+    levelId: 1,
     status: 'ready',
     wordCount: 900,
     readingTime: 5,
@@ -43,12 +43,12 @@ test.group('Books API catalog contract', () => {
 
     const matchingBook = await createPublishedBook(user.id, {
       title: 'Matching Book',
-      difficultyLevel: 'L2',
+      levelId: 2,
     })
 
     const hiddenBook = await createPublishedBook(user.id, {
       title: 'Hidden Book',
-      difficultyLevel: 'L2',
+      levelId: 2,
       isPublished: false,
     })
 
@@ -68,7 +68,7 @@ test.group('Books API catalog contract', () => {
     const listResponse = await client
       .get('/api/books')
       .qs({
-        difficulty: 'L2',
+        levelId: 2,
         tagId: tag.id,
       })
       .header('Authorization', bearerAuthHeader(token))

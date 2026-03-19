@@ -50,7 +50,7 @@ export class BookContentPipelineService {
       await this.importStateService.assertImportNotCancelled(runId, bookId)
 
       const vocabulary = await this.orchestrator.extractVocabulary(book)
-      const levelResult = await this.orchestrator.assignDifficultyLevel(book)
+      const levelResult = await this.orchestrator.assignBookLevel(book)
       await this.importStateService.assertImportNotCancelled(runId, bookId)
 
       await this.importStateService.completeStep(
@@ -62,7 +62,10 @@ export class BookContentPipelineService {
         {
           contentHash: persisted.contentHash,
           vocabularyCount: vocabulary.length,
-          difficultyLevel: levelResult.difficultyLevel,
+          levelId: levelResult.levelId,
+          levelCode: levelResult.levelCode,
+          classifiedBy: levelResult.classifiedBy,
+          levelReason: levelResult.reason,
         }
       )
 

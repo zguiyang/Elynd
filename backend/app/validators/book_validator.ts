@@ -1,12 +1,9 @@
 import vine from '@vinejs/vine'
 import type { Infer } from '@vinejs/vine/types'
-import { ARTICLE_DIFFICULTY } from '#constants'
 
 export const listBookValidator = vine.compile(
   vine.object({
-    difficulty: vine
-      .enum([ARTICLE_DIFFICULTY.L1, ARTICLE_DIFFICULTY.L2, ARTICLE_DIFFICULTY.L3])
-      .optional(),
+    levelId: vine.number().positive().optional(),
     tagId: vine.number().optional(),
     page: vine.number().positive().optional(),
     perPage: vine.number().positive().max(100).optional(),
@@ -44,9 +41,7 @@ export const adminUpdateBookValidator = vine.compile(
     title: vine.string().trim().maxLength(200).optional(),
     author: vine.string().trim().maxLength(200).nullable().optional(),
     description: vine.string().trim().maxLength(2000).optional(),
-    difficultyLevel: vine
-      .enum([ARTICLE_DIFFICULTY.L1, ARTICLE_DIFFICULTY.L2, ARTICLE_DIFFICULTY.L3])
-      .optional(),
+    levelId: vine.number().positive().optional(),
     source: vine.enum(['user_uploaded', 'public_domain']).optional(),
   })
 )

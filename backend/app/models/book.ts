@@ -10,6 +10,7 @@ import BookChat from '#models/book_chat'
 import BookProcessingRunLog from '#models/book_processing_run_log'
 import BookProcessingStepLog from '#models/book_processing_step_log'
 import BookChapterAudio from '#models/book_chapter_audio'
+import BookLevel from '#models/book_level'
 
 export type VocabularyStatus = 'pending' | 'processing' | 'completed' | 'failed'
 
@@ -29,8 +30,8 @@ export default class Book extends BaseModel {
   @column()
   declare description: string | null
 
-  @column()
-  declare difficultyLevel: string
+  @column({ columnName: 'level_id' })
+  declare levelId: number
 
   @column()
   declare status: 'processing' | 'ready' | 'failed' | 'cancelled'
@@ -98,8 +99,17 @@ export default class Book extends BaseModel {
   @column({ columnName: 'vocabulary_status' })
   declare vocabularyStatus: VocabularyStatus
 
+  @column({ columnName: 'level_classified_by' })
+  declare levelClassifiedBy: 'ai' | 'rule'
+
+  @column.dateTime({ columnName: 'level_classified_at' })
+  declare levelClassifiedAt: DateTime | null
+
   @belongsTo(() => User, { foreignKey: 'createdBy' })
   declare creator: BelongsTo<typeof User>
+
+  @belongsTo(() => BookLevel, { foreignKey: 'levelId' })
+  declare level: BelongsTo<typeof BookLevel>
 
   @manyToMany(() => Tag, { pivotTable: 'book_tags', pivotTimestamps: true })
   declare tags: ManyToMany<typeof Tag>

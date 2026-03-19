@@ -75,14 +75,6 @@ const LANGUAGE = {
 
 type Language = (typeof LANGUAGE)[keyof typeof LANGUAGE]
 
-const ARTICLE_DIFFICULTY = {
-  L1: 'L1', // Beginner
-  L2: 'L2', // Intermediate
-  L3: 'L3', // Advanced
-} as const
-
-type BookDifficulty = (typeof ARTICLE_DIFFICULTY)[keyof typeof ARTICLE_DIFFICULTY]
-
 const ARTICLE_CONTENT = {
   MAX_CHARS: 100000,
   MAX_WORDS: 3000,
@@ -170,7 +162,6 @@ export {
   AI,
   VOCABULARY_LEVEL,
   LANGUAGE,
-  ARTICLE_DIFFICULTY,
   ARTICLE_CONTENT,
   ENGLISH_VARIANT,
   DICTIONARY,
@@ -188,7 +179,6 @@ export type {
   Ai,
   VocabularyLevel,
   Language,
-  BookDifficulty,
   BookContent,
   EnglishVariant,
   Dictionary,

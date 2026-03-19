@@ -29,6 +29,20 @@ export interface SemanticChapterOutput extends ChapterOutput {
   chapterIndex: number
 }
 
+interface BookLevelCandidate {
+  id: number
+  code: string
+  description: string
+  minWords: number | null
+  maxWords: number | null
+  sortOrder: number
+}
+
+interface BookLevelResponse {
+  levelId?: number
+  reason?: string
+}
+
 interface MetadataResponse {
   title?: string
   author?: string | null
@@ -130,6 +144,37 @@ export class BookSemanticCleanService {
       content: chapter.content.trim(),
       chapterIndex: index,
     }))
+  }
+
+  async classifyBookLevel(input: {
+    wordCount: number
+    uniqueLemmaCount: number
+    sampleText: string
+    candidates: BookLevelCandidate[]
+  }): Promise<{ levelId: number; reason: string }> {
+    const aiConfig = await this.resolveAiConfig()
+    const systemPrompt = this.promptService.render('system', {})
+    const userPrompt = this.promptService.render('book/level-classification', input)
+    const params: AiChatParams = {
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      maxTokens: 1000,
+      temperature: 0.1,
+      responseFormat: { type: 'json_object' },
+    }
+
+    const result = await this.aiService.chatJson<BookLevelResponse>(aiConfig, params)
+    const candidateIds = new Set(input.candidates.map((item) => item.id))
+    if (!result.levelId || !candidateIds.has(result.levelId)) {
+      throw new Error('AI returned invalid level id')
+    }
+
+    return {
+      levelId: result.levelId,
+      reason: result.reason?.trim() || 'Selected by AI classifier',
+    }
   }
 
   private toPlainBody(rawContent: string, title: string): string {

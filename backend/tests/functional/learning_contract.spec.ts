@@ -11,7 +11,7 @@ async function createPublishedBook(attributes?: Partial<Book>) {
     title: `Book ${crypto.randomUUID()}`,
     author: 'Test Author',
     source: 'user_uploaded',
-    difficultyLevel: 'L1',
+    levelId: 1,
     status: 'ready',
     wordCount: 1200,
     readingTime: 6,
@@ -121,14 +121,14 @@ test.group('Learning API contract', () => {
     const readingBook = await createPublishedBook({
       createdBy: user.id,
       title: 'Reading Book',
-      difficultyLevel: 'L1',
+      levelId: 1,
       description: 'Reading description',
     })
 
     const recommendedBook = await createPublishedBook({
       createdBy: user.id,
       title: 'Recommended Book',
-      difficultyLevel: 'L2',
+      levelId: 2,
       description: 'Recommended description',
     })
 

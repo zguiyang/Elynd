@@ -1,25 +1,21 @@
 <script setup lang="ts">
 import { BookOpen, ArrowLeft, Loader2 } from 'lucide-vue-next'
 import { useBooks } from '@/composables/useBook'
+import { bookApi } from '@/api/book'
+import type { BookLevel } from '@/types/book'
 import { toast } from 'vue-sonner'
 
 const { books, tags, isLoading, error, pagination, fetchBooks, fetchTags, goToPage } = useBooks()
 
-const difficulties = [
-  { value: undefined, label: '全部' },
-  { value: 'L1', label: 'L1' },
-  { value: 'L2', label: 'L2' },
-  { value: 'L3', label: 'L3' },
-] as const
-type Difficulty = typeof difficulties[number]['value']
+const levels = ref<BookLevel[]>([])
+const selectedLevelId = ref<number | undefined>(undefined)
 
-const selectedDifficulty = ref<Difficulty>(undefined)
 const selectedTagId = ref<number | 'all' | undefined>('all')
 
 const loadData = () => {
   const tagId = selectedTagId.value === 'all' ? undefined : selectedTagId.value
   fetchBooks({
-    difficulty: selectedDifficulty.value,
+    levelId: selectedLevelId.value,
     tagId: tagId,
     page: 1,
   })
@@ -31,8 +27,8 @@ const onTagChange = (value: unknown) => {
   loadData()
 }
 
-const onDifficultyChange = (difficulty: Difficulty) => {
-  selectedDifficulty.value = difficulty
+const onLevelChange = (levelId: number | undefined) => {
+  selectedLevelId.value = levelId
   selectedTagId.value = undefined
   loadData()
 }
@@ -41,8 +37,9 @@ const onPageChange = (page: number) => {
   goToPage(page)
 }
 
-onMounted(() => {
+onMounted(async () => {
   fetchTags()
+  levels.value = await bookApi.getLevels()
   loadData()
 })
 
@@ -52,13 +49,10 @@ watch(error, (err) => {
   }
 })
 
-const getDifficultyVariant = (difficulty: string): 'default' | 'secondary' | 'outline' => {
-  const variants: Record<string, 'default' | 'secondary' | 'outline'> = {
-    L1: 'secondary',
-    L2: 'default',
-    L3: 'outline',
-  }
-  return variants[difficulty] || 'secondary'
+const getLevelVariant = (sortOrder: number): 'default' | 'secondary' | 'outline' => {
+  if (sortOrder === 1) return 'secondary'
+  if (sortOrder === 2) return 'default'
+  return 'outline'
 }
 </script>
 
@@ -76,18 +70,25 @@ const getDifficultyVariant = (difficulty: string): 'default' | 'secondary' | 'ou
 
     <!-- Filters -->
     <div class="flex flex-col sm:flex-row gap-4">
-      <!-- Difficulty Filter -->
+      <!-- Level Filter -->
       <div class="flex items-center gap-2">
         <span class="text-sm text-muted-foreground">难度筛选：</span>
         <div class="flex gap-2">
           <Button
-            v-for="difficulty in difficulties"
-            :key="difficulty.label"
-            :variant="selectedDifficulty === difficulty.value ? 'default' : 'outline'"
+            :variant="selectedLevelId === undefined ? 'default' : 'outline'"
             size="sm"
-            @click="onDifficultyChange(difficulty.value)"
+            @click="onLevelChange(undefined)"
           >
-            {{ difficulty.label }}
+            全部
+          </Button>
+          <Button
+            v-for="level in levels"
+            :key="level.id"
+            :variant="selectedLevelId === level.id ? 'default' : 'outline'"
+            size="sm"
+            @click="onLevelChange(level.id)"
+          >
+            {{ level.description }}
           </Button>
         </div>
       </div>
@@ -138,8 +139,8 @@ const getDifficultyVariant = (difficulty: string): 'default' | 'secondary' | 'ou
                 </CardTitle>
               </div>
               <div class="flex items-center gap-2 mt-2 flex-wrap">
-                <Badge :variant="getDifficultyVariant(book.difficultyLevel)">
-                  {{ book.difficultyLevel }}
+                <Badge :variant="getLevelVariant(book.level.sortOrder)">
+                  {{ book.level.description }}
                 </Badge>
                 <Badge
                   v-for="tag in book.tags"

@@ -2,6 +2,8 @@
 import { toast } from 'vue-sonner'
 import { adminApi   } from '@/api/admin'
 import type {AdminBook, AdminUpdateBookPayload} from '@/api/admin';
+import { bookApi } from '@/api/book'
+import type { BookLevel } from '@/types/book'
 import { RefreshCw, Loader2, CheckCircle, XCircle, AlertCircle, Upload } from 'lucide-vue-next'
 import { getStepText, getProgressComposition, getTaskSummary, canRetryVocabulary, canRetryAudio } from '@/composables/useBookImportStatus'
 import { useBookImportSse } from '@/composables/useBookImportSse'
@@ -28,6 +30,7 @@ const showEditDialog = ref(false)
 const editingBook = ref<AdminBook | null>(null)
 const editForm = ref<AdminUpdateBookPayload>({})
 const editLoading = ref(false)
+const levels = ref<BookLevel[]>([])
 
 // Delete dialog state
 const showDeleteDialog = ref(false)
@@ -110,7 +113,7 @@ const openEditDialog = (book: AdminBook) => {
     title: book.title,
     author: book.author ?? undefined,
     description: book.description ?? undefined,
-    difficultyLevel: book.difficultyLevel as 'L1' | 'L2' | 'L3',
+    levelId: book.levelId,
     source: book.source,
   }
   showEditDialog.value = true
@@ -121,7 +124,11 @@ const handleEdit = async () => {
 
   editLoading.value = true
   try {
-    await adminApi.updateBook(editingBook.value.id, editForm.value)
+    const payload: AdminUpdateBookPayload = {
+      ...editForm.value,
+      levelId: editForm.value.levelId ? Number(editForm.value.levelId) : undefined,
+    }
+    await adminApi.updateBook(editingBook.value.id, payload)
     toast.success('更新成功')
     showEditDialog.value = false
     fetchBooks()
@@ -415,6 +422,7 @@ onMounted(async () => {
   }
 
   await fetchBooks()
+  levels.value = await bookApi.getLevels()
   try {
     await subscribeImportSse()
   } catch {
@@ -676,14 +684,18 @@ onUnmounted(() => {
           </div>
           <div class="space-y-2">
             <Label>难度</Label>
-            <Select v-model="editForm.difficultyLevel">
+            <Select v-model="editForm.levelId">
               <SelectTrigger>
                 <SelectValue placeholder="选择难度" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="L1">L1 - 初级</SelectItem>
-                <SelectItem value="L2">L2 - 中级</SelectItem>
-                <SelectItem value="L3">L3 - 高级</SelectItem>
+                <SelectItem
+                  v-for="level in levels"
+                  :key="level.id"
+                  :value="level.id"
+                >
+                  {{ `${level.code} - ${level.description}` }}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>

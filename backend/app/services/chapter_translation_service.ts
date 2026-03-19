@@ -43,14 +43,12 @@ export class ChapterTranslationService {
       targetLanguage,
     })
     const promptVersion = CHAPTER_TRANSLATION.PROMPT_VERSION
-    const modelVersion = await this.resolveModelVersion()
     const cacheKey = this.buildCacheKey({
+      bookId: chapter.bookId,
       chapterId: chapter.id,
       sourceLanguage,
       targetLanguage,
-      contentHash,
-      promptVersion,
-      modelVersion,
+      contentHash
     })
 
     const cached = await this.getCachedResult(cacheKey)
@@ -138,14 +136,12 @@ export class ChapterTranslationService {
       targetLanguage,
     })
     const promptVersion = CHAPTER_TRANSLATION.PROMPT_VERSION
-    const modelVersion = await this.resolveModelVersion()
     const cacheKey = this.buildCacheKey({
+      bookId: chapter.bookId,
       chapterId: chapter.id,
       sourceLanguage,
       targetLanguage,
-      contentHash,
-      promptVersion,
-      modelVersion,
+      contentHash
     })
 
     const cached = await this.getCachedResult(cacheKey)
@@ -223,12 +219,11 @@ export class ChapterTranslationService {
 
       this.assertValidResult(result)
       const cacheKey = this.buildCacheKey({
+        bookId: chapter.bookId,
         chapterId: chapter.id,
         sourceLanguage: translation.sourceLanguage,
         targetLanguage: translation.targetLanguage,
-        contentHash: translation.contentHash,
-        promptVersion: translation.promptVersion,
-        modelVersion: aiConfig.model,
+        contentHash: translation.contentHash
       })
 
       translation.status = 'completed'
@@ -271,31 +266,20 @@ export class ChapterTranslationService {
   }
 
   private buildCacheKey(input: {
+    bookId: number
     chapterId: number
     sourceLanguage: string
     targetLanguage: string
     contentHash: string
-    promptVersion: string
-    modelVersion: string
   }) {
     return [
       CHAPTER_TRANSLATION.CACHE_PREFIX,
+      input.bookId,
       input.chapterId,
       input.sourceLanguage,
       input.targetLanguage,
-      input.contentHash,
-      input.promptVersion,
-      input.modelVersion,
+      input.contentHash
     ].join(':')
-  }
-
-  private async resolveModelVersion() {
-    try {
-      const config = await this.configService.getAiConfig()
-      return config.model
-    } catch {
-      return 'unknown-model'
-    }
   }
 
   private async getCachedResult(cacheKey: string): Promise<ChapterTranslationResult | null> {

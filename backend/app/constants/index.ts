@@ -156,7 +156,7 @@ const TTS_CHUNK_STRATEGY = {
 type TtsChunkStrategy = (typeof TTS_CHUNK_STRATEGY)[keyof typeof TTS_CHUNK_STRATEGY]
 
 const CHAPTER_TRANSLATION = {
-  CACHE_PREFIX: 'chapter_translation:v1',
+  CACHE_PREFIX: 'chapter_translation',
   PROMPT_VERSION: 'v1',
   RESULT_TTL_SECONDS: 60 * 60 * 24 * 30,
 } as const

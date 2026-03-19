@@ -12,6 +12,7 @@ import {
 } from 'lucide-vue-next'
 import { useReadingSettingsStore } from '@/stores/reading-settings'
 import { bookApi } from '@/api/book'
+import { createChapterTranslationStream } from '@/api/chapter-translation'
 import { userApi } from '@/api/user'
 import type { LineHeight, ContentWidth } from '@/stores/reading-settings'
 import type {
@@ -69,7 +70,8 @@ const translationId = ref<number | null>(null)
 const translationResult = ref<ChapterTranslationResult | null>(null)
 const translationError = ref<string | null>(null)
 const languageConfig = ref<{ sourceLanguage: string; targetLanguage: string } | null>(null)
-let translationPollingTimer: ReturnType<typeof setInterval> | null = null
+let translationStreamHandle: { close: () => void } | null = null
+let translationFallbackTimer: ReturnType<typeof setInterval> | null = null
 
 const lineHeightOptions: { value: LineHeight; label: string }[] = [
   { value: 'compact', label: '紧凑' },
@@ -172,15 +174,23 @@ const fetchVocabulary = async () => {
     })
 }
 
-const clearTranslationPolling = () => {
-  if (translationPollingTimer) {
-    clearInterval(translationPollingTimer)
-    translationPollingTimer = null
+const clearTranslationStream = () => {
+  if (translationStreamHandle) {
+    translationStreamHandle.close()
+    translationStreamHandle = null
+  }
+}
+
+const clearTranslationFallbackPolling = () => {
+  if (translationFallbackTimer) {
+    clearInterval(translationFallbackTimer)
+    translationFallbackTimer = null
   }
 }
 
 const resetTranslationState = () => {
-  clearTranslationPolling()
+  clearTranslationStream()
+  clearTranslationFallbackPolling()
   showTranslation.value = false
   translationStatus.value = 'idle'
   translationId.value = null
@@ -226,14 +236,14 @@ const refreshChapterTranslation = async () => {
 }
 
 const startTranslationPolling = () => {
-  clearTranslationPolling()
+  clearTranslationFallbackPolling()
   if (!translationId.value) {
     return
   }
 
-  translationPollingTimer = setInterval(async () => {
+  translationFallbackTimer = setInterval(async () => {
     if (!translationId.value) {
-      clearTranslationPolling()
+      clearTranslationFallbackPolling()
       return
     }
 
@@ -243,16 +253,75 @@ const startTranslationPolling = () => {
 
       if (statusRes.status === 'completed') {
         await refreshChapterTranslation()
-        clearTranslationPolling()
+        clearTranslationFallbackPolling()
+        clearTranslationStream()
       } else if (statusRes.status === 'failed') {
         translationError.value = statusRes.errorMessage || '翻译失败，请稍后重试'
-        clearTranslationPolling()
+        clearTranslationFallbackPolling()
+        clearTranslationStream()
       }
     } catch {
       translationError.value = '翻译状态获取失败'
-      clearTranslationPolling()
+      clearTranslationFallbackPolling()
     }
   }, 2000)
+}
+
+const startTranslationStream = () => {
+  clearTranslationStream()
+  if (!translationId.value) {
+    return
+  }
+
+  translationStreamHandle = createChapterTranslationStream(translationId.value, {
+    onStatus: async (payload) => {
+      translationStatus.value = payload.status
+
+      if (payload.status === 'completed') {
+        await refreshChapterTranslation()
+        clearTranslationStream()
+        clearTranslationFallbackPolling()
+        return
+      }
+
+      if (payload.status === 'failed') {
+        translationError.value = payload.errorMessage || '翻译失败，请稍后重试'
+        clearTranslationStream()
+        clearTranslationFallbackPolling()
+      }
+    },
+    onError: () => {
+      clearTranslationStream()
+      startTranslationPolling()
+    },
+  })
+}
+
+const trackTranslationTask = async () => {
+  if (!translationId.value) {
+    return
+  }
+
+  try {
+    // Initial compensation: sync status once after page load / task attach.
+    const statusRes = await bookApi.getChapterTranslationStatus(translationId.value)
+    translationStatus.value = statusRes.status
+
+    if (statusRes.status === 'completed') {
+      await refreshChapterTranslation()
+      return
+    }
+
+    if (statusRes.status === 'failed') {
+      translationError.value = statusRes.errorMessage || '翻译失败，请稍后重试'
+      return
+    }
+  } catch {
+    startTranslationPolling()
+    return
+  }
+
+  startTranslationStream()
 }
 
 const triggerTranslation = async () => {
@@ -285,7 +354,7 @@ const triggerTranslation = async () => {
     }
 
     if (result.status === 'queued' || result.status === 'processing') {
-      startTranslationPolling()
+      await trackTranslationTask()
       return
     }
 
@@ -311,7 +380,8 @@ watch(
 )
 
 onUnmounted(() => {
-  clearTranslationPolling()
+  clearTranslationStream()
+  clearTranslationFallbackPolling()
 })
 </script>
 

@@ -113,8 +113,8 @@ const handleEdit = async () => {
     showEditDialog.value = false
     fetchBooks()
   } catch (error: unknown) {
-    const err = error as { response?: { data?: { message?: string } } }
-    toast.error(err.response?.data?.message || '更新失败')
+    const err = error as { message?: string }
+    toast.error(err.message || '更新失败')
   } finally {
     editLoading.value = false
   }
@@ -136,8 +136,8 @@ const handleDelete = async () => {
     showDeleteDialog.value = false
     fetchBooks()
   } catch (error: unknown) {
-    const err = error as { response?: { data?: { message?: string } } }
-    toast.error(err.response?.data?.message || '删除失败')
+    const err = error as { message?: string }
+    toast.error(err.message || '删除失败')
   } finally {
     deleteLoading.value = false
   }
@@ -150,8 +150,8 @@ const retryVocabulary = async (book: AdminBook) => {
     toast.success('词汇表重试任务已添加')
     fetchBooks()
   } catch (error: unknown) {
-    const err = error as { response?: { data?: { message?: string } } }
-    toast.error(err.response?.data?.message || '重试失败')
+    const err = error as { message?: string }
+    toast.error(err.message || '重试失败')
   }
 }
 
@@ -162,8 +162,8 @@ const retryAudio = async (book: AdminBook) => {
     toast.success('音频重试任务已添加')
     fetchBooks()
   } catch (error: unknown) {
-    const err = error as { response?: { data?: { message?: string } } }
-    toast.error(err.response?.data?.message || '重试失败')
+    const err = error as { message?: string }
+    toast.error(err.message || '重试失败')
   }
 }
 
@@ -173,8 +173,8 @@ const runRebuildChapters = async (book: AdminBook) => {
     toast.success('重建任务已添加')
     fetchBooks()
   } catch (error: unknown) {
-    const err = error as { response?: { data?: { message?: string } } }
-    toast.error(err.response?.data?.message || '重建失败')
+    const err = error as { message?: string }
+    toast.error(err.message || '重建失败')
   }
 }
 
@@ -184,8 +184,8 @@ const runStopImport = async (book: AdminBook) => {
     toast.success('已停止导入流程')
     fetchBooks()
   } catch (error: unknown) {
-    const err = error as { response?: { data?: { message?: string } } }
-    toast.error(err.response?.data?.message || '停止失败')
+    const err = error as { message?: string }
+    toast.error(err.message || '停止失败')
   }
 }
 
@@ -256,8 +256,8 @@ const continueImport = async (book: AdminBook) => {
     toast.success(`已继续导入（${result.resumeStep}）`)
     fetchBooks()
   } catch (error: unknown) {
-    const err = error as { response?: { data?: { message?: string } } }
-    toast.error(err.response?.data?.message || '继续导入失败')
+    const err = error as { message?: string }
+    toast.error(err.message || '继续导入失败')
   }
 }
 

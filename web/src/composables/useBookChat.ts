@@ -1,7 +1,20 @@
 import { createBookChat, type ChatMessage } from '@/api/book-chat'
 import { updateAssistantMessageContent } from '@/lib/chat-stream-message'
+import type { ComputedRef, Ref } from 'vue'
 
-export function useBookChat(bookId: number) {
+type MaybeBookId = number | Ref<number> | ComputedRef<number> | (() => number)
+
+const resolveBookId = (bookId: MaybeBookId) => {
+  if (typeof bookId === 'function') {
+    return bookId()
+  }
+  if (typeof bookId === 'number') {
+    return bookId
+  }
+  return bookId.value
+}
+
+export function useBookChat(bookId: MaybeBookId) {
   const messages = ref<ChatMessage[]>([])
   const isLoading = ref(false)
   const isWaitingForResponse = ref(false)
@@ -31,7 +44,7 @@ export function useBookChat(bookId: number) {
     isLoading.value = true
     isWaitingForResponse.value = true
 
-    currentEventSource = createBookChat(bookId, {
+    currentEventSource = createBookChat(resolveBookId(bookId), {
       message: content,
       chapterIndex,
       onChunk: (chunk) => {

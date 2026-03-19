@@ -42,8 +42,8 @@ async function importNow() {
     await importStatus.startTracking(result.bookId)
     toast.success('导入成功')
   } catch (error) {
-    const err = error as { response?: { data?: { message?: string } } }
-    submitError.value = err.response?.data?.message || (error as Error).message || '导入失败'
+    const err = error as { message?: string }
+    submitError.value = err.message || '导入失败'
   } finally {
     isImporting.value = false
   }
@@ -74,7 +74,7 @@ function goToBooksList() {
       </CardHeader>
       <CardContent class="space-y-6">
         <div v-if="importedBookId" class="space-y-4 rounded-lg border bg-muted/20 p-6">
-          <div class="flex items-center gap-2 text-green-600">
+          <div class="flex items-center gap-2 text-primary">
             <CheckCircle2 class="size-5" />
             <p class="font-medium">导入成功，任务已进入后台处理</p>
           </div>

@@ -54,9 +54,9 @@ onMounted(async () => {
   if (result) {
     userData.value = result
     stats.value = [
-      { icon: Clock, label: '累计学习天数', value: String(result.learningDays), color: 'text-blue-500' },
-      { icon: BookMarked, label: '阅读篇数', value: String(result.booksReadCount), color: 'text-green-500' },
-      { icon: Search, label: '查词次数', value: '0', color: 'text-purple-500' },
+      { icon: Clock, label: '累计学习天数', value: String(result.learningDays), color: 'text-primary' },
+      { icon: BookMarked, label: '阅读篇数', value: String(result.booksReadCount), color: 'text-foreground' },
+      { icon: Search, label: '查词次数', value: '0', color: 'text-muted-foreground' },
     ]
     continueReading.value = result.continueReading
     recommendedBooks.value = result.recommendedBooks

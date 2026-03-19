@@ -44,7 +44,12 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
     user.value = null
     isLoading.value = false
-    localStorage.clear()
+    if (typeof localStorage.removeItem === 'function') {
+      localStorage.removeItem('__Elynd__auth')
+      localStorage.removeItem('book-import-tracking-id')
+    } else if (typeof localStorage.clear === 'function') {
+      localStorage.clear()
+    }
     window.location.href = '/auth/sign-in'
   }
 

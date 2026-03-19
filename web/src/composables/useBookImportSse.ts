@@ -1,4 +1,5 @@
 import { transmit } from '@/lib/transmit'
+import type { ComputedRef, Ref } from 'vue'
 
 export interface BookImportStatusEvent {
   bookId: number
@@ -11,7 +12,19 @@ export interface BookImportStatusEvent {
 
 const STORAGE_KEY = 'book-import-tracking-id'
 
-export function useBookImportSse(userId: number) {
+type MaybeUserId = number | null | Ref<number | null> | ComputedRef<number | null> | (() => number | null)
+
+const resolveUserId = (userId: MaybeUserId): number | null => {
+  if (typeof userId === 'function') {
+    return userId()
+  }
+  if (typeof userId === 'number' || userId === null) {
+    return userId
+  }
+  return userId.value
+}
+
+export function useBookImportSse(userId: MaybeUserId) {
   const event = ref<BookImportStatusEvent | null>(null)
   const isConnected = ref(false)
   const error = ref<string | null>(null)
@@ -46,16 +59,29 @@ export function useBookImportSse(userId: number) {
       return
     }
 
-    channel = transmit.subscription(`user:${userId}:book_import`)
-    await channel.create()
-    isConnected.value = true
-    error.value = null
+    const currentUserId = resolveUserId(userId)
+    if (!currentUserId) {
+      throw new Error('User not found')
+    }
 
-    unsubscribeFn = channel.onMessage((message: BookImportStatusEvent & { data?: BookImportStatusEvent }) => {
-      const payload = message.data || message
-      event.value = payload
-      setTrackingBookId(payload.bookId)
-    })
+    const nextChannel = transmit.subscription(`user:${currentUserId}:book_import`)
+    try {
+      await nextChannel.create()
+      channel = nextChannel
+      isConnected.value = true
+      error.value = null
+
+      unsubscribeFn = channel.onMessage((message: BookImportStatusEvent & { data?: BookImportStatusEvent }) => {
+        const payload = message.data || message
+        event.value = payload
+        setTrackingBookId(payload.bookId)
+      })
+    } catch (e) {
+      channel = null
+      isConnected.value = false
+      error.value = e instanceof Error ? e.message : 'SSE subscription failed'
+      throw e
+    }
   }
 
   async function unsubscribe() {

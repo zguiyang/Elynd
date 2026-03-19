@@ -19,7 +19,9 @@ const emit = defineEmits<{
 const inputMessage = ref('')
 const messagesContainer = ref<HTMLElement | null>(null)
 
-const { messages, isLoading, isWaitingForResponse, sendMessage, clearMessages } = useBookChat(props.bookId)
+const { messages, isLoading, isWaitingForResponse, sendMessage, clearMessages } = useBookChat(
+  computed(() => props.bookId)
+)
 
 const quickActions = [
   { label: '解释', prompt: '请解释这本书的主要内容' },

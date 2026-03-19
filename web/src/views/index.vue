@@ -153,11 +153,11 @@ const STEPS = [
           </a>
         </div>
         <div class="flex items-center gap-3">
-          <Button variant="ghost" size="sm">
-            <a href="/auth/sign-in">登录</a>
+          <Button variant="ghost" size="sm" as-child>
+            <RouterLink to="/auth/sign-in">登录</RouterLink>
           </Button>
-          <Button size="sm">
-            <a href="/auth/sign-up">免费开始</a>
+          <Button size="sm" as-child>
+            <RouterLink to="/auth/sign-up">免费开始</RouterLink>
           </Button>
         </div>
       </nav>
@@ -189,13 +189,13 @@ const STEPS = [
             轻松提升英语能力，不再为英语发愁。
           </p>
           <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button size="lg" class="w-full sm:w-auto">
-              <a href="/auth/sign-up" class="inline-flex items-center">
+            <Button size="lg" class="w-full sm:w-auto" as-child>
+              <RouterLink to="/auth/sign-up" class="inline-flex items-center">
                 免费开始学习
                 <ArrowRight class="size-4 ml-2" />
-              </a>
+              </RouterLink>
             </Button>
-            <Button variant="outline" size="lg" class="w-full sm:w-auto">
+            <Button variant="outline" size="lg" class="w-full sm:w-auto" as-child>
               <a href="#features" class="inline-flex items-center">
                 <PlayCircle class="size-4 mr-2" />
                 了解更多

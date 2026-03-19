@@ -6,6 +6,7 @@ export function useBooks() {
   const tags = ref<Tag[]>([])
   const isLoading = ref(false)
   const error = ref<string | null>(null)
+  const currentParams = ref<BookListParams>({})
   const pagination = ref({
     currentPage: 1,
     perPage: 20,
@@ -13,12 +14,13 @@ export function useBooks() {
     total: 0,
   })
 
-  const fetchBooks = async (params?: BookListParams) => {
+  const fetchBooks = async (params: BookListParams = {}) => {
     isLoading.value = true
     error.value = null
+    currentParams.value = { ...params }
 
     try {
-      const response = await bookApi.list(params)
+      const response = await bookApi.list(currentParams.value)
       books.value = response.data
       pagination.value = {
         currentPage: response.meta.currentPage,
@@ -43,7 +45,7 @@ export function useBooks() {
   }
 
   const goToPage = async (page: number) => {
-    await fetchBooks({ page })
+    await fetchBooks({ ...currentParams.value, page })
   }
 
   return {

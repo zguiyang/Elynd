@@ -11,10 +11,15 @@ const password = ref('')
 const confirmPassword = ref('')
 
 const handleSubmit = async () => {
+  if (password.value !== confirmPassword.value) {
+    toast.error('两次输入的密码不一致')
+    return
+  }
+
   const result = await authStore.register({ name: name.value, email: email.value, password: password.value })
   if (result) {
     toast.success('注册成功')
-    router.push('/learning')
+    await router.push('/learning')
   }
 }
 </script>

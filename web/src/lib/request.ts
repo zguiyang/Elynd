@@ -28,7 +28,8 @@ axiosInstance.interceptors.response.use(
   },
   (error) => {
     const status = error.response?.status
-    const message = error.response?.data?.message || error.message || '网络错误'
+    const responseData = error.response?.data as { error?: boolean; message?: string } | undefined
+    const message = responseData?.message || error.message || '网络错误'
 
     if (status === 401) {
       const authStore = useAuthStore()
@@ -40,7 +41,7 @@ axiosInstance.interceptors.response.use(
       }
     }
     toast.error(message)
-    return Promise.reject(error.response?.data || { message, error: true })
+    return Promise.reject(responseData || { error: true, message })
   }
 )
 

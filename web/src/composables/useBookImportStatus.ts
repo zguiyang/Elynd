@@ -1,4 +1,4 @@
-import { ref, watch, onUnmounted } from 'vue'
+import { computed, ref, watch, onUnmounted } from 'vue'
 import { adminApi } from '@/api/admin'
 import { useBookImportSse } from './useBookImportSse'
 import type { BookStatusResponse } from '@/types/book'
@@ -186,11 +186,7 @@ export function canRetryAudio(book: {
 
 export function useBookImportStatus() {
   const authStore = useAuthStore()
-  const userId = authStore.user?.id
-
-  if (!userId) {
-    throw new Error('User not found')
-  }
+  const userId = computed(() => authStore.user?.id ?? null)
 
   const status = ref<BookStatusResponse | null>(null)
   const isConnected = ref(false)

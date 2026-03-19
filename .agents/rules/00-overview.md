@@ -12,7 +12,7 @@ The project follows a monorepo architecture using pnpm workspace:
 
 ```
 Elynd (monorepo)
-├── backend/              # AdonisJS 6.x API server
+├── backend/              # AdonisJS 7.x API server
 ├── web/                  # Vue 3 frontend application
 └── web-old/              # Legacy React frontend (deprecated)
 ```
@@ -24,7 +24,7 @@ Elynd (monorepo)
 ## Tech Stack
 
 ### Backend
-- **Framework**: AdonisJS 6.x
+- **Framework**: AdonisJS 7.x
 - **Language**: TypeScript
 - **Database**: PostgreSQL
 - **ORM**: Lucid ORM

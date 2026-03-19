@@ -1,19 +1,19 @@
 ---
 name: adonisjs
-description: Use when working with AdonisJS - a fully-featured TypeScript backend framework
-doc_version:
+description: Use when working with AdonisJS v7, including migration guidance for v6 projects
+doc_version: adonisjs-v7
 ---
 
 # AdonisJS Skill
 
-Use when working with AdonisJS v6, a modern TypeScript backend framework. This skill combines knowledge from the official documentation to provide comprehensive guidance for building server-side applications.
+Use when working with AdonisJS v7, a modern TypeScript backend framework. This skill combines knowledge from the official documentation to provide comprehensive guidance for building server-side applications.
 
 ## When to Use This Skill
 
 This skill should be triggered when working with:
 
 ### Core Framework Usage
-- **AdonisJS v6 Development**: Building any backend application with AdonisJS
+- **AdonisJS v7 Development**: Building any backend application with AdonisJS
 - **Project Initialization**: Creating new AdonisJS projects from starter kits
 - **TypeScript Development**: Using TypeScript for type-safe backend code
 
@@ -35,6 +35,12 @@ This skill should be triggered when working with:
 - **Debugging**: Troubleshooting AdonisJS applications
 - **Deployment**: Deploying to production (Docker, Node.js, serverless)
 - **Testing**: Writing tests with Japa
+
+## Version Scope
+
+- **Target version**: AdonisJS v7
+- **Runtime baseline**: Node.js 24 or newer (per official v7 docs)
+- **Upgrade path**: For legacy projects, use `references/other.md` and follow the "Upgrade guide - AdonisJS" (`https://docs.adonisjs.com/v6-to-v7`)
 
 ## Key Concepts
 
@@ -120,7 +126,7 @@ await codemods.defineEnvVariables({
 ```typescript
 // routes/web.ts
 import router from '@adonisjs/core/services/router'
-const UsersController = () => await import('#controllers/users_controller')
+const UsersController = () => import('#controllers/users_controller')
 
 router.get('/users', [UsersController, 'index'])
 router.post('/users', [UsersController, 'store'])
@@ -148,25 +154,32 @@ export default class UsersController {
 
 ```typescript
 // app/models/user.ts
-import { BaseModel, column } from '@adonisjs/lucid/orm'
+import { UsersSchema } from '#database/schema'
+import { column } from '@adonisjs/lucid/orm'
 
-export default class User extends BaseModel {
-  @column({ isPrimary: true })
-  declare id: number
-
-  @column()
-  declare email: string
-
+export default class User extends UsersSchema {
+  // Override serialization behavior in model layer when needed.
   @column({ serializeAs: null })
   declare password: string
 }
 ```
 
 ```typescript
-// Querying
+// Querying (schema classes are auto-generated from migrations)
 const users = await User.query().where('active', true).paginate(1, 10)
 const user = await User.findOrFail(params.id)
 await user.related('posts').create({ title: 'Hello' })
+```
+
+```bash
+# v7 workflow: create model + migration, then run migrations
+node ace make:model User -m
+node ace migration:run
+```
+
+```text
+Important: Never edit database/schema.ts manually.
+It is generated from migrations after migration:run.
 ```
 
 ### Authentication
@@ -181,7 +194,7 @@ npm i bcrypt
 ```typescript
 // Basic auth setup with @adonisjs/auth
 import router from '@adonisjs/core/services/router'
-const AuthController = () => await import('#controllers/auth_controller')
+const AuthController = () => import('#controllers/auth_controller')
 
 router.post('/login', [AuthController, 'login'])
 router.post('/register', [AuthController, 'register'])
@@ -191,9 +204,9 @@ router.post('/register', [AuthController, 'register'])
 
 ```typescript
 // app/validators/create_user.ts
-import { vine } from '@adonisjs/vine'
+import vine from '@vinejs/vine'
 
-export const createUserValidator = vine.schema.create({
+export const createUserValidator = vine.create({
   email: vine.string().email(),
   password: vine.string().minLength(8).confirmed(),
   name: vine.string().minLength(2),
@@ -407,7 +420,7 @@ async store({ request, response }: HttpContext) {
 
 No major discrepancies detected. All content is synthesized from the official AdonisJS documentation with medium confidence. The documentation is well-maintained and consistent.
 
-**Note**: AdonisJS v6 is the current major version. Some v5 patterns may differ - always refer to v6 documentation.
+**Note**: This skill targets AdonisJS v7. For older applications, validate compatibility before applying patterns from this skill.
 
 ## Resources
 
@@ -436,7 +449,7 @@ Add templates, boilerplate, or example projects here:
 - Reference files preserve the structure and examples from source docs
 - Code examples primarily use TypeScript (AdonisJS's default)
 - Quick reference patterns are extracted from common usage examples
-- AdonisJS v6 is the current major version
+- AdonisJS v7 is the current major version for this skill
 - All examples assume the use of official starter kits
 
 ## Updating
@@ -448,6 +461,7 @@ To refresh this skill with updated documentation:
 ## Official Links
 
 - **Documentation**: https://docs.adonisjs.com/
+- **Upgrade guide (v6 -> v7)**: https://docs.adonisjs.com/v6-to-v7
 - **GitHub**: https://github.com/adonisjs/core
 - **Official Packages**: https://github.com/adonisjs
 - **Discord**: https://discord.gg/vzc5sWh

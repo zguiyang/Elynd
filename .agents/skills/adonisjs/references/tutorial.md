@@ -4,6 +4,24 @@
 
 ---
 
+## Forms and validation (FullStack tutorial) - AdonisJS
+
+**URL:** https://docs.adonisjs.com/tutorial/react/forms-and-validation
+
+**Contents:**
+- Add post creation form
+- Validate input with VineJS
+- Create comments with validation
+- Protect write routes with auth middleware
+
+This chapter explains form handling end-to-end for the React tutorial stack: render form pages, submit with Inertia `Form`, validate in controllers via `request.validateUsing`, and persist records.
+
+It recommends dedicated validators created via Ace commands and clear separation of responsibilities between posts and comments controllers.
+
+It also highlights route ordering constraints for dynamic params and the standard pattern of returning validation errors back to the same form view.
+
+---
+
 ## Styling and cleanup - AdonisJS
 
 **URL:** https://docs.adonisjs.com/tutorial/react/styling-and-cleanup

@@ -1270,3 +1270,20 @@ To get better answers faster, provide clear context, share relevant code snippet
 Yes, AdonisJS is excellent for building APIs and many developers choose it primarily for API development. The framework provides extensive built-in features specifically designed for APIs, including RESTful resource routing, built-in validation with VineJS, multiple authentication schemes, transformers for serializing data, CORS handling, and rate limiting support.
 
 ---
+
+## Releases (Resources) - AdonisJS
+
+**URL:** https://docs.adonisjs.com/releases
+
+**Contents:**
+- Framework and package release timeline
+- Version tags and changelog links
+- Monthly release groups
+
+The releases page lists changes across the AdonisJS ecosystem and links each entry to its GitHub release note.
+
+Use this page to verify the latest stable versions and to cross-check breaking changes before upgrades.
+
+For migration planning, pair this page with the official upgrade guide.
+
+---

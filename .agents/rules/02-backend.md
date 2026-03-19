@@ -1,6 +1,6 @@
 # Backend Development Guide
 
-Backend development guidelines for Linky project using AdonisJS 6.x.
+Backend development guidelines for Linky project using AdonisJS 7.x.
 
 Backend changes that affect behavior or correctness must follow [`05-tdd.md`](./05-tdd.md) when in scope.
 
@@ -33,7 +33,7 @@ Sources:
 
 ## Tech Stack
 
-- **Framework**: AdonisJS 6.x
+- **Framework**: AdonisJS 7.x
 - **Language**: TypeScript
 - **Database**: PostgreSQL
 - **ORM**: Lucid ORM

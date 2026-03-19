@@ -1,5 +1,11 @@
 # Adonisjs Documentation Index
 
+## Version Scope
+
+- **Target framework version:** AdonisJS v7
+- **Runtime baseline:** Node.js 24+
+- **Migration docs:** See `other.md` for the official v6 -> v7 upgrade guide
+
 ## Categories
 
 ### Api

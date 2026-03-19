@@ -21,7 +21,7 @@ Before code changes, feature implementation, refactoring, testing, or code gener
 **Features**: Graded Reading, Listen & Read (TTS), Instant Dictionary, AI Q&A, Access Token Authentication
 
 **Tech Stack**:
-- Backend: AdonisJS 6.x + PostgreSQL + Lucid ORM
+- Backend: AdonisJS 7.x + PostgreSQL + Lucid ORM
 - Frontend: Vue 3 + Vite + Vue Router + Pinia + shadcn-vue + Reka UI + Tailwind CSS v4
 - Package Manager: pnpm workspace
 

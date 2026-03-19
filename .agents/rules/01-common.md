@@ -417,7 +417,7 @@ Use these skills when working with the main application frameworks:
 
 | Skill | When to Use |
 |-------|-------------|
-| **[adonisjs](.opencode/skills/adonisjs/)** | Backend development with AdonisJS 6.x, including routing, controllers, models, middleware, authentication, database operations with Lucid ORM, validation, testing, and Ace CLI commands |
+| **[adonisjs](.opencode/skills/adonisjs/)** | Backend development with AdonisJS 7.x, including routing, controllers, models, middleware, authentication, database operations with Lucid ORM, validation, testing, and Ace CLI commands |
 | **[shadcn-ui](.opencode/skills/shadcn-ui/)** | shadcn/ui component library for React including installation, component patterns, form recipes, and theming with Tailwind CSS v4 |
 | **[tanstack-router](.opencode/skills/tanstack-router/)** | TanStack Router type-safe file-based routing for React including route loaders, type safety, and Cloudflare Workers deployment |
 | **[tanstack-query](.opencode/skills/tanstack-query/)** | TanStack Query v5 for data fetching, caching, mutations, and query patterns |

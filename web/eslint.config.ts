@@ -72,6 +72,22 @@ export default defineConfigWithVueTs(
 
   vueTsConfigs.recommended,
 
+  {
+    name: 'app/type-import-rules',
+    files: ['**/*.{vue,ts,mts,tsx}'],
+    rules: {
+      '@typescript-eslint/consistent-type-imports': [
+        'error',
+        {
+          prefer: 'type-imports',
+          fixStyle: 'separate-type-imports',
+          disallowTypeAnnotations: false,
+        },
+      ],
+      'no-duplicate-imports': ['error', { allowSeparateTypeImports: true }],
+    },
+  },
+
   // Allow 'any' in test files for flexibility
   {
     name: 'app/test-any-allow',

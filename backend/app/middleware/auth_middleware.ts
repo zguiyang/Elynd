@@ -12,10 +12,6 @@ export default class AuthMiddleware {
     } = {}
   ) {
     try {
-      const token = ctx.request.input('token')
-      if (token) {
-        ctx.request.headers().authorization = `Bearer ${token}`
-      }
       await ctx.auth.authenticateUsing(options.guards)
       return next()
     } catch (error) {

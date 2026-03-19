@@ -3,6 +3,70 @@ import redis from '@adonisjs/redis/services/main'
 import { DictionaryService } from '#services/shared/dictionary_service'
 import { DICTIONARY } from '#constants'
 
+test.group('DictionaryService.getExpiringKeys', (group) => {
+  const originalRedisScan = redis.scan.bind(redis)
+  const originalRedisTtl = redis.ttl.bind(redis)
+
+  group.each.teardown(() => {
+    redis.scan = originalRedisScan
+    redis.ttl = originalRedisTtl
+  })
+
+  test('TTL 低于阈值时 key 被包含', async ({ assert }) => {
+    redis.scan = async function fakeScan() {
+      return ['0', [`${DICTIONARY.CACHE_PREFIX}apple`, `${DICTIONARY.CACHE_PREFIX}banana`]]
+    } as typeof redis.scan
+
+    redis.ttl = async function fakeTtl(key: string) {
+      if (String(key).endsWith('apple')) return 3600 // 1 hour in seconds
+      if (String(key).endsWith('banana')) return 172800 // 2 days in seconds
+      return -2
+    } as typeof redis.ttl
+
+    const service = new DictionaryService()
+    const result = await service.getExpiringKeys(1)
+
+    assert.isTrue(
+      result.some((k) => k.endsWith('apple')),
+      'TTL=3600 should be included (below 1 day threshold)'
+    )
+    assert.isFalse(
+      result.some((k) => k.endsWith('banana')),
+      'TTL=172800 should be excluded (above 1 day threshold)'
+    )
+  })
+
+  test('TTL 高于阈值时 key 被排除', async ({ assert }) => {
+    redis.scan = async function fakeScan() {
+      return ['0', [`${DICTIONARY.CACHE_PREFIX}long-ttl-key`]]
+    } as typeof redis.scan
+
+    redis.ttl = async function fakeTtl() {
+      return 172800 // 2 days in seconds, above 1 day threshold
+    } as typeof redis.ttl
+
+    const service = new DictionaryService()
+    const result = await service.getExpiringKeys(1)
+
+    assert.deepEqual(result, [])
+  })
+
+  test('负数 TTL 被排除', async ({ assert }) => {
+    redis.scan = async function fakeScan() {
+      return ['0', [`${DICTIONARY.CACHE_PREFIX}expired-key`]]
+    } as typeof redis.scan
+
+    redis.ttl = async function fakeTtl() {
+      return -1 // key does not exist or has no TTL
+    } as typeof redis.ttl
+
+    const service = new DictionaryService()
+    const result = await service.getExpiringKeys(1)
+
+    assert.deepEqual(result, [])
+  })
+})
+
 test.group('DictionaryService.lookup', (group) => {
   const originalRedisGet = redis.get.bind(redis)
   const originalRedisSetex = redis.setex.bind(redis)

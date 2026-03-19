@@ -10,6 +10,14 @@ import { NotificationService } from '#services/user/notification_service'
 @inject()
 export class UserService {
   constructor(private notificationService: NotificationService) {}
+
+  private maskToken(token: string): string {
+    if (token.length <= 8) {
+      return '***'
+    }
+    return `${token.slice(0, 4)}***${token.slice(-4)}`
+  }
+
   async create(data: { email: string; name: string; password: string }) {
     logger.info({ email: data.email }, 'Creating user')
 
@@ -33,7 +41,7 @@ export class UserService {
   }
 
   async resetPassword(token: string, newPassword: string) {
-    logger.info({ token }, 'Resetting password')
+    logger.info({ token: this.maskToken(token) }, 'Resetting password')
 
     const data = await this.getDataFromToken(token)
     if (!data || data.type !== 'reset_password') {
@@ -127,7 +135,10 @@ export class UserService {
 
     await redis.set(key, data, 'EX', EMAIL_VERIFICATION.EXPIRY_MINUTES * 60)
 
-    logger.info({ email, type, emailToken }, 'Email verification token stored in Redis')
+    logger.info(
+      { email, type, emailToken: this.maskToken(emailToken) },
+      'Email verification token stored in Redis'
+    )
 
     return emailToken
   }

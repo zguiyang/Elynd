@@ -238,11 +238,11 @@ export class DictionaryService {
       } while (cursor !== '0')
 
       const expiringKeys: string[] = []
-      const threshold = days * 24 * 60 * 60 * 1000
+      const thresholdSeconds = days * 24 * 60 * 60
 
       for (const key of keys) {
         const ttl = await redis.ttl(key)
-        if (ttl > 0 && ttl <= threshold) {
+        if (ttl > 0 && ttl <= thresholdSeconds) {
           expiringKeys.push(key)
         }
       }

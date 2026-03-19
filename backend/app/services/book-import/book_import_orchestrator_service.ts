@@ -6,6 +6,7 @@ import path from 'node:path'
 import app from '@adonisjs/core/services/app'
 import drive from '@adonisjs/drive/services/main'
 import logger from '@adonisjs/core/services/logger'
+import db from '@adonisjs/lucid/services/db'
 import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import BookChapterAudio from '#models/book_chapter_audio'
@@ -49,13 +50,15 @@ type DispatchableImportStep =
 
 @inject()
 export class BookImportOrchestratorService {
-  private hashService = new BookHashService()
-
   constructor(
     private parserService: BookParserService,
     private aiService: AiService,
     private analyzerService: VocabularyAnalyzerService,
-    private configService: ConfigService
+    private configService: ConfigService,
+    private hashService: BookHashService,
+    private guardService: BookContentGuardService,
+    private semanticCleanPromptService: PromptService,
+    private chapterCleanerService: BookChapterCleanerService
   ) {}
 
   static getBaseProgressByStep(step: string): number {
@@ -337,13 +340,12 @@ export class BookImportOrchestratorService {
     const { book, metadata, cleanedChapters } = params
 
     // Validate chapters using Content Guard Service before persistence
-    const guardService = new BookContentGuardService()
     const validChapters: Array<{ title: string; content: string; chapterIndex: number }> = []
     const validationErrors: Array<{ chapterIndex: number; errors: string[] }> = []
 
     for (const chapter of cleanedChapters) {
       const guardInput = `# ${chapter.title}\n\n${chapter.content}`
-      const result = guardService.validate(guardInput)
+      const result = this.guardService.validate(guardInput)
       if (result.valid) {
         validChapters.push(chapter)
       } else {
@@ -373,16 +375,7 @@ export class BookImportOrchestratorService {
       chapterIndex: index,
     }))
 
-    await BookChapter.query().where('bookId', book.id).delete()
-    await BookChapter.createMany(
-      finalChapters.map((chapter, index) => ({
-        bookId: book.id,
-        chapterIndex: index,
-        title: chapter.title,
-        content: chapter.content,
-      }))
-    )
-
+    // Pre-compute metrics outside transaction to minimize lock hold time
     const wordCount = finalChapters.reduce(
       (sum, chapter) => sum + chapter.content.split(/\s+/).filter(Boolean).length,
       0
@@ -390,16 +383,30 @@ export class BookImportOrchestratorService {
     const readingTime = Math.max(1, Math.ceil(wordCount / 200))
     const contentHash = this.hashService.hashNormalizedBook(finalChapters)
 
-    await book
-      .merge({
-        title: metadata.title || book.title,
-        author: metadata.author,
-        description: metadata.description,
-        contentHash,
-        wordCount,
-        readingTime,
-      })
-      .save()
+    await db.transaction(async (trx) => {
+      await BookChapter.query({ client: trx }).where('bookId', book.id).delete()
+      await BookChapter.createMany(
+        finalChapters.map((chapter, index) => ({
+          bookId: book.id,
+          chapterIndex: index,
+          title: chapter.title,
+          content: chapter.content,
+        })),
+        { client: trx }
+      )
+
+      await book
+        .useTransaction(trx)
+        .merge({
+          title: metadata.title || book.title,
+          author: metadata.author,
+          description: metadata.description,
+          contentHash,
+          wordCount,
+          readingTime,
+        })
+        .save()
+    })
 
     return { contentHash, wordCount, readingTime }
   }
@@ -511,8 +518,8 @@ export class BookImportOrchestratorService {
   private buildSemanticCleaner() {
     return new BookSemanticCleanService(
       this.aiService,
-      new PromptService(),
-      new BookChapterCleanerService(),
+      this.semanticCleanPromptService,
+      this.chapterCleanerService,
       this.configService
     )
   }

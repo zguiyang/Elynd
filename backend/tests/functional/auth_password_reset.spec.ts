@@ -1,9 +1,12 @@
 import { test } from '@japa/runner'
 import crypto from 'node:crypto'
 import redis from '@adonisjs/redis/services/main'
+import logger from '@adonisjs/core/services/logger'
 import { EMAIL_VERIFICATION } from '#constants'
 import User from '#models/user'
 import { NotificationService } from '#services/user/notification_service'
+import { AuthService } from '#services/user/auth_service'
+import type { UserService } from '#services/user/user_service'
 import { makeForwardedFor, makeTestEmail } from '#tests/helpers/auth'
 
 function getTokenKey(token: string) {
@@ -139,5 +142,135 @@ test.group('Auth API password reset contract', () => {
       })
 
     reusedTokenResponse.assertStatus(403)
+  })
+
+  test('POST /api/auth/reset-password does not log raw token in service chain', async ({
+    assert,
+    client,
+    cleanup,
+  }) => {
+    const originalInfo = logger.info
+    const originalWarn = logger.warn
+    const logs: string[] = []
+
+    logger.info = (obj: any, message?: string) => {
+      logs.push(JSON.stringify({ obj, message }))
+    }
+    logger.warn = (obj: any, message?: string) => {
+      logs.push(JSON.stringify({ obj, message }))
+    }
+
+    const email = makeTestEmail('reset-log')
+    const user = await User.create({
+      fullName: 'Reset Log User',
+      email,
+      password: 'password123',
+      isAdmin: false,
+    })
+
+    const resetToken = crypto.randomUUID()
+    await redis.set(
+      getTokenKey(resetToken),
+      JSON.stringify({ email, type: 'reset_password' }),
+      'EX',
+      EMAIL_VERIFICATION.EXPIRY_MINUTES * 60
+    )
+
+    cleanup(async () => {
+      logger.info = originalInfo
+      logger.warn = originalWarn
+      await redis.del(getTokenKey(resetToken))
+      await user.delete()
+    })
+
+    const response = await client
+      .post('/api/auth/reset-password')
+      .header('x-forwarded-for', makeForwardedFor())
+      .json({
+        token: resetToken,
+        password: 'new-password123',
+        passwordConfirmation: 'new-password123',
+      })
+
+    response.assertStatus(200)
+
+    const mergedLogs = logs.join('\n')
+    assert.isFalse(
+      mergedLogs.includes(resetToken),
+      'Raw reset token must never appear in logs from reset flow'
+    )
+  })
+})
+
+test.group('AuthService token masking', (group) => {
+  const originalInfo = logger.info
+  const originalWarn = logger.warn
+  let infoPayload: any = null
+  let warnPayload: any = null
+
+  group.each.setup(() => {
+    infoPayload = null
+    warnPayload = null
+    logger.info = (obj: any) => {
+      infoPayload = obj
+    }
+    logger.warn = (obj: any) => {
+      warnPayload = obj
+    }
+  })
+
+  group.each.teardown(() => {
+    logger.info = originalInfo
+    logger.warn = originalWarn
+  })
+
+  test('resetPassword 调用时日志不包含完整 token', async ({ assert }) => {
+    const mockUserService = {
+      resetPassword: async () => null,
+    } as unknown as UserService
+
+    const authService = new AuthService(mockUserService)
+
+    const fakeToken = 'very-long-token-abcdefgh12345678'
+    await authService.resetPassword(fakeToken, 'newpassword')
+
+    assert.isNotNull(infoPayload, 'logger.info should have been called')
+    assert.isFalse(
+      JSON.stringify(infoPayload).includes(fakeToken),
+      'Logged token should be masked, not the original'
+    )
+    assert.isTrue(
+      JSON.stringify(infoPayload).includes('very***5678'),
+      'Logged token should contain the masked version'
+    )
+  })
+
+  test('无效 token 时日志不包含完整 token', async ({ assert }) => {
+    const mockUserService = {
+      resetPassword: async () => null,
+    } as unknown as UserService
+
+    const authService = new AuthService(mockUserService)
+
+    const fakeToken = 'expired-token-xyz1234567890'
+    await authService.resetPassword(fakeToken, 'newpassword')
+
+    assert.isNotNull(warnPayload, 'logger.warn should have been called')
+    assert.isFalse(
+      JSON.stringify(warnPayload).includes(fakeToken),
+      'Logged token should be masked, not the original'
+    )
+  })
+
+  test('token 长度 <= 8 时返回 ***', async ({ assert }) => {
+    const authService = new AuthService({} as UserService)
+
+    const shortToken = 'abc'
+    const masked = (authService as any).maskToken(shortToken)
+    assert.equal(masked, '***')
+
+    const exactEightToken = '12345678'
+    const maskedEight = (authService as any).maskToken(exactEightToken)
+    assert.equal(maskedEight, '***')
   })
 })

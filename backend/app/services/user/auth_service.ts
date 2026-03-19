@@ -7,6 +7,11 @@ import { UserService } from '#services/user/user_service'
 export class AuthService {
   constructor(private userService: UserService) {}
 
+  private maskToken(token: string): string {
+    if (token.length <= 8) return '***'
+    return `${token.slice(0, 4)}***${token.slice(-4)}`
+  }
+
   async register(data: { email: string; name: string; password: string }) {
     logger.info({ email: data.email }, 'Registration attempt')
 
@@ -40,12 +45,12 @@ export class AuthService {
   }
 
   async resetPassword(token: string, newPassword: string) {
-    logger.info({ token }, 'Password reset attempt')
+    logger.info({ token: this.maskToken(token) }, 'Password reset attempt')
 
     const user = await this.userService.resetPassword(token, newPassword)
 
     if (!user) {
-      logger.warn({ token }, 'Invalid or expired reset token')
+      logger.warn({ token: this.maskToken(token) }, 'Invalid or expired reset token')
       return null
     }
 

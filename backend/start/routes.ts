@@ -127,7 +127,17 @@ transmit.authorize('user:userId:book_import', (ctx, { userId }) => {
 })
 
 // ===== 静态资源路由 =====
-router.get('/audio/books/:id', async ({ params, response }) => {
+router.get('/audio/books/:id', async ({ params, response, auth }) => {
+  try {
+    await auth.authenticateUsing(['api'])
+  } catch {
+    return response.unauthorized({ error: 'Unauthenticated' })
+  }
+
+  if (!auth.isAuthenticated) {
+    return response.unauthorized({ error: 'Unauthenticated' })
+  }
+
   const bookId = params.id
   const filePath = `book/voices/${bookId}.mp3`
 

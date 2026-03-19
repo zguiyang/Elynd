@@ -95,4 +95,4 @@ __screenshots__/
 
 # backend local storage
 backend/storage
-
+backend/.adonisjs

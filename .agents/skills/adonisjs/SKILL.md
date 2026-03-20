@@ -1,7 +1,7 @@
 ---
 name: adonisjs
 description: Use when working with AdonisJS v7, including migration guidance for v6 projects
-doc_version: adonisjs-v7
+doc_version: adonisjs
 ---
 
 # AdonisJS Skill

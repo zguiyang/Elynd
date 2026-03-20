@@ -2,9 +2,9 @@
   "version": 1,
   "skills": {
     "adonisjs": {
-      "source": "/Users/joyzhao/Desktop/ai-tools/output/adonisjs",
-      "sourceType": "local",
-      "computedHash": "e434acca46fa7d6fb6f49c00a71b544440d464a227fb57c4db14b799a5fa0233"
+      "source": "zguiyang/agent-skills",
+      "sourceType": "github",
+      "computedHash": "69f68dad94d1d9862bf306f0c685f83f887d55dd4ed24ac29dd42704982a07ce"
     },
     "axios": {
       "source": "slanycukr/riot-api-project",

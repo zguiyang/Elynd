@@ -15,6 +15,7 @@ const SOURCE_LANGUAGE = 'en'
 const DEFAULT_LOCALIZATION_LANGUAGE = 'zh-CN'
 const SAFE_LOOKUP_FAILURE_MESSAGE = '查询失败，请稍后重试'
 const DICTIONARY_ENTRY_SOURCE = {
+  DICTIONARY: 'dictionary',
   DICTIONARY_PLUS_AI: 'dictionary_plus_ai',
   AI_FALLBACK: 'ai_fallback',
 } as const
@@ -265,6 +266,8 @@ export class DictionaryService {
   private async loadChapterContext(
     options: DictionaryContextOptions
   ): Promise<DictionaryChapterContext | null> {
+    const startedAt = Date.now()
+
     if (options.bookId === undefined || options.bookId === null) {
       return null
     }
@@ -280,8 +283,28 @@ export class DictionaryService {
       .first()
 
     if (!chapter || !chapter.content?.trim()) {
+      logger.info(
+        {
+          bookId: options.bookId,
+          chapterIndex: options.chapterIndex,
+          durationMs: Date.now() - startedAt,
+          hit: false,
+        },
+        'Dictionary chapter context loaded'
+      )
       return null
     }
+
+    logger.info(
+      {
+        bookId: chapter.bookId,
+        chapterIndex: chapter.chapterIndex,
+        durationMs: Date.now() - startedAt,
+        hit: true,
+        chapterContentLength: chapter.content.length,
+      },
+      'Dictionary chapter context loaded'
+    )
 
     return {
       bookId: chapter.bookId,
@@ -566,6 +589,84 @@ export class DictionaryService {
       .filter((item): item is DictionaryDefinition => item !== null)
   }
 
+  private buildDictionaryOnlyEntry(
+    word: string,
+    upstream: FreeDictionaryApiResponse,
+    localizationLanguage: string
+  ): DictionaryEntry | null {
+    const meanings: DictionaryMeaning[] = (upstream.entries || [])
+      .map((entry) => {
+        const partOfSpeech = this.pickString(entry.partOfSpeech)
+        if (!partOfSpeech) {
+          return null
+        }
+
+        const definitions: DictionaryDefinition[] = (entry.senses || [])
+          .map((sense) => {
+            const sourceText = this.pickString(sense.definition)
+            if (!sourceText) {
+              return null
+            }
+
+            const examples: DictionaryLocalizedExample[] = (sense.examples || [])
+              .map((example) => this.pickString(example))
+              .filter((example): example is string => Boolean(example))
+              .map((example) => ({
+                sourceText: example,
+                localizedText: example,
+                source: 'dictionary',
+              }))
+
+            return {
+              sourceText,
+              localizedText: sourceText,
+              plainExplanation: sourceText,
+              examples,
+            }
+          })
+          .filter((definition): definition is DictionaryDefinition => definition !== null)
+
+        if (definitions.length === 0) {
+          return null
+        }
+
+        const sourceMeaning = definitions[0]!.sourceText
+
+        return {
+          partOfSpeech,
+          sourceMeaning,
+          localizedMeaning: sourceMeaning,
+          plainExplanation: sourceMeaning,
+          definitions,
+        }
+      })
+      .filter((meaning): meaning is DictionaryMeaning => meaning !== null)
+
+    if (meanings.length === 0) {
+      return null
+    }
+
+    const phonetics = (upstream.entries || [])
+      .flatMap((entry) => entry.pronunciations || [])
+      .map((item) => this.pickString(item.text))
+      .filter((item): item is string => Boolean(item))
+      .map((text) => ({ text }))
+
+    return {
+      word,
+      sourceLanguage: SOURCE_LANGUAGE,
+      localizationLanguage,
+      phonetic: phonetics[0]?.text || null,
+      phonetics,
+      meanings,
+      articleExamples: [],
+      meta: {
+        source: DICTIONARY_ENTRY_SOURCE.DICTIONARY,
+        localizationLanguage,
+      },
+    }
+  }
+
   private normalizeExamples(value: unknown): DictionaryLocalizedExample[] {
     if (!Array.isArray(value)) {
       return []
@@ -716,40 +817,73 @@ export class DictionaryService {
     baseEntry: FreeDictionaryApiResponse
     chapterContext: DictionaryChapterContext | null
   }): Promise<DictionaryEntry> {
+    const startedAt = Date.now()
     const articleContext = this.buildArticleContext(
       params.word,
       params.chapterContext,
       params.localizationLanguage
     )
 
-    const raw = await this.aiService.chatJson<unknown>(params.aiConfig, {
-      messages: [
-        {
-          role: 'system',
-          content: this.renderPrompt(AI_OUTPUT_MODES.ENRICH, {
-            word: params.word,
-            sourceLanguage: SOURCE_LANGUAGE,
-            localizationLanguage: params.localizationLanguage,
-            dictionarySnapshot: this.buildSnapshot(
-              params.word,
-              params.baseEntry,
-              params.localizationLanguage
-            ),
-            articleContext,
-          }),
-        },
-      ],
-      maxTokens: 2000,
-      temperature: 0.2,
-      responseFormat: { type: 'json_object' },
-    })
-
-    return this.normalizeDictionaryEntry(
-      raw,
-      params.word,
-      params.localizationLanguage,
-      DICTIONARY_ENTRY_SOURCE.DICTIONARY_PLUS_AI
+    logger.info(
+      {
+        word: params.word,
+        mode: AI_OUTPUT_MODES.ENRICH,
+        hasArticleContext: Boolean(articleContext),
+        articleSentenceCount: articleContext?.sentences.length || 0,
+      },
+      'Dictionary AI enrich started'
     )
+
+    try {
+      const raw = await this.aiService.chatJson<unknown>(params.aiConfig, {
+        messages: [
+          {
+            role: 'system',
+            content: this.renderPrompt(AI_OUTPUT_MODES.ENRICH, {
+              word: params.word,
+              sourceLanguage: SOURCE_LANGUAGE,
+              localizationLanguage: params.localizationLanguage,
+              dictionarySnapshot: this.buildSnapshot(
+                params.word,
+                params.baseEntry,
+                params.localizationLanguage
+              ),
+              articleContext,
+            }),
+          },
+        ],
+        maxTokens: 2000,
+        temperature: 0.2,
+        responseFormat: { type: 'json_object' },
+      })
+
+      logger.info(
+        {
+          word: params.word,
+          mode: AI_OUTPUT_MODES.ENRICH,
+          durationMs: Date.now() - startedAt,
+        },
+        'Dictionary AI enrich completed'
+      )
+
+      return this.normalizeDictionaryEntry(
+        raw,
+        params.word,
+        params.localizationLanguage,
+        DICTIONARY_ENTRY_SOURCE.DICTIONARY_PLUS_AI
+      )
+    } catch (error) {
+      logger.warn(
+        {
+          err: error,
+          word: params.word,
+          mode: AI_OUTPUT_MODES.ENRICH,
+          durationMs: Date.now() - startedAt,
+        },
+        'Dictionary AI enrich failed'
+      )
+      throw error
+    }
   }
 
   private async runFallbackWithAi(params: {
@@ -758,35 +892,68 @@ export class DictionaryService {
     aiConfig: AiClientConfig
     chapterContext: DictionaryChapterContext | null
   }): Promise<DictionaryEntry> {
+    const startedAt = Date.now()
     const articleContext = this.buildArticleContext(
       params.word,
       params.chapterContext,
       params.localizationLanguage
     )
 
-    const raw = await this.aiService.chatJson<unknown>(params.aiConfig, {
-      messages: [
-        {
-          role: 'system',
-          content: this.renderPrompt(AI_OUTPUT_MODES.FALLBACK, {
-            word: params.word,
-            sourceLanguage: SOURCE_LANGUAGE,
-            localizationLanguage: params.localizationLanguage,
-            articleContext,
-          }),
-        },
-      ],
-      maxTokens: 2200,
-      temperature: 0.2,
-      responseFormat: { type: 'json_object' },
-    })
-
-    return this.normalizeDictionaryEntry(
-      raw,
-      params.word,
-      params.localizationLanguage,
-      DICTIONARY_ENTRY_SOURCE.AI_FALLBACK
+    logger.info(
+      {
+        word: params.word,
+        mode: AI_OUTPUT_MODES.FALLBACK,
+        hasArticleContext: Boolean(articleContext),
+        articleSentenceCount: articleContext?.sentences.length || 0,
+      },
+      'Dictionary AI fallback started'
     )
+
+    try {
+      const raw = await this.aiService.chatJson<unknown>(params.aiConfig, {
+        messages: [
+          {
+            role: 'system',
+            content: this.renderPrompt(AI_OUTPUT_MODES.FALLBACK, {
+              word: params.word,
+              sourceLanguage: SOURCE_LANGUAGE,
+              localizationLanguage: params.localizationLanguage,
+              articleContext,
+            }),
+          },
+        ],
+        maxTokens: 2200,
+        temperature: 0.2,
+        responseFormat: { type: 'json_object' },
+      })
+
+      logger.info(
+        {
+          word: params.word,
+          mode: AI_OUTPUT_MODES.FALLBACK,
+          durationMs: Date.now() - startedAt,
+        },
+        'Dictionary AI fallback completed'
+      )
+
+      return this.normalizeDictionaryEntry(
+        raw,
+        params.word,
+        params.localizationLanguage,
+        DICTIONARY_ENTRY_SOURCE.AI_FALLBACK
+      )
+    } catch (error) {
+      logger.warn(
+        {
+          err: error,
+          word: params.word,
+          mode: AI_OUTPUT_MODES.FALLBACK,
+          durationMs: Date.now() - startedAt,
+        },
+        'Dictionary AI fallback failed'
+      )
+      throw error
+    }
   }
 
   private async resolveAiInput(params: DictionaryLookupParams & DictionaryResolveOptions): Promise<{
@@ -816,51 +983,78 @@ export class DictionaryService {
   private async lookupWithResolvedSettings(params: {
     word: string
     localizationLanguage: string
-    aiConfig: AiClientConfig
     chapterContext: DictionaryChapterContext | null
   }): Promise<DictionaryEntry> {
+    const startedAt = Date.now()
     const cachedEntry = await this.getCachedEntry(
       params.word,
       params.localizationLanguage,
       params.chapterContext
     )
     if (cachedEntry) {
-      logger.debug({ word: params.word }, 'Dictionary lookup cache hit')
+      logger.info(
+        { word: params.word, durationMs: Date.now() - startedAt, source: 'cache' },
+        'Dictionary lookup completed'
+      )
       return cachedEntry
     }
 
     let upstreamEntry: FreeDictionaryApiResponse | null = null
+    const upstreamStartedAt = Date.now()
     try {
       upstreamEntry = await this.fetchUpstreamEntry(params.word)
+      logger.info(
+        {
+          word: params.word,
+          durationMs: Date.now() - upstreamStartedAt,
+          hit: Boolean(upstreamEntry),
+        },
+        'Dictionary upstream lookup completed'
+      )
     } catch (error) {
       logger.warn({ err: error, word: params.word }, 'Dictionary upstream lookup failed')
       upstreamEntry = null
     }
 
-    try {
-      const entry = upstreamEntry
-        ? await this.enrichWithAiCore({
-            word: params.word,
-            localizationLanguage: params.localizationLanguage,
-            aiConfig: params.aiConfig,
-            upstream: upstreamEntry,
-            chapterContext: params.chapterContext,
-          })
-        : await this.fallbackWithAiCore({
-            word: params.word,
-            localizationLanguage: params.localizationLanguage,
-            aiConfig: params.aiConfig,
-            chapterContext: params.chapterContext,
-          })
-
-      if (this.shouldCacheResult(params.localizationLanguage, params.chapterContext)) {
-        await this.setCachedEntry(params.word, entry, params.localizationLanguage)
-      }
-
-      return entry
-    } catch (error) {
-      this.throwLookupFailure(error, params.word)
+    if (!upstreamEntry) {
+      logger.warn(
+        {
+          word: params.word,
+          durationMs: Date.now() - startedAt,
+          hasChapterContext: Boolean(params.chapterContext),
+        },
+        'Dictionary lookup failed after timing'
+      )
+      this.throwLookupFailure(new Error('Dictionary upstream entry not found'), params.word)
     }
+
+    const entry = this.buildDictionaryOnlyEntry(
+      params.word,
+      upstreamEntry,
+      params.localizationLanguage
+    )
+    if (!entry) {
+      this.throwLookupFailure(
+        new Error('Dictionary upstream entry cannot be normalized'),
+        params.word
+      )
+    }
+
+    if (this.shouldCacheResult(params.localizationLanguage, params.chapterContext)) {
+      await this.setCachedEntry(params.word, entry, params.localizationLanguage)
+    }
+
+    logger.info(
+      {
+        word: params.word,
+        durationMs: Date.now() - startedAt,
+        source: DICTIONARY_ENTRY_SOURCE.DICTIONARY,
+        hasChapterContext: Boolean(params.chapterContext),
+      },
+      'Dictionary lookup completed'
+    )
+
+    return entry
   }
 
   private throwLookupFailure(error: unknown, word: string): never {
@@ -897,12 +1091,12 @@ export class DictionaryService {
     return this.runFallbackWithAi(params)
   }
 
-  async lookupWithAi(
+  async lookup(
     word: string,
     options?: Omit<DictionaryLookupParams, 'word'>
   ): Promise<DictionaryEntry>
-  async lookupWithAi(params: DictionaryLookupParams): Promise<DictionaryEntry>
-  async lookupWithAi(
+  async lookup(params: DictionaryLookupParams): Promise<DictionaryEntry>
+  async lookup(
     wordOrParams: string | DictionaryLookupParams,
     options?: Omit<DictionaryLookupParams, 'word'>
   ): Promise<DictionaryEntry> {
@@ -911,7 +1105,11 @@ export class DictionaryService {
 
     try {
       const input = await this.resolveAiInput(params)
-      return await this.lookupWithResolvedSettings(input)
+      return await this.lookupWithResolvedSettings({
+        word: input.word,
+        localizationLanguage: input.localizationLanguage,
+        chapterContext: input.chapterContext,
+      })
     } catch (error) {
       this.throwLookupFailure(error, this.normalizeWord(params.word))
     }
@@ -1058,10 +1256,6 @@ export class DictionaryService {
     return results
   }
 
-  async lookup(word: string): Promise<DictionaryEntry> {
-    return await this.lookupWithAi({ word })
-  }
-
   async lookupBatch(
     words: string[],
     concurrency: number = 5
@@ -1073,7 +1267,7 @@ export class DictionaryService {
     const normalizedWord = this.normalizeWord(word)
     const cacheKey = this.getCacheKey(normalizedWord)
     await redis.del(cacheKey)
-    await this.lookupWithAi({ word: normalizedWord })
+    await this.lookup({ word: normalizedWord })
     logger.info({ word: normalizedWord }, 'Dictionary cache refreshed')
   }
 

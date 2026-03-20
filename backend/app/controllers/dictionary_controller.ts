@@ -25,7 +25,7 @@ export default class DictionaryController {
       throw new Exception('Word is required', { status: 400 })
     }
 
-    const result = await this.dictionaryService.lookupWithAi({
+    const result = await this.dictionaryService.lookup({
       word,
       userId: auth.getUserOrFail().id,
       bookId: data.bookId,

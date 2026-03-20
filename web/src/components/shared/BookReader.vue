@@ -178,6 +178,7 @@ const getMetaLabel = (source?: DictionaryEntry['meta'] | null) => {
   }
 
   const labelMap: Record<NonNullable<DictionaryEntry['meta']>['source'], string> = {
+    dictionary: '词典',
     dictionary_plus_ai: '词典增强',
     ai_fallback: 'AI 兜底',
   }

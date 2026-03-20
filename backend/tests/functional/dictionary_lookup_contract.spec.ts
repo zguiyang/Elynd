@@ -73,10 +73,10 @@ test.group('Dictionary API contract', () => {
       fullName: 'Dictionary User',
       emailPrefix: 'dictionary',
     })
-    const originalLookup = (DictionaryService.prototype as any).lookupWithAi
+    const originalLookup = (DictionaryService.prototype as any).lookup
     let capturedParams: Record<string, unknown> | null = null
 
-    ;(DictionaryService.prototype as any).lookupWithAi = async function fakeLookupWithAi(
+    ;(DictionaryService.prototype as any).lookup = async function fakeLookupWithAi(
       params: Record<string, unknown>
     ) {
       capturedParams = params
@@ -90,7 +90,7 @@ test.group('Dictionary API contract', () => {
     }
 
     cleanup(async () => {
-      ;(DictionaryService.prototype as any).lookupWithAi = originalLookup
+      ;(DictionaryService.prototype as any).lookup = originalLookup
       await user.delete()
     })
 
@@ -125,9 +125,9 @@ test.group('Dictionary API contract', () => {
       fullName: 'Dictionary User',
       emailPrefix: 'dictionary',
     })
-    const originalLookup = (DictionaryService.prototype as any).lookupWithAi
+    const originalLookup = (DictionaryService.prototype as any).lookup
 
-    ;(DictionaryService.prototype as any).lookupWithAi = async function fakeLookupWithAi() {
+    ;(DictionaryService.prototype as any).lookup = async function fakeLookupWithAi() {
       return buildAiDictionaryEntry({
         word: 'banana',
         phonetic: '/bəˈnæn.ə/',
@@ -160,7 +160,7 @@ test.group('Dictionary API contract', () => {
     }
 
     cleanup(async () => {
-      ;(DictionaryService.prototype as any).lookupWithAi = originalLookup
+      ;(DictionaryService.prototype as any).lookup = originalLookup
       await user.delete()
     })
 
@@ -217,14 +217,14 @@ test.group('Dictionary API contract', () => {
       fullName: 'Dictionary Error User',
       emailPrefix: 'dictionary-error',
     })
-    const originalLookup = (DictionaryService.prototype as any).lookupWithAi
+    const originalLookup = (DictionaryService.prototype as any).lookup
 
-    ;(DictionaryService.prototype as any).lookupWithAi = async function fakeLookupWithAi() {
+    ;(DictionaryService.prototype as any).lookup = async function fakeLookupWithAi() {
       throw new Exception('查询失败，请稍后重试', { status: 503 })
     }
 
     cleanup(async () => {
-      ;(DictionaryService.prototype as any).lookupWithAi = originalLookup
+      ;(DictionaryService.prototype as any).lookup = originalLookup
       await user.delete()
     })
 

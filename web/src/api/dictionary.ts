@@ -40,7 +40,7 @@ export interface DictionaryEntry {
   meanings: DictionaryMeaning[]
   articleExamples: DictionaryExample[]
   meta?: {
-    source: 'dictionary_plus_ai' | 'ai_fallback'
+    source: 'dictionary' | 'dictionary_plus_ai' | 'ai_fallback'
     localizationLanguage: string
   } | null
 }

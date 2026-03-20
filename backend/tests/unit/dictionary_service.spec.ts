@@ -33,7 +33,7 @@ interface AiDictionaryEntry {
   }>
   meanings: AiDictionaryMeaning[]
   meta: {
-    source: 'dictionary_plus_ai' | 'ai_fallback'
+    source: 'dictionary' | 'dictionary_plus_ai' | 'ai_fallback'
     localizationLanguage: string
   }
 }
@@ -149,7 +149,7 @@ test.group('DictionaryService.getExpiringKeys', (group) => {
   })
 })
 
-test.group('DictionaryService.lookupWithAi', (group) => {
+test.group('DictionaryService.lookup', (group) => {
   const originalRedisGet = redis.get.bind(redis)
   const originalRedisSetex = redis.setex.bind(redis)
   const originalFetch = global.fetch
@@ -205,13 +205,13 @@ test.group('DictionaryService.lookupWithAi', (group) => {
       throw new Error('fetch should not be called for cache hit')
     }
 
-    const result = await service.lookupWithAi('apple', { userId: 1 })
+    const result = await service.lookup('apple', { userId: 1 })
 
     assert.deepEqual(result, cachedEntry)
     assert.isFalse(fetchCalled)
   })
 
-  test('uses AI enrichment when dictionary upstream returns data', async ({ assert }) => {
+  test('returns dictionary-only entry when upstream returns data', async ({ assert }) => {
     let cachedKey: string | null = null
     let cachedValue: string | null = null
     let cachedTtl: number | null = null
@@ -226,13 +226,6 @@ test.group('DictionaryService.lookupWithAi', (group) => {
         },
       ],
     }
-
-    const aiEntry = buildAiDictionaryEntry({
-      meta: {
-        source: 'dictionary_plus_ai',
-        localizationLanguage: 'zh-CN',
-      },
-    })
 
     const service = createDictionaryService() as any
     service.resolveLookupSettings = async (options: {
@@ -265,18 +258,6 @@ test.group('DictionaryService.lookupWithAi', (group) => {
       assert.equal(word, 'apple')
       return baseEntry
     }
-    service.enrichWithAiCore = async (params: {
-      word: string
-      upstream: typeof baseEntry
-      localizationLanguage: string
-      chapterContext: null
-      aiConfig: Record<string, unknown>
-    }) => {
-      assert.equal(params.word, 'apple')
-      assert.equal(params.localizationLanguage, 'zh-CN')
-      assert.deepEqual(params.upstream, baseEntry)
-      return aiEntry
-    }
     service.setCachedEntry = async (
       word: string,
       entry: AiDictionaryEntry,
@@ -290,56 +271,25 @@ test.group('DictionaryService.lookupWithAi', (group) => {
       })
     }
 
-    const result = await service.lookupWithAi('Apple', {
+    const result = await service.lookup('Apple', {
       userId: 42,
       bookId: 7,
       chapterIndex: 3,
     })
 
     assert.equal(result?.word, 'apple')
-    assert.equal(result?.meanings[0]?.localizedMeaning, '苹果')
+    assert.equal(result?.meanings[0]?.localizedMeaning, 'A fruit')
     assert.equal(result?.meanings[0]?.definitions[0]?.sourceText, 'A fruit')
-    assert.equal(
-      result?.meanings[0]?.definitions[0]?.examples[0]?.localizedText,
-      '一天一个苹果，医生远离我。'
-    )
-    assert.equal(result?.meta.source, 'dictionary_plus_ai')
+    assert.equal(result?.meanings[0]?.definitions[0]?.examples[0]?.localizedText, 'An apple a day.')
+    assert.equal(result?.meta.source, 'dictionary')
     assert.equal(cachedKey, `${DICTIONARY.CACHE_PREFIX}apple`)
     assert.equal(cachedTtl, DICTIONARY.DEFAULT_TTL_DAYS * 24 * 60 * 60)
     assert.isString(cachedValue)
   })
 
-  test('uses AI fallback when dictionary upstream returns empty data', async ({ assert }) => {
-    const fallbackEntry = buildAiDictionaryEntry({
-      word: 'banana',
-      phonetic: '/bəˈnæn.ə/',
-      meta: {
-        source: 'ai_fallback',
-        localizationLanguage: 'zh-CN',
-      },
-      meanings: [
-        {
-          partOfSpeech: 'noun',
-          localizedMeaning: '香蕉',
-          plainExplanation: '就是香蕉。',
-          definitions: [
-            {
-              sourceText: 'A yellow fruit',
-              localizedText: '黄色水果',
-              plainExplanation: '黄黄的，能吃。',
-              examples: [
-                {
-                  sourceText: 'Bananas are yellow.',
-                  localizedText: '香蕉是黄色的。',
-                  source: 'ai',
-                },
-              ],
-            },
-          ],
-        },
-      ],
-    })
-
+  test('throws unified query failure when dictionary upstream returns empty data', async ({
+    assert,
+  }) => {
     const service = createDictionaryService() as any
     service.resolveLookupSettings = async (options: {
       userId?: number
@@ -368,39 +318,22 @@ test.group('DictionaryService.lookupWithAi', (group) => {
     }
     service.getCachedEntry = async () => null
     service.fetchUpstreamEntry = async () => null
-    service.fallbackWithAiCore = async (params: {
-      word: string
-      localizationLanguage: string
-      chapterContext: null
-      aiConfig: Record<string, unknown>
-    }) => {
-      assert.equal(params.word, 'banana')
-      assert.equal(params.localizationLanguage, 'zh-CN')
-      return fallbackEntry
+
+    try {
+      await service.lookup('banana', {
+        userId: 9,
+        bookId: 11,
+        chapterIndex: 2,
+      })
+      assert.fail('Expected lookup to throw')
+    } catch (error) {
+      assert.instanceOf(error, Exception)
+      assert.equal((error as Exception).status, 503)
+      assert.equal((error as Exception).message, '查询失败，请稍后重试')
     }
-    service.setCachedEntry = async () => {}
-
-    const result = await service.lookupWithAi('banana', {
-      userId: 9,
-      bookId: 11,
-      chapterIndex: 2,
-    })
-
-    assert.equal(result?.word, 'banana')
-    assert.equal(result?.meta.source, 'ai_fallback')
-    assert.equal(result?.meanings[0]?.localizedMeaning, '香蕉')
-    assert.equal(result?.meanings[0]?.definitions[0]?.examples[0]?.source, 'ai')
   })
 
-  test('uses AI fallback when dictionary upstream throws', async ({ assert }) => {
-    const fallbackEntry = buildAiDictionaryEntry({
-      word: 'orange',
-      meta: {
-        source: 'ai_fallback',
-        localizationLanguage: 'zh-CN',
-      },
-    })
-
+  test('throws unified query failure when dictionary upstream throws', async ({ assert }) => {
     const service = createDictionaryService() as any
     service.resolveLookupSettings = async (options: {
       userId?: number
@@ -419,44 +352,12 @@ test.group('DictionaryService.lookupWithAi', (group) => {
     service.fetchUpstreamEntry = async () => {
       throw new Error('fatectionary unavailable')
     }
-    service.fallbackWithAiCore = async (params: {
-      word: string
-      localizationLanguage: string
-      chapterContext: null
-      aiConfig: Record<string, unknown>
-    }) => {
-      assert.equal(params.word, 'orange')
-      assert.equal(params.localizationLanguage, 'zh-CN')
-      return fallbackEntry
-    }
-    service.setCachedEntry = async () => {}
-
-    const result = await service.lookupWithAi('orange', {
-      userId: 15,
-    })
-
-    assert.equal(result?.word, 'orange')
-    assert.equal(result?.meta.source, 'ai_fallback')
-  })
-
-  test('throws unified query failure when dictionary and AI both fail', async ({ assert }) => {
-    const service = createDictionaryService() as any
-    service.resolveLookupSettings = async () => ({
-      localizationLanguage: 'zh-CN',
-      aiConfig: {},
-    })
-    service.loadChapterContext = async () => null
-    service.getCachedEntry = async () => null
-    service.fetchUpstreamEntry = async () => null
-    service.fallbackWithAiCore = async () => {
-      throw new Error('AI failed')
-    }
 
     try {
-      await service.lookupWithAi('grape', {
-        userId: 22,
+      await service.lookup('orange', {
+        userId: 15,
       })
-      assert.fail('Expected lookupWithAi to throw')
+      assert.fail('Expected lookup to throw')
     } catch (error) {
       assert.instanceOf(error, Exception)
       assert.equal((error as Exception).status, 503)

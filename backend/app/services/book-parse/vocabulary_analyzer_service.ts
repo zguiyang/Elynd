@@ -28,7 +28,6 @@ export interface VocabularyCandidate {
 }
 
 export interface VocabularyWithMeaning extends VocabularyCandidate {
-  meaning: string
   sentence: string
 }
 
@@ -118,7 +117,7 @@ export class VocabularyAnalyzerService {
     for (const item of items) {
       const current = existingMap.get(item.lemma)
 
-      if (current && current.meaning && current.sentence) {
+      if (current && current.sentence) {
         continue
       }
 
@@ -128,7 +127,6 @@ export class VocabularyAnalyzerService {
             word: item.word,
             lemma: item.lemma,
             frequency: item.frequency,
-            meaning: item.meaning || current.meaning,
             sentence: item.sentence || current.sentence,
           })
           .save()
@@ -140,9 +138,8 @@ export class VocabularyAnalyzerService {
         word: item.word,
         lemma: item.lemma,
         frequency: item.frequency,
-        meaning: item.meaning,
         sentence: item.sentence,
-        phonetic: null,
+        dictionaryEntryId: null,
       })
     }
   }

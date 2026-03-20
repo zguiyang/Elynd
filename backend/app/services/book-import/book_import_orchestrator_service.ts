@@ -424,7 +424,6 @@ export class BookImportOrchestratorService {
       book.id,
       vocabulary.map((item) => ({
         ...item,
-        meaning: '',
         sentence: '',
       }))
     )

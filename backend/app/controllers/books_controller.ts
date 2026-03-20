@@ -114,7 +114,7 @@ export default class BooksController {
 
     const vocabularies = await this.bookService.getVocabularyByBookId(bookId)
 
-    return vocabularies.map((v) => v.serialize())
+    return vocabularies
   }
 
   async tags({}: HttpContext) {

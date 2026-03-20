@@ -154,38 +154,42 @@ export interface BookListParams {
 export interface VocabularyItem {
   id: number
   bookId: number
+  dictionaryEntryId: number | null
   word: string
   lemma: string
   frequency: number
-  meaning: string
   sentence: string
+  sourceLanguage: string | null
+  localizationLanguage: string | null
   phonetic: string | null
-  phoneticText: string | null
-  phoneticAudio: string | null
-  details: {
-    sourceLanguage: string
-    localizationLanguage: string
-    articleExamples: Array<{
+  phonetics: Array<{
+    text: string
+    audio?: string
+  }>
+  meanings: Array<{
+    partOfSpeech: string
+    sourceMeaning: string
+    localizedMeaning: string
+    plainExplanation: string
+    definitions: Array<{
       sourceText: string
       localizedText: string
-      source: 'article' | 'ai'
-    }>
-    meanings: Array<{
-      partOfSpeech: string
-      sourceMeaning: string
-      localizedMeaning: string
       plainExplanation: string
-      definitions: Array<{
+      examples: Array<{
         sourceText: string
         localizedText: string
-        plainExplanation: string
-        examples: Array<{
-          sourceText: string
-          localizedText: string
-          source: 'dictionary' | 'article' | 'ai'
-        }>
+        source: 'dictionary' | 'article' | 'ai'
       }>
     }>
+  }>
+  articleExamples: Array<{
+    sourceText: string
+    localizedText: string
+    source: 'article' | 'ai'
+  }>
+  meta: {
+    source: 'dictionary'
+    localizationLanguage: string
   } | null
 }
 

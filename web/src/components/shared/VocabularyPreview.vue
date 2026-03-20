@@ -30,11 +30,19 @@ const playAudio = (audioUrl: string | null) => {
 }
 
 const hasDetails = (item: VocabularyItem) => {
-  return item.details?.meanings && item.details.meanings.length > 0
+  return item.meanings.length > 0
 }
 
 const getPhoneticText = (item: VocabularyItem) => {
-  return item.phoneticText || item.phonetic || null
+  return item.phonetic || item.phonetics[0]?.text || null
+}
+
+const getAudioUrl = (item: VocabularyItem) => {
+  return item.phonetics.find((phonetic) => phonetic.audio)?.audio || null
+}
+
+const getPrimaryMeaning = (item: VocabularyItem) => {
+  return item.meanings[0]?.localizedMeaning || '-'
 }
 </script>
 
@@ -65,11 +73,11 @@ const getPhoneticText = (item: VocabularyItem) => {
           </div>
           <div class="flex items-center gap-2">
             <Button
-              v-if="item.phoneticAudio"
+              v-if="getAudioUrl(item)"
               variant="ghost"
               size="icon"
               class="size-7"
-              @click.stop="playAudio(item.phoneticAudio)"
+              @click.stop="playAudio(getAudioUrl(item))"
             >
               <Volume2 class="size-4" />
             </Button>
@@ -79,10 +87,10 @@ const getPhoneticText = (item: VocabularyItem) => {
         </button>
         
         <div v-if="isExpanded(item.id)" class="px-3 pb-3 border-t bg-muted/30">
-          <p class="text-sm font-medium mt-2">{{ item.meaning }}</p>
+          <p class="text-sm font-medium mt-2">{{ getPrimaryMeaning(item) }}</p>
           
           <template v-if="hasDetails(item)">
-            <div v-for="(meaning, mIndex) in item.details!.meanings" :key="mIndex" class="mt-3">
+            <div v-for="(meaning, mIndex) in item.meanings" :key="mIndex" class="mt-3">
               <p class="text-xs font-semibold text-primary">{{ meaning.partOfSpeech }}</p>
               <ul class="mt-1 space-y-1">
                 <li v-for="(def, dIndex) in meaning.definitions" :key="dIndex" class="text-sm">

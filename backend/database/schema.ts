@@ -306,14 +306,10 @@ export class BookVocabularySchema extends BaseModel {
   static $columns = [
     'bookId',
     'createdAt',
-    'details',
+    'dictionaryEntryId',
     'frequency',
     'id',
     'lemma',
-    'meaning',
-    'phonetic',
-    'phoneticAudio',
-    'phoneticText',
     'sentence',
     'updatedAt',
     'word',
@@ -324,21 +320,13 @@ export class BookVocabularySchema extends BaseModel {
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column()
-  declare details: any | null
+  declare dictionaryEntryId: bigint | number | null
   @column()
   declare frequency: number
   @column({ isPrimary: true })
   declare id: number
   @column()
   declare lemma: string
-  @column()
-  declare meaning: string
-  @column()
-  declare phonetic: string | null
-  @column()
-  declare phoneticAudio: string | null
-  @column()
-  declare phoneticText: string | null
   @column()
   declare sentence: string
   @column.dateTime({ autoCreate: true, autoUpdate: true })
@@ -495,6 +483,45 @@ export class ChapterTranslationSchema extends BaseModel {
   declare targetLanguage: string
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
+}
+
+export class DictionaryEntrySchema extends BaseModel {
+  static $columns = [
+    'articleExamples',
+    'createdAt',
+    'id',
+    'localizationLanguage',
+    'meanings',
+    'metaSource',
+    'phonetic',
+    'phonetics',
+    'sourceLanguage',
+    'updatedAt',
+    'word',
+  ] as const
+  $columns = DictionaryEntrySchema.$columns
+  @column()
+  declare articleExamples: any
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column({ isPrimary: true })
+  declare id: bigint | number
+  @column()
+  declare localizationLanguage: string
+  @column()
+  declare meanings: any
+  @column()
+  declare metaSource: string
+  @column()
+  declare phonetic: string | null
+  @column()
+  declare phonetics: any
+  @column()
+  declare sourceLanguage: string
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare word: string
 }
 
 export class LearningRecordSchema extends BaseModel {

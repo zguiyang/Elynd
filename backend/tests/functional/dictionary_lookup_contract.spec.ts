@@ -26,7 +26,7 @@ interface AiDictionaryEntry {
     }>
   }>
   meta: {
-    source: 'dictionary_plus_ai' | 'ai_fallback'
+    source: 'dictionary'
     localizationLanguage: string
   }
 }
@@ -57,7 +57,7 @@ const buildAiDictionaryEntry = (overrides: Partial<AiDictionaryEntry> = {}): AiD
     },
   ],
   meta: {
-    source: 'dictionary_plus_ai',
+    source: 'dictionary',
     localizationLanguage: 'zh-CN',
   },
   ...overrides,
@@ -83,7 +83,7 @@ test.group('Dictionary API contract', () => {
       return buildAiDictionaryEntry({
         word: 'apple',
         meta: {
-          source: 'dictionary_plus_ai',
+          source: 'dictionary',
           localizationLanguage: 'zh-CN',
         },
       })
@@ -107,7 +107,7 @@ test.group('Dictionary API contract', () => {
       response.body().meanings[0].definitions[0].examples[0].localizedText,
       '一天一个苹果，医生远离我。'
     )
-    assert.equal(response.body().meta.source, 'dictionary_plus_ai')
+    assert.equal(response.body().meta.source, 'dictionary')
     assert.deepEqual(capturedParams, {
       word: 'apple',
       userId: user.id,
@@ -116,7 +116,7 @@ test.group('Dictionary API contract', () => {
     })
   })
 
-  test('GET /api/dictionary/:word returns AI fallback entry when dictionary is empty', async ({
+  test('GET /api/dictionary/:word returns unified failure message when upstream lookup misses', async ({
     assert,
     client,
     cleanup,
@@ -127,36 +127,8 @@ test.group('Dictionary API contract', () => {
     })
     const originalLookup = (DictionaryService.prototype as any).lookup
 
-    ;(DictionaryService.prototype as any).lookup = async function fakeLookupWithAi() {
-      return buildAiDictionaryEntry({
-        word: 'banana',
-        phonetic: '/bəˈnæn.ə/',
-        meta: {
-          source: 'ai_fallback',
-          localizationLanguage: 'zh-CN',
-        },
-        meanings: [
-          {
-            partOfSpeech: 'noun',
-            localizedMeaning: '香蕉',
-            plainExplanation: '就是香蕉。',
-            definitions: [
-              {
-                sourceText: 'A yellow fruit',
-                localizedText: '黄色水果',
-                plainExplanation: '黄黄的，能吃。',
-                examples: [
-                  {
-                    sourceText: 'Bananas are yellow.',
-                    localizedText: '香蕉是黄色的。',
-                    source: 'ai',
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      })
+    ;(DictionaryService.prototype as any).lookup = async function fakeLookupFailure() {
+      throw new Exception('查询失败，请稍后重试', { status: 503 })
     }
 
     cleanup(async () => {
@@ -168,11 +140,8 @@ test.group('Dictionary API contract', () => {
       .get('/api/dictionary/banana?bookId=12&chapterIndex=3')
       .header('Authorization', bearerAuthHeader(token))
 
-    response.assertStatus(200)
-    assert.equal(response.body().word, 'banana')
-    assert.equal(response.body().meta.source, 'ai_fallback')
-    assert.equal(response.body().meanings[0].localizedMeaning, '香蕉')
-    assert.equal(response.body().meanings[0].definitions[0].examples[0].source, 'ai')
+    response.assertStatus(503)
+    assert.equal(response.body().message, '查询失败，请稍后重试')
   })
 
   test('GET /api/dictionary/:word validates word format, length, and context query', async ({

@@ -22,8 +22,12 @@ const playAudio = (audioUrl: string | null, event: Event) => {
   audio.play().catch(console.error)
 }
 
+const getAudioUrl = (item: VocabularyItem) => {
+  return item.phonetics.find((phonetic) => phonetic.audio)?.audio || null
+}
+
 const getPhoneticText = (item: VocabularyItem) => {
-  return item.phoneticText || item.phonetic || null
+  return item.phonetic || item.phonetics[0]?.text || null
 }
 
 const goBack = () => {
@@ -31,7 +35,11 @@ const goBack = () => {
 }
 
 const hasDetails = (item: VocabularyItem) => {
-  return item.details?.meanings && item.details.meanings.length > 0
+  return item.meanings.length > 0
+}
+
+const getPrimaryMeaning = (item: VocabularyItem) => {
+  return item.meanings[0]?.localizedMeaning || '-'
 }
 
 const loadData = async () => {
@@ -108,11 +116,11 @@ onMounted(() => {
                 </p>
               </div>
               <Button
-                v-if="item.phoneticAudio"
+                v-if="getAudioUrl(item)"
                 variant="ghost"
                 size="icon"
                 class="size-7 shrink-0"
-                @click="playAudio(item.phoneticAudio, $event)"
+                @click="playAudio(getAudioUrl(item), $event)"
               >
                 <Volume2 class="size-4" />
               </Button>
@@ -120,12 +128,12 @@ onMounted(() => {
           </CardHeader>
 
           <CardContent class="pt-0">
-            <p class="text-sm">{{ item.meaning }}</p>
+            <p class="text-sm">{{ getPrimaryMeaning(item) }}</p>
 
             <div v-if="hasDetails(item)" class="mt-2 space-y-2">
               <div class="flex flex-wrap gap-1">
                 <Badge
-                  v-for="meaning in item.details!.meanings"
+                  v-for="meaning in item.meanings"
                   :key="meaning.partOfSpeech"
                   variant="secondary"
                   class="text-xs"
@@ -134,7 +142,7 @@ onMounted(() => {
                 </Badge>
               </div>
 
-              <div v-for="meaning in item.details!.meanings" :key="meaning.partOfSpeech" class="space-y-1">
+              <div v-for="meaning in item.meanings" :key="meaning.partOfSpeech" class="space-y-1">
                 <div v-for="(def, defIndex) in meaning.definitions.slice(0, 2)" :key="defIndex" class="ml-1">
                   <p class="text-xs">
                     <span class="text-muted-foreground">{{ defIndex + 1 }}.</span>

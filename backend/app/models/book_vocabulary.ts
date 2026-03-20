@@ -2,6 +2,7 @@ import { DateTime } from 'luxon'
 import { BaseModel, column, belongsTo } from '@adonisjs/lucid/orm'
 import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 import Book from '#models/book'
+import DictionaryEntry from '#models/dictionary_entry'
 
 export default class BookVocabulary extends BaseModel {
   @column({ isPrimary: true })
@@ -20,22 +21,10 @@ export default class BookVocabulary extends BaseModel {
   declare frequency: number
 
   @column()
-  declare meaning: string
-
-  @column()
   declare sentence: string
 
   @column()
-  declare phonetic: string | null
-
-  @column()
-  declare phoneticText: string | null
-
-  @column()
-  declare phoneticAudio: string | null
-
-  @column()
-  declare details: Record<string, unknown> | null
+  declare dictionaryEntryId: number | null
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -45,4 +34,7 @@ export default class BookVocabulary extends BaseModel {
 
   @belongsTo(() => Book)
   declare book: BelongsTo<typeof Book>
+
+  @belongsTo(() => DictionaryEntry)
+  declare dictionaryEntry: BelongsTo<typeof DictionaryEntry>
 }

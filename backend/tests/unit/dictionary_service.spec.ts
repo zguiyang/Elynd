@@ -33,7 +33,7 @@ interface AiDictionaryEntry {
   }>
   meanings: AiDictionaryMeaning[]
   meta: {
-    source: 'dictionary' | 'dictionary_plus_ai' | 'ai_fallback'
+    source: 'dictionary'
     localizationLanguage: string
   }
 }
@@ -64,25 +64,18 @@ const buildAiDictionaryEntry = (overrides: Partial<AiDictionaryEntry> = {}): AiD
     },
   ],
   meta: {
-    source: 'dictionary_plus_ai',
+    source: 'dictionary',
     localizationLanguage: 'zh-CN',
   },
   ...overrides,
 })
 
 const createDictionaryService = () => {
-  const aiService = {} as never
-  const configService = {
-    getAiConfig: async () => ({}),
-  } as never
-  const promptService = {
-    render: () => 'dictionary output contract',
-  } as never
   const userConfigService = {
     getConfigByUserId: async () => ({ nativeLanguage: 'zh-CN' }),
   } as never
 
-  return new DictionaryService(aiService, configService, promptService, userConfigService)
+  return new DictionaryService(userConfigService)
 }
 
 test.group('DictionaryService.getExpiringKeys', (group) => {
@@ -186,7 +179,7 @@ test.group('DictionaryService.lookup', (group) => {
         },
       ],
       meta: {
-        source: 'dictionary_plus_ai',
+        source: 'dictionary',
         localizationLanguage: 'zh-CN',
       },
     })
@@ -198,7 +191,7 @@ test.group('DictionaryService.lookup', (group) => {
       localizationLanguage: 'zh-CN',
       aiConfig: {},
     })
-    service.loadChapterContext = async () => null
+    service.findDictionaryEntryRecord = async () => null
     service.getCachedEntry = async () => cachedEntry
     service.fetchUpstreamEntry = async () => {
       fetchCalled = true
@@ -235,22 +228,17 @@ test.group('DictionaryService.lookup', (group) => {
       chapterIndex?: number | null
     }) => {
       assert.equal(options.userId, 42)
-      assert.equal(options.bookId, 7)
-      assert.equal(options.chapterIndex, 3)
       return {
         localizationLanguage: 'zh-CN',
         aiConfig: {},
       }
     }
-    service.loadChapterContext = async (options: {
-      userId?: number
-      localizationLanguage?: string | null
-      bookId?: number | null
-      chapterIndex?: number | null
+    service.findDictionaryEntryRecord = async (options: {
+      word: string
+      localizationLanguage: string
     }) => {
-      assert.equal(options.userId, 42)
-      assert.equal(options.bookId, 7)
-      assert.equal(options.chapterIndex, 3)
+      assert.equal(options.word, 'apple')
+      assert.equal(options.localizationLanguage, 'zh-CN')
       return null
     }
     service.getCachedEntry = async () => null
@@ -258,12 +246,13 @@ test.group('DictionaryService.lookup', (group) => {
       assert.equal(word, 'apple')
       return baseEntry
     }
+    service.saveGlobalEntry = async () => ({ id: 1 })
     service.setCachedEntry = async (
       word: string,
       entry: AiDictionaryEntry,
       localizationLanguage: string
     ) => {
-      cachedKey = `${DICTIONARY.CACHE_PREFIX}${word}`
+      cachedKey = `${DICTIONARY.CACHE_PREFIX}${localizationLanguage}:${word}`
       cachedTtl = DICTIONARY.DEFAULT_TTL_DAYS * 24 * 60 * 60
       cachedValue = JSON.stringify({
         localizationLanguage,
@@ -282,9 +271,78 @@ test.group('DictionaryService.lookup', (group) => {
     assert.equal(result?.meanings[0]?.definitions[0]?.sourceText, 'A fruit')
     assert.equal(result?.meanings[0]?.definitions[0]?.examples[0]?.localizedText, 'An apple a day.')
     assert.equal(result?.meta.source, 'dictionary')
-    assert.equal(cachedKey, `${DICTIONARY.CACHE_PREFIX}apple`)
+    assert.equal(cachedKey, `${DICTIONARY.CACHE_PREFIX}zh-CN:apple`)
     assert.equal(cachedTtl, DICTIONARY.DEFAULT_TTL_DAYS * 24 * 60 * 60)
     assert.isString(cachedValue)
+  })
+
+  test('returns database entry and refreshes cache when redis misses', async ({ assert }) => {
+    let fetchCalled = false
+    let cacheWriteCount = 0
+    const entry = buildAiDictionaryEntry({
+      word: 'apple',
+      meta: {
+        source: 'dictionary',
+        localizationLanguage: 'zh-CN',
+      },
+    })
+    const service = createDictionaryService() as any
+
+    service.resolveLookupSettings = async () => ({
+      localizationLanguage: 'zh-CN',
+    })
+    service.getCachedEntry = async () => null
+    service.findDictionaryEntryRecord = async () => ({
+      id: 1,
+      word: 'apple',
+      sourceLanguage: 'en',
+      localizationLanguage: 'zh-CN',
+      phonetic: '/ˈæp.əl/',
+      phonetics: entry.phonetics,
+      meanings: entry.meanings,
+      articleExamples: [],
+      metaSource: 'dictionary',
+    })
+    service.fetchUpstreamEntry = async () => {
+      fetchCalled = true
+      return null
+    }
+    service.toDictionaryEntry = (record: {
+      word: string
+      sourceLanguage: string
+      localizationLanguage: string
+      phonetic: string | null
+      phonetics: Array<{ text?: string; audio?: string }>
+      meanings: AiDictionaryEntry['meanings']
+      articleExamples: Array<{
+        sourceText: string
+        localizedText: string
+        source: 'article' | 'ai'
+      }>
+      metaSource: 'dictionary'
+    }) => ({
+      word: record.word,
+      sourceLanguage: record.sourceLanguage,
+      localizationLanguage: record.localizationLanguage,
+      phonetic: record.phonetic,
+      phonetics: record.phonetics,
+      meanings: record.meanings,
+      articleExamples: record.articleExamples,
+      meta: {
+        source: record.metaSource,
+        localizationLanguage: record.localizationLanguage,
+      },
+    })
+    service.setCachedEntry = async () => {
+      cacheWriteCount++
+    }
+
+    const result = await service.lookup('apple', { userId: 1 })
+
+    assert.equal(result.word, 'apple')
+    assert.equal(result.meta.source, 'dictionary')
+    assert.equal(cacheWriteCount, 1)
+    assert.isFalse(fetchCalled)
   })
 
   test('throws unified query failure when dictionary upstream returns empty data', async ({
@@ -298,24 +356,12 @@ test.group('DictionaryService.lookup', (group) => {
       chapterIndex?: number | null
     }) => {
       assert.equal(options.userId, 9)
-      assert.equal(options.bookId, 11)
-      assert.equal(options.chapterIndex, 2)
       return {
         localizationLanguage: 'zh-CN',
         aiConfig: {},
       }
     }
-    service.loadChapterContext = async (options: {
-      userId?: number
-      localizationLanguage?: string | null
-      bookId?: number | null
-      chapterIndex?: number | null
-    }) => {
-      assert.equal(options.userId, 9)
-      assert.equal(options.bookId, 11)
-      assert.equal(options.chapterIndex, 2)
-      return null
-    }
+    service.findDictionaryEntryRecord = async () => null
     service.getCachedEntry = async () => null
     service.fetchUpstreamEntry = async () => null
 
@@ -347,7 +393,7 @@ test.group('DictionaryService.lookup', (group) => {
         aiConfig: {},
       }
     }
-    service.loadChapterContext = async () => null
+    service.findDictionaryEntryRecord = async () => null
     service.getCachedEntry = async () => null
     service.fetchUpstreamEntry = async () => {
       throw new Error('fatectionary unavailable')

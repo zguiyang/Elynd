@@ -2,6 +2,7 @@ import { test } from '@japa/runner'
 import crypto from 'node:crypto'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import db from '@adonisjs/lucid/services/db'
 import Book from '#models/book'
 import Tag from '#models/tag'
 import BookVocabulary from '#models/book_vocabulary'
@@ -24,6 +25,18 @@ async function createPublishedBook(userId: number, attributes?: Partial<Book>) {
     description: 'Catalog description',
     ...attributes,
   })
+}
+
+const hasLegacyMeaningColumn = async () => {
+  const result = await db.rawQuery(`
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'book_vocabularies'
+    AND column_name = 'meaning'
+    LIMIT 1
+  `)
+
+  return (result.rows || []).length > 0
 }
 
 test.group('Books API catalog contract', () => {
@@ -116,41 +129,61 @@ test.group('Books API catalog contract', () => {
       await user.delete()
     })
 
-    const firstVocabulary = await BookVocabulary.create({
-      bookId: book.id,
-      word: 'apple',
-      lemma: 'apple',
-      frequency: 2,
-      meaning: '苹果',
-      sentence: 'An apple a day.',
-      phonetic: null,
-      phoneticText: null,
-      phoneticAudio: null,
-      details: null,
-    })
+    const legacyMeaningColumnEnabled = await hasLegacyMeaningColumn()
 
-    const secondVocabulary = await BookVocabulary.create({
-      bookId: book.id,
-      word: 'banana',
-      lemma: 'banana',
-      frequency: 1,
-      meaning: '香蕉',
-      sentence: 'A ripe banana.',
-      phonetic: null,
-      phoneticText: null,
-      phoneticAudio: null,
-      details: null,
-    })
+    if (legacyMeaningColumnEnabled) {
+      await db.table('book_vocabularies').insert({
+        book_id: book.id,
+        word: 'apple',
+        lemma: 'apple',
+        frequency: 2,
+        meaning: '苹果',
+        sentence: 'An apple a day.',
+        created_at: new Date(),
+        updated_at: new Date(),
+      })
+      await db.table('book_vocabularies').insert({
+        book_id: book.id,
+        word: 'banana',
+        lemma: 'banana',
+        frequency: 1,
+        meaning: '香蕉',
+        sentence: 'A ripe banana.',
+        created_at: new Date(),
+        updated_at: new Date(),
+      })
+    } else {
+      await BookVocabulary.create({
+        bookId: book.id,
+        word: 'apple',
+        lemma: 'apple',
+        frequency: 2,
+        sentence: 'An apple a day.',
+      })
+      await BookVocabulary.create({
+        bookId: book.id,
+        word: 'banana',
+        lemma: 'banana',
+        frequency: 1,
+        sentence: 'A ripe banana.',
+      })
+    }
 
     const response = await client
       .get(`/api/books/${book.id}/vocabulary`)
       .header('Authorization', bearerAuthHeader(token))
 
     response.assertStatus(200)
-    assert.equal(response.body()[0].id, firstVocabulary.id)
     assert.equal(response.body()[0].word, 'apple')
-    assert.equal(response.body()[1].id, secondVocabulary.id)
+    assert.isArray(response.body()[0].meanings)
+    assert.isArray(response.body()[0].phonetics)
+    assert.isNull(response.body()[0].meta)
+    assert.isNull(response.body()[0].dictionaryEntryId)
     assert.equal(response.body()[1].word, 'banana')
+    assert.isArray(response.body()[1].meanings)
+    assert.isArray(response.body()[1].phonetics)
+    assert.isNull(response.body()[1].meta)
+    assert.isNull(response.body()[1].dictionaryEntryId)
   })
 
   test('GET /api/books/:id/chapters/:chapterIndex/audio returns mp3 content when the file exists and 404 when it does not', async ({

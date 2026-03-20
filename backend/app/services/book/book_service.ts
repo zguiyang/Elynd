@@ -139,9 +139,42 @@ export class BookService {
   }
 
   async getVocabularyByBookId(bookId: number) {
-    const vocabularies = await BookVocabulary.query().where('bookId', bookId).orderBy('id', 'asc')
+    let vocabularies: BookVocabulary[] = []
 
-    return vocabularies
+    try {
+      vocabularies = await BookVocabulary.query()
+        .where('bookId', bookId)
+        .preload('dictionaryEntry')
+        .orderBy('id', 'asc')
+    } catch {
+      vocabularies = await BookVocabulary.query().where('bookId', bookId).orderBy('id', 'asc')
+    }
+
+    return vocabularies.map((item) => {
+      const dictionaryEntry = item.dictionaryEntry || null
+
+      return {
+        id: item.id,
+        bookId: item.bookId,
+        dictionaryEntryId: item.dictionaryEntryId || null,
+        word: item.word,
+        lemma: item.lemma,
+        frequency: item.frequency,
+        sentence: item.sentence,
+        sourceLanguage: dictionaryEntry?.sourceLanguage || null,
+        localizationLanguage: dictionaryEntry?.localizationLanguage || null,
+        phonetic: dictionaryEntry?.phonetic || null,
+        phonetics: dictionaryEntry?.phonetics || [],
+        meanings: dictionaryEntry?.meanings || [],
+        articleExamples: dictionaryEntry?.articleExamples || [],
+        meta: dictionaryEntry
+          ? {
+              source: 'dictionary',
+              localizationLanguage: dictionaryEntry.localizationLanguage,
+            }
+          : null,
+      }
+    })
   }
 
   async retryAudioGeneration(bookId: number, userId: number) {

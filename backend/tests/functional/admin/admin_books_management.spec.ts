@@ -333,7 +333,6 @@ test.group('Admin Books Management API', () => {
         word: 'hello',
         lemma: 'hello',
         frequency: 100,
-        meaning: 'greeting',
         sentence: 'Hello world',
       },
       {
@@ -341,7 +340,6 @@ test.group('Admin Books Management API', () => {
         word: 'world',
         lemma: 'world',
         frequency: 90,
-        meaning: 'earth',
         sentence: 'Hello world',
       },
       {
@@ -349,7 +347,6 @@ test.group('Admin Books Management API', () => {
         word: 'test',
         lemma: 'test',
         frequency: 80,
-        meaning: 'examination',
         sentence: 'Take a test',
       },
     ])
@@ -411,7 +408,6 @@ test.group('Admin Books Management API', () => {
         word: 'apple',
         lemma: 'apple',
         frequency: 100,
-        meaning: 'fruit',
         sentence: 'I eat an apple',
       },
       {
@@ -419,7 +415,6 @@ test.group('Admin Books Management API', () => {
         word: 'banana',
         lemma: 'banana',
         frequency: 90,
-        meaning: 'fruit',
         sentence: 'I eat a banana',
       },
       {
@@ -427,7 +422,6 @@ test.group('Admin Books Management API', () => {
         word: 'orange',
         lemma: 'orange',
         frequency: 80,
-        meaning: 'fruit',
         sentence: 'I eat an orange',
       },
       {
@@ -435,7 +429,6 @@ test.group('Admin Books Management API', () => {
         word: 'grape',
         lemma: 'grape',
         frequency: 70,
-        meaning: 'fruit',
         sentence: 'I eat a grape',
       },
     ])
@@ -498,7 +491,6 @@ test.group('Admin Books Management API', () => {
         word: 'hello',
         lemma: 'hello',
         frequency: 100,
-        meaning: 'greeting',
         sentence: 'Hello world',
       },
       {
@@ -506,7 +498,6 @@ test.group('Admin Books Management API', () => {
         word: 'world',
         lemma: 'world',
         frequency: 90,
-        meaning: 'earth',
         sentence: 'Hello world',
       },
     ])
@@ -1006,7 +997,6 @@ test.group('Admin Books Management API', () => {
       word: 'legacy',
       lemma: 'legacy',
       frequency: 1,
-      meaning: 'old',
       sentence: 'old sentence',
     })
     await BookChapterAudio.create({

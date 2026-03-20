@@ -12,32 +12,43 @@ describe('dictionary api', () => {
     vi.clearAllMocks()
   })
 
-  it('calls dictionary endpoint with encoded word', async () => {
+  it('calls dictionary endpoint with encoded word and lookup context', async () => {
     vi.mocked(request).mockResolvedValue({
       word: 'can\'t',
       phonetics: [],
       meanings: [],
-    })
+      meta: {
+        source: 'dictionary_plus_ai',
+        localizationLanguage: 'zh-CN',
+      },
+    } as never)
 
-    await lookupWord('can\'t')
+    await lookupWord('can\'t', {
+      bookId: 88,
+      chapterIndex: 4,
+    } as never)
 
     expect(request).toHaveBeenCalledWith({
       method: 'GET',
       url: '/api/dictionary/can\'t',
+      params: {
+        bookId: 88,
+        chapterIndex: 4,
+      },
     })
   })
 
-  it('maps 404 to not-found error message', async () => {
-    vi.mocked(request).mockRejectedValue({ status: 404, message: 'not found' })
+  it('maps 503 to unified query failure message', async () => {
+    vi.mocked(request).mockRejectedValue({ status: 503, message: '' })
 
     await expect(lookupWord('missing')).rejects.toEqual({
-      status: 404,
-      message: '未找到该单词',
+      status: 503,
+      message: '查询失败，请稍后重试',
     })
   })
 
   it('maps 429 to rate-limit error message', async () => {
-    vi.mocked(request).mockRejectedValue({ status: 429, message: 'too many requests' })
+    vi.mocked(request).mockRejectedValue({ status: 429, message: '' })
 
     await expect(lookupWord('hello')).rejects.toEqual({
       status: 429,

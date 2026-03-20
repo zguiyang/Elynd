@@ -503,6 +503,8 @@ onUnmounted(() => {
           :paragraphs="paragraphs"
           :chapter-title="props.chapter?.title"
           :markdown-content="markdownContent"
+          :book-id="bookId"
+          :chapter-index="props.currentChapterIndex"
           @selection-action="handleReaderSelectionAction"
         />
       </div>

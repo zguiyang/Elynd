@@ -10,6 +10,8 @@ export const dictionaryLookupValidator = vine.compile(
       .minLength(1)
       .maxLength(DICTIONARY.WORD_MAX_LENGTH)
       .regex(/^[a-zA-Z][a-zA-Z'-]*$/),
+    bookId: vine.number().positive().optional(),
+    chapterIndex: vine.number().min(0).optional(),
   })
 )
 

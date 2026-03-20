@@ -4,12 +4,26 @@ import logger from '@adonisjs/core/services/logger'
 import crypto from 'node:crypto'
 import { BOOK_IMPORT_STEP } from '#constants'
 import { DictionaryService } from '#services/shared/dictionary_service'
+import type { DictionaryEntry } from '#services/shared/dictionary_service'
 import { VocabularyAnalyzerService } from '#services/book-parse/vocabulary_analyzer_service'
 import Book from '#models/book'
 import BookVocabulary from '#models/book_vocabulary'
 import BookChapter from '#models/book_chapter'
 import BookProcessingStepLog from '#models/book_processing_step_log'
 import { BookProcessingLogService } from '#services/book-import/book_processing_log_service'
+
+const buildVocabularyUpdate = (entry: DictionaryEntry) => {
+  const phoneticAudio = entry.phonetics.find((item) => item.audio)?.audio || null
+  const phoneticText = entry.phonetic || entry.phonetics[0]?.text || null
+
+  return {
+    phoneticText,
+    phoneticAudio,
+    details: {
+      ...entry,
+    },
+  }
+}
 
 interface GenerateVocabularyPayload {
   bookId: number
@@ -24,7 +38,7 @@ export default class GenerateBookVocabularyJob extends Job {
     const { bookId } = payload
     const logService = await app.container.make(BookProcessingLogService)
 
-    logger.info({ bookId }, 'Starting vocabulary generation with dictionary-only pipeline')
+    logger.info({ bookId }, 'Starting vocabulary generation with AI-aware dictionary pipeline')
 
     const book = await Book.find(bookId)
     if (!book) {
@@ -98,18 +112,7 @@ export default class GenerateBookVocabularyJob extends Job {
 
         if (entry) {
           enrichedWords++
-          const audioUrl = entry.phonetics?.find((p) => p.audio)?.audio || null
-          const phoneticText = entry.phonetic || entry.phonetics?.[0]?.text || null
-
-          await vocabulary
-            .merge({
-              phoneticText,
-              phoneticAudio: audioUrl,
-              details: {
-                meanings: entry.meanings,
-              },
-            })
-            .save()
+          await vocabulary.merge(buildVocabularyUpdate(entry)).save()
         } else {
           missingEntries++
         }

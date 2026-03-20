@@ -1,12 +1,28 @@
 import { request } from '@/lib/request'
 
+export interface DictionaryLookupContext {
+  bookId?: number
+  chapterIndex?: number
+}
+
 export interface DictionaryDefinition {
-  definition: string
-  example?: string
+  sourceText: string
+  localizedText: string
+  plainExplanation: string
+  examples: DictionaryExample[]
+}
+
+export interface DictionaryExample {
+  sourceText: string
+  localizedText?: string | null
+  source: 'dictionary' | 'article' | 'ai'
 }
 
 export interface DictionaryMeaning {
   partOfSpeech: string
+  sourceMeaning: string
+  localizedMeaning: string
+  plainExplanation: string
   definitions: DictionaryDefinition[]
 }
 
@@ -17,9 +33,16 @@ export interface DictionaryPhonetic {
 
 export interface DictionaryEntry {
   word: string
-  phonetic?: string
+  sourceLanguage: string
+  localizationLanguage: string
+  phonetic?: string | null
   phonetics: DictionaryPhonetic[]
   meanings: DictionaryMeaning[]
+  articleExamples: DictionaryExample[]
+  meta?: {
+    source: 'dictionary_plus_ai' | 'ai_fallback'
+    localizationLanguage: string
+  } | null
 }
 
 export interface DictionaryLookupError {
@@ -36,29 +59,35 @@ const normalizeLookupError = (error: unknown): DictionaryLookupError => {
     ? String((error as { message?: unknown }).message || '')
     : ''
 
-  if (status === 404) {
-    return { status, message: '未找到该单词' }
-  }
-
   if (status === 429) {
-    return { status, message: '查词请求过于频繁，请稍后重试' }
+    return {
+      status,
+      message: message || '查词请求过于频繁，请稍后重试',
+    }
   }
 
   if (status && status >= 500) {
-    return { status, message: '词典服务暂时不可用，请稍后重试' }
+    return {
+      status,
+      message: message || '查询失败，请稍后重试',
+    }
   }
 
   return {
     status,
-    message: message || '查词失败，请稍后重试',
+    message: message || '查询失败，请稍后重试',
   }
 }
 
-export const lookupWord = async (word: string): Promise<DictionaryEntry> => {
+export const lookupWord = async (
+  word: string,
+  context?: DictionaryLookupContext
+): Promise<DictionaryEntry> => {
   try {
     return await request<DictionaryEntry>({
       method: 'GET',
       url: `/api/dictionary/${encodeURIComponent(word)}`,
+      params: context,
     })
   } catch (error) {
     throw normalizeLookupError(error)

@@ -1,0 +1,55 @@
+{{-- Dictionary Output Contract
+Purpose: shared JSON contract for dictionary enrichment and fallback flows.
+--}}
+
+You must return JSON only. No markdown. No prose outside the JSON payload.
+
+Shared schema:
+{
+  "word": "string",
+  "sourceLanguage": "string",
+  "localizationLanguage": "string",
+  "phonetic": "string | null",
+  "phonetics": [
+    {
+      "text": "string"
+    }
+  ],
+  "meanings": [
+    {
+      "partOfSpeech": "string",
+      "sourceMeaning": "string",
+      "localizedMeaning": "string",
+      "plainExplanation": "string",
+      "definitions": [
+        {
+          "sourceText": "string",
+          "localizedText": "string",
+          "plainExplanation": "string",
+          "examples": [
+            {
+              "sourceText": "string",
+              "localizedText": "string",
+              "source": "dictionary | article | ai"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "articleExamples": [
+    {
+      "sourceText": "string",
+      "localizedText": "string",
+      "source": "article | ai"
+    }
+  ]
+}
+
+Rules:
+- Keep field names language-neutral.
+- Preserve source-language content alongside localized content.
+- Use concise, learner-friendly explanations.
+- Return arrays even when empty.
+- If a value is unavailable, use an empty string for text fields.
+- Do not add extra wrapper fields or commentary.

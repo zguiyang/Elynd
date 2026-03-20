@@ -7,7 +7,15 @@ import {
   Search,
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
-import { lookupWord, type DictionaryEntry, type DictionaryLookupError } from '@/api/dictionary'
+import {
+  lookupWord
+  
+  
+  
+  
+  
+} from '@/api/dictionary'
+import type {DictionaryDefinition, DictionaryEntry, DictionaryExample, DictionaryLookupContext, DictionaryLookupError} from '@/api/dictionary';
 import { READER_SELECTION } from '@/constants'
 import { isSingleWordSelection, normalizeSelectionText } from '@/lib/selection-actions'
 import type { ReaderActionType, ReaderSelectionActionPayload } from '@/types/reader-selection'
@@ -18,11 +26,15 @@ interface Props {
   paragraphs: string[]
   chapterTitle?: string
   markdownContent?: string
+  bookId?: number
+  chapterIndex?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
   chapterTitle: undefined,
   markdownContent: '',
+  bookId: undefined,
+  chapterIndex: undefined,
 })
 
 const emit = defineEmits<{
@@ -54,6 +66,20 @@ const contentStyle = computed(() => ({
 }))
 
 const normalizedSelection = computed(() => normalizeSelectionText(selectedText.value))
+
+const lookupContext = computed<DictionaryLookupContext | undefined>(() => {
+  const context: DictionaryLookupContext = {}
+
+  if (typeof props.bookId === 'number' && Number.isFinite(props.bookId)) {
+    context.bookId = props.bookId
+  }
+
+  if (typeof props.chapterIndex === 'number' && Number.isFinite(props.chapterIndex)) {
+    context.chapterIndex = props.chapterIndex
+  }
+
+  return Object.keys(context).length > 0 ? context : undefined
+})
 
 const isLookupEligible = computed(() => {
   return isSingleWordSelection(selectedText.value, currentSelectionRange.value)
@@ -136,6 +162,33 @@ const emitSelectionAction = (actionType: ReaderActionType) => {
   })
 }
 
+const getExampleSourceLabel = (source: DictionaryExample['source']) => {
+  const labelMap: Record<DictionaryExample['source'], string> = {
+    dictionary: '词典',
+    article: '文章',
+    ai: 'AI',
+  }
+
+  return labelMap[source]
+}
+
+const getMetaLabel = (source?: DictionaryEntry['meta'] | null) => {
+  if (!source) {
+    return ''
+  }
+
+  const labelMap: Record<NonNullable<DictionaryEntry['meta']>['source'], string> = {
+    dictionary_plus_ai: '词典增强',
+    ai_fallback: 'AI 兜底',
+  }
+
+  return labelMap[source.source]
+}
+
+const hasPlainExplanation = (definition: DictionaryDefinition) => {
+  return Boolean(definition.plainExplanation)
+}
+
 const handleLookup = async () => {
   if (!isLookupEligible.value) {
     toast.error('查词仅支持一个完整英文单词')
@@ -143,7 +196,7 @@ const handleLookup = async () => {
   }
 
   lookupState.value = { status: 'loading', result: null, errorMessage: null }
-  await lookupWord(normalizedSelection.value)
+  await lookupWord(normalizedSelection.value, lookupContext.value)
     .then((result) => {
       lookupState.value = {
         status: 'success',
@@ -343,24 +396,74 @@ onUnmounted(() => {
         data-test="reader-lookup-result"
         class="mt-2 rounded-md border bg-card/60 p-2 text-xs"
       >
-        <p class="font-semibold text-foreground">
-          {{ lookupState.result.word }}
-          <span v-if="lookupState.result.phonetic" class="ml-2 font-normal text-muted-foreground">
-            {{ lookupState.result.phonetic }}
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <p class="font-semibold text-foreground">
+              {{ lookupState.result.word }}
+            </p>
+            <p v-if="lookupState.result.phonetic" class="mt-0.5 font-normal text-muted-foreground">
+              {{ lookupState.result.phonetic }}
+            </p>
+          </div>
+          <span
+            v-if="lookupState.result.meta"
+            class="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"
+          >
+            {{ getMetaLabel(lookupState.result.meta) }}
           </span>
-        </p>
+        </div>
+
         <div
-          v-for="(meaning, meaningIndex) in lookupState.result.meanings.slice(0, 2)"
+          v-for="(meaning, meaningIndex) in lookupState.result.meanings.slice(0, 3)"
           :key="`${meaning.partOfSpeech}-${meaningIndex}`"
-          class="mt-1"
+          class="mt-2 rounded-md border border-border/60 bg-background/60 p-2"
         >
-          <p class="text-muted-foreground">{{ meaning.partOfSpeech }}</p>
-          <p class="text-foreground">
-            {{ meaning.definitions[0]?.definition || '暂无释义' }}
+          <p class="text-[11px] uppercase tracking-wide text-muted-foreground">
+            {{ meaning.partOfSpeech }}
           </p>
-          <p v-if="meaning.definitions[0]?.example" class="text-muted-foreground italic">
-            {{ meaning.definitions[0]?.example }}
+
+          <p v-if="meaning.localizedMeaning" class="mt-1 text-foreground/90 leading-5">
+            {{ meaning.localizedMeaning }}
           </p>
+
+          <div
+            v-for="(definition, definitionIndex) in meaning.definitions.slice(0, 2)"
+            :key="`${definition.sourceText}-${definitionIndex}`"
+            class="mt-1 space-y-1"
+          >
+            <p class="text-foreground leading-5">
+              {{ definition.sourceText }}
+            </p>
+            <p class="text-muted-foreground leading-5">
+              {{ definition.localizedText }}
+            </p>
+            <p v-if="hasPlainExplanation(definition)" class="text-foreground/90 leading-5">
+              {{ definition.plainExplanation }}
+            </p>
+
+            <div v-if="definition.examples.length > 0" class="mt-1 space-y-1">
+              <div
+                v-for="(example, exampleIndex) in definition.examples.slice(0, 2)"
+                :key="`${definitionIndex}-${exampleIndex}-${example.source}`"
+                class="rounded border border-dashed border-border/70 p-2"
+              >
+                <div class="flex items-center justify-between gap-2">
+                  <p class="text-[11px] text-muted-foreground">
+                    例句
+                  </p>
+                  <span class="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+                    {{ getExampleSourceLabel(example.source) }}
+                  </span>
+                </div>
+                <p class="mt-1 text-foreground leading-5">
+                  {{ example.sourceText }}
+                </p>
+                <p v-if="example.localizedText" class="mt-1 text-muted-foreground leading-5">
+                  {{ example.localizedText }}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -87,9 +87,12 @@ const getPhoneticText = (item: VocabularyItem) => {
               <ul class="mt-1 space-y-1">
                 <li v-for="(def, dIndex) in meaning.definitions" :key="dIndex" class="text-sm">
                   <span class="text-muted-foreground">{{ dIndex + 1 }}.</span>
-                  <span class="ml-1">{{ def.definition }}</span>
-                  <p v-if="def.example" class="text-xs text-muted-foreground italic ml-3 mt-0.5">
-                    "{{ def.example }}"
+                  <span class="ml-1">{{ def.sourceText }}</span>
+                  <p class="text-xs text-muted-foreground ml-3 mt-0.5">
+                    {{ def.localizedText }}
+                  </p>
+                  <p class="text-xs italic ml-3 mt-0.5">
+                    {{ def.plainExplanation }}
                   </p>
                 </li>
               </ul>

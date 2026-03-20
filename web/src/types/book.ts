@@ -163,11 +163,27 @@ export interface VocabularyItem {
   phoneticText: string | null
   phoneticAudio: string | null
   details: {
+    sourceLanguage: string
+    localizationLanguage: string
+    articleExamples: Array<{
+      sourceText: string
+      localizedText: string
+      source: 'article' | 'ai'
+    }>
     meanings: Array<{
       partOfSpeech: string
+      sourceMeaning: string
+      localizedMeaning: string
+      plainExplanation: string
       definitions: Array<{
-        definition: string
-        example?: string
+        sourceText: string
+        localizedText: string
+        plainExplanation: string
+        examples: Array<{
+          sourceText: string
+          localizedText: string
+          source: 'dictionary' | 'article' | 'ai'
+        }>
       }>
     }>
   } | null

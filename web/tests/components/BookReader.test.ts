@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { defineComponent, nextTick } from 'vue'
-import { mount } from '@vue/test-utils'
+import { defineComponent } from 'vue'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import BookReader from '@/components/shared/BookReader.vue'
 
@@ -63,7 +63,9 @@ const mountBookReader = () => {
     props: {
       paragraphs: ['hello world'],
       chapterTitle: 'Chapter 1',
-    },
+      bookId: 12,
+      chapterIndex: 4,
+    } as any,
     global: {
       stubs: {
         Button: ButtonStub,
@@ -140,6 +142,79 @@ describe('BookReader', () => {
 
     expect(toast.error).toHaveBeenCalled()
     expect(lookupWord).not.toHaveBeenCalled()
+  })
+
+  it('passes chapter context to lookupWord and renders enriched dictionary result', async () => {
+    const wrapper = mountBookReader()
+    const range = createRangeFromReader(wrapper)
+    mockSelection({ text: 'apple', range })
+
+    vi.mocked(lookupWord).mockResolvedValue({
+      word: 'apple',
+      phonetic: '/ˈæp.əl/',
+      phonetics: [{ text: '/ˈæp.əl/' }],
+      meanings: [
+        {
+          partOfSpeech: 'noun',
+          localizedMeaning: '苹果',
+          plainExplanation: '就是一种常见水果，日常生活里很常见。',
+          definitions: [
+            {
+              sourceText: 'A fruit',
+              localizedText: '一种水果',
+              plainExplanation: '能吃的水果。',
+              examples: [
+                {
+                  sourceText: 'An apple a day keeps the doctor away.',
+                  localizedText: '一天一个苹果，医生远离我。',
+                  source: 'dictionary',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      meta: {
+        source: 'dictionary_plus_ai',
+        localizationLanguage: 'zh-CN',
+      },
+    } as never)
+
+    document.dispatchEvent(new Event('selectionchange'))
+    await nextTick()
+    await wrapper.get('[data-test="reader-lookup-button"]').trigger('click')
+    await flushPromises()
+    await nextTick()
+
+    expect(lookupWord).toHaveBeenCalledWith('apple', {
+      bookId: 12,
+      chapterIndex: 4,
+    })
+    const result = wrapper.get('[data-test="reader-lookup-result"]')
+    expect(result.text()).toContain('apple')
+    expect(result.text()).toContain('苹果')
+    expect(result.text()).toContain('能吃的水果。')
+    expect(result.text()).toContain('一天一个苹果，医生远离我。')
+  })
+
+  it('renders unified lookup error message when lookupWord fails', async () => {
+    const wrapper = mountBookReader()
+    const range = createRangeFromReader(wrapper)
+    mockSelection({ text: 'grape', range })
+
+    vi.mocked(lookupWord).mockRejectedValue({
+      status: 503,
+      message: '查询失败，请稍后重试',
+    })
+
+    document.dispatchEvent(new Event('selectionchange'))
+    await nextTick()
+    await wrapper.get('[data-test="reader-lookup-button"]').trigger('click')
+    await flushPromises()
+    await nextTick()
+
+    const error = wrapper.get('[data-test="reader-lookup-error"]')
+    expect(error.text()).toContain('查询失败，请稍后重试')
   })
 
   it('emits selection-action for ai actions', async () => {

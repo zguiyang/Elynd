@@ -4,11 +4,25 @@ import BookChapter from '#models/book_chapter'
 import BookVocabulary from '#models/book_vocabulary'
 import { BOOK_IMPORT_STEP } from '#constants'
 import { DictionaryService } from '#services/shared/dictionary_service'
+import type { DictionaryEntry } from '#services/shared/dictionary_service'
 import { VocabularyAnalyzerService } from '#services/book-parse/vocabulary_analyzer_service'
 import { BookImportOrchestratorService } from '#services/book-import/book_import_orchestrator_service'
 import { ImportStateService } from '#services/book-import/import_state_service'
 import GenerateTagsJob from '#jobs/generate_tags_job'
 import type { SerialImportPayload } from '#types/book_import_pipeline'
+
+const buildVocabularyUpdate = (entry: DictionaryEntry) => {
+  const phoneticAudio = entry.phonetics.find((item) => item.audio)?.audio || null
+  const phoneticText = entry.phonetic || entry.phonetics[0]?.text || null
+
+  return {
+    phoneticText,
+    phoneticAudio,
+    details: {
+      ...entry,
+    },
+  }
+}
 
 @inject()
 export class BookVocabularyPipelineService {
@@ -66,18 +80,7 @@ export class BookVocabularyPipelineService {
         }
 
         enrichedWords++
-        const audioUrl = entry.phonetics?.find((item) => item.audio)?.audio || null
-        const phoneticText = entry.phonetic || entry.phonetics?.[0]?.text || null
-
-        await vocabulary
-          .merge({
-            phoneticText,
-            phoneticAudio: audioUrl,
-            details: {
-              meanings: entry.meanings,
-            },
-          })
-          .save()
+        await vocabulary.merge(buildVocabularyUpdate(entry)).save()
       }
       await this.importStateService.assertImportNotCancelled(runId, bookId)
 

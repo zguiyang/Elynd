@@ -138,7 +138,13 @@ onMounted(() => {
                 <div v-for="(def, defIndex) in meaning.definitions.slice(0, 2)" :key="defIndex" class="ml-1">
                   <p class="text-xs">
                     <span class="text-muted-foreground">{{ defIndex + 1 }}.</span>
-                    <span class="ml-1">{{ def.definition }}</span>
+                    <span class="ml-1">{{ def.sourceText }}</span>
+                  </p>
+                  <p class="text-xs text-muted-foreground ml-4">
+                    {{ def.localizedText }}
+                  </p>
+                  <p class="text-xs ml-4">
+                    {{ def.plainExplanation }}
                   </p>
                 </div>
               </div>

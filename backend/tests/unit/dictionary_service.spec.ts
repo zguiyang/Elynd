@@ -1,5 +1,6 @@
 import { test } from '@japa/runner'
 import redis from '@adonisjs/redis/services/main'
+import { Exception } from '@adonisjs/core/exceptions'
 import { DictionaryService } from '#services/shared/dictionary_service'
 import { DICTIONARY } from '#constants'
 
@@ -103,7 +104,7 @@ test.group('DictionaryService.lookup', (group) => {
     assert.isFalse(fetchCalled)
   })
 
-  test('merges audio and meaning responses on cache miss and writes cache', async ({ assert }) => {
+  test('parses Fatectionary response on cache miss and writes cache', async ({ assert }) => {
     redis.get = async function fakeGet() {
       return null
     } as typeof redis.get
@@ -121,23 +122,20 @@ test.group('DictionaryService.lookup', (group) => {
 
     global.fetch = (async (input) => {
       const url = String(input)
-      if (url.includes('/apple')) {
+      if (url.includes('/entries/en/apple')) {
         return {
           ok: true,
           status: 200,
-          json: async () => [
-            {
-              word: 'apple',
-              phonetic: '/ˈæp.əl/',
-              phonetics: [{ text: '/ˈæp.əl/', audio: 'https://audio.test/apple.mp3' }],
-              meanings: [
-                {
-                  partOfSpeech: 'noun',
-                  definitions: [{ definition: 'A fruit', example: 'An apple a day.' }],
-                },
-              ],
-            },
-          ],
+          json: async () => ({
+            word: 'apple',
+            entries: [
+              {
+                partOfSpeech: 'noun',
+                pronunciations: [{ text: '/ˈæp.əl/' }],
+                senses: [{ definition: 'A fruit', examples: ['An apple a day.'] }],
+              },
+            ],
+          }),
         } as Response
       }
 
@@ -149,16 +147,15 @@ test.group('DictionaryService.lookup', (group) => {
 
     assert.equal(result?.word, 'apple')
     assert.equal(result?.phonetic, '/ˈæp.əl/')
-    assert.equal(result?.phonetics[0]?.audio, 'https://audio.test/apple.mp3')
+    assert.equal(result?.phonetics[0]?.text, '/ˈæp.əl/')
     assert.equal(result?.meanings[0]?.definitions[0]?.definition, 'A fruit')
+    assert.equal(result?.meanings[0]?.definitions[0]?.example, 'An apple a day.')
     assert.equal(cachedKey, `${DICTIONARY.CACHE_PREFIX}apple`)
     assert.equal(cachedTtl, DICTIONARY.DEFAULT_TTL_DAYS * 24 * 60 * 60)
     assert.isString(cachedValue)
   })
 
-  test('degrades gracefully when one upstream request fails but the other succeeds', async ({
-    assert,
-  }) => {
+  test('returns null when Fatectionary response has empty entries', async ({ assert }) => {
     redis.get = async function fakeGet() {
       return null
     } as typeof redis.get
@@ -167,39 +164,40 @@ test.group('DictionaryService.lookup', (group) => {
       return 'OK'
     } as typeof redis.setex
 
-    let callCount = 0
-
     global.fetch = (async () => {
-      callCount += 1
-
-      if (callCount === 1) {
-        throw new Error('audio api unavailable')
-      }
-
       return {
         ok: true,
         status: 200,
-        json: async () => [
-          {
-            word: 'banana',
-            phonetic: '/bəˈnæn.ə/',
-            meanings: [
-              {
-                partOfSpeech: 'noun',
-                definitions: [{ definition: 'A yellow fruit' }],
-              },
-            ],
-          },
-        ],
+        json: async () => ({
+          word: 'banana',
+          entries: [],
+        }),
       } as Response
     }) as typeof global.fetch
 
     const service = new DictionaryService()
     const result = await service.lookup('banana')
 
-    assert.equal(result?.word, 'banana')
-    assert.equal(result?.phonetic, '/bəˈnæn.ə/')
-    assert.deepEqual(result?.phonetics, [])
-    assert.equal(result?.meanings[0]?.definitions[0]?.definition, 'A yellow fruit')
+    assert.isNull(result)
+  })
+
+  test('throws 502 when Fatectionary upstream request fails', async ({ assert }) => {
+    redis.get = async function fakeGet() {
+      return null
+    } as typeof redis.get
+
+    global.fetch = (async () => {
+      throw new Error('fatectionary unavailable')
+    }) as typeof global.fetch
+
+    const service = new DictionaryService()
+
+    try {
+      await service.lookup('banana')
+      assert.fail('Expected lookup to throw')
+    } catch (error) {
+      assert.instanceOf(error, Exception)
+      assert.equal((error as Exception).status, 502)
+    }
   })
 })

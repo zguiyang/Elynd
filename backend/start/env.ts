@@ -73,4 +73,9 @@ export default await Env.create(new URL('../', import.meta.url), {
   */
   BOOK_AUDIO_CHAPTER_CONCURRENCY: Env.schema.number(),
   BOOK_AUDIO_CHUNK_MAX_CHARS: Env.schema.number(),
+
+  /**
+   * Configuration for dictionary API
+   */
+  FREE_DICTIONARY_API_URL: Env.schema.string(),
 })

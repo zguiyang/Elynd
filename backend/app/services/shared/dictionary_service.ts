@@ -5,22 +5,16 @@ import env from '#start/env'
 import redis from '@adonisjs/redis/services/main'
 import { DICTIONARY } from '#constants'
 
-interface AudioResult {
+interface FreeDictionaryApiResult {
   word: string
-  phonetics: Array<{
-    text?: string
-    audio?: string
-  }>
-}
-
-interface MeaningResult {
-  word: string
-  phonetic?: string
-  meanings: Array<{
+  entries: Array<{
     partOfSpeech: string
-    definitions: Array<{
+    pronunciations: Array<{
+      text: string
+    }>
+    senses: Array<{
       definition: string
-      example?: string
+      examples: string[]
     }>
   }>
 }
@@ -43,18 +37,10 @@ export interface DictionaryEntry {
 
 @inject()
 export class DictionaryService {
-  private audioApiUrl: string
-  private meaningApiUrl: string
+  private freeDictionaryApiUrl: string
 
   constructor() {
-    this.audioApiUrl = env.get(
-      'DICTIONARY_API_DEV_URL',
-      'https://api.dictionaryapi.dev/api/v2/entries/en'
-    )
-    this.meaningApiUrl = env.get(
-      'FREE_DICTIONARY_API_URL',
-      'https://api.dictionaryapi.dev/api/v2/entries/en'
-    )
+    this.freeDictionaryApiUrl = env.get('FREE_DICTIONARY_API_URL')
   }
 
   private getCacheKey(word: string): string {
@@ -72,55 +58,37 @@ export class DictionaryService {
     }
   }
 
-  async getAudio(word: string): Promise<AudioResult | null> {
+  async getEntry(word: string): Promise<FreeDictionaryApiResult | null> {
+    const normalizedWord = word.toLowerCase()
+
     try {
       const response = await this.fetchWithTimeout(
-        `${this.audioApiUrl}/${encodeURIComponent(word.toLowerCase())}`
+        `${this.freeDictionaryApiUrl}/entries/en/${encodeURIComponent(normalizedWord)}?translations=false`
       )
 
       if (!response.ok) {
-        if (response.status === 404) {
-          return null
+        if (response.status === 429) {
+          throw new Exception('Dictionary upstream rate limited', { status: 503 })
         }
-        throw new Exception(`Audio API error: ${response.status}`, { status: response.status })
+        if (response.status >= 500) {
+          throw new Exception('Dictionary upstream unavailable', { status: 502 })
+        }
+        throw new Exception(`Dictionary API error: ${response.status}`, { status: 502 })
       }
 
-      const data = (await response.json()) as Array<AudioResult>
+      const data = (await response.json()) as FreeDictionaryApiResult
 
-      if (!data || data.length === 0) {
+      if (!data || !Array.isArray(data.entries) || data.entries.length === 0) {
         return null
       }
 
-      return data[0]
+      return data
     } catch (error) {
-      logger.error({ err: error, word }, 'Failed to fetch audio from dictionary API')
-      return null
-    }
-  }
-
-  async getMeaning(word: string): Promise<MeaningResult | null> {
-    try {
-      const response = await this.fetchWithTimeout(
-        `${this.meaningApiUrl}/${encodeURIComponent(word.toLowerCase())}`
-      )
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          return null
-        }
-        throw new Exception(`Meaning API error: ${response.status}`, { status: response.status })
+      if (error instanceof Exception) {
+        throw error
       }
-
-      const data = (await response.json()) as Array<MeaningResult>
-
-      if (!data || data.length === 0) {
-        return null
-      }
-
-      return data[0]
-    } catch (error) {
-      logger.error({ err: error, word }, 'Failed to fetch meaning from dictionary API')
-      return null
+      logger.error({ err: error, word }, 'Failed to fetch entry from free dictionary API')
+      throw new Exception('Dictionary upstream unavailable', { status: 502 })
     }
   }
 
@@ -137,43 +105,40 @@ export class DictionaryService {
       logger.warn({ err: error, word }, 'Failed to get cache, falling back to API')
     }
 
-    logger.debug({ word }, 'Dictionary lookup cache miss, fetching from APIs')
+    logger.debug({ word }, 'Dictionary lookup cache miss, fetching from free dictionary API')
 
-    const results = await Promise.allSettled([this.getAudio(word), this.getMeaning(word)])
+    const entryResult = await this.getEntry(word)
 
-    const audioResult = results[0].status === 'fulfilled' ? results[0].value : null
-    const meaningResult = results[1].status === 'fulfilled' ? results[1].value : null
-
-    if (results[0].status === 'rejected') {
-      logger.warn(
-        { word, source: 'audio', reason: String(results[0].reason) },
-        'Dictionary upstream failed'
-      )
-    }
-    if (results[1].status === 'rejected') {
-      logger.warn(
-        { word, source: 'meaning', reason: String(results[1].reason) },
-        'Dictionary upstream failed'
-      )
-    }
-
-    if (!audioResult && !meaningResult) {
+    if (!entryResult) {
       return null
     }
 
     const entry: DictionaryEntry = {
-      word: word.toLowerCase(),
-      phonetic: meaningResult?.phonetic || audioResult?.phonetics?.[0]?.text,
-      phonetics: [],
-      meanings: [],
-    }
-
-    if (audioResult?.phonetics) {
-      entry.phonetics = audioResult.phonetics
-    }
-
-    if (meaningResult?.meanings) {
-      entry.meanings = meaningResult.meanings
+      word: entryResult.word.toLowerCase(),
+      phonetic: entryResult.entries
+        .flatMap((item) => item.pronunciations || [])
+        .map((item) => item.text)
+        .find((text) => typeof text === 'string' && text.length > 0),
+      phonetics: entryResult.entries.flatMap((item) =>
+        (item.pronunciations || [])
+          .filter((pronunciation) => pronunciation?.text)
+          .map((pronunciation) => ({
+            text: pronunciation.text,
+            audio: undefined,
+          }))
+      ),
+      meanings: entryResult.entries
+        .filter((item) => item.partOfSpeech)
+        .map((item) => ({
+          partOfSpeech: item.partOfSpeech,
+          definitions: (item.senses || [])
+            .filter((sense) => sense.definition)
+            .map((sense) => ({
+              definition: sense.definition,
+              example: Array.isArray(sense.examples) ? sense.examples[0] : undefined,
+            })),
+        }))
+        .filter((item) => item.definitions.length > 0),
     }
 
     const hasUsableData =

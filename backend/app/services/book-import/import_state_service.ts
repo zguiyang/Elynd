@@ -72,7 +72,7 @@ export class ImportStateService {
     inputSummary?: Record<string, unknown>,
     itemKey?: string
   ): Promise<BookProcessingStepLog> {
-    const stepLog = await db.transaction(async (trx) => {
+    const persistedStepLog = await db.transaction(async (trx) => {
       const runLog = await BookProcessingRunLog.query({ client: trx })
         .where('id', runId)
         .firstOrFail()
@@ -130,7 +130,7 @@ export class ImportStateService {
       await this.publishBookImportStatus(latestBook)
     }
 
-    return stepLog
+    return persistedStepLog
   }
 
   async completeStep(
@@ -141,7 +141,7 @@ export class ImportStateService {
     progress: number,
     outputRef?: Record<string, unknown>
   ): Promise<BookProcessingStepLog> {
-    const stepLog = await db.transaction(async (trx) => {
+    const persistedStepLog = await db.transaction(async (trx) => {
       const stepLog = await BookProcessingStepLog.query({ client: trx })
         .where('id', stepLogId)
         .firstOrFail()
@@ -187,7 +187,7 @@ export class ImportStateService {
       await this.publishBookImportStatus(latestBook)
     }
 
-    return stepLog
+    return persistedStepLog
   }
 
   async failStep(
@@ -199,7 +199,7 @@ export class ImportStateService {
     errorCode?: string,
     outputRef?: Record<string, unknown>
   ): Promise<BookProcessingStepLog> {
-    const stepLog = await db.transaction(async (trx) => {
+    const persistedStepLog = await db.transaction(async (trx) => {
       const stepLog = await BookProcessingStepLog.query({ client: trx })
         .where('id', stepLogId)
         .firstOrFail()
@@ -244,7 +244,7 @@ export class ImportStateService {
       await this.publishBookImportStatus(latestBook)
     }
 
-    return stepLog
+    return persistedStepLog
   }
 
   async markBookReady(bookId: number): Promise<Book> {

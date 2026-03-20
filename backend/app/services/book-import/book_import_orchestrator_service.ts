@@ -474,8 +474,7 @@ export class BookImportOrchestratorService {
       })
       const match = activeLevels.find((level) => level.id === aiResult.levelId)
       const withinOneLevel =
-        match &&
-        Math.abs((match.sortOrder || 0) - (fallbackLevel.sortOrder || 0)) <= 1
+        match && Math.abs((match.sortOrder || 0) - (fallbackLevel.sortOrder || 0)) <= 1
       if (match && withinOneLevel) {
         selectedLevel = match
         classifiedBy = 'ai'

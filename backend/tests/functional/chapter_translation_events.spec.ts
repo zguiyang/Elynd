@@ -23,7 +23,9 @@ test.group('Chapter Translation Events API', (group) => {
       await user.delete()
     })
 
-    ChapterTranslationService.prototype.getStatus = async function fakeGetStatus(translationId: number) {
+    ChapterTranslationService.prototype.getStatus = async function fakeGetStatus(
+      translationId: number
+    ) {
       return {
         translationId,
         status: 'completed' as const,
@@ -44,7 +46,10 @@ test.group('Chapter Translation Events API', (group) => {
     )
   })
 
-  test('GET /api/chapter-translations/:id/events validates translation id', async ({ client, cleanup }) => {
+  test('GET /api/chapter-translations/:id/events validates translation id', async ({
+    client,
+    cleanup,
+  }) => {
     const { user, token } = await createAuthenticatedUser({
       fullName: 'Chapter Translation SSE Validation User',
       emailPrefix: 'chapter-translation-sse-validation',

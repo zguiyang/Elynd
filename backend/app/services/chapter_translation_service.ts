@@ -48,7 +48,7 @@ export class ChapterTranslationService {
       chapterId: chapter.id,
       sourceLanguage,
       targetLanguage,
-      contentHash
+      contentHash,
     })
 
     const cached = await this.getCachedResult(cacheKey)
@@ -141,7 +141,7 @@ export class ChapterTranslationService {
       chapterId: chapter.id,
       sourceLanguage,
       targetLanguage,
-      contentHash
+      contentHash,
     })
 
     const cached = await this.getCachedResult(cacheKey)
@@ -223,7 +223,7 @@ export class ChapterTranslationService {
         chapterId: chapter.id,
         sourceLanguage: translation.sourceLanguage,
         targetLanguage: translation.targetLanguage,
-        contentHash: translation.contentHash
+        contentHash: translation.contentHash,
       })
 
       translation.status = 'completed'
@@ -278,7 +278,7 @@ export class ChapterTranslationService {
       input.chapterId,
       input.sourceLanguage,
       input.targetLanguage,
-      input.contentHash
+      input.contentHash,
     ].join(':')
   }
 

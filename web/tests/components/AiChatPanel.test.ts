@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { defineComponent, ref } from 'vue'
+import { defineComponent } from 'vue'
 import { mount } from '@vue/test-utils'
 import AiChatPanel from '@/components/shared/AiChatPanel.vue'
 
@@ -8,9 +8,9 @@ const clearMessagesMock = vi.fn()
 
 vi.mock('@/composables/useBookChat', () => ({
   useBookChat: () => ({
-    messages: ref([]),
-    isLoading: ref(false),
-    isWaitingForResponse: ref(false),
+    messages: { value: [] },
+    isLoading: { value: false },
+    isWaitingForResponse: { value: false },
     sendMessage: sendMessageMock,
     clearMessages: clearMessagesMock,
   }),

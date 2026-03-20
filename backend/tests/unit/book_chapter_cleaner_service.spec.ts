@@ -175,6 +175,43 @@ test.group('BookSemanticCleanService', () => {
     assert.equal(result.author, 'Lewis Carroll')
   })
 
+  test('extractMetadata falls back to source metadata when AI times out', async ({ assert }) => {
+    const mockAiService = {
+      chatJson: async () => {
+        throw new Error('Request timed out.')
+      },
+    }
+    const mockPromptService = {
+      render: (_name: string, data: any) => JSON.stringify(data),
+    }
+    const mockRuleCleaner = new BookChapterCleanerService()
+    const mockConfigService = {
+      getAiConfig: async () => ({
+        baseUrl: 'https://example.com/v1',
+        apiKey: 'test-key',
+        model: 'test-model',
+      }),
+    }
+
+    const service = new BookSemanticCleanService(
+      mockAiService as any,
+      mockPromptService as any,
+      mockRuleCleaner,
+      mockConfigService as any
+    )
+
+    const result = await service.extractMetadata({
+      fileName: 'The Tale of Peter Rabbit',
+      sourceType: 'user_uploaded',
+      chapterTitles: ['Chapter 1'],
+      sampleText: 'Once upon a time there were four little Rabbits.',
+    })
+
+    assert.equal(result.title, 'The Tale of Peter Rabbit')
+    assert.isNull(result.author)
+    assert.isNull(result.description)
+  })
+
   test('cleanChapters returns AI cleaned chapters', async ({ assert }) => {
     const mockAiService = {
       chatJson: async () => ({

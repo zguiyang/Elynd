@@ -1,5 +1,6 @@
 import { inject } from '@adonisjs/core'
 import { AI } from '#constants'
+import logger from '@adonisjs/core/services/logger'
 import { AiService } from '#services/ai/ai_service'
 import type { AiChatParams, AiClientConfig } from '#types/ai'
 import { BookChapterCleanerService } from '#services/book-parse/book_chapter_cleaner_service'
@@ -61,6 +62,9 @@ interface ChapterResponse {
   }>
 }
 
+const SEMANTIC_AI_TIMEOUT_MS = 30000
+const SEMANTIC_AI_MAX_RETRIES = 0
+
 @inject()
 export class BookSemanticCleanService {
   constructor(
@@ -70,7 +74,16 @@ export class BookSemanticCleanService {
     private configService: ConfigService
   ) {}
 
-  private async resolveAiConfig(): Promise<AiClientConfig> {
+  private async resolveSemanticAiConfig(): Promise<AiClientConfig> {
+    const config = await this.configService.getAiConfig()
+    return {
+      ...config,
+      timeout: SEMANTIC_AI_TIMEOUT_MS,
+      maxRetries: SEMANTIC_AI_MAX_RETRIES,
+    }
+  }
+
+  private async resolveClassificationAiConfig(): Promise<AiClientConfig> {
     const config = await this.configService.getAiConfig()
     return {
       ...config,
@@ -80,7 +93,7 @@ export class BookSemanticCleanService {
   }
 
   async extractMetadata(input: SemanticMetadataInput): Promise<SemanticMetadataOutput> {
-    const aiConfig = await this.resolveAiConfig()
+    const aiConfig = await this.resolveSemanticAiConfig()
     const systemPrompt = this.promptService.render('system', {})
     const userPrompt = this.promptService.render('book/semantic-metadata', input)
     const params: AiChatParams = {
@@ -93,17 +106,34 @@ export class BookSemanticCleanService {
       responseFormat: { type: 'json_object' },
     }
 
-    const result = await this.aiService.chatJson<MetadataResponse>(aiConfig, params)
+    try {
+      const result = await this.aiService.chatJson<MetadataResponse>(aiConfig, params)
 
-    return {
-      title: (result.title || input.fileName || 'Untitled').trim(),
-      author: result.author?.trim() || null,
-      description: result.description?.trim() || null,
+      return {
+        title: (result.title || input.fileName || 'Untitled').trim(),
+        author: result.author?.trim() || null,
+        description: result.description?.trim() || null,
+      }
+    } catch (error) {
+      logger.warn(
+        {
+          err: error,
+          fileName: input.fileName,
+        },
+        'Semantic metadata extraction failed, fallback to source metadata'
+      )
+
+      const fallbackTitle = input.fileName.replace(/\.[^.]+$/, '').trim() || 'Untitled'
+      return {
+        title: fallbackTitle,
+        author: null,
+        description: null,
+      }
     }
   }
 
   async cleanChapters(chapters: SemanticChapterInput[]): Promise<SemanticChapterOutput[]> {
-    const aiConfig = await this.resolveAiConfig()
+    const aiConfig = await this.resolveSemanticAiConfig()
     const systemPrompt = this.promptService.render('system', {})
     const userPrompt = this.promptService.render('book/semantic-chapters', { chapters })
     const params: AiChatParams = {
@@ -152,7 +182,7 @@ export class BookSemanticCleanService {
     sampleText: string
     candidates: BookLevelCandidate[]
   }): Promise<{ levelId: number; reason: string }> {
-    const aiConfig = await this.resolveAiConfig()
+    const aiConfig = await this.resolveClassificationAiConfig()
     const systemPrompt = this.promptService.render('system', {})
     const userPrompt = this.promptService.render('book/level-classification', input)
     const params: AiChatParams = {

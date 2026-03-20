@@ -3,7 +3,7 @@ import { Exception } from '@adonisjs/core/exceptions'
 import logger from '@adonisjs/core/services/logger'
 import env from '#start/env'
 import redis from '@adonisjs/redis/services/main'
-import { DICTIONARY } from '#constants'
+import { AI, DICTIONARY } from '#constants'
 import BookChapter from '#models/book_chapter'
 import { AiService } from '#services/ai/ai_service'
 import { ConfigService } from '#services/ai/config_service'
@@ -222,10 +222,23 @@ export class DictionaryService {
     return normalized
   }
 
+  private buildLookupAiConfig(config: AiClientConfig): AiClientConfig {
+    return {
+      ...config,
+      timeout: Math.min(config.timeout ?? AI.DEFAULT_TIMEOUT, DICTIONARY.AI_TIMEOUT_MS),
+      maxRetries:
+        typeof config.maxRetries === 'number'
+          ? Math.min(config.maxRetries, DICTIONARY.AI_MAX_RETRIES)
+          : DICTIONARY.AI_MAX_RETRIES,
+    }
+  }
+
   private async resolveLookupSettings(
     options: DictionaryResolveOptions = {}
   ): Promise<DictionaryLookupSettings> {
-    const aiConfig = options.aiConfig || (await this.configService.getAiConfig())
+    const aiConfig = this.buildLookupAiConfig(
+      options.aiConfig || (await this.configService.getAiConfig())
+    )
 
     if (options.localizationLanguage) {
       return {

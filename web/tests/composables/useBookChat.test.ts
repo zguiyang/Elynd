@@ -149,6 +149,7 @@ describe('useBookChat', () => {
     exposed.clearMessages()
 
     expect(getMessages(exposed)).toEqual([])
+    expect(exposed.isLoading).toBe(false)
     expect(exposed.isWaitingForResponse).toBe(false)
     expect(mockEventSource.close).toHaveBeenCalledTimes(1)
 

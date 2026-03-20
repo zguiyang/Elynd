@@ -16,6 +16,11 @@ const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
 }>()
 
+interface OpenAndSendPayload {
+  message: string
+  chapterIndex?: number
+}
+
 const inputMessage = ref('')
 const messagesContainer = ref<HTMLElement | null>(null)
 
@@ -80,6 +85,21 @@ const handleKeydown = (e: KeyboardEvent) => {
     sendMessageHandler()
   }
 }
+
+const openAndSend = (payload: OpenAndSendPayload) => {
+  const message = payload.message.trim()
+  if (!message) {
+    return
+  }
+
+  emit('update:open', true)
+  clearMessages()
+  sendMessage(message, payload.chapterIndex)
+}
+
+defineExpose({
+  openAndSend,
+})
 </script>
 
 <template>

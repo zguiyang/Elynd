@@ -4,6 +4,7 @@ import { useBook, useChapter } from '@/composables/useBook'
 import { useReadingSettingsStore } from '@/stores/reading-settings'
 import { learningApi } from '@/api/learning'
 import AiChatPanel from '@/components/shared/AiChatPanel.vue'
+import type { ReaderAiActionRequest } from '@/types/reader-selection'
 import type { ChapterListItem } from '@/types/book'
 import { formatBookLevelRange } from '@/lib/book-level'
 import { toast } from 'vue-sonner'
@@ -26,6 +27,9 @@ const audioError = ref<string | null>(null)
 
 const isMobileTocOpen = ref(false)
 const showAiChat = ref(false)
+const aiChatPanelRef = ref<{
+  openAndSend: (payload: { message: string; chapterIndex?: number }) => void
+} | null>(null)
 
 const startTime = ref<number | null>(null)
 const lastSavedProgress = ref(0)
@@ -188,6 +192,14 @@ const getLevelVariant = (sortOrder: number): 'default' | 'secondary' | 'outline'
   if (sortOrder === 1) return 'secondary'
   if (sortOrder === 2) return 'default'
   return 'outline'
+}
+
+const handleReaderAiAction = (payload: ReaderAiActionRequest) => {
+  showAiChat.value = true
+  aiChatPanelRef.value?.openAndSend({
+    message: payload.prompt,
+    chapterIndex: payload.chapterIndex,
+  })
 }
 
 onMounted(async () => {
@@ -370,6 +382,7 @@ watch(book, (newBook) => {
           @pause="handlePause"
           @replay="handleReplay"
           @seek="handleSeek"
+          @reader-ai-action="handleReaderAiAction"
         />
       </main>
 
@@ -401,6 +414,7 @@ watch(book, (newBook) => {
     </Sheet>
 
     <AiChatPanel
+      ref="aiChatPanelRef"
       v-model:open="showAiChat"
       :book-id="bookId"
       :book-title="book?.title ?? ''"

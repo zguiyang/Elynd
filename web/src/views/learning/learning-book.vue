@@ -15,6 +15,7 @@ import { bookApi } from '@/api/book'
 import { createChapterTranslationStream } from '@/api/chapter-translation'
 import { userApi } from '@/api/user'
 import type { LineHeight, ContentWidth } from '@/stores/reading-settings'
+import type { ReaderAiActionRequest, ReaderSelectionActionPayload } from '@/types/reader-selection'
 import type {
   Book,
   Chapter,
@@ -54,6 +55,7 @@ const emit = defineEmits<{
   (e: 'pause'): void
   (e: 'replay'): void
   (e: 'seek', time: number): void
+  (e: 'reader-ai-action', payload: ReaderAiActionRequest): void
 }>()
 
 const route = useRoute()
@@ -209,6 +211,53 @@ const ensureLanguageConfig = async () => {
     targetLanguage: config.nativeLanguage || 'zh',
   }
   return languageConfig.value
+}
+
+const getNativeLanguageCode = async () => {
+  const lang = await ensureLanguageConfig()
+  return lang.targetLanguage || 'zh'
+}
+
+const buildReaderActionPrompt = async (
+  actionType: 'explain' | 'qa' | 'translate',
+  selectedText: string
+) => {
+  const nativeLanguage = await getNativeLanguageCode()
+  const chapterIndex = props.currentChapterIndex
+  const chapterTitle = props.chapter?.title || 'Unknown chapter'
+
+  const actionInstructionMap = {
+    explain: '请用学习者友好的方式解释下面选中文本的含义、语境和重点。',
+    qa: '请围绕下面选中文本回答问题，并指出关键理解点。',
+    translate: '请准确、自然地翻译下面选中文本。',
+  } as const
+
+  const actionInstruction = actionInstructionMap[actionType]
+
+  return [
+    `动作类型：${actionType}`,
+    `用户母语：${nativeLanguage}`,
+    `章节序号：${chapterIndex}`,
+    `章节标题：${chapterTitle}`,
+    `英文原句：${selectedText}`,
+    '',
+    actionInstruction,
+    `请使用${nativeLanguage}回答。`,
+  ].join('\n')
+}
+
+const handleReaderSelectionAction = async (payload: ReaderSelectionActionPayload) => {
+  if (payload.actionType === 'lookup') {
+    return
+  }
+
+  const prompt = await buildReaderActionPrompt(payload.actionType, payload.selectedText)
+  emit('reader-ai-action', {
+    actionType: payload.actionType,
+    selectedText: payload.selectedText,
+    prompt,
+    chapterIndex: props.currentChapterIndex,
+  })
 }
 
 const refreshChapterTranslation = async () => {
@@ -454,6 +503,7 @@ onUnmounted(() => {
           :paragraphs="paragraphs"
           :chapter-title="props.chapter?.title"
           :markdown-content="markdownContent"
+          @selection-action="handleReaderSelectionAction"
         />
       </div>
     </div>
@@ -516,6 +566,7 @@ onUnmounted(() => {
 
         <div class="flex items-center gap-1">
           <Button
+            data-test="reader-prev-chapter"
             variant="outline"
             size="icon"
             class="size-8"
@@ -528,6 +579,7 @@ onUnmounted(() => {
             {{ props.currentChapterIndex + 1 }} / {{ totalChapters }}
           </span>
           <Button
+            data-test="reader-next-chapter"
             variant="outline"
             size="icon"
             class="size-8"
@@ -540,11 +592,11 @@ onUnmounted(() => {
       </div>
 
       <div class="flex items-center gap-3 h-14 border-t">
-        <Button size="icon" class="size-8 shrink-0 ml-4" @click="togglePlay">
+        <Button data-test="reader-toggle-play" size="icon" class="size-8 shrink-0 ml-4" @click="togglePlay">
           <Play v-if="!props.isPlaying" class="size-4" />
           <Pause v-else class="size-4" />
         </Button>
-        <Button variant="ghost" size="icon" class="size-7 shrink-0" @click="replay">
+        <Button data-test="reader-replay" variant="ghost" size="icon" class="size-7 shrink-0" @click="replay">
           <RotateCcw class="size-3.5" />
         </Button>
         <Volume2 class="size-4 text-muted-foreground shrink-0" />

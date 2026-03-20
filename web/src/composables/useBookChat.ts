@@ -82,6 +82,7 @@ export function useBookChat(bookId: MaybeBookId) {
     messages.value = []
     currentStreamingContent.value = ''
     assistantMessageIndex = null
+    isLoading.value = false
     isWaitingForResponse.value = false
     if (currentEventSource) {
       currentEventSource.close()

@@ -11,6 +11,12 @@ vi.mock('@/api/book', () => ({
   },
 }))
 
+vi.mock('@/api/user', () => ({
+  userApi: {
+    getConfig: vi.fn(),
+  },
+}))
+
 vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
   return {
@@ -30,6 +36,7 @@ vi.mock('vue-sonner', () => ({
 }))
 
 import { bookApi } from '@/api/book'
+import { userApi } from '@/api/user'
 import { toast } from 'vue-sonner'
 
 const ButtonStub = defineComponent({
@@ -40,7 +47,7 @@ const ButtonStub = defineComponent({
     },
   },
   emits: ['click'],
-  template: '<button :disabled="disabled" @click="$emit(\'click\', $event)"><slot /></button>',
+  template: '<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\', $event)"><slot /></button>',
 })
 
 const BookReaderStub = defineComponent({
@@ -54,11 +61,15 @@ const BookReaderStub = defineComponent({
       default: '',
     },
   },
+  emits: ['selection-action'],
   template: `
     <div data-test="book-reader">
       <span data-test="chapter-title">{{ chapterTitle }}</span>
       <span data-test="paragraph-count">{{ paragraphs.length }}</span>
       <span data-test="first-paragraph">{{ paragraphs[0] }}</span>
+      <button data-test="emit-reader-ai-action" @click="$emit('selection-action', { actionType: 'explain', selectedText: 'hello world' })">
+        emit
+      </button>
     </div>
   `,
 })
@@ -171,6 +182,17 @@ function mountLearningBook(props?: Record<string, unknown>) {
 describe('learning-book.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(userApi.getConfig).mockResolvedValue({
+      id: 1,
+      userId: 1,
+      nativeLanguage: 'zh',
+      targetLanguage: 'en',
+      vocabularyLevel: null,
+      englishVariant: null,
+      learningInitCompleted: true,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: null,
+    })
   })
 
   it('splits chapter content into paragraphs and passes them to BookReader', () => {
@@ -186,8 +208,7 @@ describe('learning-book.vue', () => {
       currentChapterIndex: 1,
     })
 
-    const buttons = wrapper.findAll('button')
-    await buttons[3]?.trigger('click')
+    await wrapper.get('[data-test="reader-prev-chapter"]').trigger('click')
 
     expect(wrapper.emitted('update:currentChapterIndex')).toEqual([[0]])
   })
@@ -197,8 +218,7 @@ describe('learning-book.vue', () => {
       currentChapterIndex: 0,
     })
 
-    const buttons = wrapper.findAll('button')
-    await buttons[4]?.trigger('click')
+    await wrapper.get('[data-test="reader-next-chapter"]').trigger('click')
 
     expect(wrapper.emitted('update:currentChapterIndex')).toEqual([[1]])
   })
@@ -208,8 +228,7 @@ describe('learning-book.vue', () => {
       isPlaying: false,
     })
 
-    const buttons = wrapper.findAll('button')
-    await buttons[5]?.trigger('click')
+    await wrapper.get('[data-test="reader-toggle-play"]').trigger('click')
 
     expect(wrapper.emitted('update:isPlaying')).toEqual([[true]])
     expect(wrapper.emitted('play')).toHaveLength(1)
@@ -220,18 +239,34 @@ describe('learning-book.vue', () => {
       isPlaying: true,
     })
 
-    const buttons = wrapper.findAll('button')
-    await buttons[5]?.trigger('click')
+    await wrapper.get('[data-test="reader-toggle-play"]').trigger('click')
 
     expect(wrapper.emitted('update:isPlaying')).toEqual([[false]])
     expect(wrapper.emitted('pause')).toHaveLength(1)
   })
 
+  it('emits reader-ai-action with generated prompt from reader selection action', async () => {
+    const wrapper = mountLearningBook()
+
+    await wrapper.get('[data-test="emit-reader-ai-action"]').trigger('click')
+    await flushPromises()
+
+    const eventPayload = wrapper.emitted('reader-ai-action')?.[0]?.[0] as
+      | { actionType: string; selectedText: string; prompt: string; chapterIndex: number }
+      | undefined
+
+    expect(eventPayload).toBeDefined()
+    expect(eventPayload?.actionType).toBe('explain')
+    expect(eventPayload?.selectedText).toBe('hello world')
+    expect(eventPayload?.chapterIndex).toBe(0)
+    expect(eventPayload?.prompt).toContain('英文原句：hello world')
+    expect(eventPayload?.prompt).toContain('请使用zh回答。')
+  })
+
   it('emits replay and resets current time when the replay button is clicked', async () => {
     const wrapper = mountLearningBook()
 
-    const buttons = wrapper.findAll('button')
-    await buttons[6]?.trigger('click')
+    await wrapper.get('[data-test="reader-replay"]').trigger('click')
 
     expect(wrapper.emitted('update:currentTime')).toEqual([[0]])
     expect(wrapper.emitted('replay')).toHaveLength(1)

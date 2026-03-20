@@ -1,0 +1,74 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { defineComponent, ref } from 'vue'
+import { mount } from '@vue/test-utils'
+import AiChatPanel from '@/components/shared/AiChatPanel.vue'
+
+const sendMessageMock = vi.fn()
+const clearMessagesMock = vi.fn()
+
+vi.mock('@/composables/useBookChat', () => ({
+  useBookChat: () => ({
+    messages: ref([]),
+    isLoading: ref(false),
+    isWaitingForResponse: ref(false),
+    sendMessage: sendMessageMock,
+    clearMessages: clearMessagesMock,
+  }),
+}))
+
+const DefaultStub = defineComponent({
+  template: '<div><slot /></div>',
+})
+
+const TextareaStub = defineComponent({
+  props: {
+    modelValue: {
+      type: String,
+      default: '',
+    },
+  },
+  emits: ['update:modelValue', 'keydown'],
+  template: '<textarea :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" @keydown="$emit(\'keydown\', $event)" />',
+})
+
+describe('AiChatPanel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('openAndSend opens panel, clears messages, and sends message automatically', () => {
+    const wrapper = mount(AiChatPanel, {
+      props: {
+        open: false,
+        bookId: 1,
+        bookTitle: 'Book',
+      },
+      global: {
+        stubs: {
+          Sheet: DefaultStub,
+          SheetContent: DefaultStub,
+          SheetHeader: DefaultStub,
+          SheetTitle: DefaultStub,
+          SheetClose: DefaultStub,
+          SheetDescription: DefaultStub,
+          Button: DefaultStub,
+          Textarea: TextareaStub,
+          MarkdownRenderer: DefaultStub,
+          Skeleton: DefaultStub,
+          Bot: DefaultStub,
+          User: DefaultStub,
+          Send: DefaultStub,
+          Loader2: DefaultStub,
+          Sparkles: DefaultStub,
+        },
+      },
+    })
+
+    ;(wrapper.vm as unknown as { openAndSend: (payload: { message: string; chapterIndex?: number }) => void })
+      .openAndSend({ message: 'Hello AI', chapterIndex: 2 })
+
+    expect(wrapper.emitted('update:open')?.[0]).toEqual([true])
+    expect(clearMessagesMock).toHaveBeenCalledTimes(1)
+    expect(sendMessageMock).toHaveBeenCalledWith('Hello AI', 2)
+  })
+})

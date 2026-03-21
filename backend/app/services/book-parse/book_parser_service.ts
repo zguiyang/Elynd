@@ -4,6 +4,7 @@ import { Exception } from '@adonisjs/core/exceptions'
 import type { MultipartFile } from '@adonisjs/core/bodyparser'
 import EPub from 'epub'
 import type { ManifestItem } from 'epub'
+import { extractPlainTextFromHtml, normalizeBookText } from '#services/book-parse/book_text_normalizer'
 
 export interface ParsedBookChapter {
   chapterIndex: number
@@ -152,15 +153,12 @@ export class BookParserService {
   }
 
   cleanContent(content: string): string {
-    return content
-      .replace(/\r\n/g, '\n')
-      .replace(/\*{3}\s*START OF (THE|THIS) PROJECT GUTENBERG EBOOK[\s\S]*?\n/i, '')
-      .replace(/\n[\s\S]*?END OF (THE|THIS) PROJECT GUTENBERG EBOOK[\s\S]*$/i, '')
-      .replace(/[ \t]+\n/g, '\n')
-      .replace(/\n[ \t]+/g, '\n')
-      .replace(/[ \t]{2,}/g, ' ')
-      .replace(/\n{3,}/g, '\n\n')
-      .trim()
+    return normalizeBookText(
+      content
+        .replace(/\r\n/g, '\n')
+        .replace(/\*{3}\s*START OF (THE|THIS) PROJECT GUTENBERG EBOOK[\s\S]*?\n/i, '')
+        .replace(/\n[\s\S]*?END OF (THE|THIS) PROJECT GUTENBERG EBOOK[\s\S]*$/i, '')
+    )
   }
 
   private isEpubContentManifestItem(item: ManifestItem): boolean {
@@ -263,7 +261,7 @@ export class BookParserService {
         next && next.hrefBase === current.hrefBase ? next.anchor : null
       )
       const content = this.stripLeadingTitleBlock(
-        this.cleanContent(this.htmlToText(sectionRaw)),
+        this.cleanContent(extractPlainTextFromHtml(sectionRaw)),
         current.title
       )
       if (!content) {
@@ -300,7 +298,7 @@ export class BookParserService {
 
       const generatedTitle = `Chapter ${chapters.length + 1}`
       const content = this.stripLeadingTitleBlock(
-        this.cleanContent(this.htmlToText(rawContent)),
+        this.cleanContent(extractPlainTextFromHtml(rawContent)),
         generatedTitle
       )
       if (!content) {
@@ -345,17 +343,23 @@ export class BookParserService {
     nextAnchor: string | null
   ): string {
     const start = currentAnchor ? this.findAnchorIndex(rawHtml, currentAnchor, 0) : 0
-    const safeStart = start >= 0 ? start : 0
+    const safeStart = this.findTagStart(rawHtml, start >= 0 ? start : 0)
     const end =
       nextAnchor && nextAnchor !== currentAnchor
         ? this.findAnchorIndex(rawHtml, nextAnchor, safeStart + 1)
         : -1
 
     if (end > safeStart) {
-      return rawHtml.slice(safeStart, end)
+      return rawHtml.slice(safeStart, this.findTagStart(rawHtml, end))
     }
 
     return rawHtml.slice(safeStart)
+  }
+
+  private findTagStart(rawHtml: string, fromIndex: number): number {
+    const safeIndex = Math.max(0, fromIndex)
+    const tagStart = rawHtml.lastIndexOf('<', safeIndex)
+    return tagStart >= 0 ? tagStart : safeIndex
   }
 
   private findAnchorIndex(rawHtml: string, anchor: string, fromIndex: number): number {
@@ -375,22 +379,6 @@ export class BookParserService {
     }
 
     return -1
-  }
-
-  private htmlToText(rawHtml: string): string {
-    return rawHtml
-      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<\/(p|div|section|article|h1|h2|h3|h4|h5|h6|li|blockquote)>/gi, '\n\n')
-      .replace(/<li\b[^>]*>/gi, '\n- ')
-      .replace(/<[^>]*>/g, ' ')
-      .replace(/&nbsp;/gi, ' ')
-      .replace(/&amp;/gi, '&')
-      .replace(/&lt;/gi, '<')
-      .replace(/&gt;/gi, '>')
-      .replace(/&quot;/gi, '"')
-      .replace(/&#39;/gi, "'")
   }
 
   private normalizeEpubMetadataField(value: unknown): string | null {

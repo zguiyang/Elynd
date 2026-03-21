@@ -76,6 +76,7 @@
     "adonisjs-jobs": "^0.2.0",
     "edge.js": "^6.5.0",
     "epub": "^2.1.1",
+    "html-to-text": "^9.0.5",
     "jsdom": "^27.4.0",
     "luxon": "^3.7.2",
     "microsoft-cognitiveservices-speech-sdk": "^1.48.0",

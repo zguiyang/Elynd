@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { BookParserService } from '#services/book-parse/book_parser_service'
+import { extractPlainTextFromHtml } from '#services/book-parse/book_text_normalizer'
 
 const execFileAsync = promisify(execFile)
 
@@ -29,6 +30,18 @@ test.group('BookParserService.parseEpub', () => {
     } finally {
       await fixture.cleanup()
     }
+  })
+
+  test('cleans dangling epub html fragments from extracted chapter text', async ({ assert }) => {
+    const rawFragment =
+      'id="pgepubid00000">THE TALE OF\n\nPETER RABBIT\n\nBY\n\n<h2 class="no-break"'
+
+    const text = extractPlainTextFromHtml(rawFragment)
+
+    assert.notInclude(text, 'id="pgepubid00000"')
+    assert.notInclude(text, '<h2 class="no-break"')
+    assert.include(text, 'THE TALE OF')
+    assert.include(text, 'PETER RABBIT')
   })
 })
 

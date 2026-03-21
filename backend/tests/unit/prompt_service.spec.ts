@@ -49,4 +49,37 @@ test.group('PromptService', () => {
     assert.include(rendered, 'alice.txt')
     assert.include(rendered, 'chapterTitles')
   })
+
+  test('renders the chapter quality classification prompt template without throwing', async ({
+    assert,
+  }) => {
+    const { default: PromptService } = await import('#services/ai/prompt_service')
+
+    const promptService = new PromptService()
+    const rendered = promptService.render('book/import/chapter-quality-classification', {
+      chapterIndex: 0,
+      title: 'FREDERICK WARNE',
+      previousTitle: null,
+      nextTitle: 'THE TALE OF PETER RABBIT',
+      stats: {
+        charCount: 120,
+        wordCount: 25,
+        lineCount: 4,
+        paragraphCount: 2,
+        sentenceCount: 1,
+        uppercaseRatio: 0.8,
+      },
+      samples: {
+        head: 'FIRST PUBLISHED 1902',
+        middle: 'Once upon a time there were four little Rabbits.',
+        tail: 'Peter went straight away to Mr. McGregor\'s garden.',
+      },
+      signals: ['front_matter_keywords'],
+    })
+
+    assert.isString(rendered)
+    assert.include(rendered, 'FREDERICK WARNE')
+    assert.include(rendered, 'front_matter_keywords')
+    assert.include(rendered, 'samples')
+  })
 })

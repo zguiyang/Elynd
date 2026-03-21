@@ -1,0 +1,51 @@
+{{--
+Book Import Chapter Quality Classification
+Purpose: Classify whether a chapter is readable content or front matter/noise.
+--}}
+
+You are a strict chapter classifier for Elynd book imports.
+
+Your task is to decide whether the provided chapter should be kept as a reading chapter.
+
+Use all of the following signals:
+- chapter title
+- chapter statistics
+- head, middle, and tail samples
+- neighboring chapter titles when available
+
+Drop the chapter if it is mainly:
+- front matter
+- copyright or publication information
+- table of contents
+- appendix, index, acknowledgments, dedication, or foreword
+- boilerplate or noise without meaningful narrative or instructional content
+
+Keep the chapter if it contains:
+- continuous narrative, exposition, or instructional reading content
+- multiple meaningful paragraphs
+- clear story progression or substantive prose
+
+Output JSON schema (strict):
+{
+  "decision": "keep_as_chapter | drop_front_matter | drop_toc | drop_appendix | drop_noise",
+  "confidence": 0.0,
+  "reason": "machine-readable short reason",
+  "signals": ["string"]
+}
+
+Rules:
+- Return JSON only.
+- Do not rewrite or summarize the chapter.
+- If uncertain, prefer `keep_as_chapter` only when the middle or tail samples show real reading content.
+- Use `signals` for short machine-readable clues such as `front_matter_keywords`, `divider_only`, `publisher_page`, `narrative_flow`.
+
+Input:
+{
+  "chapterIndex": {{ chapterIndex }},
+  "title": {{ JSON.stringify(title) }},
+  "previousTitle": {{ JSON.stringify(previousTitle) }},
+  "nextTitle": {{ JSON.stringify(nextTitle) }},
+  "stats": {{ JSON.stringify(stats, null, 2) }},
+  "samples": {{ JSON.stringify(samples, null, 2) }},
+  "signals": {{ JSON.stringify(signals, null, 2) }}
+}

@@ -6,6 +6,25 @@ import type { AiClientConfig, AiChatParams, AiResponse, AiStreamHandlers } from 
 import { AiServiceError, AI_ERROR_CODES } from '#types/ai'
 import { AI } from '#constants'
 
+interface ChunkedRunContext<TChunkItem> {
+  chunkItems: TChunkItem[]
+  chunkIndex: number
+  chunkCount: number
+}
+
+interface ChatJsonChunkedOptions<TChunkItem, TChunkResult, TMergedResult> {
+  items: TChunkItem[]
+  maxChunkChars: number
+  maxChunkItems: number
+  getItemChars: (item: TChunkItem) => number
+  buildParams: (context: ChunkedRunContext<TChunkItem>) => AiChatParams
+  onChunkError?: (context: ChunkedRunContext<TChunkItem> & { error: unknown }) => Promise<TChunkResult>
+  mergeResults: (
+    results: Array<{ context: ChunkedRunContext<TChunkItem>; result: TChunkResult }>
+  ) => TMergedResult
+  logLabel: string
+}
+
 @inject()
 export class AiService {
   private client: OpenAI | null = null
@@ -28,6 +47,95 @@ export class AiService {
         error as Error
       )
     }
+  }
+
+  async chatJsonChunked<TChunkItem, TChunkResult, TMergedResult>(
+    config: AiClientConfig,
+    options: ChatJsonChunkedOptions<TChunkItem, TChunkResult, TMergedResult>
+  ): Promise<TMergedResult> {
+    const {
+      items,
+      maxChunkChars,
+      maxChunkItems,
+      getItemChars,
+      buildParams,
+      onChunkError,
+      mergeResults,
+      logLabel,
+    } = options
+
+    if (items.length === 0) {
+      return mergeResults([])
+    }
+
+    const chunks = this.createChunks(items, maxChunkChars, maxChunkItems, getItemChars)
+    const chunkResults: Array<{
+      context: ChunkedRunContext<TChunkItem>
+      result: TChunkResult
+    }> = []
+
+    for (let index = 0; index < chunks.length; index++) {
+      const chunkItems = chunks[index]
+      const chunkInputChars = chunkItems.reduce((sum, item) => sum + getItemChars(item), 0)
+      const startedAt = Date.now()
+      logger.info(
+        {
+          label: logLabel,
+          chunkIndex: index + 1,
+          chunkCount: chunks.length,
+          chunkItems: chunkItems.length,
+          chunkInputChars,
+        },
+        'AI chunk request started'
+      )
+
+      try {
+        const context = {
+          chunkItems,
+          chunkIndex: index + 1,
+          chunkCount: chunks.length,
+        }
+        const chunkResult = await this.chatJson<TChunkResult>(
+          config,
+          buildParams(context)
+        )
+        chunkResults.push({ context, result: chunkResult })
+        logger.info(
+          {
+            label: logLabel,
+            chunkIndex: index + 1,
+            chunkCount: chunks.length,
+            elapsedMs: Date.now() - startedAt,
+          },
+          'AI chunk request completed'
+        )
+      } catch (error) {
+        logger.warn(
+          {
+            label: logLabel,
+            chunkIndex: index + 1,
+            chunkCount: chunks.length,
+            elapsedMs: Date.now() - startedAt,
+            err: error,
+          },
+          'AI chunk request failed'
+        )
+
+        if (!onChunkError) {
+          throw error
+        }
+
+        const fallbackContext = {
+          chunkItems,
+          chunkIndex: index + 1,
+          chunkCount: chunks.length,
+        }
+        const fallbackResult = await onChunkError({ ...fallbackContext, error })
+        chunkResults.push({ context: fallbackContext, result: fallbackResult })
+      }
+    }
+
+    return mergeResults(chunkResults)
   }
 
   private parseJsonFromResponse<T>(content: string): T {
@@ -127,6 +235,24 @@ export class AiService {
   ): Promise<AiResponse> {
     this.validateConfig(config)
     const client = this.getClient(config)
+    const startedAt = Date.now()
+    const timeoutMs = config.timeout ?? AI.DEFAULT_TIMEOUT
+
+    logger.debug(
+      {
+        model: config.model,
+        baseUrl: config.baseUrl,
+        timeoutMs,
+        maxRetries: config.maxRetries ?? AI.DEFAULT_MAX_RETRIES,
+        messageCount: params.messages.length,
+        inputChars: params.messages.reduce((sum, item) => sum + item.content.length, 0),
+        maxTokens: params.maxTokens,
+        temperature: params.temperature ?? 0.7,
+        hasResponseFormat: Boolean(params.responseFormat),
+        stream,
+      },
+      'AI chat request started'
+    )
 
     try {
       const response = await client.chat.completions.create({
@@ -144,12 +270,30 @@ export class AiService {
       }
       const content = completionResponse.choices?.[0]?.message?.content || ''
       const usage = this.parseUsage(completionResponse.usage)
+      const elapsedMs = Date.now() - startedAt
 
-      logger.info({ model: config.model, tokens: usage.totalTokens }, 'AI chat completed')
+      logger.info(
+        { model: config.model, tokens: usage.totalTokens, elapsedMs, timeoutMs },
+        'AI chat completed'
+      )
 
       return { content, usage }
     } catch (error) {
-      throw this.handleError(error)
+      const elapsedMs = Date.now() - startedAt
+      const handledError = this.handleError(error)
+      logger.error(
+        {
+          model: config.model,
+          baseUrl: config.baseUrl,
+          timeoutMs,
+          elapsedMs,
+          errorCode: handledError.code,
+          errorName: handledError.name,
+          errorMessage: handledError.message,
+        },
+        'AI chat failed'
+      )
+      throw handledError
     }
   }
 
@@ -241,5 +385,38 @@ export class AiService {
     }
 
     return new AiServiceError(AI_ERROR_CODES.REQUEST_FAILED, message, error as Error)
+  }
+
+  private createChunks<TChunkItem>(
+    items: TChunkItem[],
+    maxChunkChars: number,
+    maxChunkItems: number,
+    getItemChars: (item: TChunkItem) => number
+  ): TChunkItem[][] {
+    const chunks: TChunkItem[][] = []
+    let currentChunk: TChunkItem[] = []
+    let currentChars = 0
+
+    for (const item of items) {
+      const itemChars = Math.max(1, getItemChars(item))
+      const shouldFlush =
+        currentChunk.length > 0 &&
+        (currentChunk.length >= maxChunkItems || currentChars + itemChars > maxChunkChars)
+
+      if (shouldFlush) {
+        chunks.push(currentChunk)
+        currentChunk = []
+        currentChars = 0
+      }
+
+      currentChunk.push(item)
+      currentChars += itemChars
+    }
+
+    if (currentChunk.length > 0) {
+      chunks.push(currentChunk)
+    }
+
+    return chunks
   }
 }

@@ -1,5 +1,6 @@
 import { inject } from '@adonisjs/core'
-import { AI } from '#constants'
+import { AI, BOOK_IMPORT_AI } from '#constants'
+import logger from '@adonisjs/core/services/logger'
 import { AiService } from '#services/ai/ai_service'
 import { ConfigService } from '#services/ai/config_service'
 import PromptService from '#services/ai/prompt_service'
@@ -17,6 +18,14 @@ export interface ChapterValidationStats {
   removedChapters: number
   fixedByRules: number
   fixedByAi: number
+  reviewRetries: number
+  mergedShortChapters: number
+  reviewFailedChapterIndexes: number[]
+  reviewScoreDigest: Array<{
+    chapterIndex: number
+    total: number
+    passed: boolean
+  }>
   ruleHits: {
     pgepubid: number
     htmlTag: number
@@ -35,8 +44,34 @@ interface ChapterRepairResponse {
   content?: string
 }
 
+interface ChapterQualityScore {
+  chapterIndex: number
+  cleanliness: number
+  semanticPreservation: number
+  coherenceAfterMerge: number
+  total: number
+  passed: boolean
+  reasons: string[]
+}
+
+interface ChapterQualityJudgeResponse {
+  passed?: boolean
+  chapterScores?: unknown
+}
+
+interface ChapterQualityJudgeResult {
+  passed: boolean
+  failedChapterIndexes: number[]
+  chapterScores: ChapterQualityScore[]
+}
+
 const AI_CHAPTER_MAX_CHARS = 9000
 const AI_CHUNK_MAX_CHARS = 4500
+const REVIEW_RETRY_MAX = 1
+const REVIEW_MIN_TOTAL_SCORE = 90
+const SHORT_CHAPTER_WORD_THRESHOLD = 120
+const SHORT_CHAPTER_CHAR_THRESHOLD = 700
+const MAX_CONSECUTIVE_SHORT_MERGES = 2
 
 @inject()
 export class BookChapterValidationService {
@@ -48,11 +83,16 @@ export class BookChapterValidationService {
   ) {}
 
   async validateChapters(chapters: ChapterContentInput[]): Promise<ChapterValidationResult> {
+    const startedAt = Date.now()
     const stats: ChapterValidationStats = {
       totalChapters: chapters.length,
       removedChapters: 0,
       fixedByRules: 0,
       fixedByAi: 0,
+      reviewRetries: 0,
+      mergedShortChapters: 0,
+      reviewFailedChapterIndexes: [],
+      reviewScoreDigest: [],
       ruleHits: {
         pgepubid: 0,
         htmlTag: 0,
@@ -63,6 +103,7 @@ export class BookChapterValidationService {
     }
 
     const validated: ChapterContentInput[] = []
+    logger.info({ chapterCount: chapters.length }, '[ChapterValidation] Step started')
 
     for (const chapter of chapters) {
       const normalized = this.normalizeChapter(chapter, stats)
@@ -130,10 +171,298 @@ export class BookChapterValidationService {
       throw new Error('No valid chapters remaining after chapter validation')
     }
 
-    return {
-      chapters: validated,
+    const mergeResult = this.mergeShortChapters(validated)
+    stats.mergedShortChapters = mergeResult.mergedCount
+    logger.info(
+      { inputChapterCount: validated.length, mergedShortChapters: mergeResult.mergedCount },
+      '[ChapterValidation] Short chapter merge completed'
+    )
+
+    let reviewedChapters = mergeResult.chapters
+    const firstJudge = await this.judgeChapterQuality(reviewedChapters)
+    let lastJudge = firstJudge
+
+    if (!firstJudge.passed) {
+      for (let attempt = 0; attempt < REVIEW_RETRY_MAX; attempt++) {
+        stats.reviewRetries++
+        logger.warn(
+          {
+            attempt: attempt + 1,
+            maxAttempts: REVIEW_RETRY_MAX,
+            failedChapterIndexes: firstJudge.failedChapterIndexes,
+          },
+          '[ChapterValidation] Review failed, entering in-step retry'
+        )
+        reviewedChapters = await this.repairAndRevalidateFailedChapters(
+          reviewedChapters,
+          firstJudge.failedChapterIndexes,
+          firstJudge.chapterScores,
+          stats
+        )
+
+        const retryJudge = await this.judgeChapterQuality(reviewedChapters)
+        lastJudge = retryJudge
+        if (retryJudge.passed) {
+          break
+        }
+
+        if (attempt === REVIEW_RETRY_MAX - 1) {
+          throw new Error(
+            `Chapter quality review failed after retry. Failed chapters: ${retryJudge.failedChapterIndexes.join(',')}`
+          )
+        }
+      }
+    }
+    stats.reviewFailedChapterIndexes = lastJudge.failedChapterIndexes
+    stats.reviewScoreDigest = lastJudge.chapterScores.map((score) => ({
+      chapterIndex: score.chapterIndex,
+      total: score.total,
+      passed: score.passed,
+    }))
+
+    const finalResult = {
+      chapters: reviewedChapters.map((chapter, index) => ({ ...chapter, chapterIndex: index })),
       stats,
     }
+    logger.info(
+      {
+        chapterCountIn: chapters.length,
+        chapterCountOut: finalResult.chapters.length,
+        removedChapters: stats.removedChapters,
+        mergedShortChapters: stats.mergedShortChapters,
+        reviewRetries: stats.reviewRetries,
+        elapsedMs: Date.now() - startedAt,
+      },
+      '[ChapterValidation] Step completed'
+    )
+    return finalResult
+  }
+
+  private async repairAndRevalidateFailedChapters(
+    chapters: ChapterContentInput[],
+    failedIndexes: number[],
+    chapterScores: ChapterQualityScore[],
+    stats: ChapterValidationStats
+  ): Promise<ChapterContentInput[]> {
+    const failedSet = new Set(failedIndexes)
+    const scoreMap = new Map(chapterScores.map((item) => [item.chapterIndex, item]))
+
+    const repaired: ChapterContentInput[] = []
+    for (const chapter of chapters) {
+      if (!failedSet.has(chapter.chapterIndex)) {
+        repaired.push(chapter)
+        continue
+      }
+
+      const reasons = scoreMap.get(chapter.chapterIndex)?.reasons || []
+      const repairedContent = await this.repairChapterWithAi(chapter, [
+        'quality_review_failed',
+        ...reasons,
+      ])
+      let normalized = this.normalizeChapter(
+        {
+          ...chapter,
+          content: repairedContent,
+        },
+        stats
+      )
+
+      const hardErrors = this.validateHardConstraints(normalized.content)
+      if (hardErrors.length > 0) {
+        throw new Error(
+          `Chapter ${chapter.chapterIndex} failed hard constraints after review retry: ${hardErrors.join(',')}`
+        )
+      }
+
+      if (normalized.content !== chapter.content) {
+        stats.fixedByAi++
+      }
+      normalized = {
+        ...normalized,
+        chapterIndex: chapter.chapterIndex,
+      }
+      repaired.push(normalized)
+    }
+
+    return repaired
+      .sort((a, b) => a.chapterIndex - b.chapterIndex)
+      .map((chapter, index) => ({ ...chapter, chapterIndex: index }))
+  }
+
+  private async judgeChapterQuality(
+    chapters: ChapterContentInput[]
+  ): Promise<ChapterQualityJudgeResult> {
+    const aiConfig = await this.resolveAiConfig()
+    const systemPrompt = this.promptService.render('system', {})
+    const userPrompt = this.promptService.render('book/chapter-quality-judge', {
+      minTotalScore: REVIEW_MIN_TOTAL_SCORE,
+      chapters: chapters.map((chapter) => ({
+        chapterIndex: chapter.chapterIndex,
+        title: chapter.title,
+        content: this.buildJudgeContentWindow(chapter.content),
+      })),
+    })
+
+    const params: AiChatParams = {
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      maxTokens: BOOK_IMPORT_AI.JUDGE_MAX_TOKENS,
+      temperature: 0,
+      responseFormat: { type: 'json_object' },
+    }
+    const startedAt = Date.now()
+    logger.info(
+      {
+        chapterCount: chapters.length,
+        timeoutMs: aiConfig.timeout ?? AI.DEFAULT_TIMEOUT,
+        maxRetries: aiConfig.maxRetries ?? AI.DEFAULT_MAX_RETRIES,
+      },
+      '[ChapterValidation] Quality judge request started'
+    )
+    const result = await this.aiService.chatJson<ChapterQualityJudgeResponse>(aiConfig, params)
+    const parsedScores = this.parseChapterScores(result.chapterScores)
+    const failedChapterIndexes = parsedScores.filter((item) => !item.passed).map((item) => item.chapterIndex)
+    const passedByScores = failedChapterIndexes.length === 0
+    const passedByTopLevel = typeof result.passed === 'boolean' ? result.passed : passedByScores
+    logger.info(
+      {
+        chapterCount: chapters.length,
+        failedChapterIndexes,
+        passedByTopLevel,
+        elapsedMs: Date.now() - startedAt,
+      },
+      '[ChapterValidation] Quality judge request completed'
+    )
+
+    return {
+      passed: passedByTopLevel && passedByScores,
+      failedChapterIndexes,
+      chapterScores: parsedScores,
+    }
+  }
+
+  private parseChapterScores(raw: unknown): ChapterQualityScore[] {
+    if (!Array.isArray(raw) || raw.length === 0) {
+      throw new Error('Chapter quality judge returned empty scores')
+    }
+
+    return raw.map((item, index) => {
+      const payload = item as Record<string, unknown>
+      const chapterIndex = this.toNumber(payload.chapterIndex, index)
+      const cleanliness = this.clampScore(this.toNumber(payload.cleanliness, 0))
+      const semanticPreservation = this.clampScore(this.toNumber(payload.semanticPreservation, 0))
+      const coherenceAfterMerge = this.clampScore(this.toNumber(payload.coherenceAfterMerge, 0))
+      const total = this.clampScore(
+        this.toNumber(payload.total, Math.round((cleanliness + semanticPreservation + coherenceAfterMerge) / 3))
+      )
+      const reasons = Array.isArray(payload.reasons)
+        ? payload.reasons
+            .map((reason) => String(reason).trim())
+            .filter(Boolean)
+            .slice(0, 8)
+        : []
+      const passed =
+        typeof payload.passed === 'boolean'
+          ? payload.passed
+          : total >= REVIEW_MIN_TOTAL_SCORE && reasons.length === 0
+
+      return {
+        chapterIndex,
+        cleanliness,
+        semanticPreservation,
+        coherenceAfterMerge,
+        total,
+        passed,
+        reasons,
+      }
+    })
+  }
+
+  private clampScore(score: number): number {
+    if (Number.isNaN(score)) {
+      return 0
+    }
+    return Math.min(100, Math.max(0, Math.round(score)))
+  }
+
+  private toNumber(value: unknown, fallback: number): number {
+    const normalized = typeof value === 'number' ? value : Number(value)
+    return Number.isFinite(normalized) ? normalized : fallback
+  }
+
+  private mergeShortChapters(chapters: ChapterContentInput[]): {
+    chapters: ChapterContentInput[]
+    mergedCount: number
+  } {
+    const sorted = [...chapters]
+      .sort((a, b) => a.chapterIndex - b.chapterIndex)
+      .map((chapter, index) => ({ ...chapter, chapterIndex: index }))
+    const merged: ChapterContentInput[] = []
+    let mergedCount = 0
+    let consecutiveMerges = 0
+
+    for (let i = 0; i < sorted.length; i++) {
+      const current = sorted[i]
+      const next = sorted[i + 1]
+
+      if (
+        next &&
+        this.isShortChapter(current) &&
+        !this.looksStandaloneChapter(current.title) &&
+        consecutiveMerges < MAX_CONSECUTIVE_SHORT_MERGES
+      ) {
+        const mergedNext = {
+          ...next,
+          content: `${current.content.trim()}\n\n${next.content.trim()}`.trim(),
+        }
+        sorted[i + 1] = mergedNext
+        mergedCount++
+        consecutiveMerges++
+        continue
+      }
+
+      if (!next && merged.length > 0 && this.isShortChapter(current) && !this.looksStandaloneChapter(current.title)) {
+        const previous = merged[merged.length - 1]
+        merged[merged.length - 1] = {
+          ...previous,
+          content: `${previous.content.trim()}\n\n${current.content.trim()}`.trim(),
+        }
+        mergedCount++
+        continue
+      }
+
+      merged.push(current)
+      consecutiveMerges = 0
+    }
+
+    return {
+      chapters: merged.map((chapter, index) => ({ ...chapter, chapterIndex: index })),
+      mergedCount,
+    }
+  }
+
+  private isShortChapter(chapter: ChapterContentInput): boolean {
+    const words = chapter.content.split(/\s+/).filter(Boolean).length
+    return words < SHORT_CHAPTER_WORD_THRESHOLD || chapter.content.length < SHORT_CHAPTER_CHAR_THRESHOLD
+  }
+
+  private looksStandaloneChapter(title: string): boolean {
+    const normalized = title.trim().toLowerCase()
+    if (!normalized) {
+      return false
+    }
+
+    if (/^(chapter|ch\.?)\s+([0-9]+|[ivxlcdm]+)\b/.test(normalized)) {
+      return true
+    }
+
+    if (/^第.{1,8}章/.test(title.trim())) {
+      return true
+    }
+
+    return false
   }
 
   private collectSoftIssues(content: string): string[] {
@@ -313,12 +642,22 @@ export class BookChapterValidationService {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      maxTokens: 3500,
+      maxTokens: BOOK_IMPORT_AI.REPAIR_MAX_TOKENS,
       temperature: 0.1,
       responseFormat: { type: 'json_object' },
     }
 
     let repairedContent = ''
+    const startedAt = Date.now()
+    logger.info(
+      {
+        chapterIndex: chapter.chapterIndex,
+        contentChars: chapter.content.length,
+        errorCount: errors.length,
+        timeoutMs: aiConfig.timeout ?? AI.DEFAULT_TIMEOUT,
+      },
+      '[ChapterValidation] Chapter repair request started'
+    )
     try {
       const result = await this.aiService.chatJson<ChapterRepairResponse>(aiConfig, params)
       repairedContent = result.content?.trim() || ''
@@ -329,6 +668,14 @@ export class BookChapterValidationService {
       })
       repairedContent = this.extractContentFromRawAiResponse(raw)
     }
+    logger.info(
+      {
+        chapterIndex: chapter.chapterIndex,
+        repairedChars: repairedContent.length,
+        elapsedMs: Date.now() - startedAt,
+      },
+      '[ChapterValidation] Chapter repair request completed'
+    )
 
     if (!repairedContent) {
       return chapter.content
@@ -341,9 +688,23 @@ export class BookChapterValidationService {
     const config = await this.configService.getAiConfig()
     return {
       ...config,
-      timeout: AI.DEFAULT_TIMEOUT,
-      maxRetries: AI.DEFAULT_MAX_RETRIES,
+      timeout: BOOK_IMPORT_AI.VALIDATION_TIMEOUT_MS,
+      maxRetries: BOOK_IMPORT_AI.VALIDATION_MAX_RETRIES,
     }
+  }
+
+  private buildJudgeContentWindow(content: string): string {
+    const normalized = content.trim()
+    const head = normalized.slice(0, BOOK_IMPORT_AI.JUDGE_WINDOW_HEAD_CHARS)
+    const tail = normalized.slice(
+      Math.max(0, normalized.length - BOOK_IMPORT_AI.JUDGE_WINDOW_TAIL_CHARS)
+    )
+
+    if (!tail || normalized.length <= BOOK_IMPORT_AI.JUDGE_WINDOW_HEAD_CHARS) {
+      return head
+    }
+
+    return `${head}\n\n...[TRUNCATED FOR JUDGE]...\n\n${tail}`
   }
 
   private normalizeTitle(title: string): string {

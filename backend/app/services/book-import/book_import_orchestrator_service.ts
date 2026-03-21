@@ -222,14 +222,17 @@ export class BookImportOrchestratorService {
     book: Book
     parsed: ParsedSourceResult
   }): Promise<{ title: string; author: string | null; description: string | null }> {
+    const metadataFileNameHint =
+      params.parsed.title?.trim() || params.book.rawFileName || 'Untitled'
     const metadata = await this.semanticCleaner.extractMetadata({
-      fileName: params.book.rawFileName || params.parsed.title,
+      fileName: metadataFileNameHint,
       sourceType: params.book.source,
       chapterTitles: params.parsed.chapters.slice(0, 30).map((item) => item.title),
       sampleText: params.parsed.chapters
         .slice(0, 3)
         .map((item) => item.content)
-        .join('\n\n'),
+        .join('\n\n')
+        .slice(0, 5000),
     })
 
     return metadata

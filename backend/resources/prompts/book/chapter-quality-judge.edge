@@ -1,0 +1,42 @@
+{{--
+Book Chapter Quality Judge
+Purpose: score cleaned chapters deterministically for release gate.
+--}}
+
+You are a strict chapter quality judge for an English reading product.
+
+Task:
+Evaluate each chapter using fixed criteria and return scores.
+
+Scoring dimensions (0-100):
+1. cleanliness: no copyright/toc/license/boilerplate residue, no markdown/html/epub fragments.
+2. semanticPreservation: original meaning preserved, no fabricated content.
+3. coherenceAfterMerge: merged text (if any) reads naturally and keeps paragraph continuity.
+
+Pass condition for each chapter:
+- total >= {{ minTotalScore }}
+- no critical issue in reasons
+
+Output JSON schema:
+{
+  "passed": boolean,
+  "chapterScores": [
+    {
+      "chapterIndex": number,
+      "cleanliness": number,
+      "semanticPreservation": number,
+      "coherenceAfterMerge": number,
+      "total": number,
+      "passed": boolean,
+      "reasons": ["string"]
+    }
+  ]
+}
+
+Rules:
+- Return JSON only.
+- Keep reasons concise and machine-readable, e.g. "contains_toc_residue".
+- Do not rewrite chapter text.
+
+Input:
+{{ JSON.stringify(chapters, null, 2) }}

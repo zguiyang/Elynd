@@ -1,5 +1,5 @@
 import { inject } from '@adonisjs/core'
-import { AI } from '#constants'
+import { AI, BOOK_IMPORT_AI } from '#constants'
 import logger from '@adonisjs/core/services/logger'
 import { AiService } from '#services/ai/ai_service'
 import type { AiChatParams, AiClientConfig } from '#types/ai'
@@ -62,9 +62,6 @@ interface ChapterResponse {
   }>
 }
 
-const SEMANTIC_AI_TIMEOUT_MS = 30000
-const SEMANTIC_AI_MAX_RETRIES = 0
-
 @inject()
 export class BookSemanticCleanService {
   constructor(
@@ -74,12 +71,21 @@ export class BookSemanticCleanService {
     private configService: ConfigService
   ) {}
 
-  private async resolveSemanticAiConfig(): Promise<AiClientConfig> {
+  private async resolveSemanticMetadataAiConfig(): Promise<AiClientConfig> {
     const config = await this.configService.getAiConfig()
     return {
       ...config,
-      timeout: SEMANTIC_AI_TIMEOUT_MS,
-      maxRetries: SEMANTIC_AI_MAX_RETRIES,
+      timeout: BOOK_IMPORT_AI.SEMANTIC_METADATA_TIMEOUT_MS,
+      maxRetries: BOOK_IMPORT_AI.SEMANTIC_METADATA_MAX_RETRIES,
+    }
+  }
+
+  private async resolveSemanticChaptersAiConfig(): Promise<AiClientConfig> {
+    const config = await this.configService.getAiConfig()
+    return {
+      ...config,
+      timeout: BOOK_IMPORT_AI.SEMANTIC_CHAPTERS_TIMEOUT_MS,
+      maxRetries: BOOK_IMPORT_AI.SEMANTIC_CHAPTERS_MAX_RETRIES,
     }
   }
 
@@ -93,7 +99,7 @@ export class BookSemanticCleanService {
   }
 
   async extractMetadata(input: SemanticMetadataInput): Promise<SemanticMetadataOutput> {
-    const aiConfig = await this.resolveSemanticAiConfig()
+    const aiConfig = await this.resolveSemanticMetadataAiConfig()
     const systemPrompt = this.promptService.render('system', {})
     const userPrompt = this.promptService.render('book/semantic-metadata', input)
     const params: AiChatParams = {
@@ -133,39 +139,86 @@ export class BookSemanticCleanService {
   }
 
   async cleanChapters(chapters: SemanticChapterInput[]): Promise<SemanticChapterOutput[]> {
-    const aiConfig = await this.resolveSemanticAiConfig()
+    const aiConfig = await this.resolveSemanticChaptersAiConfig()
     const systemPrompt = this.promptService.render('system', {})
-    const userPrompt = this.promptService.render('book/semantic-chapters', { chapters })
-    const params: AiChatParams = {
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      maxTokens: 16000,
-      temperature: 0.2,
-      responseFormat: { type: 'json_object' },
-    }
+    const normalizedInput = chapters.map((chapter, index) => ({
+      ...chapter,
+      chapterIndex: index,
+    }))
 
     try {
-      const result = await this.aiService.chatJson<ChapterResponse>(aiConfig, params)
-      const cleaned = (result.cleanedChapters || [])
-        .map((chapter, index) => {
-          const title = chapter.title?.trim() || `Chapter ${index + 1}`
-          const content = this.toPlainBody(chapter.content || '', title)
-
+      const merged = await this.aiService.chatJsonChunked<
+        SemanticChapterInput & { chapterIndex: number },
+        ChapterResponse,
+        SemanticChapterOutput[]
+      >(aiConfig, {
+        items: normalizedInput,
+        maxChunkChars: BOOK_IMPORT_AI.SEMANTIC_CHAPTERS_MAX_CHUNK_INPUT_CHARS,
+        maxChunkItems: BOOK_IMPORT_AI.SEMANTIC_CHAPTERS_MAX_CHUNK_ITEMS,
+        getItemChars: (item) => item.title.length + item.content.length + 32,
+        buildParams: ({ chunkItems }) => {
+          const userPrompt = this.promptService.render('book/semantic-chapters', {
+            chapters: chunkItems.map((item) => ({
+              title: item.title,
+              content: item.content,
+            })),
+          })
           return {
-            title,
-            content,
-            chapterIndex: index,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt },
+            ],
+            maxTokens: 3500,
+            temperature: 0.2,
+            responseFormat: { type: 'json_object' },
           }
-        })
-        .filter((chapter) => chapter.content.length > 0)
+        },
+        onChunkError: async ({ chunkItems, error }) => {
+          logger.warn(
+            {
+              err: error,
+              chunkChapterCount: chunkItems.length,
+            },
+            'Semantic chapter clean chunk failed, fallback to rule cleaner for this chunk'
+          )
+          const fallback = this.ruleCleaner.clean(
+            chunkItems.map((item) => ({ title: item.title, content: item.content }))
+          )
+          return {
+            cleanedChapters: fallback.cleanedChapters.map((chapter) => ({
+              title: chapter.title,
+              content: chapter.content.trim(),
+              dropReason: null,
+            })),
+            droppedChapters: [],
+          }
+        },
+        mergeResults: (results) =>
+          results
+            .flatMap(({ context, result }) => {
+              return (result.cleanedChapters || [])
+                .map((chapter, index) => {
+                  const source = context.chunkItems[index]
+                  const title = chapter.title?.trim() || source?.title || `Chapter ${index + 1}`
+                  const content = this.toPlainBody(chapter.content || '', title)
+                  return {
+                    title,
+                    content,
+                    chapterIndex: source?.chapterIndex ?? index,
+                  }
+                })
+                .filter((chapter) => chapter.content.length > 0)
+            })
+            .sort((a, b) => a.chapterIndex - b.chapterIndex)
+            .map((chapter, index) => ({ ...chapter, chapterIndex: index })),
+        logLabel: 'semantic-chapters',
+      })
 
-      if (cleaned.length > 0) {
-        return cleaned
+      if (merged.length > 0) {
+        return merged
       }
-    } catch {
-      // fallback below
+    } catch (error) {
+      logger.warn({ err: error }, 'Semantic chapter clean failed, fallback to full rule cleaner')
     }
 
     const fallback = this.ruleCleaner.clean(chapters)

@@ -221,6 +221,28 @@ test.group('BookSemanticCleanService', () => {
         ],
         droppedChapters: [{ title: 'Preface', reason: 'preface' }],
       }),
+      chatJsonChunked: async (_config: unknown, options: any) => {
+        const result = await options.buildParams({
+          chunkItems: [
+            { title: 'Chapter 1', content: 'Valid content here with enough words', chapterIndex: 0 },
+            { title: 'Preface', content: 'Preface content with enough words to pass', chapterIndex: 1 },
+          ],
+          chunkIndex: 1,
+          chunkCount: 1,
+        })
+        const payload = JSON.parse(result.messages[1].content)
+        return options.mergeResults([
+          {
+            context: { chunkItems: payload.chapters, chunkIndex: 1, chunkCount: 1 },
+            result: {
+              cleanedChapters: [
+                { title: 'Chapter 1', content: 'Valid content', dropReason: null },
+                { title: 'Chapter 2', content: 'Another valid content', dropReason: null },
+              ],
+            },
+          },
+        ])
+      },
     }
     const mockPromptService = {
       render: (_name: string, data: any) => JSON.stringify(data),
@@ -255,6 +277,38 @@ test.group('BookSemanticCleanService', () => {
       chatJson: async () => {
         throw new Error('AI service unavailable')
       },
+      chatJsonChunked: async (_config: unknown, options: any) => {
+        const fallback = await options.onChunkError({
+          chunkItems: [
+            {
+              title: 'Chapter 1',
+              content: 'Valid content here with enough words to pass threshold',
+              chapterIndex: 0,
+            },
+            { title: 'References', content: 'References content', chapterIndex: 1 },
+          ],
+          chunkIndex: 1,
+          chunkCount: 1,
+          error: new Error('AI timeout'),
+        })
+        return options.mergeResults([
+          {
+            context: {
+              chunkItems: [
+                {
+                  title: 'Chapter 1',
+                  content: 'Valid content here with enough words to pass threshold',
+                  chapterIndex: 0,
+                },
+                { title: 'References', content: 'References content', chapterIndex: 1 },
+              ],
+              chunkIndex: 1,
+              chunkCount: 1,
+            },
+            result: fallback,
+          },
+        ])
+      },
     }
     const mockPromptService = {
       render: (_name: string, data: any) => JSON.stringify(data),
@@ -281,5 +335,87 @@ test.group('BookSemanticCleanService', () => {
     ])
 
     assert.isTrue(result.length >= 1)
+  })
+
+  test('cleanChapters handles large input by chunking and partial fallback', async ({ assert }) => {
+    const mockAiService = {
+      chatJson: async () => {
+        throw new Error('unused in chunk test')
+      },
+      chatJsonChunked: async (_config: unknown, options: any) => {
+        const chunks = [
+          [
+            {
+              title: 'Chapter 1',
+              content: 'A'.repeat(7000),
+              chapterIndex: 0,
+            },
+            {
+              title: 'Chapter 2',
+              content: 'B'.repeat(7000),
+              chapterIndex: 1,
+            },
+          ],
+          [
+            {
+              title: 'Chapter 3',
+              content: 'C'.repeat(7000),
+              chapterIndex: 2,
+            },
+          ],
+        ]
+        const first = {
+          context: { chunkItems: chunks[0], chunkIndex: 1, chunkCount: 2 },
+          result: {
+            cleanedChapters: [
+              { title: 'Chapter 1', content: 'Chapter 1 content', dropReason: null },
+              { title: 'Chapter 2', content: 'Chapter 2 content', dropReason: null },
+            ],
+          },
+        }
+        const fallback = await options.onChunkError({
+          chunkItems: chunks[1],
+          chunkIndex: 2,
+          chunkCount: 2,
+          error: new Error('chunk timeout'),
+        })
+
+        return options.mergeResults([
+          first,
+          {
+            context: { chunkItems: chunks[1], chunkIndex: 2, chunkCount: 2 },
+            result: fallback,
+          },
+        ])
+      },
+    }
+    const mockPromptService = {
+      render: (_name: string, data: any) => JSON.stringify(data),
+    }
+    const mockRuleCleaner = new BookChapterCleanerService()
+    const mockConfigService = {
+      getAiConfig: async () => ({
+        baseUrl: 'https://example.com/v1',
+        apiKey: 'test-key',
+        model: 'test-model',
+      }),
+    }
+
+    const service = new BookSemanticCleanService(
+      mockAiService as any,
+      mockPromptService as any,
+      mockRuleCleaner,
+      mockConfigService as any
+    )
+
+    const result = await service.cleanChapters([
+      { title: 'Chapter 1', content: 'A'.repeat(7000) },
+      { title: 'Chapter 2', content: 'B'.repeat(7000) },
+      { title: 'Chapter 3', content: 'C'.repeat(7000) },
+    ])
+
+    assert.equal(result.length, 3)
+    assert.equal(result[0].chapterIndex, 0)
+    assert.equal(result[2].chapterIndex, 2)
   })
 })

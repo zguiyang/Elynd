@@ -1,4 +1,5 @@
 import { inject } from '@adonisjs/core'
+import logger from '@adonisjs/core/services/logger'
 import Book from '#models/book'
 import { BOOK_IMPORT_STEP } from '#constants'
 import { BookImportOrchestratorService } from '#services/book-import/book_import_orchestrator_service'
@@ -17,6 +18,7 @@ export class BookChapterValidationPipelineService {
 
   async run(payload: SerialImportPayload) {
     const { bookId, runId, userId } = payload
+    const startedAt = Date.now()
     await Book.findOrFail(bookId)
     await this.importStateService.assertImportNotCancelled(runId, bookId)
 
@@ -32,6 +34,7 @@ export class BookChapterValidationPipelineService {
     )
 
     try {
+      logger.info({ bookId, runId }, '[ValidationPipeline] Step run started')
       await this.importStateService.assertImportNotCancelled(runId, bookId)
       const semanticOutput = await this.orchestrator.getSuccessfulStepOutputRef(
         runId,
@@ -42,6 +45,15 @@ export class BookChapterValidationPipelineService {
         'cleanedChaptersArtifactPath'
       )
       const cleanedChapters = await this.orchestrator.readChapterArtifact(cleanedArtifactPath)
+      logger.info(
+        {
+          bookId,
+          runId,
+          cleanedArtifactPath,
+          cleanedChapterCount: cleanedChapters.length,
+        },
+        '[ValidationPipeline] Loaded cleaned chapters artifact'
+      )
 
       const validatedResult = await this.validationService.validateChapters(cleanedChapters)
       await this.importStateService.assertImportNotCancelled(runId, bookId)
@@ -63,6 +75,18 @@ export class BookChapterValidationPipelineService {
           validatedChaptersArtifactPath: validatedArtifactPath,
         }
       )
+      logger.info(
+        {
+          bookId,
+          runId,
+          validatedChapterCount: validatedResult.chapters.length,
+          removedChapters: validatedResult.stats.removedChapters,
+          reviewRetries: validatedResult.stats.reviewRetries,
+          mergedShortChapters: validatedResult.stats.mergedShortChapters,
+          elapsedMs: Date.now() - startedAt,
+        },
+        '[ValidationPipeline] Step run completed'
+      )
 
       await BuildContentAndVocabSeedJob.dispatch(
         { bookId, runId, userId },
@@ -78,6 +102,15 @@ export class BookChapterValidationPipelineService {
       if (ImportStateService.isImportCancelledError(error)) {
         return
       }
+      logger.error(
+        {
+          bookId,
+          runId,
+          elapsedMs: Date.now() - startedAt,
+          err: error,
+        },
+        '[ValidationPipeline] Step run failed'
+      )
       const message = error instanceof Error ? error.message : 'Unknown error'
       await this.importStateService.failStep(
         runId,

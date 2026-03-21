@@ -1,5 +1,6 @@
 import { DateTime } from 'luxon'
 import { inject } from '@adonisjs/core'
+import logger from '@adonisjs/core/services/logger'
 import BookProcessingRunLog from '#models/book_processing_run_log'
 import type { JobType } from '#models/book_processing_run_log'
 import BookProcessingStepLog from '#models/book_processing_step_log'
@@ -21,6 +22,10 @@ export class BookProcessingLogService {
       .first()
 
     if (existingRun) {
+      logger.info(
+        { bookId, runId: existingRun.id, status: existingRun.status, jobType },
+        'Book import run reused'
+      )
       return existingRun
     }
 
@@ -33,6 +38,11 @@ export class BookProcessingLogService {
     runLog.progress = 0
     runLog.startedAt = DateTime.now()
     await runLog.save()
+
+    logger.info(
+      { bookId, runId: runLog.id, status: runLog.status, jobType },
+      'Book import run created'
+    )
 
     return runLog
   }
@@ -50,6 +60,16 @@ export class BookProcessingLogService {
     runLog.startedAt = DateTime.now()
     await runLog.save()
 
+    logger.info(
+      {
+        bookId,
+        jobType,
+        runId: runLog.id,
+        status: runLog.status,
+      },
+      'Book import run started'
+    )
+
     return runLog
   }
 
@@ -65,6 +85,8 @@ export class BookProcessingLogService {
     runLog.currentStep = currentStep
     runLog.progress = progress
     await runLog.save()
+
+    logger.info({ runId, stepKey: currentStep, progress }, 'Book import run advanced')
 
     return runLog
   }
@@ -82,6 +104,11 @@ export class BookProcessingLogService {
       : null
     await runLog.save()
 
+    logger.info(
+      { runId, status: runLog.status, durationMs: runLog.durationMs },
+      'Book import run completed'
+    )
+
     return runLog
   }
 
@@ -98,6 +125,11 @@ export class BookProcessingLogService {
     runLog.errorMessage = error
     runLog.errorCode = errorCode || null
     await runLog.save()
+
+    logger.error(
+      { runId, errorCode: runLog.errorCode, durationMs: runLog.durationMs },
+      'Book import run failed'
+    )
 
     return runLog
   }
@@ -122,6 +154,8 @@ export class BookProcessingLogService {
     stepLog.startedAt = DateTime.now()
     await stepLog.save()
 
+    logger.info({ runLogId, bookId, stepKey, status: stepLog.status }, 'Book import step started')
+
     return stepLog
   }
 
@@ -140,6 +174,11 @@ export class BookProcessingLogService {
       : null
     stepLog.outputRef = outputRef || null
     await stepLog.save()
+
+    logger.info(
+      { stepLogId, status: stepLog.status, durationMs: stepLog.durationMs },
+      'Book import step completed'
+    )
 
     return stepLog
   }
@@ -164,6 +203,11 @@ export class BookProcessingLogService {
     stepLog.outputRef = outputRef || null
     await stepLog.save()
 
+    logger.error(
+      { stepLogId, errorCode: stepLog.errorCode, durationMs: stepLog.durationMs },
+      'Book import step failed'
+    )
+
     return stepLog
   }
 
@@ -175,6 +219,8 @@ export class BookProcessingLogService {
     stepLog.status = 'skipped'
     stepLog.finishedAt = DateTime.now()
     await stepLog.save()
+
+    logger.info({ stepLogId, status: stepLog.status }, 'Book import step skipped')
 
     return stepLog
   }

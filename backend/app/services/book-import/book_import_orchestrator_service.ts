@@ -40,10 +40,8 @@ export interface ChapterArtifactItem {
 type DispatchableImportStep =
   | typeof BOOK_IMPORT_STEP.PREPARE_IMPORT
   | typeof BOOK_IMPORT_STEP.SEMANTIC_CLEAN
-  | typeof BOOK_IMPORT_STEP.VALIDATE_CHAPTER_CONTENT
   | typeof BOOK_IMPORT_STEP.BUILD_CONTENT_AND_VOCAB_SEED
   | typeof BOOK_IMPORT_STEP.ENRICH_VOCABULARY
-  | typeof BOOK_IMPORT_STEP.GENERATE_TAGS
   | typeof BOOK_IMPORT_STEP.GENERATE_TTS
   | typeof BOOK_IMPORT_STEP.FINALIZE_IMPORT
 
@@ -63,15 +61,10 @@ export class BookImportOrchestratorService {
       { key: BOOK_IMPORT_STEP.PREPARE_IMPORT, weight: BOOK_IMPORT_PROGRESS.PREPARE_IMPORT },
       { key: BOOK_IMPORT_STEP.SEMANTIC_CLEAN, weight: BOOK_IMPORT_PROGRESS.SEMANTIC_CLEAN },
       {
-        key: BOOK_IMPORT_STEP.VALIDATE_CHAPTER_CONTENT,
-        weight: BOOK_IMPORT_PROGRESS.VALIDATE_CHAPTER_CONTENT,
-      },
-      {
         key: BOOK_IMPORT_STEP.BUILD_CONTENT_AND_VOCAB_SEED,
         weight: BOOK_IMPORT_PROGRESS.BUILD_CONTENT_AND_VOCAB_SEED,
       },
       { key: BOOK_IMPORT_STEP.ENRICH_VOCABULARY, weight: BOOK_IMPORT_PROGRESS.ENRICH_VOCABULARY },
-      { key: BOOK_IMPORT_STEP.GENERATE_TAGS, weight: BOOK_IMPORT_PROGRESS.GENERATE_TAGS },
       { key: BOOK_IMPORT_STEP.GENERATE_TTS, weight: BOOK_IMPORT_PROGRESS.GENERATE_TTS },
       { key: BOOK_IMPORT_STEP.FINALIZE_IMPORT, weight: BOOK_IMPORT_PROGRESS.FINALIZE_IMPORT },
     ]
@@ -127,15 +120,6 @@ export class BookImportOrchestratorService {
           jobId
         )
       }
-      case BOOK_IMPORT_STEP.VALIDATE_CHAPTER_CONTENT: {
-        const { default: ValidateChapterContentJob } =
-          await import('#jobs/validate_chapter_content_job')
-        return (
-          ((await dispatch(ValidateChapterContentJob, commonPayload, { jobId })) as
-            | string
-            | undefined) || jobId
-        )
-      }
       case BOOK_IMPORT_STEP.BUILD_CONTENT_AND_VOCAB_SEED: {
         const { default: BuildContentAndVocabSeedJob } =
           await import('#jobs/build_content_and_vocab_seed_job')
@@ -149,13 +133,6 @@ export class BookImportOrchestratorService {
         const { default: EnrichVocabularyJob } = await import('#jobs/enrich_vocabulary_job')
         return (
           ((await dispatch(EnrichVocabularyJob, commonPayload, { jobId })) as string | undefined) ||
-          jobId
-        )
-      }
-      case BOOK_IMPORT_STEP.GENERATE_TAGS: {
-        const { default: GenerateTagsJob } = await import('#jobs/generate_tags_job')
-        return (
-          ((await dispatch(GenerateTagsJob, commonPayload, { jobId })) as string | undefined) ||
           jobId
         )
       }

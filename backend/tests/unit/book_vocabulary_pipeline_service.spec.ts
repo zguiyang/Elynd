@@ -1,0 +1,121 @@
+import { test } from '@japa/runner'
+import Book from '#models/book'
+import BookChapter from '#models/book_chapter'
+import BookVocabulary from '#models/book_vocabulary'
+import { BOOK_IMPORT_STEP } from '#constants'
+import { BookVocabularyPipelineService } from '#services/book-import/book_vocabulary_pipeline_service'
+import { createAuthenticatedUser } from '#tests/helpers/auth'
+import GenerateTtsJob from '#jobs/generate_tts_job'
+
+test.group('BookVocabularyPipelineService', (group) => {
+  group.each.teardown(async () => {
+    await BookVocabulary.query().delete()
+    await BookChapter.query().delete()
+    await Book.query().where('title', 'like', 'Vocabulary Pipeline Test%').delete()
+  })
+
+  test('dispatches tts generation after vocabulary enrichment instead of tags', async ({
+    assert,
+  }) => {
+    const { user } = await createAuthenticatedUser({ emailPrefix: 'vocab-pipeline' })
+    const book = await Book.create({
+      title: `Vocabulary Pipeline Test ${Date.now()}`,
+      author: 'Author',
+      description: 'Description',
+      source: 'user_uploaded',
+      levelId: 1,
+      status: 'processing',
+      processingStep: BOOK_IMPORT_STEP.ENRICH_VOCABULARY,
+      processingProgress: 0,
+      processingError: null,
+      wordCount: 100,
+      readingTime: 1,
+      isPublished: false,
+      createdBy: user.id,
+      audioStatus: 'pending',
+      vocabularyStatus: 'pending',
+      contentHash: null,
+      bookHash: null,
+    })
+
+    await BookChapter.createMany([
+      {
+        bookId: book.id,
+        chapterIndex: 0,
+        title: 'Chapter 1',
+        content: 'Alpha beta gamma alpha appears in readable content.',
+      },
+    ])
+
+    const importStateService = {
+      assertImportNotCancelled: async () => {},
+      startStep: async () => ({ id: 900 }),
+      completeStep: async () => {},
+      failStep: async () => {},
+    }
+
+    const analyzerService = {
+      extractVocabulary: () => [{ word: 'alpha', lemma: 'alpha', frequency: 2 }],
+      saveVocabulary: async (
+        bookId: number,
+        items: Array<{ word: string; lemma: string; frequency: number; sentence: string }>
+      ) => {
+        await BookVocabulary.create({
+          bookId,
+          word: items[0].word,
+          lemma: items[0].lemma,
+          frequency: items[0].frequency,
+          sentence: items[0].sentence || 'Alpha appears in readable content.',
+          dictionaryEntryId: null,
+        })
+      },
+    }
+
+    const dictionaryService = {
+      lookupBatch: async () =>
+        new Map([
+          [
+            'alpha',
+            {
+              id: 42,
+              word: 'alpha',
+              meanings: ['first letter of the Greek alphabet'],
+            },
+          ],
+        ]),
+      saveGlobalEntry: async (entry: { id: number }) => entry,
+      cacheEntry: async () => {},
+    }
+
+    const GenerateTtsAny = GenerateTtsJob as any
+    const originalGenerateTtsDispatch = GenerateTtsAny.dispatch
+    const calls: { tts?: Array<Record<string, unknown>> } = {}
+
+    GenerateTtsAny.dispatch = async (payload: Record<string, unknown>) => {
+      calls.tts = [...(calls.tts || []), payload]
+      return 'generate-tts-job'
+    }
+
+    try {
+      const service = new BookVocabularyPipelineService(
+        dictionaryService as any,
+        analyzerService as any,
+        importStateService as any
+      )
+
+      await service.run({
+        bookId: book.id,
+        runId: 321,
+        userId: user.id,
+      })
+
+      assert.lengthOf(calls.tts || [], 1)
+      assert.equal(calls.tts?.[0]?.bookId, book.id)
+      assert.equal(calls.tts?.[0]?.runId, 321)
+      assert.equal(calls.tts?.[0]?.userId, user.id)
+    } finally {
+      GenerateTtsAny.dispatch = originalGenerateTtsDispatch
+      await user.delete()
+    }
+  })
+})

@@ -67,7 +67,7 @@ test.group('ImportStateService', () => {
     assert.isTrue(
       ImportStateService.canTransition(
         BOOK_IMPORT_STEP.SEMANTIC_CLEAN,
-        BOOK_IMPORT_STEP.VALIDATE_CHAPTER_CONTENT
+        BOOK_IMPORT_STEP.BUILD_CONTENT_AND_VOCAB_SEED
       )
     )
     assert.isFalse(
@@ -141,14 +141,14 @@ test.group('ImportStateService', () => {
     const validateStep = await service.startStep(
       run.id,
       book.id,
-      BOOK_IMPORT_STEP.VALIDATE_CHAPTER_CONTENT,
+      BOOK_IMPORT_STEP.BUILD_CONTENT_AND_VOCAB_SEED,
       50
     )
     await service.completeStep(
       run.id,
       validateStep.id,
       book.id,
-      BOOK_IMPORT_STEP.VALIDATE_CHAPTER_CONTENT,
+      BOOK_IMPORT_STEP.BUILD_CONTENT_AND_VOCAB_SEED,
       60
     )
 

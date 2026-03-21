@@ -1,5 +1,6 @@
 import { test } from '@japa/runner'
 import { BookChapterCleanerService } from '#services/book-parse/book_chapter_cleaner_service'
+import { BookContentGuardService } from '#services/book-parse/book_content_guard_service'
 import { BookSemanticCleanService } from '#services/book-parse/book_semantic_clean_service'
 
 test.group('BookChapterCleanerService.clean', () => {
@@ -149,6 +150,7 @@ test.group('BookSemanticCleanService', () => {
       render: (_name: string, data: any) => JSON.stringify(data),
     }
     const mockRuleCleaner = new BookChapterCleanerService()
+    const mockContentGuard = new BookContentGuardService()
     const mockConfigService = {
       getAiConfig: async () => ({
         baseUrl: 'https://example.com/v1',
@@ -161,6 +163,7 @@ test.group('BookSemanticCleanService', () => {
       mockAiService as any,
       mockPromptService as any,
       mockRuleCleaner,
+      mockContentGuard,
       mockConfigService as any
     )
 
@@ -185,6 +188,7 @@ test.group('BookSemanticCleanService', () => {
       render: (_name: string, data: any) => JSON.stringify(data),
     }
     const mockRuleCleaner = new BookChapterCleanerService()
+    const mockContentGuard = new BookContentGuardService()
     const mockConfigService = {
       getAiConfig: async () => ({
         baseUrl: 'https://example.com/v1',
@@ -197,6 +201,7 @@ test.group('BookSemanticCleanService', () => {
       mockAiService as any,
       mockPromptService as any,
       mockRuleCleaner,
+      mockContentGuard,
       mockConfigService as any
     )
 
@@ -212,42 +217,22 @@ test.group('BookSemanticCleanService', () => {
     assert.isNull(result.description)
   })
 
-  test('cleanChapters returns AI cleaned chapters', async ({ assert }) => {
+  test('cleanChapters uses deterministic rule cleaning and never calls AI', async ({ assert }) => {
     const mockAiService = {
-      chatJson: async () => ({
-        cleanedChapters: [
-          { title: 'Chapter 1', content: 'Valid content', dropReason: null },
-          { title: 'Chapter 2', content: 'Another valid content', dropReason: null },
-        ],
-        droppedChapters: [{ title: 'Preface', reason: 'preface' }],
-      }),
-      chatJsonChunked: async (_config: unknown, options: any) => {
-        const result = await options.buildParams({
-          chunkItems: [
-            { title: 'Chapter 1', content: 'Valid content here with enough words', chapterIndex: 0 },
-            { title: 'Preface', content: 'Preface content with enough words to pass', chapterIndex: 1 },
-          ],
-          chunkIndex: 1,
-          chunkCount: 1,
-        })
-        const payload = JSON.parse(result.messages[1].content)
-        return options.mergeResults([
-          {
-            context: { chunkItems: payload.chapters, chunkIndex: 1, chunkCount: 1 },
-            result: {
-              cleanedChapters: [
-                { title: 'Chapter 1', content: 'Valid content', dropReason: null },
-                { title: 'Chapter 2', content: 'Another valid content', dropReason: null },
-              ],
-            },
-          },
-        ])
+      chatJson: async () => {
+        throw new Error('AI should not be called for chapter cleaning')
+      },
+      chatJsonChunked: async () => {
+        throw new Error('AI should not be called for chapter cleaning')
       },
     }
     const mockPromptService = {
-      render: (_name: string, data: any) => JSON.stringify(data),
+      render: () => {
+        throw new Error('Prompt rendering should not be required for chapter cleaning')
+      },
     }
     const mockRuleCleaner = new BookChapterCleanerService()
+    const mockContentGuard = new BookContentGuardService()
     const mockConfigService = {
       getAiConfig: async () => ({
         baseUrl: 'https://example.com/v1',
@@ -260,60 +245,102 @@ test.group('BookSemanticCleanService', () => {
       mockAiService as any,
       mockPromptService as any,
       mockRuleCleaner,
+      mockContentGuard,
       mockConfigService as any
     )
 
     const result = await service.cleanChapters([
-      { title: 'Chapter 1', content: 'Valid content here with enough words' },
-      { title: 'Preface', content: 'Preface content with enough words to pass' },
+      {
+        title: 'Chapter 1',
+        content:
+          'Valid content here with enough words.\n\nAnother readable paragraph with enough words to stay valid.',
+      },
+      { title: 'Preface', content: 'Preface content with enough words to pass threshold' },
+      { title: 'Chapter 2', content: '' },
     ])
 
-    assert.equal(result.length, 2)
+    assert.equal(result.length, 1)
+    assert.equal(result[0].title, 'Chapter 1')
+    assert.equal(result[0].chapterIndex, 0)
+  })
+
+  test('cleanChapters drops AI-classified front matter chapters', async ({ assert }) => {
+    const mockAiService = {
+      chatJson: async () => {
+        throw new Error('AI should not be called directly in this test')
+      },
+      chatJsonChunked: async () => {
+        throw new Error('AI should not be called directly in this test')
+      },
+    }
+    const mockPromptService = {
+      render: () => 'prompt',
+    }
+    const mockRuleCleaner = new BookChapterCleanerService()
+    const mockContentGuard = new BookContentGuardService()
+    const mockConfigService = {
+      getAiConfig: async () => ({
+        baseUrl: 'https://example.com/v1',
+        apiKey: 'test-key',
+        model: 'test-model',
+      }),
+    }
+    const mockChapterClassifier = {
+      reviewChapter: async (input: { title: string }) =>
+        input.title === 'FREDERICK WARNE'
+          ? {
+              decision: 'drop_front_matter',
+              confidence: 0.99,
+              reason: 'publisher_page',
+              signals: ['publisher_page'],
+              reviewedByAi: true,
+            }
+          : {
+              decision: 'keep_as_chapter',
+              confidence: 0.99,
+              reason: 'reading_content',
+              signals: ['narrative_flow'],
+              reviewedByAi: true,
+            },
+    }
+
+    const service = new BookSemanticCleanService(
+      mockAiService as any,
+      mockPromptService as any,
+      mockRuleCleaner,
+      mockContentGuard,
+      mockConfigService as any,
+      mockChapterClassifier as any
+    )
+
+    const result = await service.cleanChapters([
+      { title: 'FREDERICK WARNE', content: '----------------------------------------' },
+      {
+        title: 'Chapter 1',
+        content: 'Once upon a time there were four little Rabbits with a proper story to tell.',
+      },
+    ])
+
+    assert.equal(result.length, 1)
     assert.equal(result[0].title, 'Chapter 1')
   })
 
-  test('cleanChapters uses fallback when AI fails', async ({ assert }) => {
+  test('cleanChapters canonicalizes mixed front matter chapters before persistence', async ({
+    assert,
+  }) => {
     const mockAiService = {
       chatJson: async () => {
-        throw new Error('AI service unavailable')
+        throw new Error('AI should not be called directly in this test')
       },
-      chatJsonChunked: async (_config: unknown, options: any) => {
-        const fallback = await options.onChunkError({
-          chunkItems: [
-            {
-              title: 'Chapter 1',
-              content: 'Valid content here with enough words to pass threshold',
-              chapterIndex: 0,
-            },
-            { title: 'References', content: 'References content', chapterIndex: 1 },
-          ],
-          chunkIndex: 1,
-          chunkCount: 1,
-          error: new Error('AI timeout'),
-        })
-        return options.mergeResults([
-          {
-            context: {
-              chunkItems: [
-                {
-                  title: 'Chapter 1',
-                  content: 'Valid content here with enough words to pass threshold',
-                  chapterIndex: 0,
-                },
-                { title: 'References', content: 'References content', chapterIndex: 1 },
-              ],
-              chunkIndex: 1,
-              chunkCount: 1,
-            },
-            result: fallback,
-          },
-        ])
+      chatJsonChunked: async () => {
+        throw new Error('AI should not be called directly in this test')
       },
     }
     const mockPromptService = {
-      render: (_name: string, data: any) => JSON.stringify(data),
+      render: () => 'prompt',
     }
     const mockRuleCleaner = new BookChapterCleanerService()
+    const mockContentGuard = new BookContentGuardService()
     const mockConfigService = {
       getAiConfig: async () => ({
         baseUrl: 'https://example.com/v1',
@@ -321,78 +348,55 @@ test.group('BookSemanticCleanService', () => {
         model: 'test-model',
       }),
     }
+    const mockChapterClassifier = {
+      reviewChapter: async () => ({
+        decision: 'keep_as_chapter',
+        confidence: 0.99,
+        reason: 'reading_content',
+        signals: ['narrative_flow'],
+        reviewedByAi: true,
+      }),
+    }
 
     const service = new BookSemanticCleanService(
       mockAiService as any,
       mockPromptService as any,
       mockRuleCleaner,
-      mockConfigService as any
+      mockContentGuard,
+      mockConfigService as any,
+      mockChapterClassifier as any
     )
 
     const result = await service.cleanChapters([
-      { title: 'Chapter 1', content: 'Valid content here with enough words to pass threshold' },
-      { title: 'References', content: 'References content' },
+      {
+        title: 'FREDERICK WARNE',
+        content:
+          'THE TALE OF PETER RABBIT\n\n----------------------------------------\n\nFIRST PUBLISHED 1902\n\nFREDERICK WARNE & CO., 1902\n\nPRINTED AND BOUND IN GREAT BRITAIN BY WILLIAM CLOWES LIMITED, BECCLES AND LONDON\n\n----------------------------------------\n\nOnce upon a time there were four little Rabbits, and their names were Flopsy, Mopsy, Cotton-tail, and Peter.',
+      },
     ])
 
-    assert.isTrue(result.length >= 1)
+    assert.equal(result.length, 1)
+    assert.equal(result[0].title, 'THE TALE OF PETER RABBIT')
+    assert.include(result[0].content, 'Once upon a time there were four little Rabbits')
+    assert.notInclude(result[0].content, 'FIRST PUBLISHED 1902')
   })
 
-  test('cleanChapters handles large input by chunking and partial fallback', async ({ assert }) => {
+  test('cleanChapters drops broken paragraphs and noisy sections', async ({ assert }) => {
     const mockAiService = {
       chatJson: async () => {
-        throw new Error('unused in chunk test')
+        throw new Error('AI should not be called for chapter cleaning')
       },
-      chatJsonChunked: async (_config: unknown, options: any) => {
-        const chunks = [
-          [
-            {
-              title: 'Chapter 1',
-              content: 'A'.repeat(7000),
-              chapterIndex: 0,
-            },
-            {
-              title: 'Chapter 2',
-              content: 'B'.repeat(7000),
-              chapterIndex: 1,
-            },
-          ],
-          [
-            {
-              title: 'Chapter 3',
-              content: 'C'.repeat(7000),
-              chapterIndex: 2,
-            },
-          ],
-        ]
-        const first = {
-          context: { chunkItems: chunks[0], chunkIndex: 1, chunkCount: 2 },
-          result: {
-            cleanedChapters: [
-              { title: 'Chapter 1', content: 'Chapter 1 content', dropReason: null },
-              { title: 'Chapter 2', content: 'Chapter 2 content', dropReason: null },
-            ],
-          },
-        }
-        const fallback = await options.onChunkError({
-          chunkItems: chunks[1],
-          chunkIndex: 2,
-          chunkCount: 2,
-          error: new Error('chunk timeout'),
-        })
-
-        return options.mergeResults([
-          first,
-          {
-            context: { chunkItems: chunks[1], chunkIndex: 2, chunkCount: 2 },
-            result: fallback,
-          },
-        ])
+      chatJsonChunked: async () => {
+        throw new Error('AI should not be called for chapter cleaning')
       },
     }
     const mockPromptService = {
-      render: (_name: string, data: any) => JSON.stringify(data),
+      render: () => {
+        throw new Error('Prompt rendering should not be required for chapter cleaning')
+      },
     }
     const mockRuleCleaner = new BookChapterCleanerService()
+    const mockContentGuard = new BookContentGuardService()
     const mockConfigService = {
       getAiConfig: async () => ({
         baseUrl: 'https://example.com/v1',
@@ -405,17 +409,21 @@ test.group('BookSemanticCleanService', () => {
       mockAiService as any,
       mockPromptService as any,
       mockRuleCleaner,
+      mockContentGuard,
       mockConfigService as any
     )
 
-    const result = await service.cleanChapters([
-      { title: 'Chapter 1', content: 'A'.repeat(7000) },
-      { title: 'Chapter 2', content: 'B'.repeat(7000) },
-      { title: 'Chapter 3', content: 'C'.repeat(7000) },
-    ])
-
-    assert.equal(result.length, 3)
-    assert.equal(result[0].chapterIndex, 0)
-    assert.equal(result[2].chapterIndex, 2)
+    await assert.rejects(
+      () =>
+        service.cleanChapters([
+          {
+            title: 'References',
+            content: 'References content with enough words to be long enough',
+          },
+          { title: 'Chapter 2', content: 'Flattened content '.repeat(30) },
+          { title: 'Copyright', content: 'Copyright content with enough words to be long enough' },
+        ]),
+      'No readable chapters after semantic cleaning'
+    )
   })
 })

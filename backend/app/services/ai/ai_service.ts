@@ -18,7 +18,9 @@ interface ChatJsonChunkedOptions<TChunkItem, TChunkResult, TMergedResult> {
   maxChunkItems: number
   getItemChars: (item: TChunkItem) => number
   buildParams: (context: ChunkedRunContext<TChunkItem>) => AiChatParams
-  onChunkError?: (context: ChunkedRunContext<TChunkItem> & { error: unknown }) => Promise<TChunkResult>
+  onChunkError?: (
+    context: ChunkedRunContext<TChunkItem> & { error: unknown }
+  ) => Promise<TChunkResult>
   mergeResults: (
     results: Array<{ context: ChunkedRunContext<TChunkItem>; result: TChunkResult }>
   ) => TMergedResult
@@ -27,9 +29,6 @@ interface ChatJsonChunkedOptions<TChunkItem, TChunkResult, TMergedResult> {
 
 @inject()
 export class AiService {
-  private client: OpenAI | null = null
-  private lastConfigHash: string | null = null
-
   async chat(config: AiClientConfig, params: AiChatParams): Promise<string> {
     const response = await this.doChat(config, params, false)
     return response.content
@@ -85,6 +84,7 @@ export class AiService {
           chunkCount: chunks.length,
           chunkItems: chunkItems.length,
           chunkInputChars,
+          timeout: AI.DEFAULT_TIMEOUT,
         },
         'AI chunk request started'
       )
@@ -95,34 +95,37 @@ export class AiService {
           chunkIndex: index + 1,
           chunkCount: chunks.length,
         }
-        const chunkResult = await this.chatJson<TChunkResult>(
-          config,
-          buildParams(context)
-        )
+        const chunkResult = await this.chatJson<TChunkResult>(config, buildParams(context))
         chunkResults.push({ context, result: chunkResult })
         logger.info(
           {
             label: logLabel,
             chunkIndex: index + 1,
             chunkCount: chunks.length,
+            chunkInputChars,
             elapsedMs: Date.now() - startedAt,
+            timeout: AI.DEFAULT_TIMEOUT,
           },
           'AI chunk request completed'
         )
       } catch (error) {
+        const handledError = this.handleError(error)
         logger.warn(
           {
             label: logLabel,
             chunkIndex: index + 1,
             chunkCount: chunks.length,
+            chunkInputChars,
             elapsedMs: Date.now() - startedAt,
-            err: error,
+            timeout: AI.DEFAULT_TIMEOUT,
+            errorCode: handledError.code,
+            err: handledError,
           },
           'AI chunk request failed'
         )
 
         if (!onChunkError) {
-          throw error
+          throw handledError
         }
 
         const fallbackContext = {
@@ -131,6 +134,18 @@ export class AiService {
           chunkCount: chunks.length,
         }
         const fallbackResult = await onChunkError({ ...fallbackContext, error })
+        logger.info(
+          {
+            label: logLabel,
+            chunkIndex: index + 1,
+            chunkCount: chunks.length,
+            chunkInputChars,
+            elapsedMs: Date.now() - startedAt,
+            timeout: AI.DEFAULT_TIMEOUT,
+            usedFallback: true,
+          },
+          'AI chunk fallback completed'
+        )
         chunkResults.push({ context: fallbackContext, result: fallbackResult })
       }
     }
@@ -236,7 +251,7 @@ export class AiService {
     this.validateConfig(config)
     const client = this.getClient(config)
     const startedAt = Date.now()
-    const timeoutMs = config.timeout ?? AI.DEFAULT_TIMEOUT
+    const timeoutMs = AI.DEFAULT_TIMEOUT
 
     logger.debug(
       {
@@ -298,21 +313,12 @@ export class AiService {
   }
 
   private getClient(config: AiClientConfig): OpenAI {
-    const configHash = `${config.baseUrl}:${config.apiKey}:${config.model}`
-
-    if (this.client && this.lastConfigHash === configHash) {
-      return this.client
-    }
-
-    this.client = new OpenAI({
+    return new OpenAI({
       baseURL: config.baseUrl,
       apiKey: config.apiKey,
-      timeout: config.timeout ?? AI.DEFAULT_TIMEOUT,
+      timeout: AI.DEFAULT_TIMEOUT,
       maxRetries: config.maxRetries ?? AI.DEFAULT_MAX_RETRIES,
     })
-    this.lastConfigHash = configHash
-
-    return this.client
   }
 
   private validateConfig(config: AiClientConfig): void {

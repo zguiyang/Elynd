@@ -6,6 +6,7 @@
  */
 
 import { inject } from '@adonisjs/core'
+import { hasHtmlResidue } from '#services/book-parse/book_text_normalizer'
 
 export interface ValidationResult {
   valid: boolean
@@ -62,12 +63,16 @@ export class BookContentGuardService {
     const errors: string[] = []
 
     // Run all validation checks
-    if (!this.validateFirstLineIsH1(content)) {
-      errors.push('First line must be a level-1 heading (#)')
+    if (!this.hasReadableTitleLine(content)) {
+      errors.push('First line must contain a readable title')
     }
 
     if (this.hasSubheadings(content)) {
       errors.push('Content contains subheadings (## or ###)')
+    }
+
+    if (hasHtmlResidue(content)) {
+      errors.push('Content contains HTML residue')
     }
 
     const nonReadingResult = this.checkNonReadingSection(content)
@@ -90,22 +95,22 @@ export class BookContentGuardService {
   }
 
   /**
-   * Validate that the first line of content is a level-1 heading (# )
+   * Validate that the first line of content is a readable title
    */
-  validateFirstLineIsH1(content: string): boolean {
+  hasReadableTitleLine(content: string): boolean {
     if (!content || content.trim().length === 0) {
       return false
     }
 
     const firstLine = content.split('\n')[0].trim()
-    return firstLine.startsWith('# ')
+    return firstLine.length > 0
   }
 
   /**
    * Check if content contains subheadings (##, ###, etc.)
    */
   hasSubheadings(content: string): boolean {
-    const lines = content.split('\n')
+    const lines = this.getBodyLines(content)
     for (const line of lines) {
       const trimmed = line.trim()
       // Check for markdown subheadings (##, ###, ####, etc.)
@@ -152,7 +157,7 @@ export class BookContentGuardService {
       return true
     }
 
-    const body = content.replace(/^#\s+.+$/m, '').trim()
+    const body = this.getBody(content)
     if (!body) {
       return true
     }
@@ -178,12 +183,7 @@ export class BookContentGuardService {
    * (multiple chapter markers in the content)
    */
   hasMergedChapters(content: string): boolean {
-    const h1Count = (content.match(/^#\s+\S+/gm) || []).length
-    if (h1Count > 1) {
-      return true
-    }
-
-    const body = content.replace(/^#\s+.+$/m, '').trim()
+    const body = this.getBody(content)
     let markerCount = 0
     for (const marker of CHAPTER_MARKERS) {
       markerCount += (body.match(marker) || []).length
@@ -222,5 +222,13 @@ export class BookContentGuardService {
    */
   rejectMergedChapters(content: string): boolean {
     return this.hasMergedChapters(content)
+  }
+
+  private getBody(content: string): string {
+    return content.split(/\n\s*\n/).slice(1).join('\n\n').trim()
+  }
+
+  private getBodyLines(content: string): string[] {
+    return this.getBody(content).split('\n')
   }
 }

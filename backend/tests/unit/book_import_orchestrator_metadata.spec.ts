@@ -2,7 +2,9 @@ import { test } from '@japa/runner'
 import { BookImportOrchestratorService } from '#services/book-import/book_import_orchestrator_service'
 
 test.group('BookImportOrchestratorService.semanticExtractMetadata', () => {
-  test('uses parsed title as fileName hint and truncates metadata sample text', async ({ assert }) => {
+  test('uses parsed title as fileName hint and truncates metadata sample text', async ({
+    assert,
+  }) => {
     let receivedInput: Record<string, unknown> | null = null
 
     const semanticCleanerMock = {

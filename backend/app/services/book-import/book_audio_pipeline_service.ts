@@ -53,6 +53,10 @@ export class BookAudioPipelineService {
     await book.merge({ audioStatus: 'processing' }).save()
 
     try {
+      logger.info(
+        { bookId, runId, stepKey: BOOK_IMPORT_STEP.GENERATE_TTS },
+        '[AudioPipeline] Step run started'
+      )
       await this.importStateService.assertImportNotCancelled(runId, bookId)
       const chapters = await BookChapter.query()
         .where('bookId', bookId)
@@ -321,6 +325,17 @@ export class BookAudioPipelineService {
           chapterMetrics,
         }
       )
+      logger.info(
+        {
+          bookId,
+          runId,
+          stepKey: BOOK_IMPORT_STEP.GENERATE_TTS,
+          chapterCount: chapterAudios.length,
+          reusedCount: chapterMetrics.filter((item) => item.reused).length,
+          generatedCount: chapterMetrics.filter((item) => !item.reused).length,
+        },
+        '[AudioPipeline] Step run completed'
+      )
 
       await FinalizeImportJob.dispatch(
         { bookId, runId, userId },
@@ -340,6 +355,10 @@ export class BookAudioPipelineService {
         }
         return
       }
+      logger.error(
+        { bookId, runId, stepKey: BOOK_IMPORT_STEP.GENERATE_TTS, err: error },
+        '[AudioPipeline] Step run failed'
+      )
       await book.merge({ audioStatus: 'failed' }).save()
       const message = error instanceof Error ? error.message : 'Unknown error'
       await this.importStateService.failStep(

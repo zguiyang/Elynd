@@ -1,6 +1,7 @@
 import { DateTime } from 'luxon'
 import { createHash } from 'node:crypto'
 import { inject } from '@adonisjs/core'
+import logger from '@adonisjs/core/services/logger'
 import db from '@adonisjs/lucid/services/db'
 import Book from '#models/book'
 import BookProcessingRunLog from '#models/book_processing_run_log'
@@ -130,6 +131,11 @@ export class ImportStateService {
       await this.publishBookImportStatus(latestBook)
     }
 
+    logger.info(
+      { bookId, runId, stepKey, progress, status: 'processing', stepLogId: persistedStepLog.id },
+      'Import step state started'
+    )
+
     return persistedStepLog
   }
 
@@ -186,6 +192,11 @@ export class ImportStateService {
     if (latestBook) {
       await this.publishBookImportStatus(latestBook)
     }
+
+    logger.info(
+      { bookId, runId, stepKey, progress, status: 'success', stepLogId: persistedStepLog.id },
+      'Import step state completed'
+    )
 
     return persistedStepLog
   }
@@ -244,6 +255,18 @@ export class ImportStateService {
       await this.publishBookImportStatus(latestBook)
     }
 
+    logger.error(
+      {
+        bookId,
+        runId,
+        stepKey,
+        status: 'failed',
+        errorCode: errorCode || null,
+        stepLogId: persistedStepLog.id,
+      },
+      'Import step state failed'
+    )
+
     return persistedStepLog
   }
 
@@ -259,6 +282,7 @@ export class ImportStateService {
       .save()
 
     await this.publishBookImportStatus(savedBook)
+    logger.info({ bookId, status: savedBook.status }, 'Import book marked ready')
     return savedBook
   }
 
@@ -274,6 +298,10 @@ export class ImportStateService {
       .save()
 
     await this.publishBookImportStatus(savedBook)
+    logger.error(
+      { bookId, status: savedBook.status, processingError: errorMessage },
+      'Import book marked failed'
+    )
     return savedBook
   }
 

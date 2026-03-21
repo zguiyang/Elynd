@@ -190,7 +190,7 @@ export class BookService {
 
     await this.clearBookAudioFiles(book.id, book.audioUrl)
 
-    const previousStep: BookImportStep = BOOK_IMPORT_STEP.GENERATE_TAGS
+    const previousStep: BookImportStep = BOOK_IMPORT_STEP.ENRICH_VOCABULARY
     const previousProgress = BookImportOrchestratorService.getBaseProgressByStep(previousStep)
     let runId = 0
 
@@ -665,31 +665,21 @@ export class BookService {
     }
 
     const allAudioReady = await this.areAllChaptersReady(book.id)
-    const attachedTagCountResult = await book
-      .related('tags')
-      .query()
-      .count('* as total')
-      .firstOrFail()
-    const hasAnyTag = Number(attachedTagCountResult.$extras.total || 0) > 0
     const vocabularyCompleted = book.vocabularyStatus === 'completed'
 
     const resumeStep =
       allAudioReady && vocabularyCompleted
         ? BOOK_IMPORT_STEP.FINALIZE_IMPORT
         : vocabularyCompleted
-          ? hasAnyTag
-            ? BOOK_IMPORT_STEP.GENERATE_TTS
-            : BOOK_IMPORT_STEP.GENERATE_TAGS
+          ? BOOK_IMPORT_STEP.GENERATE_TTS
           : BOOK_IMPORT_STEP.ENRICH_VOCABULARY
 
     const previousStep =
       resumeStep === BOOK_IMPORT_STEP.FINALIZE_IMPORT
         ? BOOK_IMPORT_STEP.GENERATE_TTS
         : resumeStep === BOOK_IMPORT_STEP.GENERATE_TTS
-          ? BOOK_IMPORT_STEP.GENERATE_TAGS
-          : resumeStep === BOOK_IMPORT_STEP.GENERATE_TAGS
-            ? BOOK_IMPORT_STEP.ENRICH_VOCABULARY
-            : BOOK_IMPORT_STEP.BUILD_CONTENT_AND_VOCAB_SEED
+          ? BOOK_IMPORT_STEP.ENRICH_VOCABULARY
+          : BOOK_IMPORT_STEP.BUILD_CONTENT_AND_VOCAB_SEED
 
     const previousProgress = BookImportOrchestratorService.getBaseProgressByStep(previousStep)
 

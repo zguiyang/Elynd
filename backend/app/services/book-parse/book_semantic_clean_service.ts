@@ -1,12 +1,20 @@
 import { inject } from '@adonisjs/core'
-import { AI, BOOK_IMPORT_AI } from '#constants'
 import logger from '@adonisjs/core/services/logger'
 import { AiService } from '#services/ai/ai_service'
 import type { AiChatParams, AiClientConfig } from '#types/ai'
 import { BookChapterCleanerService } from '#services/book-parse/book_chapter_cleaner_service'
 import type { ChapterOutput } from '#services/book-parse/book_chapter_cleaner_service'
+import { BookContentGuardService } from '#services/book-parse/book_content_guard_service'
+import {
+  buildCanonicalChapterText,
+  extractCanonicalChapterParts,
+} from '#services/book-parse/book_text_normalizer'
 import PromptService from '#services/ai/prompt_service'
 import { ConfigService } from '#services/ai/config_service'
+import {
+  BookChapterQualityClassifierService,
+  CHAPTER_QUALITY_DECISIONS,
+} from '#services/book_chapter_quality_classifier_service'
 
 export interface SemanticMetadataInput {
   fileName: string
@@ -30,36 +38,10 @@ export interface SemanticChapterOutput extends ChapterOutput {
   chapterIndex: number
 }
 
-interface BookLevelCandidate {
-  id: number
-  code: string
-  description: string
-  minWords: number | null
-  maxWords: number | null
-  sortOrder: number
-}
-
-interface BookLevelResponse {
-  levelId?: number
-  reason?: string
-}
-
 interface MetadataResponse {
   title?: string
   author?: string | null
   description?: string | null
-}
-
-interface ChapterResponse {
-  cleanedChapters?: Array<{
-    title?: string
-    content?: string
-    dropReason?: string | null
-  }>
-  droppedChapters?: Array<{
-    title?: string
-    reason?: string
-  }>
 }
 
 @inject()
@@ -68,40 +50,19 @@ export class BookSemanticCleanService {
     private aiService: AiService,
     private promptService: PromptService,
     private ruleCleaner: BookChapterCleanerService,
-    private configService: ConfigService
+    private contentGuard: BookContentGuardService,
+    private configService: ConfigService,
+    private chapterQualityClassifier?: BookChapterQualityClassifierService
   ) {}
 
-  private async resolveSemanticMetadataAiConfig(): Promise<AiClientConfig> {
-    const config = await this.configService.getAiConfig()
-    return {
-      ...config,
-      timeout: BOOK_IMPORT_AI.SEMANTIC_METADATA_TIMEOUT_MS,
-      maxRetries: BOOK_IMPORT_AI.SEMANTIC_METADATA_MAX_RETRIES,
-    }
-  }
-
-  private async resolveSemanticChaptersAiConfig(): Promise<AiClientConfig> {
-    const config = await this.configService.getAiConfig()
-    return {
-      ...config,
-      timeout: BOOK_IMPORT_AI.SEMANTIC_CHAPTERS_TIMEOUT_MS,
-      maxRetries: BOOK_IMPORT_AI.SEMANTIC_CHAPTERS_MAX_RETRIES,
-    }
-  }
-
-  private async resolveClassificationAiConfig(): Promise<AiClientConfig> {
-    const config = await this.configService.getAiConfig()
-    return {
-      ...config,
-      timeout: AI.DEFAULT_TIMEOUT,
-      maxRetries: AI.DEFAULT_MAX_RETRIES,
-    }
+  private async resolveAiConfig(): Promise<AiClientConfig> {
+    return this.configService.getAiConfig()
   }
 
   async extractMetadata(input: SemanticMetadataInput): Promise<SemanticMetadataOutput> {
-    const aiConfig = await this.resolveSemanticMetadataAiConfig()
-    const systemPrompt = this.promptService.render('system', {})
-    const userPrompt = this.promptService.render('book/semantic-metadata', input)
+    const aiConfig = await this.resolveAiConfig()
+    const systemPrompt = this.promptService.render('book/import/system', {})
+    const userPrompt = this.promptService.render('book/import/semantic-metadata', input)
     const params: AiChatParams = {
       messages: [
         { role: 'system', content: systemPrompt },
@@ -139,157 +100,87 @@ export class BookSemanticCleanService {
   }
 
   async cleanChapters(chapters: SemanticChapterInput[]): Promise<SemanticChapterOutput[]> {
-    const aiConfig = await this.resolveSemanticChaptersAiConfig()
-    const systemPrompt = this.promptService.render('system', {})
     const normalizedInput = chapters.map((chapter, index) => ({
       ...chapter,
       chapterIndex: index,
     }))
+    const fallback = this.ruleCleaner.clean(normalizedInput)
+    const cleanedChapters: SemanticChapterOutput[] = []
 
-    try {
-      const merged = await this.aiService.chatJsonChunked<
-        SemanticChapterInput & { chapterIndex: number },
-        ChapterResponse,
-        SemanticChapterOutput[]
-      >(aiConfig, {
-        items: normalizedInput,
-        maxChunkChars: BOOK_IMPORT_AI.SEMANTIC_CHAPTERS_MAX_CHUNK_INPUT_CHARS,
-        maxChunkItems: BOOK_IMPORT_AI.SEMANTIC_CHAPTERS_MAX_CHUNK_ITEMS,
-        getItemChars: (item) => item.title.length + item.content.length + 32,
-        buildParams: ({ chunkItems }) => {
-          const userPrompt = this.promptService.render('book/semantic-chapters', {
-            chapters: chunkItems.map((item) => ({
-              title: item.title,
-              content: item.content,
-            })),
+    for (let index = 0; index < fallback.cleanedChapters.length; index++) {
+      const chapter = fallback.cleanedChapters[index]
+      const review = this.chapterQualityClassifier
+        ? await this.chapterQualityClassifier.reviewChapter({
+            chapterIndex: chapter.chapterIndex,
+            title: chapter.title,
+            content: chapter.content,
+            previousTitle: fallback.cleanedChapters[index - 1]?.title || null,
+            nextTitle: fallback.cleanedChapters[index + 1]?.title || null,
           })
-          return {
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt },
-            ],
-            maxTokens: 3500,
-            temperature: 0.2,
-            responseFormat: { type: 'json_object' },
+        : {
+            decision: CHAPTER_QUALITY_DECISIONS.KEEP,
+            confidence: 1,
+            reason: 'classifier_unavailable',
+            signals: [],
+            reviewedByAi: false,
           }
-        },
-        onChunkError: async ({ chunkItems, error }) => {
-          logger.warn(
-            {
-              err: error,
-              chunkChapterCount: chunkItems.length,
-            },
-            'Semantic chapter clean chunk failed, fallback to rule cleaner for this chunk'
-          )
-          const fallback = this.ruleCleaner.clean(
-            chunkItems.map((item) => ({ title: item.title, content: item.content }))
-          )
-          return {
-            cleanedChapters: fallback.cleanedChapters.map((chapter) => ({
-              title: chapter.title,
-              content: chapter.content.trim(),
-              dropReason: null,
-            })),
-            droppedChapters: [],
-          }
-        },
-        mergeResults: (results) =>
-          results
-            .flatMap(({ context, result }) => {
-              return (result.cleanedChapters || [])
-                .map((chapter, index) => {
-                  const source = context.chunkItems[index]
-                  const title = chapter.title?.trim() || source?.title || `Chapter ${index + 1}`
-                  const content = this.toPlainBody(chapter.content || '', title)
-                  return {
-                    title,
-                    content,
-                    chapterIndex: source?.chapterIndex ?? index,
-                  }
-                })
-                .filter((chapter) => chapter.content.length > 0)
-            })
-            .sort((a, b) => a.chapterIndex - b.chapterIndex)
-            .map((chapter, index) => ({ ...chapter, chapterIndex: index })),
-        logLabel: 'semantic-chapters',
-      })
 
-      if (merged.length > 0) {
-        return merged
+      if (review.decision !== CHAPTER_QUALITY_DECISIONS.KEEP) {
+        logger.info(
+          {
+            chapterTitle: chapter.title,
+            chapterIndex: chapter.chapterIndex,
+            decision: review.decision,
+            confidence: review.confidence,
+            reason: review.reason,
+            signals: review.signals,
+          },
+          'AI chapter classifier dropped chapter'
+        )
+          continue
       }
-    } catch (error) {
-      logger.warn({ err: error }, 'Semantic chapter clean failed, fallback to full rule cleaner')
+
+      const canonical = extractCanonicalChapterParts({
+        title: chapter.title,
+        content: chapter.content,
+      })
+      if (!canonical.content) {
+        logger.info(
+          {
+            chapterTitle: chapter.title,
+            chapterIndex: chapter.chapterIndex,
+            decision: review.decision,
+          },
+          'Canonical chapter was empty after trimming non-reading prefix'
+        )
+        continue
+      }
+
+      const contentWithTitle = buildCanonicalChapterText(canonical.title, canonical.content)
+      const validation = this.contentGuard.validate(contentWithTitle)
+      if (!validation.valid) {
+        logger.warn(
+          {
+            chapterTitle: canonical.title,
+            chapterIndex: chapter.chapterIndex,
+            errors: validation.errors,
+          },
+          'Rule-based semantic clean rejected chapter'
+        )
+        continue
+      }
+
+      cleanedChapters.push({
+        title: canonical.title,
+        content: canonical.content,
+        chapterIndex: chapter.chapterIndex,
+      })
     }
 
-    const fallback = this.ruleCleaner.clean(chapters)
-    return fallback.cleanedChapters.map((chapter, index) => ({
-      title: chapter.title,
-      content: chapter.content.trim(),
-      chapterIndex: index,
-    }))
-  }
-
-  async classifyBookLevel(input: {
-    wordCount: number
-    uniqueLemmaCount: number
-    sampleText: string
-    candidates: BookLevelCandidate[]
-  }): Promise<{ levelId: number; reason: string }> {
-    const aiConfig = await this.resolveClassificationAiConfig()
-    const systemPrompt = this.promptService.render('system', {})
-    const userPrompt = this.promptService.render('book/level-classification', input)
-    const params: AiChatParams = {
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      maxTokens: 1000,
-      temperature: 0.1,
-      responseFormat: { type: 'json_object' },
+    if (cleanedChapters.length === 0) {
+      throw new Error('No readable chapters after semantic cleaning')
     }
 
-    const result = await this.aiService.chatJson<BookLevelResponse>(aiConfig, params)
-    const candidateIds = new Set(input.candidates.map((item) => item.id))
-    if (!result.levelId || !candidateIds.has(result.levelId)) {
-      throw new Error('AI returned invalid level id')
-    }
-
-    return {
-      levelId: result.levelId,
-      reason: result.reason?.trim() || 'Selected by AI classifier',
-    }
-  }
-
-  private toPlainBody(rawContent: string, title: string): string {
-    let content = rawContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim()
-    if (!content) {
-      return ''
-    }
-
-    if (/^#\s+/.test(content)) {
-      content = content.replace(/^#\s+.+$/m, '').trim()
-    }
-
-    const firstLine =
-      content
-        .split('\n')
-        .find((line) => line.trim().length > 0)
-        ?.trim() || ''
-    if (this.isSameTitle(firstLine, title)) {
-      content = content.split('\n').slice(1).join('\n').trim()
-    }
-
-    return content
-  }
-
-  private isSameTitle(line: string, title: string): boolean {
-    const normalize = (value: string) =>
-      value
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-
-    return normalize(line) === normalize(title)
+    return cleanedChapters.map((chapter, index) => ({ ...chapter, chapterIndex: index }))
   }
 }

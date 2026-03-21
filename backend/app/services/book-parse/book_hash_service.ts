@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import { inject } from '@adonisjs/core'
+import { normalizeSpeechText } from '#services/book-parse/book_text_normalizer'
 
 @inject()
 export class BookHashService {
@@ -34,10 +35,7 @@ export class BookHashService {
    * - Convert to lowercase for consistent hashing
    */
   private normalizeContent(content: string): string {
-    return content
-      .trim()
-      .replace(/\r\n/g, '\n')
-      .replace(/\r/g, '\n')
+    return normalizeSpeechText(content)
       .replace(/\n+/g, ' ')
       .replace(/\s+/g, ' ')
       .toLowerCase()

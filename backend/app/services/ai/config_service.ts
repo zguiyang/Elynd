@@ -21,7 +21,7 @@ export class ConfigService {
       baseUrl: config.aiBaseUrl,
       apiKey: config.aiApiKey,
       model: config.aiModelName,
-      timeout: AI.ARTICLE_GENERATION_TIMEOUT,
+      timeout: AI.DEFAULT_TIMEOUT,
     }
   }
 

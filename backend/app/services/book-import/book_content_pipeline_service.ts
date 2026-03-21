@@ -29,15 +29,15 @@ export class BookContentPipelineService {
 
     try {
       await this.importStateService.assertImportNotCancelled(runId, bookId)
-      const validationOutput = await this.orchestrator.getSuccessfulStepOutputRef(
+      const semanticOutput = await this.orchestrator.getSuccessfulStepOutputRef(
         runId,
-        BOOK_IMPORT_STEP.VALIDATE_CHAPTER_CONTENT
+        BOOK_IMPORT_STEP.SEMANTIC_CLEAN
       )
-      const validatedArtifactPath = this.orchestrator.requireOutputRefString(
-        validationOutput,
-        'validatedChaptersArtifactPath'
+      const cleanedArtifactPath = this.orchestrator.requireOutputRefString(
+        semanticOutput,
+        'cleanedChaptersArtifactPath'
       )
-      const cleanedChapters = await this.orchestrator.readChapterArtifact(validatedArtifactPath)
+      const cleanedChapters = await this.orchestrator.readChapterArtifact(cleanedArtifactPath)
       const persisted = await this.orchestrator.persistChaptersAndContentHash({
         book,
         metadata: {

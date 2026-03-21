@@ -1,4 +1,5 @@
 import { inject } from '@adonisjs/core'
+import logger from '@adonisjs/core/services/logger'
 import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import BookVocabulary from '#models/book_vocabulary'
@@ -7,7 +8,7 @@ import { DictionaryService } from '#services/shared/dictionary_service'
 import { VocabularyAnalyzerService } from '#services/book-parse/vocabulary_analyzer_service'
 import { BookImportOrchestratorService } from '#services/book-import/book_import_orchestrator_service'
 import { ImportStateService } from '#services/book-import/import_state_service'
-import GenerateTagsJob from '#jobs/generate_tags_job'
+import GenerateTtsJob from '#jobs/generate_tts_job'
 import type { SerialImportPayload } from '#types/book_import_pipeline'
 
 @inject()
@@ -36,6 +37,10 @@ export class BookVocabularyPipelineService {
     await book.merge({ vocabularyStatus: 'processing' }).save()
 
     try {
+      logger.info(
+        { bookId, runId, stepKey: BOOK_IMPORT_STEP.ENRICH_VOCABULARY },
+        '[VocabularyPipeline] Step run started'
+      )
       await this.importStateService.assertImportNotCancelled(runId, bookId)
 
       let allVocabularies = await BookVocabulary.query().where('bookId', bookId)
@@ -90,15 +95,25 @@ export class BookVocabularyPipelineService {
         }
       )
 
-      await GenerateTagsJob.dispatch(
+      await GenerateTtsJob.dispatch(
         { bookId, runId, userId },
         {
           jobId: BookImportOrchestratorService.buildPipelineJobId({
             runId,
             bookId,
-            stepKey: BOOK_IMPORT_STEP.GENERATE_TAGS,
+            stepKey: BOOK_IMPORT_STEP.GENERATE_TTS,
           }),
         }
+      )
+      logger.info(
+        {
+          bookId,
+          runId,
+          stepKey: BOOK_IMPORT_STEP.ENRICH_VOCABULARY,
+          totalWords: allVocabularies.length,
+          enrichedWords,
+        },
+        '[VocabularyPipeline] Step run completed'
       )
     } catch (error) {
       if (ImportStateService.isImportCancelledError(error)) {
@@ -108,6 +123,10 @@ export class BookVocabularyPipelineService {
         }
         return
       }
+      logger.error(
+        { bookId, runId, stepKey: BOOK_IMPORT_STEP.ENRICH_VOCABULARY, err: error },
+        '[VocabularyPipeline] Step run failed'
+      )
       await book.merge({ vocabularyStatus: 'failed' }).save()
       const message = error instanceof Error ? error.message : 'Unknown error'
       await this.importStateService.failStep(

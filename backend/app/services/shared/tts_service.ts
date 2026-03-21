@@ -5,6 +5,7 @@ import drive from '@adonisjs/drive/services/main'
 import * as sdk from 'microsoft-cognitiveservices-speech-sdk'
 import { speechSdkTicksToMs } from '#utils/speech_sdk_time'
 import { TTS_CHUNK_STRATEGY } from '#constants'
+import { buildCanonicalChapterText } from '#services/book-parse/book_text_normalizer'
 import type {
   TtsResult,
   AudioTiming,
@@ -32,6 +33,10 @@ export class TtsService {
     this.speechConfig.speechSynthesisVoiceName = 'en-US-Ava:DragonHDLatestNeural'
     this.speechConfig.setProperty(
       sdk.PropertyId.SpeechServiceResponse_RequestSentenceBoundary,
+      'true'
+    )
+    this.speechConfig.setProperty(
+      sdk.PropertyId.SpeechServiceResponse_RequestWordBoundary,
       'true'
     )
   }
@@ -135,7 +140,7 @@ export class TtsService {
    * Build full chapter text from title and content.
    */
   private buildChapterText(chapter: ChapterInput): string {
-    return `${chapter.title}\n\n${chapter.content}`
+    return buildCanonicalChapterText(chapter.title, chapter.content)
   }
 
   /**

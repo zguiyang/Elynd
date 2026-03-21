@@ -37,6 +37,12 @@ export class BookSemanticPipelineService {
       const sourceFile = await this.orchestrator.validateSourceFile(book)
       const parsed = await this.orchestrator.parseSourceFile(sourceFile)
       const metadata = await this.orchestrator.semanticExtractMetadata({ book, parsed })
+      const rawArtifactPath = await this.orchestrator.writeChapterArtifact({
+        runId,
+        bookId,
+        stepKey: `${BOOK_IMPORT_STEP.SEMANTIC_CLEAN}-raw`,
+        chapters: parsed.chapters,
+      })
       const cleanedChapters = await this.orchestrator.semanticCleanChapters(parsed)
       await this.importStateService.assertImportNotCancelled(runId, bookId)
       const cleanedArtifactPath = await this.orchestrator.writeChapterArtifact({
@@ -65,6 +71,7 @@ export class BookSemanticPipelineService {
           title: metadata.title,
           author: metadata.author,
           chapterCount: cleanedChapters.length,
+          rawChaptersArtifactPath: rawArtifactPath,
           cleanedChaptersArtifactPath: cleanedArtifactPath,
         }
       )

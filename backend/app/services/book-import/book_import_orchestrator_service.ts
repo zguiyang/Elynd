@@ -18,6 +18,7 @@ import { BookSemanticCleanService } from '#services/book-parse/book_semantic_cle
 import { VocabularyAnalyzerService } from '#services/book-parse/vocabulary_analyzer_service'
 import { BookHashService } from '#services/book-parse/book_hash_service'
 import { BookContentGuardService } from '#services/book-parse/book_content_guard_service'
+import { buildCanonicalChapterText } from '#services/book-parse/book_text_normalizer'
 import { BookLevelService } from '#services/book/book_level_service'
 import GenerateBookAudioJob from '#jobs/generate_book_audio_job'
 import GenerateBookVocabularyJob from '#jobs/generate_book_vocabulary_job'
@@ -327,7 +328,7 @@ export class BookImportOrchestratorService {
     const validationErrors: Array<{ chapterIndex: number; errors: string[] }> = []
 
     for (const chapter of cleanedChapters) {
-      const guardInput = `# ${chapter.title}\n\n${chapter.content}`
+      const guardInput = buildCanonicalChapterText(chapter.title, chapter.content)
       const result = this.guardService.validate(guardInput)
       if (result.valid) {
         validChapters.push(chapter)
@@ -422,46 +423,10 @@ export class BookImportOrchestratorService {
       .countDistinct('lemma as total')
       .firstOrFail()
     const uniqueLemmaCount = Number(result.$extras.total || 0)
-    const chapters = await BookChapter.query()
-      .where('bookId', book.id)
-      .orderBy('chapterIndex', 'asc')
-      .limit(3)
-    const sampleText = chapters
-      .map((item) => item.content)
-      .join('\n\n')
-      .slice(0, 5000)
-
-    const activeLevels = await this.bookLevelService.listActiveLevels()
     const fallbackLevel = await this.bookLevelService.getFallbackLevelByWords(uniqueLemmaCount)
-    let selectedLevel = fallbackLevel
-    let classifiedBy: 'ai' | 'rule' = 'rule'
-    let reason = 'Fallback by unique lemma count'
-
-    try {
-      const aiResult = await this.semanticCleaner.classifyBookLevel({
-        wordCount: book.wordCount,
-        uniqueLemmaCount,
-        sampleText,
-        candidates: activeLevels.map((level) => ({
-          id: level.id,
-          code: level.code,
-          description: level.description,
-          minWords: level.minWords,
-          maxWords: level.maxWords,
-          sortOrder: level.sortOrder,
-        })),
-      })
-      const match = activeLevels.find((level) => level.id === aiResult.levelId)
-      const withinOneLevel =
-        match && Math.abs((match.sortOrder || 0) - (fallbackLevel.sortOrder || 0)) <= 1
-      if (match && withinOneLevel) {
-        selectedLevel = match
-        classifiedBy = 'ai'
-        reason = aiResult.reason
-      }
-    } catch {
-      // fallback selected above
-    }
+    const selectedLevel = fallbackLevel
+    const classifiedBy: 'ai' | 'rule' = 'rule'
+    const reason = `Fallback by unique lemma count (${uniqueLemmaCount})`
 
     await book
       .merge({

@@ -11,6 +11,11 @@ import { ImportStateService } from '#services/book-import/import_state_service'
 import FinalizeImportJob from '#jobs/finalize_import_job'
 import type { SerialImportPayload } from '#types/book_import_pipeline'
 import type { ChapterInput, WordTiming } from '#types/tts'
+import {
+  buildCanonicalChapterText,
+  hasHtmlResidue,
+  hasMarkdownResidue,
+} from '#services/book-parse/book_text_normalizer'
 
 const MIN_WORD_BOUNDARIES = 20
 const HEAD_WORD_MATCH_SIZE = 30
@@ -373,22 +378,10 @@ export class BookAudioPipelineService {
   }
 
   private computeTextHash(title: string, content: string): string {
-    const normalizedTitle = title
-      .trim()
-      .replace(/\r\n/g, '\n')
-      .replace(/\r/g, '\n')
-      .replace(/\s+/g, ' ')
-      .toLowerCase()
-    const normalizedContent = content
-      .trim()
-      .replace(/\r\n/g, '\n')
-      .replace(/\r/g, '\n')
-      .replace(/\n+/g, ' ')
-      .replace(/\s+/g, ' ')
-      .toLowerCase()
+    const normalized = buildCanonicalChapterText(title, content)
 
     return createHash('sha256')
-      .update(`${normalizedTitle}\n${normalizedContent}`, 'utf-8')
+      .update(normalized, 'utf-8')
       .digest('hex')
   }
 
@@ -488,29 +481,30 @@ export class BookAudioPipelineService {
   }
 
   private assertTtsInput(chapter: ChapterInput) {
-    const content = chapter.content
-    if (!content.trim()) {
+    const canonicalText = buildCanonicalChapterText(chapter.title, chapter.content)
+    if (!canonicalText.trim()) {
       throw new Error(`Invalid TTS input for chapter ${chapter.chapterIndex}: empty_content`)
     }
 
-    if (this.hasHtmlResidue(content)) {
+    if (hasHtmlResidue(canonicalText)) {
       throw new Error(
         `Invalid TTS input for chapter ${chapter.chapterIndex}: html_or_epub_residue_detected`
       )
     }
 
-    if (this.hasMarkdownResidue(content)) {
+    if (hasMarkdownResidue(canonicalText)) {
       throw new Error(
         `Invalid TTS input for chapter ${chapter.chapterIndex}: markdown_residue_detected`
       )
     }
 
-    const firstLine =
-      content
+    const body = canonicalText.split(/\n\s*\n/).slice(1).join('\n\n')
+    const firstBodyLine =
+      body
         .split('\n')
         .find((line) => line.trim().length > 0)
         ?.trim() || ''
-    if (this.isSameTitle(firstLine, chapter.title)) {
+    if (this.isSameTitle(firstBodyLine, chapter.title)) {
       throw new Error(
         `Invalid TTS input for chapter ${chapter.chapterIndex}: duplicated_leading_title`
       )
@@ -518,12 +512,16 @@ export class BookAudioPipelineService {
   }
 
   private assertWordTimings(chapter: ChapterInput, words: WordTiming[]) {
-    if (words.length < MIN_WORD_BOUNDARIES) {
+    const expectedWords = this.extractWords(buildCanonicalChapterText(chapter.title, chapter.content))
+    const minRequiredWords =
+      expectedWords.length >= MIN_WORD_BOUNDARIES ? MIN_WORD_BOUNDARIES : Math.max(1, expectedWords.length)
+
+    if (words.length < minRequiredWords) {
       logger.warn(
         {
           chapterIndex: chapter.chapterIndex,
           wordsCount: words.length,
-          minRequired: MIN_WORD_BOUNDARIES,
+          minRequired: minRequiredWords,
         },
         'TTS validation failed: insufficient word boundaries'
       )
@@ -532,7 +530,6 @@ export class BookAudioPipelineService {
       )
     }
 
-    const expectedWords = this.extractWords(chapter.content)
     const actualWords = words.flatMap((item) => this.extractWords(item.word))
 
     const compareCount = Math.min(HEAD_WORD_MATCH_SIZE, expectedWords.length, actualWords.length)
@@ -648,21 +645,6 @@ export class BookAudioPipelineService {
       .split(/\s+/)
       .map((token) => token.trim())
       .filter(Boolean)
-  }
-
-  private hasHtmlResidue(content: string): boolean {
-    return /<[^>]+>/.test(content) || /<\/?[a-z][^>\n]*(?=\n|$)/i.test(content)
-  }
-
-  private hasMarkdownResidue(content: string): boolean {
-    return (
-      /^\s{0,3}#{1,6}\s+/m.test(content) ||
-      /```/.test(content) ||
-      /^\s*[-*+]\s+/m.test(content) ||
-      /^\s*\d+\.\s+/m.test(content) ||
-      /!\[[^\]]*\]\([^)]+\)/.test(content) ||
-      /\[[^\]]+\]\([^)]+\)/.test(content)
-    )
   }
 
   private isSameTitle(line: string, title: string): boolean {

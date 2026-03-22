@@ -14,11 +14,11 @@ Task:
 - Do not invent obscure senses unless they are clearly common.
 
 Context:
-- Word: {{ word }}
-- Source language: {{ sourceLanguage }}
-- Localization language: {{ localizationLanguage }}
+- Word: {{ html.safe(word) }}
+- Source language: {{ html.safe(sourceLanguage) }}
+- Localization language: {{ html.safe(localizationLanguage) }}
 @if(articleContext)
-- Article context: {{ JSON.stringify(articleContext, null, 2) }}
+- Article context: {{ html.safe(JSON.stringify(articleContext, null, 2)) }}
 @endif
 
 {!! contract !!}

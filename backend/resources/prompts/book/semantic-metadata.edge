@@ -24,8 +24,8 @@ Rules:
 
 Input:
 {
-  "fileName": {{ JSON.stringify(fileName) }},
-  "sourceType": {{ JSON.stringify(sourceType) }},
-  "chapterTitles": {{ JSON.stringify(chapterTitles) }},
-  "sampleText": {{ JSON.stringify(sampleText) }}
+  "fileName": {{ html.safe(JSON.stringify(fileName)) }},
+  "sourceType": {{ html.safe(JSON.stringify(sourceType)) }},
+  "chapterTitles": {{ html.safe(JSON.stringify(chapterTitles)) }},
+  "sampleText": {{ html.safe(JSON.stringify(sampleText)) }}
 }

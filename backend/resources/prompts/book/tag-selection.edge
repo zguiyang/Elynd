@@ -25,11 +25,11 @@ Rules:
 
 Input:
 {
-  "title": {{ JSON.stringify(title) }},
-  "author": {{ JSON.stringify(author) }},
-  "description": {{ JSON.stringify(description) }},
-  "chapterTitles": {{ JSON.stringify(chapterTitles) }},
-  "sampleText": {{ JSON.stringify(sampleText) }},
-  "vocabulary": {{ JSON.stringify(vocabulary) }},
-  "existingTags": {{ JSON.stringify(existingTags) }}
+  "title": {{ html.safe(JSON.stringify(title)) }},
+  "author": {{ html.safe(JSON.stringify(author)) }},
+  "description": {{ html.safe(JSON.stringify(description)) }},
+  "chapterTitles": {{ html.safe(JSON.stringify(chapterTitles)) }},
+  "sampleText": {{ html.safe(JSON.stringify(sampleText)) }},
+  "vocabulary": {{ html.safe(JSON.stringify(vocabulary)) }},
+  "existingTags": {{ html.safe(JSON.stringify(existingTags)) }}
 }

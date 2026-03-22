@@ -19,6 +19,25 @@ test.group('PromptService', () => {
     assert.include(rendered, 'Please translate this section.')
   })
 
+  test('renders chapter translation prompt without HTML entity escaping', async ({
+    assert,
+  }) => {
+    const { default: PromptService } = await import('#services/ai/prompt_service')
+
+    const promptService = new PromptService()
+    const rendered = promptService.render('book/chapter-translation', {
+      sourceLanguage: 'en',
+      targetLanguage: 'zh',
+      title: 'Peter Rabbit',
+      content:
+        "Now my dears, said old Mrs. Rabbit one morning, you may go into the fields or down the lane, but don't go into Mr. McGregor's garden.",
+    })
+
+    assert.include(rendered, "don't go into Mr. McGregor's garden.")
+    assert.notInclude(rendered, '&#x27;')
+    assert.notInclude(rendered, '&quot;')
+  })
+
   test('renders the semantic metadata prompt template without throwing', async ({ assert }) => {
     const { default: PromptService } = await import('#services/ai/prompt_service')
 

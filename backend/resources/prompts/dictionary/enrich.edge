@@ -14,13 +14,13 @@ Task:
 - Do not add unrelated meanings or invented senses.
 
 Context:
-- Word: {{ word }}
-- Source language: {{ sourceLanguage }}
-- Localization language: {{ localizationLanguage }}
+- Word: {{ html.safe(word) }}
+- Source language: {{ html.safe(sourceLanguage) }}
+- Localization language: {{ html.safe(localizationLanguage) }}
 @if(articleContext)
-- Article context: {{ JSON.stringify(articleContext, null, 2) }}
+- Article context: {{ html.safe(JSON.stringify(articleContext, null, 2)) }}
 @endif
-- Dictionary snapshot: {{ JSON.stringify(dictionarySnapshot, null, 2) }}
+- Dictionary snapshot: {{ html.safe(JSON.stringify(dictionarySnapshot, null, 2)) }}
 
 {!! contract !!}
 

@@ -41,11 +41,11 @@ Rules:
 
 Input:
 {
-  "chapterIndex": {{ chapterIndex }},
-  "title": {{ JSON.stringify(title) }},
-  "previousTitle": {{ JSON.stringify(previousTitle) }},
-  "nextTitle": {{ JSON.stringify(nextTitle) }},
-  "stats": {{ JSON.stringify(stats, null, 2) }},
-  "samples": {{ JSON.stringify(samples, null, 2) }},
-  "signals": {{ JSON.stringify(signals, null, 2) }}
+  "chapterIndex": {{ html.safe(chapterIndex) }},
+  "title": {{ html.safe(JSON.stringify(title)) }},
+  "previousTitle": {{ html.safe(JSON.stringify(previousTitle)) }},
+  "nextTitle": {{ html.safe(JSON.stringify(nextTitle)) }},
+  "stats": {{ html.safe(JSON.stringify(stats, null, 2)) }},
+  "samples": {{ html.safe(JSON.stringify(samples, null, 2)) }},
+  "signals": {{ html.safe(JSON.stringify(signals, null, 2)) }}
 }

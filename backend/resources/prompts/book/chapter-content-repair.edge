@@ -9,13 +9,13 @@ Task:
 Repair the chapter so it can be used for reading, vocabulary extraction, and TTS.
 
 Input title:
-{{ title }}
+{{ html.safe(title) }}
 
 Validation errors:
-{{ JSON.stringify(errors, null, 2) }}
+{{ html.safe(JSON.stringify(errors, null, 2)) }}
 
 Raw content:
-{{ content }}
+{{ html.safe(content) }}
 
 Output constraints (MUST follow):
 1. Return JSON only.

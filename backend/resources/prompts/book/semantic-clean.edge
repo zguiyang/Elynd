@@ -48,7 +48,7 @@ You MUST output valid JSON in this exact format:
 }
 
 ## Input Chapters
-{{ JSON.stringify(chapters, null, 2) }}
+{{ html.safe(JSON.stringify(chapters, null, 2)) }}
 
 ## Important
 - Output ONLY valid JSON, no additional text

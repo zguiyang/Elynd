@@ -42,8 +42,8 @@ Rules:
 
 Input:
 {
-  "sourceLanguage": "{{ sourceLanguage }}",
-  "targetLanguage": "{{ targetLanguage }}",
-  "title": {{ JSON.stringify(title) }},
-  "content": {{ JSON.stringify(content) }}
+  "sourceLanguage": "{{ html.safe(sourceLanguage) }}",
+  "targetLanguage": "{{ html.safe(targetLanguage) }}",
+  "title": {{ html.safe(JSON.stringify(title)) }},
+  "content": {{ html.safe(JSON.stringify(content)) }}
 }

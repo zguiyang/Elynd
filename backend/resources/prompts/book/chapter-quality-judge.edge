@@ -14,7 +14,7 @@ Scoring dimensions (0-100):
 3. coherenceAfterMerge: merged text (if any) reads naturally and keeps paragraph continuity.
 
 Pass condition for each chapter:
-- total >= {{ minTotalScore }}
+- total >= {{ html.safe(minTotalScore) }}
 - no critical issue in reasons
 
 Output JSON schema:
@@ -39,4 +39,4 @@ Rules:
 - Do not rewrite chapter text.
 
 Input:
-{{ JSON.stringify(chapters, null, 2) }}
+{{ html.safe(JSON.stringify(chapters, null, 2)) }}

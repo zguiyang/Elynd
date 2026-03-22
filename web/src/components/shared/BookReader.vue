@@ -427,7 +427,7 @@ onUnmounted(() => {
               data-test="reader-lookup-result"
               class="space-y-5 text-sm"
             >
-              <div class="flex items-start justify-between gap-3">
+              <div class="flex items-start justify-between gap-3 border-b border-border/70 pb-4">
                 <div class="min-w-0">
                   <div class="flex items-center gap-2">
                     <p class="text-xl font-semibold leading-tight text-foreground">
@@ -460,47 +460,48 @@ onUnmounted(() => {
                 </span>
               </div>
 
-              <div class="space-y-4">
+              <div class="divide-y divide-border/60">
                 <section
                   v-for="(meaning, meaningIndex) in lookupState.result.meanings.slice(0, 3)"
                   :key="`${meaning.partOfSpeech}-${meaningIndex}`"
-                  class="space-y-3"
+                  class="py-4 first:pt-0 last:pb-0"
                 >
-                  <div class="flex flex-wrap items-center gap-2">
+                  <div class="flex flex-wrap items-baseline gap-2">
                     <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       {{ meaning.partOfSpeech }}
                     </p>
-                    <p v-if="meaning.localizedMeaning" class="text-sm text-foreground">
+                    <p v-if="meaning.localizedMeaning" class="text-sm font-medium text-foreground">
                       {{ meaning.localizedMeaning }}
                     </p>
                   </div>
 
-                  <div class="space-y-3 rounded-lg border border-border/60 bg-muted/30 px-3 py-3">
-                    <p class="leading-6 text-foreground/90">
-                      {{ meaning.explanation }}
-                    </p>
+                  <p class="mt-2 leading-6 text-foreground/90">
+                    {{ meaning.explanation }}
+                  </p>
 
-                    <div v-if="getMeaningExamples(meaning).length > 0" class="space-y-2 border-t border-border/50 pt-2">
-                      <div
-                        v-for="(example, exampleIndex) in getMeaningExamples(meaning).slice(0, 2)"
-                        :key="`${meaningIndex}-${exampleIndex}-${example.source}`"
-                        class="space-y-1"
-                      >
-                        <div class="flex items-center justify-between gap-2">
-                          <p class="text-xs text-muted-foreground">
-                            例句
-                          </p>
-                          <span class="text-[11px] text-muted-foreground">
-                            {{ getExampleSourceLabel(example.source) }}
-                          </span>
-                        </div>
-                        <p class="leading-6 text-foreground">
-                          {{ example.sourceText }}
+                  <div
+                    v-if="getMeaningExamples(meaning).length > 0"
+                    class="mt-3 space-y-3 border-l border-border/60 pl-4"
+                  >
+                    <div
+                      v-for="(example, exampleIndex) in getMeaningExamples(meaning).slice(0, 2)"
+                      :key="`${meaningIndex}-${exampleIndex}-${example.source}`"
+                      class="space-y-1"
+                    >
+                      <div class="flex items-center gap-2">
+                        <p class="text-xs text-muted-foreground">
+                          例句
                         </p>
-                        <p v-if="example.localizedText" class="leading-6 text-muted-foreground">
-                          {{ example.localizedText }}
-                        </p>
+                        <span class="text-[11px] text-muted-foreground">
+                          {{ getExampleSourceLabel(example.source) }}
+                        </span>
                       </div>
+                      <p class="leading-6 text-foreground">
+                        {{ example.sourceText }}
+                      </p>
+                      <p v-if="example.localizedText" class="leading-6 text-muted-foreground">
+                        {{ example.localizedText }}
+                      </p>
                     </div>
                   </div>
                 </section>

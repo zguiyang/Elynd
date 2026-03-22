@@ -98,6 +98,8 @@ type EnglishVariant = (typeof ENGLISH_VARIANT)[keyof typeof ENGLISH_VARIANT]
 
 const DICTIONARY = {
   CACHE_PREFIX: 'dictionary:',
+  ENRICHMENT_JOB_PREFIX: 'dictionary-enrich',
+  ENRICHMENT_LOCK_TTL_SECONDS: 60 * 30,
   DEFAULT_TTL_DAYS: 7,
   EXPIRING_DAYS: 1,
   LOOKUP_TIMEOUT_MS: 5000,

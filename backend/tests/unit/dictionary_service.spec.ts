@@ -81,6 +81,9 @@ const createDictionaryService = (
     configService?: {
       getAiConfig: () => Promise<{ baseUrl: string; apiKey: string; model: string }>
     }
+    bookService?: {
+      getChapterByIndex: (bookId: number, chapterIndex: number) => Promise<{ title: string; content: string }>
+    }
   } = {}
 ) => {
   const userConfigService = {
@@ -105,12 +108,21 @@ const createDictionaryService = (
         model: 'test-model',
       }),
     } as never)
+  const bookService =
+    overrides.bookService ||
+    ({
+      getChapterByIndex: async () => ({
+        title: 'Chapter title',
+        content: 'Chapter content',
+      }),
+    } as never)
 
   return new DictionaryService(
     userConfigService,
     aiService as never,
     promptService as never,
-    configService as never
+    configService as never,
+    bookService as never
   )
 }
 
@@ -238,6 +250,149 @@ test.group('DictionaryService.lookup', (group) => {
 
     assert.deepEqual(result, cachedEntry)
     assert.isFalse(fetchCalled)
+  })
+
+  test('does not enqueue enrichment for complete cached entry', async ({ assert }) => {
+    const cachedEntry = buildAiDictionaryEntry({
+      word: 'rabbits',
+      meanings: [
+        {
+          partOfSpeech: 'noun',
+          localizedMeaning: '兔子',
+          plainExplanation: '一种常见的哺乳动物。',
+          definitions: [
+            {
+              sourceText: 'A rabbit',
+              localizedText: '兔子',
+              plainExplanation: '一种常见的兔类动物。',
+              examples: [
+                {
+                  sourceText: 'The rabbit hopped away.',
+                  localizedText: '兔子跳开了。',
+                  source: 'dictionary',
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    })
+
+    const service = createDictionaryService() as any
+    let queued = false
+
+    service.resolveLookupSettings = async () => ({
+      localizationLanguage: 'zh-CN',
+    })
+    service.findDictionaryEntryRecord = async () => null
+    service.getCachedEntry = async () => cachedEntry
+    service.fetchUpstreamEntry = async () => {
+      throw new Error('fetch should not be called for cache hit')
+    }
+    service.queueDictionaryEnrichment = async () => {
+      queued = true
+    }
+
+    const result = await service.lookup('rabbits', { userId: 1 })
+
+    assert.deepEqual(result, cachedEntry)
+    assert.isFalse(queued)
+  })
+
+  test('enqueues enrichment for cached entry without Chinese localized text', async ({
+    assert,
+  }) => {
+    const untranslatedEntry = buildAiDictionaryEntry({
+      word: 'rabbits',
+      meanings: [
+        {
+          partOfSpeech: 'noun',
+          localizedMeaning: 'plural of rabbit',
+          plainExplanation: 'plural of rabbit',
+          definitions: [
+            {
+              sourceText: 'plural of rabbit',
+              localizedText: 'plural of rabbit',
+              plainExplanation: 'plural of rabbit',
+              examples: [],
+            },
+          ],
+        },
+      ],
+    })
+
+    const service = createDictionaryService() as any
+    let queued = false
+
+    service.resolveLookupSettings = async () => ({
+      localizationLanguage: 'zh-CN',
+    })
+    service.findDictionaryEntryRecord = async () => null
+    service.getCachedEntry = async () => untranslatedEntry
+    service.fetchUpstreamEntry = async () => {
+      throw new Error('fetch should not be called for cache hit')
+    }
+    service.queueDictionaryEnrichment = async () => {
+      queued = true
+    }
+
+    const result = await service.lookup('rabbits', { userId: 1 })
+
+    assert.deepEqual(result, untranslatedEntry)
+    assert.isTrue(queued)
+  })
+
+  test('enqueues enrichment for incomplete cached entry', async ({ assert }) => {
+    const incompleteEntry = buildAiDictionaryEntry({
+      word: 'rabbits',
+      meanings: [
+        {
+          partOfSpeech: 'noun',
+          localizedMeaning: '',
+          plainExplanation: '一种常见的哺乳动物。',
+          definitions: [
+            {
+              sourceText: 'A rabbit',
+              localizedText: '兔子',
+              plainExplanation: '一种常见的兔类动物。',
+              examples: [],
+            },
+          ],
+        },
+      ],
+    })
+
+    const service = createDictionaryService() as any
+    let queuedPayload: { word: string; mode: 'enrich' | 'fallback' } | null = null
+
+    service.resolveLookupSettings = async () => ({
+      localizationLanguage: 'zh-CN',
+    })
+    service.findDictionaryEntryRecord = async () => null
+    service.getCachedEntry = async () => incompleteEntry
+    service.fetchUpstreamEntry = async () => {
+      throw new Error('fetch should not be called for cache hit')
+    }
+    service.queueDictionaryEnrichment = async (payload: {
+      word: string
+      mode: 'enrich' | 'fallback'
+    }) => {
+      queuedPayload = payload
+    }
+
+    const result = await service.lookup('Rabbits', {
+      userId: 1,
+      bookId: 9268,
+      chapterIndex: 0,
+    })
+
+    assert.equal(result.word, 'rabbits')
+    if (!queuedPayload) {
+      assert.fail('Expected enrichment to be queued')
+    }
+    const payload = queuedPayload as unknown as { word: string; mode: 'enrich' | 'fallback' }
+    assert.equal(payload.word, 'rabbits')
+    assert.equal(payload.mode, 'enrich')
   })
 
   test('returns cached entries as-is without AI enrichment', async ({ assert }) => {

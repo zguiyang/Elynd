@@ -2,12 +2,14 @@ import { inject } from '@adonisjs/core'
 import { Exception } from '@adonisjs/core/exceptions'
 import logger from '@adonisjs/core/services/logger'
 import env from '#start/env'
+import { dispatch } from 'adonisjs-jobs/services/main'
 import redis from '@adonisjs/redis/services/main'
 import { DICTIONARY } from '#constants'
 import DictionaryEntryModel from '#models/dictionary_entry'
 import { AiService } from '#services/ai/ai_service'
 import { ConfigService } from '#services/ai/config_service'
 import PromptService from '#services/ai/prompt_service'
+import { BookService } from '#services/book/book_service'
 import { UserConfigService } from '#services/user/user_config_service'
 
 const SOURCE_LANGUAGE = 'en'
@@ -18,6 +20,7 @@ const DICTIONARY_AI_SYSTEM_PROMPT = 'You are a bilingual dictionary engine. Retu
 type DictionaryExampleSourceType = 'dictionary' | 'article' | 'ai'
 type DictionaryArticleExampleSourceType = 'article' | 'ai'
 type DictionaryLookupMode = 'dictionary_only' | 'ai_enriched' | 'ai_fallback'
+type DictionaryEnrichmentMode = 'enrich' | 'fallback'
 
 interface FreeDictionaryApiSense {
   definition?: string
@@ -41,6 +44,15 @@ interface FreeDictionaryApiResponse {
 
 interface DictionaryBatchAiResponse {
   entries?: unknown[]
+}
+
+export interface DictionaryEnrichmentPayload {
+  word: string
+  userId?: number
+  localizationLanguage?: string | null
+  bookId?: number | null
+  chapterIndex?: number | null
+  mode: DictionaryEnrichmentMode
 }
 
 interface DictionaryLocalizedExample {
@@ -88,6 +100,62 @@ export interface DictionaryEntry {
   }
 }
 
+const CJK_TEXT_PATTERN = /[\u4e00-\u9fff]/
+
+const hasChineseText = (value: string | null | undefined): boolean => {
+  const text = value?.trim()
+  if (!text) {
+    return false
+  }
+
+  return CJK_TEXT_PATTERN.test(text)
+}
+
+export const isDictionaryEntryComplete = (entry: DictionaryEntry): boolean => {
+  const meanings = Array.isArray(entry.meanings) ? entry.meanings : []
+  if (meanings.length === 0) {
+    return false
+  }
+
+  const localizationLanguage =
+    entry.localizationLanguage || entry.meta?.localizationLanguage || ''
+  const requiresChineseLocalization = localizationLanguage.toLowerCase().startsWith('zh')
+
+  return meanings.every((meaning) => {
+    if (
+      !meaning.partOfSpeech?.trim() ||
+      !meaning.localizedMeaning?.trim() ||
+      !meaning.plainExplanation?.trim() ||
+      !Array.isArray(meaning.definitions) ||
+      meaning.definitions.length === 0
+    ) {
+      return false
+    }
+
+    if (
+      requiresChineseLocalization &&
+      (!hasChineseText(meaning.localizedMeaning) || !hasChineseText(meaning.plainExplanation))
+    ) {
+      return false
+    }
+
+    return meaning.definitions.every((definition) => {
+      if (
+        requiresChineseLocalization &&
+        (!hasChineseText(definition.localizedText) || !hasChineseText(definition.plainExplanation))
+      ) {
+        return false
+      }
+
+      return Boolean(
+        definition.sourceText?.trim() &&
+          definition.localizedText?.trim() &&
+          definition.plainExplanation?.trim()
+      )
+    })
+  })
+}
+
 export interface DictionaryLookupParams {
   word: string
   userId?: number
@@ -107,6 +175,18 @@ interface DictionaryBatchLookupOptions {
   localizationLanguage?: string | null
   concurrency?: number
   allowAiEnrichment?: boolean
+}
+
+interface DictionaryLookupResolution {
+  entry: DictionaryEntry
+  source: 'cache' | 'db' | 'upstream'
+}
+
+interface DictionaryArticleContext {
+  bookId: number
+  chapterIndex: number
+  chapterTitle: string
+  chapterSnippet: string
 }
 
 export interface DictionaryBatchLookupDiagnostics {
@@ -133,7 +213,8 @@ export class DictionaryService {
     private userConfigService: UserConfigService,
     private aiService: AiService,
     private promptService: PromptService,
-    private configService: ConfigService
+    private configService: ConfigService,
+    private bookService: BookService
   ) {
     this.freeDictionaryApiUrl = env.get(
       'FREE_DICTIONARY_API_URL',
@@ -773,6 +854,313 @@ export class DictionaryService {
     return this.getEntry(word)
   }
 
+  private async buildArticleContext(
+    payload: DictionaryEnrichmentPayload
+  ): Promise<DictionaryArticleContext | null> {
+    if (
+      payload.bookId === undefined ||
+      payload.bookId === null ||
+      payload.chapterIndex === undefined ||
+      payload.chapterIndex === null
+    ) {
+      return null
+    }
+
+    try {
+      const chapter = await this.bookService.getChapterByIndex(payload.bookId, payload.chapterIndex)
+
+      return {
+        bookId: payload.bookId,
+        chapterIndex: payload.chapterIndex,
+        chapterTitle: chapter.title,
+        chapterSnippet: chapter.content.slice(0, 2000),
+      }
+    } catch (error) {
+      logger.warn(
+        {
+          err: error,
+          word: payload.word,
+          bookId: payload.bookId,
+          chapterIndex: payload.chapterIndex,
+        },
+        'Failed to build dictionary article context'
+      )
+      return null
+    }
+  }
+
+  private async generateAiEnrichedEntry(params: {
+    word: string
+    localizationLanguage: string
+    dictionarySnapshot: DictionaryEntry
+    articleContext: DictionaryArticleContext | null
+  }): Promise<DictionaryEntry | null> {
+    try {
+      const aiConfig = await this.configService.getAiConfig()
+      const contract = this.promptService.render('dictionary/output-contract', {})
+      const userPrompt = this.promptService.render('dictionary/enrich', {
+        word: params.word,
+        sourceLanguage: SOURCE_LANGUAGE,
+        localizationLanguage: params.localizationLanguage,
+        articleContext: params.articleContext,
+        dictionarySnapshot: params.dictionarySnapshot,
+        contract,
+      })
+
+      const result = await this.aiService.chatJson<unknown>(aiConfig, {
+        messages: [
+          { role: 'system', content: DICTIONARY_AI_SYSTEM_PROMPT },
+          { role: 'user', content: userPrompt },
+        ],
+        maxTokens: 2500,
+        temperature: 0.2,
+        responseFormat: { type: 'json_object' },
+      })
+
+      const entry = this.normalizeAiDictionaryEntry(result, params.localizationLanguage)
+      if (!entry) {
+        return null
+      }
+
+      entry.meta.lookupMode = 'ai_enriched'
+      return entry
+    } catch (error) {
+      logger.warn(
+        {
+          err: error,
+          word: params.word,
+          localizationLanguage: params.localizationLanguage,
+        },
+        'Dictionary AI enrichment failed'
+      )
+      return null
+    }
+  }
+
+  private async generateAiFallbackEntry(params: {
+    word: string
+    localizationLanguage: string
+    articleContext: DictionaryArticleContext | null
+  }): Promise<DictionaryEntry | null> {
+    try {
+      const aiConfig = await this.configService.getAiConfig()
+      const contract = this.promptService.render('dictionary/output-contract', {})
+      const userPrompt = this.promptService.render('dictionary/fallback', {
+        word: params.word,
+        sourceLanguage: SOURCE_LANGUAGE,
+        localizationLanguage: params.localizationLanguage,
+        articleContext: params.articleContext,
+        contract,
+      })
+
+      const result = await this.aiService.chatJson<unknown>(aiConfig, {
+        messages: [
+          { role: 'system', content: DICTIONARY_AI_SYSTEM_PROMPT },
+          { role: 'user', content: userPrompt },
+        ],
+        maxTokens: 2500,
+        temperature: 0.2,
+        responseFormat: { type: 'json_object' },
+      })
+
+      const entry = this.normalizeAiDictionaryEntry(result, params.localizationLanguage)
+      if (!entry) {
+        return null
+      }
+
+      entry.meta.lookupMode = 'ai_fallback'
+      return entry
+    } catch (error) {
+      logger.warn(
+        {
+          err: error,
+          word: params.word,
+          localizationLanguage: params.localizationLanguage,
+        },
+        'Dictionary AI fallback failed'
+      )
+      return null
+    }
+  }
+
+  private async resolveDictionaryCandidate(params: {
+    word: string
+    localizationLanguage: string
+  }): Promise<DictionaryLookupResolution | null> {
+    const cached = await this.getCachedEntry(params.word, params.localizationLanguage)
+    if (cached) {
+      return { entry: cached, source: 'cache' }
+    }
+
+    const dbEntry = await this.findDictionaryEntryRecord({
+      word: params.word,
+      localizationLanguage: params.localizationLanguage,
+    })
+    if (dbEntry) {
+      const mapped = this.toDictionaryEntry(dbEntry)
+      await this.setCachedEntry(params.word, mapped, params.localizationLanguage)
+      return { entry: mapped, source: 'db' }
+    }
+
+    const upstreamEntry = await this.fetchUpstreamEntry(params.word)
+    if (!upstreamEntry) {
+      return null
+    }
+
+    const entry = this.buildDictionaryOnlyEntry(
+      params.word,
+      upstreamEntry,
+      params.localizationLanguage
+    )
+    if (!entry) {
+      return null
+    }
+
+    await this.saveGlobalEntry(entry)
+    await this.setCachedEntry(params.word, entry, params.localizationLanguage)
+    return { entry, source: 'upstream' }
+  }
+
+  public async queueDictionaryEnrichment(payload: DictionaryEnrichmentPayload): Promise<void> {
+    const normalizedWord = this.normalizeWord(payload.word)
+    const localizationLanguage = this.normalizeLocalizationLanguage(payload.localizationLanguage)
+    const jobPayload: DictionaryEnrichmentPayload = {
+      ...payload,
+      word: normalizedWord,
+      localizationLanguage,
+    }
+    const jobId = `${DICTIONARY.ENRICHMENT_JOB_PREFIX}-${jobPayload.mode}-${localizationLanguage}-${normalizedWord}`
+    const { default: DictionaryEnrichmentJob } = await import('#jobs/dictionary_enrichment_job')
+
+    logger.info(
+      {
+        word: normalizedWord,
+        mode: jobPayload.mode,
+        localizationLanguage,
+        bookId: jobPayload.bookId ?? null,
+        chapterIndex: jobPayload.chapterIndex ?? null,
+        jobId,
+      },
+      'Dictionary enrichment job queued'
+    )
+
+    await dispatch(DictionaryEnrichmentJob, jobPayload, { jobId })
+  }
+
+  public async processAsyncEnrichment(payload: DictionaryEnrichmentPayload): Promise<void> {
+    const normalizedWord = this.normalizeWord(payload.word)
+    const settings = await this.resolveLookupSettings({
+      userId: payload.userId,
+      localizationLanguage: payload.localizationLanguage,
+    })
+
+    logger.info(
+      {
+        word: normalizedWord,
+        mode: payload.mode,
+        localizationLanguage: settings.localizationLanguage,
+        bookId: payload.bookId ?? null,
+        chapterIndex: payload.chapterIndex ?? null,
+      },
+      'Dictionary enrichment processing started'
+    )
+
+    const articleContext = await this.buildArticleContext({
+      ...payload,
+      word: normalizedWord,
+      localizationLanguage: settings.localizationLanguage,
+    })
+
+    if (payload.mode === 'enrich') {
+      const snapshot = await this.resolveDictionaryCandidate({
+        word: normalizedWord,
+        localizationLanguage: settings.localizationLanguage,
+      })
+
+      if (snapshot && isDictionaryEntryComplete(snapshot.entry)) {
+        logger.info(
+          {
+            word: normalizedWord,
+            localizationLanguage: settings.localizationLanguage,
+            source: snapshot.source,
+          },
+          'Dictionary enrichment skipped because entry is complete'
+        )
+        return
+      }
+
+      const enriched = await this.generateAiEnrichedEntry({
+        word: normalizedWord,
+        localizationLanguage: settings.localizationLanguage,
+        dictionarySnapshot: snapshot?.entry || {
+          word: normalizedWord,
+          sourceLanguage: SOURCE_LANGUAGE,
+          localizationLanguage: settings.localizationLanguage,
+          phonetic: null,
+          phonetics: [],
+          meanings: [],
+          articleExamples: [],
+          meta: {
+            source: 'dictionary',
+            localizationLanguage: settings.localizationLanguage,
+          },
+        },
+        articleContext,
+      })
+
+      if (!enriched) {
+        logger.info(
+          {
+            word: normalizedWord,
+            localizationLanguage: settings.localizationLanguage,
+          },
+          'Dictionary enrichment produced no result'
+        )
+        return
+      }
+
+      await this.saveGlobalEntry(enriched)
+      await this.setCachedEntry(normalizedWord, enriched, settings.localizationLanguage)
+      logger.info(
+        {
+          word: normalizedWord,
+          localizationLanguage: settings.localizationLanguage,
+          lookupMode: enriched.meta.lookupMode,
+        },
+        'Dictionary enrichment completed'
+      )
+      return
+    }
+
+    const fallback = await this.generateAiFallbackEntry({
+      word: normalizedWord,
+      localizationLanguage: settings.localizationLanguage,
+      articleContext,
+    })
+
+    if (!fallback) {
+      logger.info(
+        {
+          word: normalizedWord,
+          localizationLanguage: settings.localizationLanguage,
+        },
+        'Dictionary fallback enrichment produced no result'
+      )
+      return
+    }
+
+    await this.saveGlobalEntry(fallback)
+    await this.setCachedEntry(normalizedWord, fallback, settings.localizationLanguage)
+    logger.info(
+      {
+        word: normalizedWord,
+        localizationLanguage: settings.localizationLanguage,
+        lookupMode: fallback.meta.lookupMode,
+      },
+      'Dictionary fallback enrichment completed'
+    )
+  }
+
   private throwLookupFailure(error: unknown, word: string): never {
     logger.error({ err: error, word }, 'Dictionary lookup failed')
     throw new Exception(SAFE_LOOKUP_FAILURE_MESSAGE, { status: 503 })
@@ -798,37 +1186,56 @@ export class DictionaryService {
         localizationLanguage: params.localizationLanguage,
       })
 
-      const cached = await this.getCachedEntry(normalizedWord, settings.localizationLanguage)
-      if (cached) {
-        return cached
-      }
-
-      const dbEntry = await this.findDictionaryEntryRecord({
+      const resolution = await this.resolveDictionaryCandidate({
         word: normalizedWord,
         localizationLanguage: settings.localizationLanguage,
       })
-      if (dbEntry) {
-        const mapped = this.toDictionaryEntry(dbEntry)
-        await this.setCachedEntry(normalizedWord, mapped, settings.localizationLanguage)
-        return mapped
-      }
 
-      const upstreamEntry = await this.fetchUpstreamEntry(normalizedWord)
-      if (upstreamEntry) {
-        const entry = this.buildDictionaryOnlyEntry(
-          normalizedWord,
-          upstreamEntry,
-          settings.localizationLanguage
+      if (!resolution) {
+        logger.info(
+          {
+            word: normalizedWord,
+            localizationLanguage: settings.localizationLanguage,
+            mode: 'fallback',
+          },
+          'Dictionary lookup missed all sources, scheduling fallback enrichment'
         )
-        if (entry) {
-          await this.saveGlobalEntry(entry)
-          await this.setCachedEntry(normalizedWord, entry, settings.localizationLanguage)
-
-          return entry
-        }
+        void this.queueDictionaryEnrichment({
+          word: normalizedWord,
+          userId: params.userId,
+          localizationLanguage: settings.localizationLanguage,
+          bookId: params.bookId,
+          chapterIndex: params.chapterIndex,
+          mode: 'fallback',
+        }).catch((error) => {
+          logger.warn({ err: error, word: normalizedWord }, 'Failed to queue dictionary fallback')
+        })
+        throw new Error('Dictionary upstream entry not found')
       }
 
-      throw new Error('Dictionary upstream entry not found')
+      if (!isDictionaryEntryComplete(resolution.entry)) {
+        logger.info(
+          {
+            word: normalizedWord,
+            localizationLanguage: settings.localizationLanguage,
+            source: resolution.source,
+            mode: 'enrich',
+          },
+          'Dictionary lookup returned incomplete entry, scheduling enrichment'
+        )
+        void this.queueDictionaryEnrichment({
+          word: normalizedWord,
+          userId: params.userId,
+          localizationLanguage: settings.localizationLanguage,
+          bookId: params.bookId,
+          chapterIndex: params.chapterIndex,
+          mode: 'enrich',
+        }).catch((error) => {
+          logger.warn({ err: error, word: normalizedWord }, 'Failed to queue dictionary enrichment')
+        })
+      }
+
+      return resolution.entry
     } catch (error) {
       this.throwLookupFailure(error, normalizedWord)
     }

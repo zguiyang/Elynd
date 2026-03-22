@@ -16,6 +16,7 @@ import type {
 } from '@/api/dictionary'
 import { READER_SELECTION } from '@/constants'
 import { isSingleWordSelection, normalizeSelectionText } from '@/lib/selection-actions'
+import { getMeaningExamples } from '@/lib/dictionary-meaning'
 import type { ReaderActionType, ReaderSelectionActionPayload } from '@/types/reader-selection'
 import { useReadingSettingsStore } from '@/stores/reading-settings'
 import MarkdownRenderer from '@/components/shared/MarkdownRenderer.vue'
@@ -458,9 +459,9 @@ onUnmounted(() => {
                       {{ meaning.explanation }}
                     </p>
 
-                    <div v-if="meaning.examples.length > 0" class="space-y-2 border-t border-border/50 pt-2">
+                    <div v-if="getMeaningExamples(meaning).length > 0" class="space-y-2 border-t border-border/50 pt-2">
                       <div
-                        v-for="(example, exampleIndex) in meaning.examples.slice(0, 2)"
+                        v-for="(example, exampleIndex) in getMeaningExamples(meaning).slice(0, 2)"
                         :key="`${meaningIndex}-${exampleIndex}-${example.source}`"
                         class="space-y-1"
                       >

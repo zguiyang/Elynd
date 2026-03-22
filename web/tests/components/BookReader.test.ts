@@ -38,6 +38,33 @@ const MarkdownRendererStub = defineComponent({
   template: '<div data-test="markdown-renderer">{{ content }}</div>',
 })
 
+const DialogStub = defineComponent({
+  props: {
+    open: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  emits: ['update:open'],
+  template: '<div v-if="open"><slot /></div>',
+})
+
+const DialogContentStub = defineComponent({
+  template: '<div><slot /></div>',
+})
+
+const DialogDescriptionStub = defineComponent({
+  template: '<div><slot /></div>',
+})
+
+const DialogHeaderStub = defineComponent({
+  template: '<div><slot /></div>',
+})
+
+const DialogTitleStub = defineComponent({
+  template: '<div><slot /></div>',
+})
+
 const createRangeFromReader = (wrapper: ReturnType<typeof mount>) => {
   const paragraph = wrapper.find('p').element
   const textNode = paragraph.firstChild as Text
@@ -70,6 +97,11 @@ const mountBookReader = () => {
       stubs: {
         Button: ButtonStub,
         MarkdownRenderer: MarkdownRendererStub,
+        Dialog: DialogStub,
+        DialogContent: DialogContentStub,
+        DialogDescription: DialogDescriptionStub,
+        DialogHeader: DialogHeaderStub,
+        DialogTitle: DialogTitleStub,
       },
     },
   })
@@ -152,24 +184,16 @@ describe('BookReader', () => {
     vi.mocked(lookupWord).mockResolvedValue({
       word: 'apple',
       phonetic: '/ˈæp.əl/',
-      phonetics: [{ text: '/ˈæp.əl/' }],
       meanings: [
         {
           partOfSpeech: 'noun',
           localizedMeaning: '苹果',
-          plainExplanation: '就是一种常见水果，日常生活里很常见。',
-          definitions: [
+          explanation: '就是一种常见水果，日常生活里很常见。',
+          examples: [
             {
-              sourceText: 'A fruit',
-              localizedText: '一种水果',
-              plainExplanation: '能吃的水果。',
-              examples: [
-                {
-                  sourceText: 'An apple a day keeps the doctor away.',
-                  localizedText: '一天一个苹果，医生远离我。',
-                  source: 'dictionary',
-                },
-              ],
+              sourceText: 'An apple a day keeps the doctor away.',
+              localizedText: '一天一个苹果，医生远离我。',
+              source: 'dictionary',
             },
           ],
         },
@@ -193,8 +217,41 @@ describe('BookReader', () => {
     const result = wrapper.get('[data-test="reader-lookup-result"]')
     expect(result.text()).toContain('apple')
     expect(result.text()).toContain('苹果')
-    expect(result.text()).toContain('能吃的水果。')
+    expect(result.text()).toContain('就是一种常见水果')
     expect(result.text()).toContain('一天一个苹果，医生远离我。')
+  })
+
+  it('renders lookup result even when meaning examples are missing', async () => {
+    const wrapper = mountBookReader()
+    const range = createRangeFromReader(wrapper)
+    mockSelection({ text: 'pear', range })
+
+    vi.mocked(lookupWord).mockResolvedValue({
+      word: 'pear',
+      phonetic: '/peər/',
+      meanings: [
+        {
+          partOfSpeech: 'noun',
+          localizedMeaning: '梨',
+          explanation: '一种水果',
+        },
+      ],
+      meta: {
+        source: 'dictionary',
+        localizationLanguage: 'zh-CN',
+      },
+    } as never)
+
+    document.dispatchEvent(new Event('selectionchange'))
+    await nextTick()
+    await wrapper.get('[data-test="reader-lookup-button"]').trigger('click')
+    await flushPromises()
+    await nextTick()
+
+    const result = wrapper.get('[data-test="reader-lookup-result"]')
+    expect(result.text()).toContain('pear')
+    expect(result.text()).toContain('梨')
+    expect(result.text()).toContain('一种水果')
   })
 
   it('renders unified lookup error message when lookupWord fails', async () => {

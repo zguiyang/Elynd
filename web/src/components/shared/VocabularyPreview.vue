@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ChevronDown, ChevronUp, Volume2, X } from 'lucide-vue-next'
 import type { VocabularyItem } from '@/types/book'
+import { getMeaningExamples } from '@/lib/dictionary-meaning'
 
 defineProps<{
   vocabularies: VocabularyItem[]
@@ -102,8 +103,8 @@ const getPrimaryMeaning = (item: VocabularyItem) => {
             <div v-for="(meaning, mIndex) in item.meanings" :key="mIndex" class="mt-3">
               <p class="text-xs font-semibold text-primary">{{ meaning.partOfSpeech }}</p>
               <p class="text-sm mt-1">{{ meaning.explanation }}</p>
-              <ul v-if="meaning.examples.length > 0" class="mt-2 space-y-1">
-                <li v-for="(example, eIndex) in meaning.examples" :key="eIndex" class="text-sm">
+              <ul v-if="getMeaningExamples(meaning).length > 0" class="mt-2 space-y-1">
+                <li v-for="(example, eIndex) in getMeaningExamples(meaning)" :key="eIndex" class="text-sm">
                   <span class="text-muted-foreground">{{ eIndex + 1 }}.</span>
                   <span class="ml-1">{{ example.sourceText }}</span>
                   <p class="text-xs text-muted-foreground ml-3 mt-0.5">

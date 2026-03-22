@@ -4,6 +4,7 @@ import { bookApi } from '@/api/book'
 import { useRequest } from '@/composables/useRequest'
 import { toast } from 'vue-sonner'
 import type { VocabularyItem } from '@/types/book'
+import { getMeaningExamples } from '@/lib/dictionary-meaning'
 
 const route = useRoute()
 const router = useRouter()
@@ -154,7 +155,7 @@ onMounted(() => {
 
               <div v-for="meaning in item.meanings" :key="meaning.partOfSpeech" class="space-y-1">
                 <p class="text-sm">{{ meaning.explanation }}</p>
-                <div v-for="(example, exampleIndex) in meaning.examples.slice(0, 2)" :key="exampleIndex" class="ml-1">
+                <div v-for="(example, exampleIndex) in getMeaningExamples(meaning).slice(0, 2)" :key="exampleIndex" class="ml-1">
                   <p class="text-xs">
                     <span class="text-muted-foreground">{{ exampleIndex + 1 }}.</span>
                     <span class="ml-1">{{ example.sourceText }}</span>

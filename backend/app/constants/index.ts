@@ -166,6 +166,13 @@ const TTS_CHUNK_STRATEGY = {
 
 type TtsChunkStrategy = (typeof TTS_CHUNK_STRATEGY)[keyof typeof TTS_CHUNK_STRATEGY]
 
+const WORD_AUDIO = {
+  CACHE_PREFIX: 'word_audio:',
+  CACHE_TTL_SECONDS: 60 * 60 * 24 * 30,
+} as const
+
+type WordAudio = (typeof WORD_AUDIO)[keyof typeof WORD_AUDIO]
+
 const CHAPTER_TRANSLATION = {
   CACHE_PREFIX: 'chapter_translation',
   RESULT_TTL_SECONDS: 60 * 60 * 24 * 30,
@@ -190,6 +197,7 @@ export {
   BOOK_IMPORT_PROGRESS,
   BOOK_IMPORT_AI,
   TTS_CHUNK_STRATEGY,
+  WORD_AUDIO,
   CHAPTER_TRANSLATION,
 }
 export type {
@@ -209,5 +217,6 @@ export type {
   BookImportProgress,
   BookImportAi,
   TtsChunkStrategy,
+  WordAudio,
   ChapterTranslation,
 }

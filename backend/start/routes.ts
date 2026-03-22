@@ -17,6 +17,7 @@ const UsersController = () => import('#controllers/users_controller')
 const BooksController = () => import('#controllers/books_controller')
 const BookChatController = () => import('#controllers/book_chat_controller')
 const DictionaryController = () => import('#controllers/dictionary_controller')
+const WordAudiosController = () => import('#controllers/word_audios_controller')
 const AdminBooksController = () => import('#controllers/admin/books_controller')
 const AdminSystemConfigsController = () => import('#controllers/admin/system_configs_controller')
 const LearningsController = () => import('#controllers/learnings_controller')
@@ -63,6 +64,7 @@ router
 
     // Dictionary
     router.get('/dictionary/:word', [DictionaryController, 'lookup']).use(dictionaryLimiter)
+    router.get('/word-audio/:word', [WordAudiosController, 'show']).use(dictionaryLimiter)
 
     // Learning
     router.post('/learning/login', [LearningsController, 'login'])

@@ -136,6 +136,11 @@ export class TtsService {
     return this.speechConfig.speechSynthesisVoiceName || 'default'
   }
 
+  async synthesizeTextToBuffer(text: string, voiceName?: string): Promise<Buffer> {
+    const result = await this.synthesizeTextChunk(text, undefined, voiceName)
+    return result.audioBuffer
+  }
+
   /**
    * Build full chapter text from title and content.
    */

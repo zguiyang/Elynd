@@ -1,41 +1,23 @@
 <script setup lang="ts">
-import { ArrowLeft, BookOpen, Volume2 } from 'lucide-vue-next'
+import { ArrowLeft, BookOpen, Loader2, Volume2 } from 'lucide-vue-next'
 import { bookApi } from '@/api/book'
 import { useRequest } from '@/composables/useRequest'
 import { toast } from 'vue-sonner'
 import type { VocabularyItem } from '@/types/book'
 import { getMeaningExamples } from '@/lib/dictionary-meaning'
+import { useWordAudio } from '@/composables/useWordAudio'
 
 const route = useRoute()
 const router = useRouter()
 const bookId = Number(route.params.id)
 
 const vocabularies = ref<VocabularyItem[]>([])
-const canUseSpeechSynthesis = computed(
-  () =>
-    typeof window !== 'undefined' &&
-    'speechSynthesis' in window &&
-    'SpeechSynthesisUtterance' in window,
-)
 
 const { execute, error, isLoading } = useRequest<VocabularyItem[]>({
   fetcher: () => bookApi.getVocabulary(bookId),
 })
 
-const playPronunciation = (item: VocabularyItem, event: Event) => {
-  event.stopPropagation()
-  if (!canUseSpeechSynthesis.value || typeof window === 'undefined') {
-    return
-  }
-
-  const utterance = new SpeechSynthesisUtterance(item.word)
-  utterance.lang = 'en-US'
-  utterance.rate = 0.95
-  utterance.pitch = 1
-
-  window.speechSynthesis.cancel()
-  window.speechSynthesis.speak(utterance)
-}
+const { playWordAudio, isWordAudioLoading } = useWordAudio()
 
 const getPhoneticText = (item: VocabularyItem) => {
   return item.phonetic || null
@@ -127,13 +109,15 @@ onMounted(() => {
                 </p>
               </div>
               <Button
-                v-if="canUseSpeechSynthesis"
+                v-if="item.word"
                 variant="ghost"
                 size="icon"
                 class="size-7 shrink-0"
-                @click="playPronunciation(item, $event)"
+                :disabled="isWordAudioLoading(item.word)"
+                @click.stop="playWordAudio(item.word)"
               >
-                <Volume2 class="size-4" />
+                <Loader2 v-if="isWordAudioLoading(item.word)" class="size-4 animate-spin" />
+                <Volume2 v-else class="size-4" />
               </Button>
             </div>
           </CardHeader>

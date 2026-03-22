@@ -4,7 +4,9 @@ import {
   Copy,
   Languages,
   MessageCircleMore,
+  Loader2,
   Search,
+  Volume2,
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { lookupWord } from '@/api/dictionary'
@@ -17,6 +19,7 @@ import type {
 import { READER_SELECTION } from '@/constants'
 import { isSingleWordSelection, normalizeSelectionText } from '@/lib/selection-actions'
 import { getMeaningExamples } from '@/lib/dictionary-meaning'
+import { useWordAudio } from '@/composables/useWordAudio'
 import type { ReaderActionType, ReaderSelectionActionPayload } from '@/types/reader-selection'
 import { useReadingSettingsStore } from '@/stores/reading-settings'
 import MarkdownRenderer from '@/components/shared/MarkdownRenderer.vue'
@@ -60,6 +63,8 @@ const lookupState = ref<{
   result: null,
   errorMessage: null,
 })
+
+const { playWordAudio, isWordAudioLoading } = useWordAudio()
 
 const contentStyle = computed(() => ({
   fontSize: readingSettings.fontSizeCss,
@@ -424,9 +429,25 @@ onUnmounted(() => {
             >
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
-                  <p class="text-xl font-semibold leading-tight text-foreground">
-                    {{ lookupState.result.word }}
-                  </p>
+                  <div class="flex items-center gap-2">
+                    <p class="text-xl font-semibold leading-tight text-foreground">
+                      {{ lookupState.result.word }}
+                    </p>
+                    <Button
+                      v-if="lookupState.result.word"
+                      variant="ghost"
+                      size="icon"
+                      class="size-7 shrink-0"
+                      :disabled="isWordAudioLoading(lookupState.result.word)"
+                      @click="playWordAudio(lookupState.result.word)"
+                    >
+                      <Loader2
+                        v-if="isWordAudioLoading(lookupState.result.word)"
+                        class="size-4 animate-spin"
+                      />
+                      <Volume2 v-else class="size-4" />
+                    </Button>
+                  </div>
                   <p v-if="lookupState.result.phonetic" class="mt-1 text-sm text-muted-foreground">
                     {{ lookupState.result.phonetic }}
                   </p>

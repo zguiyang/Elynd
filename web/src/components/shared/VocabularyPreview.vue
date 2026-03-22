@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ChevronDown, ChevronUp, Volume2, X } from 'lucide-vue-next'
+import { ChevronDown, ChevronUp, Loader2, Volume2, X } from 'lucide-vue-next'
 import type { VocabularyItem } from '@/types/book'
 import { getMeaningExamples } from '@/lib/dictionary-meaning'
+import { useWordAudio } from '@/composables/useWordAudio'
 
 defineProps<{
   vocabularies: VocabularyItem[]
@@ -12,12 +13,7 @@ const emit = defineEmits<{
 }>()
 
 const expandedItems = ref<Set<number>>(new Set())
-const canUseSpeechSynthesis = computed(
-  () =>
-    typeof window !== 'undefined' &&
-    'speechSynthesis' in window &&
-    'SpeechSynthesisUtterance' in window,
-)
+const { playWordAudio, isWordAudioLoading } = useWordAudio()
 
 const toggleItem = (id: number) => {
   if (expandedItems.value.has(id)) {
@@ -28,20 +24,6 @@ const toggleItem = (id: number) => {
 }
 
 const isExpanded = (id: number) => expandedItems.value.has(id)
-
-const playPronunciation = (item: VocabularyItem) => {
-  if (!canUseSpeechSynthesis.value || typeof window === 'undefined') {
-    return
-  }
-
-  const utterance = new SpeechSynthesisUtterance(item.word)
-  utterance.lang = 'en-US'
-  utterance.rate = 0.95
-  utterance.pitch = 1
-
-  window.speechSynthesis.cancel()
-  window.speechSynthesis.speak(utterance)
-}
 
 const hasDetails = (item: VocabularyItem) => {
   return item.meanings.length > 0
@@ -83,13 +65,18 @@ const getPrimaryMeaning = (item: VocabularyItem) => {
           </div>
           <div class="flex items-center gap-2">
             <Button
-              v-if="canUseSpeechSynthesis"
+              v-if="item.word"
               variant="ghost"
               size="icon"
               class="size-7"
-              @click.stop="playPronunciation(item)"
+              :disabled="isWordAudioLoading(item.word)"
+              @click.stop="playWordAudio(item.word)"
             >
-              <Volume2 class="size-4" />
+              <Loader2
+                v-if="isWordAudioLoading(item.word)"
+                class="size-4 animate-spin"
+              />
+              <Volume2 v-else class="size-4" />
             </Button>
             <ChevronDown v-if="!isExpanded(item.id)" class="size-4 text-muted-foreground shrink-0" />
             <ChevronUp v-else class="size-4 text-muted-foreground shrink-0" />

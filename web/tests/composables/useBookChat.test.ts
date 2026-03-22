@@ -78,6 +78,23 @@ describe('useBookChat', () => {
     wrapper.unmount()
   })
 
+  it('passes action type to createBookChat when provided', () => {
+    const { exposed, wrapper } = mountUseBookChat()
+
+    exposed.sendMessage('Hello', 5, 'qa')
+
+    expect(createBookChat).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({
+        message: 'Hello',
+        chapterIndex: 5,
+        actionType: 'qa',
+      })
+    )
+
+    wrapper.unmount()
+  })
+
   it('ends waiting state and updates assistant content on the first chunk', () => {
     const { exposed, wrapper } = mountUseBookChat()
 

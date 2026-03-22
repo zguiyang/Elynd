@@ -50,29 +50,30 @@ const ButtonStub = defineComponent({
   template: '<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\', $event)"><slot /></button>',
 })
 
-const BookReaderStub = defineComponent({
-  props: {
-    paragraphs: {
-      type: Array,
-      default: () => [],
+const createBookReaderStub = (actionType: 'explain' | 'qa' | 'translate', selectedText = 'hello world') =>
+  defineComponent({
+    props: {
+      paragraphs: {
+        type: Array,
+        default: () => [],
+      },
+      chapterTitle: {
+        type: String,
+        default: '',
+      },
     },
-    chapterTitle: {
-      type: String,
-      default: '',
-    },
-  },
-  emits: ['selection-action'],
-  template: `
-    <div data-test="book-reader">
-      <span data-test="chapter-title">{{ chapterTitle }}</span>
-      <span data-test="paragraph-count">{{ paragraphs.length }}</span>
-      <span data-test="first-paragraph">{{ paragraphs[0] }}</span>
-      <button data-test="emit-reader-ai-action" @click="$emit('selection-action', { actionType: 'explain', selectedText: 'hello world' })">
-        emit
-      </button>
-    </div>
-  `,
-})
+    emits: ['selection-action'],
+    template: `
+      <div data-test="book-reader">
+        <span data-test="chapter-title">{{ chapterTitle }}</span>
+        <span data-test="paragraph-count">{{ paragraphs.length }}</span>
+        <span data-test="first-paragraph">{{ paragraphs[0] }}</span>
+        <button data-test="emit-reader-ai-action" @click="$emit('selection-action', { actionType: '${actionType}', selectedText: '${selectedText}' })">
+          emit
+        </button>
+      </div>
+    `,
+  })
 
 const DialogStub = defineComponent({
   props: {
@@ -150,7 +151,7 @@ const createMockChapter = (): Chapter => ({
   audioDurationMs: null,
 })
 
-function mountLearningBook(props?: Record<string, unknown>) {
+function mountLearningBook(props?: Record<string, unknown>, actionType: 'explain' | 'qa' | 'translate' = 'explain') {
   setActivePinia(createPinia())
 
   return mount(LearningBook, {
@@ -166,7 +167,7 @@ function mountLearningBook(props?: Record<string, unknown>) {
     global: {
       stubs: {
         Button: ButtonStub,
-        BookReader: BookReaderStub,
+        BookReader: createBookReaderStub(actionType),
         Dialog: DialogStub,
         DialogContent: DialogContentStub,
         VocabularyPreview: VocabularyPreviewStub,
@@ -245,22 +246,21 @@ describe('learning-book.vue', () => {
     expect(wrapper.emitted('pause')).toHaveLength(1)
   })
 
-  it('emits reader-ai-action with generated prompt from reader selection action', async () => {
-    const wrapper = mountLearningBook()
+  it.each(['explain', 'qa', 'translate'] as const)('emits a raw reader action payload for %s', async (actionType) => {
+    const wrapper = mountLearningBook(undefined, actionType)
 
     await wrapper.get('[data-test="emit-reader-ai-action"]').trigger('click')
     await flushPromises()
 
     const eventPayload = wrapper.emitted('reader-ai-action')?.[0]?.[0] as
-      | { actionType: string; selectedText: string; prompt: string; chapterIndex: number }
+      | { actionType: string; selectedText: string; chapterIndex: number }
       | undefined
 
     expect(eventPayload).toBeDefined()
-    expect(eventPayload?.actionType).toBe('explain')
+    expect(eventPayload?.actionType).toBe(actionType)
     expect(eventPayload?.selectedText).toBe('hello world')
     expect(eventPayload?.chapterIndex).toBe(0)
-    expect(eventPayload?.prompt).toContain('英文原句：hello world')
-    expect(eventPayload?.prompt).toContain('请使用zh回答。')
+    expect((eventPayload as { prompt?: string }).prompt).toBeUndefined()
   })
 
   it('emits replay and resets current time when the replay button is clicked', async () => {

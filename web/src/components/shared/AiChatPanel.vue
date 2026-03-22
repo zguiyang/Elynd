@@ -17,7 +17,8 @@ const emit = defineEmits<{
 }>()
 
 interface OpenAndSendPayload {
-  message: string
+  content: string
+  actionType?: 'explain' | 'qa' | 'translate'
   chapterIndex?: number
 }
 
@@ -87,14 +88,14 @@ const handleKeydown = (e: KeyboardEvent) => {
 }
 
 const openAndSend = (payload: OpenAndSendPayload) => {
-  const message = payload.message.trim()
+  const message = payload.content.trim()
   if (!message) {
     return
   }
 
   emit('update:open', true)
   clearMessages()
-  sendMessage(message, payload.chapterIndex)
+  sendMessage(message, payload.chapterIndex, payload.actionType)
 }
 
 defineExpose({

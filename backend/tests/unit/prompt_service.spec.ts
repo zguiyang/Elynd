@@ -7,16 +7,42 @@ test.group('PromptService', () => {
     const promptService = new PromptService()
     const rendered = promptService.render('book/chat', {
       nativeLanguage: 'zh',
+      nativeLanguageLabel: 'Chinese',
       targetLanguage: 'en',
+      targetLanguageLabel: 'English',
       bookTitle: 'Test Book',
       chapterTitle: 'Chapter 3',
       chapterContent: 'This is a test paragraph.',
       userMessage: 'Please translate this section.',
+      selectedText: 'Please translate this section.',
     })
 
     assert.include(rendered, 'Test Book')
     assert.include(rendered, 'Chapter 3')
     assert.include(rendered, 'Please translate this section.')
+  })
+
+  test('renders the book selection chat prompt template', async ({ assert }) => {
+    const { default: PromptService } = await import('#services/ai/prompt_service')
+
+    const promptService = new PromptService()
+    const rendered = promptService.render('book/selection-chat', {
+      actionType: 'qa',
+      nativeLanguage: 'zh',
+      nativeLanguageLabel: 'Chinese',
+      targetLanguage: 'en',
+      targetLanguageLabel: 'English',
+      bookTitle: 'Test Book',
+      chapterTitle: 'Chapter 3',
+      chapterContent: 'This is a test paragraph.',
+      userMessage: 'were',
+      selectedText: 'were',
+    })
+
+    assert.include(rendered, 'Test Book')
+    assert.include(rendered, 'Chapter 3')
+    assert.include(rendered, 'selected text')
+    assert.include(rendered, 'Answer the user\'s question about the selected English text')
   })
 
   test('renders chapter translation prompt without HTML entity escaping', async ({

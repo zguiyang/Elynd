@@ -15,6 +15,5 @@ export interface ReaderSelectionActionPayload {
 export interface ReaderAiActionRequest {
   actionType: Exclude<ReaderActionType, 'lookup'>
   selectedText: string
-  prompt: string
   chapterIndex?: number
 }

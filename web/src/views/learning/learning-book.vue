@@ -218,44 +218,13 @@ const getNativeLanguageCode = async () => {
   return lang.targetLanguage || 'zh'
 }
 
-const buildReaderActionPrompt = async (
-  actionType: 'explain' | 'qa' | 'translate',
-  selectedText: string
-) => {
-  const nativeLanguage = await getNativeLanguageCode()
-  const chapterIndex = props.currentChapterIndex
-  const chapterTitle = props.chapter?.title || 'Unknown chapter'
-
-  const actionInstructionMap = {
-    explain: '请用学习者友好的方式解释下面选中文本的含义、语境和重点。',
-    qa: '请围绕下面选中文本回答问题，并指出关键理解点。',
-    translate: '请准确、自然地翻译下面选中文本。',
-  } as const
-
-  const actionInstruction = actionInstructionMap[actionType]
-
-  return [
-    `动作类型：${actionType}`,
-    `用户母语：${nativeLanguage}`,
-    `章节序号：${chapterIndex}`,
-    `章节标题：${chapterTitle}`,
-    `英文原句：${selectedText}`,
-    '',
-    actionInstruction,
-    `请使用${nativeLanguage}回答。`,
-  ].join('\n')
-}
-
-const handleReaderSelectionAction = async (payload: ReaderSelectionActionPayload) => {
+const handleReaderSelectionAction = (payload: ReaderSelectionActionPayload) => {
   if (payload.actionType === 'lookup') {
     return
   }
-
-  const prompt = await buildReaderActionPrompt(payload.actionType, payload.selectedText)
   emit('reader-ai-action', {
     actionType: payload.actionType,
     selectedText: payload.selectedText,
-    prompt,
     chapterIndex: props.currentChapterIndex,
   })
 }

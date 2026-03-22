@@ -9,11 +9,14 @@ import BookChat from '#models/book_chat'
 import logger from '@adonisjs/core/services/logger'
 import { BookService } from '#services/book/book_service'
 
+export type BookChatActionType = 'explain' | 'qa' | 'translate'
+
 export interface ChatParams {
   userId: number
   bookId: number
   isAdmin: boolean
   message: string
+  actionType?: BookChatActionType
   chapterIndex?: number | undefined
 }
 
@@ -32,8 +35,20 @@ export interface SimpleChatParams {
   userId: number
   bookId: number
   message: string
+  actionType?: BookChatActionType
   bookTitle?: string
   chapterContent?: string
+}
+
+const LANGUAGE_LABEL_MAP: Record<string, string> = {
+  zh: 'Chinese',
+  'zh-CN': 'Chinese',
+  'zh-TW': 'Traditional Chinese',
+  en: 'English',
+  'en-US': 'American English',
+  'en-GB': 'British English',
+  ja: 'Japanese',
+  ko: 'Korean',
 }
 
 @inject()
@@ -47,7 +62,7 @@ export class BookChatService {
   ) {}
 
   async chat(params: SimpleChatParams): Promise<string> {
-    const { userId, bookId, message, bookTitle, chapterContent } = params
+    const { userId, bookId, message, actionType, bookTitle, chapterContent } = params
 
     const [userConfig, book] = await Promise.all([
       this.userConfigService.getConfigByUserId(userId),
@@ -56,14 +71,20 @@ export class BookChatService {
 
     const nativeLanguage = userConfig?.nativeLanguage ?? 'zh'
     const targetLanguage = userConfig?.targetLanguage ?? 'en'
+    const nativeLanguageLabel = this.getLanguageLabel(nativeLanguage)
+    const targetLanguageLabel = this.getLanguageLabel(targetLanguage)
 
-    const systemPrompt = this.promptService.render('book/chat', {
+    const systemPrompt = this.renderSystemPrompt({
+      actionType,
       nativeLanguage,
+      nativeLanguageLabel,
       targetLanguage,
+      targetLanguageLabel,
       bookTitle: bookTitle || book.title,
       chapterTitle: undefined,
       chapterContent: chapterContent || undefined,
       userMessage: message,
+      selectedText: message,
     })
 
     const aiConfig = await this.configService.getAiConfig()
@@ -82,7 +103,7 @@ export class BookChatService {
     handlers: StreamHandlers,
     signal?: AbortSignal
   ): Promise<void> {
-    const { userId, bookId, isAdmin, message, chapterIndex } = params
+    const { userId, bookId, isAdmin, message, actionType, chapterIndex } = params
 
     const [userConfig, book] = await Promise.all([
       this.userConfigService.getConfigByUserId(userId),
@@ -91,6 +112,8 @@ export class BookChatService {
 
     const nativeLanguage = userConfig?.nativeLanguage ?? 'zh'
     const targetLanguage = userConfig?.targetLanguage ?? 'en'
+    const nativeLanguageLabel = this.getLanguageLabel(nativeLanguage)
+    const targetLanguageLabel = this.getLanguageLabel(targetLanguage)
 
     let chapterTitle: string | undefined
     let chapterContent: string | undefined
@@ -107,13 +130,17 @@ export class BookChatService {
       }
     }
 
-    const systemPrompt = this.promptService.render('book/chat', {
+    const systemPrompt = this.renderSystemPrompt({
+      actionType,
       nativeLanguage,
+      nativeLanguageLabel,
       targetLanguage,
+      targetLanguageLabel,
       bookTitle: book.title,
       chapterTitle,
       chapterContent,
       userMessage: message,
+      selectedText: message,
     })
 
     const aiConfig = await this.configService.getAiConfig()
@@ -162,5 +189,28 @@ export class BookChatService {
         onError: handlers.onError,
       }
     )
+  }
+
+  private getLanguageLabel(languageCode: string): string {
+    return LANGUAGE_LABEL_MAP[languageCode] ?? languageCode
+  }
+
+  private renderSystemPrompt(params: {
+    actionType?: BookChatActionType
+    nativeLanguage: string
+    nativeLanguageLabel: string
+    targetLanguage: string
+    targetLanguageLabel: string
+    bookTitle: string
+    chapterTitle?: string
+    chapterContent?: string
+    userMessage: string
+    selectedText: string
+  }): string {
+    if (params.actionType) {
+      return this.promptService.render('book/selection-chat', params)
+    }
+
+    return this.promptService.render('book/chat', params)
   }
 }

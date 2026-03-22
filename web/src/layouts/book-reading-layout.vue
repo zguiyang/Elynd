@@ -28,7 +28,11 @@ const audioError = ref<string | null>(null)
 const isMobileTocOpen = ref(false)
 const showAiChat = ref(false)
 const aiChatPanelRef = ref<{
-  openAndSend: (payload: { message: string; chapterIndex?: number }) => void
+  openAndSend: (payload: {
+    content: string
+    actionType?: 'explain' | 'qa' | 'translate'
+    chapterIndex?: number
+  }) => void
 } | null>(null)
 
 const startTime = ref<number | null>(null)
@@ -197,7 +201,8 @@ const getLevelVariant = (sortOrder: number): 'default' | 'secondary' | 'outline'
 const handleReaderAiAction = (payload: ReaderAiActionRequest) => {
   showAiChat.value = true
   aiChatPanelRef.value?.openAndSend({
-    message: payload.prompt,
+    content: payload.selectedText,
+    actionType: payload.actionType,
     chapterIndex: payload.chapterIndex,
   })
 }

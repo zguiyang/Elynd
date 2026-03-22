@@ -34,8 +34,11 @@ test.group('Book Chat SSE API', () => {
       await book.delete()
     })
 
+    let capturedParams: Record<string, unknown> | null = null
+
     const originalStreamChat = BookChatService.prototype.streamChat
-    BookChatService.prototype.streamChat = async function fakeStreamChat(_params, handlers) {
+    BookChatService.prototype.streamChat = async function fakeStreamChat(params, handlers) {
+      capturedParams = params as Record<string, unknown>
       handlers.onChunk({ delta: 'Hello', isComplete: false })
       handlers.onComplete({
         content: 'Hello world',
@@ -52,7 +55,7 @@ test.group('Book Chat SSE API', () => {
 
     const response = await client
       .get(`/api/books/${book.id}/chats`)
-      .qs({ message: 'Explain this chapter' })
+      .qs({ message: 'were', actionType: 'qa' })
       .header('Authorization', bearerAuthHeader(token))
 
     assert.equal(response.status(), 200, 'Response should return 200 OK')
@@ -72,6 +75,8 @@ test.group('Book Chat SSE API', () => {
       'data: {"type":"done","content":"Hello world","usage":{"promptTokens":10,"completionTokens":2,"totalTokens":12}}',
       'Response should emit a done event'
     )
+    assert.equal(capturedParams?.message, 'were')
+    assert.equal(capturedParams?.actionType, 'qa')
   })
 
   test('GET /api/books/:id/chats forbids non-admin user to read unpublished books', async ({

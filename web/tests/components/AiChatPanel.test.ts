@@ -64,11 +64,16 @@ describe('AiChatPanel', () => {
       },
     })
 
-    ;(wrapper.vm as unknown as { openAndSend: (payload: { message: string; chapterIndex?: number }) => void })
-      .openAndSend({ message: 'Hello AI', chapterIndex: 2 })
+    ;(wrapper.vm as unknown as {
+      openAndSend: (payload: {
+        content: string
+        actionType?: 'explain' | 'qa' | 'translate'
+        chapterIndex?: number
+      }) => void
+    }).openAndSend({ content: 'Hello AI', actionType: 'qa', chapterIndex: 2 })
 
     expect(wrapper.emitted('update:open')?.[0]).toEqual([true])
     expect(clearMessagesMock).toHaveBeenCalledTimes(1)
-    expect(sendMessageMock).toHaveBeenCalledWith('Hello AI', 2)
+    expect(sendMessageMock).toHaveBeenCalledWith('Hello AI', 2, 'qa')
   })
 })

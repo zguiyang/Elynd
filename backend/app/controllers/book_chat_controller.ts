@@ -20,6 +20,7 @@ export default class BookChatController {
     const user = auth.getUserOrFail()
     const userId = user.id
     const message = data.message
+    const actionType = data.actionType
     const chapterIndex = data.chapterIndex
     await this.bookService.findReadableBookById(bookId, { isAdmin: user.isAdmin })
 
@@ -40,6 +41,7 @@ export default class BookChatController {
         bookId,
         isAdmin: user.isAdmin,
         message,
+        actionType,
         chapterIndex,
       },
       {

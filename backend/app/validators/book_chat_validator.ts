@@ -9,6 +9,7 @@ export const bookChatValidator = vine.compile(
       .trim()
       .minLength(VALIDATION.MESSAGE_MIN)
       .maxLength(VALIDATION.MESSAGE_MAX),
+    actionType: vine.enum(['explain', 'qa', 'translate']).optional(),
     chapterIndex: vine.number().optional(),
   })
 )

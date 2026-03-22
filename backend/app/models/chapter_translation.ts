@@ -34,17 +34,11 @@ export default class ChapterTranslation extends BaseModel {
   @column()
   declare model: string | null
 
-  @column()
-  declare promptVersion: string
-
   @column({ columnName: 'result_json' })
   declare resultJson: ChapterTranslationResult | null
 
   @column()
   declare errorMessage: string | null
-
-  @column()
-  declare alignmentVersion: string | null
 
   @column()
   declare metadata: ChapterTranslationMetadata | null

@@ -19,7 +19,6 @@ interface TranslationIdentity {
   sourceLanguage: string
   targetLanguage: string
   contentHash: string
-  promptVersion: string
 }
 
 @inject()
@@ -42,7 +41,6 @@ export class ChapterTranslationService {
       sourceLanguage,
       targetLanguage,
     })
-    const promptVersion = CHAPTER_TRANSLATION.PROMPT_VERSION
     const cacheKey = this.buildCacheKey({
       bookId: chapter.bookId,
       chapterId: chapter.id,
@@ -64,7 +62,6 @@ export class ChapterTranslationService {
       sourceLanguage,
       targetLanguage,
       contentHash,
-      promptVersion,
     }
 
     const completed = await this.findCompletedTranslation(chapter.id, identity)
@@ -91,7 +88,6 @@ export class ChapterTranslationService {
       sourceLanguage,
       targetLanguage,
       contentHash,
-      promptVersion,
       status: 'queued',
       createdByUserId: params.userId,
     })
@@ -135,7 +131,6 @@ export class ChapterTranslationService {
       sourceLanguage,
       targetLanguage,
     })
-    const promptVersion = CHAPTER_TRANSLATION.PROMPT_VERSION
     const cacheKey = this.buildCacheKey({
       bookId: chapter.bookId,
       chapterId: chapter.id,
@@ -157,7 +152,6 @@ export class ChapterTranslationService {
       sourceLanguage,
       targetLanguage,
       contentHash,
-      promptVersion,
     }
     const completed = await this.findCompletedTranslation(chapter.id, identity)
     if (completed?.resultJson) {
@@ -308,7 +302,6 @@ export class ChapterTranslationService {
       .andWhere('source_language', identity.sourceLanguage)
       .andWhere('target_language', identity.targetLanguage)
       .andWhere('content_hash', identity.contentHash)
-      .andWhere('prompt_version', identity.promptVersion)
       .andWhere('status', 'completed')
       .orderBy('updated_at', 'desc')
       .first()
@@ -320,7 +313,6 @@ export class ChapterTranslationService {
       .andWhere('source_language', identity.sourceLanguage)
       .andWhere('target_language', identity.targetLanguage)
       .andWhere('content_hash', identity.contentHash)
-      .andWhere('prompt_version', identity.promptVersion)
       .whereIn('status', ['queued', 'processing'])
       .orderBy('updated_at', 'desc')
       .first()

@@ -15,7 +15,7 @@ test.group('ChapterTranslationService cache key', (group) => {
     ChapterTranslation.find = originalChapterTranslationFind
   })
 
-  test('requestTranslation uses flat cache key without version segment', async ({ assert }) => {
+  test('requestTranslation uses flat cache key', async ({ assert }) => {
     let capturedKey: string | null = null
 
     redis.get = async function fakeGet(key: string) {
@@ -49,7 +49,41 @@ test.group('ChapterTranslationService cache key', (group) => {
     assert.equal(result.translationId, null)
     assert.isNotNull(capturedKey)
     assert.match(capturedKey!, /^chapter_translation:34:12:en:zh:[a-f0-9]{64}$/)
-    assert.notInclude(capturedKey!, ':v1:')
+  })
+
+  test('getChapterResult uses flat cache key', async ({ assert }) => {
+    let capturedKey: string | null = null
+
+    redis.get = async function fakeGet(key: string) {
+      capturedKey = String(key)
+      return JSON.stringify({
+        title: {
+          original: 'Original title',
+          translated: 'Translated title',
+        },
+        paragraphs: [],
+      })
+    } as typeof redis.get
+
+    const service = new ChapterTranslationService({} as any, {} as any, {} as any)
+
+    ;(service as any).findReadableChapter = async () => ({
+      id: 12,
+      bookId: 34,
+      title: 'Chapter title',
+      content: 'Chapter content',
+    })
+
+    const result = await service.getChapterResult({
+      chapterId: 12,
+      sourceLanguage: 'en',
+      targetLanguage: 'zh',
+    })
+
+    assert.equal(result.status, 'completed')
+    assert.equal(result.translationId, null)
+    assert.isNotNull(capturedKey)
+    assert.match(capturedKey!, /^chapter_translation:34:12:en:zh:[a-f0-9]{64}$/)
   })
 
   test('processTranslation writes cache with the same flat key format', async ({ assert }) => {
@@ -66,7 +100,6 @@ test.group('ChapterTranslationService cache key', (group) => {
       sourceLanguage: 'en',
       targetLanguage: 'zh',
       contentHash: 'a'.repeat(64),
-      promptVersion: 'v1',
       status: 'queued',
       errorMessage: null,
       provider: null,

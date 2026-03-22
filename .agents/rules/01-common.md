@@ -287,6 +287,7 @@ All `.ts` files must pass without errors before committing.
 - Commit secrets (keys, passwords, etc.) to the code repository
 - Modify `node_modules/` directories
 - Delete data or directly operate on production database
+- In tests, delete, truncate, or reset any database, Redis, storage, or queue data outside the exact test-owned scope
 - Disable framework middleware or security mechanisms
 - Run development server commands (`pnpm run dev:*`, `pnpm run start`, etc.) without explicit user instruction or confirmation
 

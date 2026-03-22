@@ -35,17 +35,40 @@ export class AiService {
   }
 
   async chatJson<T>(config: AiClientConfig, params: AiChatParams): Promise<T> {
-    const response = await this.doChat(config, params, false)
+    let lastParseError: Error | null = null
 
-    try {
-      return this.parseJsonFromResponse<T>(response.content)
-    } catch (error) {
-      throw new AiServiceError(
-        AI_ERROR_CODES.PARSE_ERROR,
-        'Failed to parse AI response as JSON',
-        error as Error
-      )
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const response = await this.doChat(config, params, false)
+
+      try {
+        return this.parseJsonFromResponse<T>(response.content)
+      } catch (error) {
+        lastParseError = error instanceof Error ? error : new Error('Unknown JSON parse error')
+
+        logger.warn(
+          {
+            model: config.model,
+            attempt,
+            errorMessage: lastParseError.message,
+          },
+          'AI chat JSON parse failed'
+        )
+
+        if (attempt === 2) {
+          throw new AiServiceError(
+            AI_ERROR_CODES.PARSE_ERROR,
+            'Failed to parse AI response as JSON',
+            lastParseError
+          )
+        }
+      }
     }
+
+    throw new AiServiceError(
+      AI_ERROR_CODES.PARSE_ERROR,
+      'Failed to parse AI response as JSON',
+      lastParseError || undefined
+    )
   }
 
   async chatJsonChunked<TChunkItem, TChunkResult, TMergedResult>(

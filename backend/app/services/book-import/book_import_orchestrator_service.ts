@@ -20,8 +20,6 @@ import { BookHashService } from '#services/book-parse/book_hash_service'
 import { BookContentGuardService } from '#services/book-parse/book_content_guard_service'
 import { buildCanonicalChapterText } from '#services/book-parse/book_text_normalizer'
 import { BookLevelService } from '#services/book/book_level_service'
-import GenerateBookAudioJob from '#jobs/generate_book_audio_job'
-import GenerateBookVocabularyJob from '#jobs/generate_book_vocabulary_job'
 import { BOOK_IMPORT_PROGRESS, BOOK_IMPORT_STEP } from '#constants'
 
 export interface ParsedSourceResult {
@@ -443,13 +441,6 @@ export class BookImportOrchestratorService {
       classifiedBy,
       reason,
     }
-  }
-
-  async dispatchParallelJobs(bookId: number) {
-    await Promise.all([
-      GenerateBookAudioJob.dispatch({ bookId }),
-      GenerateBookVocabularyJob.dispatch({ bookId }),
-    ])
   }
 
   async reconcileParallelProgress(book: Book) {

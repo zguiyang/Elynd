@@ -39,6 +39,10 @@ interface FreeDictionaryApiResponse {
   entries?: FreeDictionaryApiEntry[]
 }
 
+interface DictionaryBatchAiResponse {
+  entries?: unknown[]
+}
+
 interface DictionaryLocalizedExample {
   sourceText: string
   localizedText: string
@@ -90,6 +94,7 @@ export interface DictionaryLookupParams {
   localizationLanguage?: string | null
   bookId?: number | null
   chapterIndex?: number | null
+  allowAiEnrichment?: boolean
 }
 
 interface DictionaryResolveOptions {
@@ -101,6 +106,7 @@ interface DictionaryBatchLookupOptions {
   userId?: number
   localizationLanguage?: string | null
   concurrency?: number
+  allowAiEnrichment?: boolean
 }
 
 export interface DictionaryBatchLookupDiagnostics {
@@ -110,6 +116,8 @@ export interface DictionaryBatchLookupDiagnostics {
   dictionaryOnlyWords: number
   aiEnrichedWords: number
   aiFallbackWords: number
+  aiBatchFailedChunks: number
+  aiBatchFailedWords: number
 }
 
 export interface DictionaryBatchLookupResult {
@@ -408,7 +416,49 @@ export class DictionaryService {
     const articleExamples = this.normalizeArticleExamples(value.articleExamples)
 
     if (meanings.length === 0) {
-      return null
+      const fallbackPartOfSpeech = this.pickString(value.partOfSpeech) || 'noun'
+      const fallbackSourceMeaning =
+        this.pickString(value.sourceMeaning) ||
+        this.pickString(value.definition) ||
+        this.pickString(value.localizedMeaning) ||
+        normalizedWord
+      const fallbackLocalizedMeaning =
+        this.pickString(value.localizedMeaning) || '可能是专有名词、缩写、罕见词或拼写变体。'
+      const fallbackPlainExplanation =
+        this.pickString(value.plainExplanation) || fallbackLocalizedMeaning
+      const fallbackDefinitions = this.normalizeDefinitions(value.definitions)
+
+      return {
+        word: normalizedWord,
+        sourceLanguage,
+        localizationLanguage: normalizedLocalizationLanguage,
+        phonetic,
+        phonetics,
+        meanings: [
+          {
+            partOfSpeech: fallbackPartOfSpeech,
+            sourceMeaning: fallbackSourceMeaning,
+            localizedMeaning: fallbackLocalizedMeaning,
+            plainExplanation: fallbackPlainExplanation,
+            definitions:
+              fallbackDefinitions.length > 0
+                ? fallbackDefinitions
+                : [
+                    {
+                      sourceText: fallbackSourceMeaning,
+                      localizedText: fallbackLocalizedMeaning,
+                      plainExplanation: fallbackPlainExplanation,
+                      examples: [],
+                    },
+                  ],
+          },
+        ],
+        articleExamples,
+        meta: {
+          source: 'dictionary',
+          localizationLanguage: normalizedLocalizationLanguage,
+        },
+      }
     }
 
     return {
@@ -426,25 +476,53 @@ export class DictionaryService {
     }
   }
 
-  private async generateAiDictionaryEntry(params: {
-    word: string
+  private normalizeAiDictionaryEntries(
+    value: unknown,
     localizationLanguage: string
-    dictionarySnapshot?: unknown
-    lookupMode: DictionaryLookupMode
-  }): Promise<DictionaryEntry | null> {
+  ): DictionaryEntry[] {
+    const payload = this.isRecord(value) && Array.isArray(value.entries) ? value.entries : value
+
+    if (!Array.isArray(payload)) {
+      return []
+    }
+
+    return payload
+      .map((item) => this.normalizeAiDictionaryEntry(item, localizationLanguage))
+      .filter((item): item is DictionaryEntry => item !== null)
+  }
+
+  private splitWordsIntoChunks(words: string[], maxChunkSize: number): string[][] {
+    if (maxChunkSize <= 0) {
+      return [words]
+    }
+
+    const chunks: string[][] = []
+    for (let index = 0; index < words.length; index += maxChunkSize) {
+      chunks.push(words.slice(index, index + maxChunkSize))
+    }
+
+    return chunks
+  }
+
+  private async generateAiDictionaryEntries(params: {
+    words: string[]
+    localizationLanguage: string
+  }): Promise<DictionaryEntry[]> {
+    if (params.words.length === 0) {
+      return []
+    }
+
     try {
       const aiConfig = await this.configService.getAiConfig()
-      const template = params.dictionarySnapshot ? 'dictionary/enrich' : 'dictionary/fallback'
-      const contract = this.promptService.render('dictionary/output-contract', {})
-      const userPrompt = this.promptService.render(template, {
-        word: params.word,
+      const contract = this.promptService.render('dictionary/batch-output-contract', {})
+      const userPrompt = this.promptService.render('dictionary/batch-fallback', {
+        words: params.words,
         sourceLanguage: SOURCE_LANGUAGE,
         localizationLanguage: params.localizationLanguage,
-        dictionarySnapshot: params.dictionarySnapshot || undefined,
         contract,
       })
 
-      const result = await this.aiService.chatJson<unknown>(aiConfig, {
+      const result = await this.aiService.chatJson<DictionaryBatchAiResponse>(aiConfig, {
         messages: [
           { role: 'system', content: DICTIONARY_AI_SYSTEM_PROMPT },
           { role: 'user', content: userPrompt },
@@ -454,37 +532,17 @@ export class DictionaryService {
         responseFormat: { type: 'json_object' },
       })
 
-      const normalized = this.normalizeAiDictionaryEntry(result, params.localizationLanguage)
-      if (!normalized) {
-        logger.warn(
-          {
-            word: params.word,
-            localizationLanguage: params.localizationLanguage,
-            template,
-          },
-          'Dictionary AI response could not be normalized'
-        )
-        return null
-      }
-
-      return {
-        ...normalized,
-        meta: {
-          ...normalized.meta,
-          lookupMode: params.lookupMode,
-        },
-      }
+      return this.normalizeAiDictionaryEntries(result, params.localizationLanguage)
     } catch (error) {
       logger.warn(
         {
           err: error,
-          word: params.word,
+          words: params.words,
           localizationLanguage: params.localizationLanguage,
-          hasSnapshot: Boolean(params.dictionarySnapshot),
         },
-        'Dictionary AI generation failed'
+        'Dictionary AI batch generation failed'
       )
-      return null
+      return []
     }
   }
 
@@ -763,36 +821,11 @@ export class DictionaryService {
           settings.localizationLanguage
         )
         if (entry) {
-          const enrichedEntry =
-            (await this.generateAiDictionaryEntry({
-              word: normalizedWord,
-              localizationLanguage: settings.localizationLanguage,
-              dictionarySnapshot: upstreamEntry,
-              lookupMode: 'ai_enriched',
-            })) ||
-            (await this.generateAiDictionaryEntry({
-              word: normalizedWord,
-              localizationLanguage: settings.localizationLanguage,
-              lookupMode: 'ai_fallback',
-            }))
+          await this.saveGlobalEntry(entry)
+          await this.setCachedEntry(normalizedWord, entry, settings.localizationLanguage)
 
-          const finalEntry = enrichedEntry || entry
-          await this.saveGlobalEntry(finalEntry)
-          await this.setCachedEntry(normalizedWord, finalEntry, settings.localizationLanguage)
-
-          return finalEntry
+          return entry
         }
-      }
-
-      const fallbackEntry = await this.generateAiDictionaryEntry({
-        word: normalizedWord,
-        localizationLanguage: settings.localizationLanguage,
-        lookupMode: 'ai_fallback',
-      })
-      if (fallbackEntry) {
-        await this.saveGlobalEntry(fallbackEntry)
-        await this.setCachedEntry(normalizedWord, fallbackEntry, settings.localizationLanguage)
-        return fallbackEntry
       }
 
       throw new Error('Dictionary upstream entry not found')
@@ -817,6 +850,10 @@ export class DictionaryService {
   ): Promise<DictionaryBatchLookupResult> {
     const results = new Map<string, DictionaryEntry | null>()
     const normalizedWords = words.map((word) => this.normalizeWord(word)).filter((word) => word)
+    const settings = await this.resolveLookupSettings({
+      userId: options.userId,
+      localizationLanguage: options.localizationLanguage,
+    })
     const diagnostics: DictionaryBatchLookupDiagnostics = {
       totalWords: normalizedWords.length,
       succeededWords: 0,
@@ -824,6 +861,8 @@ export class DictionaryService {
       dictionaryOnlyWords: 0,
       aiEnrichedWords: 0,
       aiFallbackWords: 0,
+      aiBatchFailedChunks: 0,
+      aiBatchFailedWords: 0,
     }
 
     if (normalizedWords.length === 0) {
@@ -833,6 +872,8 @@ export class DictionaryService {
       }
     }
 
+    const failedWordReasons = new Map<string, string>()
+
     const processWord = async (
       word: string
     ): Promise<[string, DictionaryEntry | null, string | null]> => {
@@ -840,7 +881,7 @@ export class DictionaryService {
         const entry = await this.lookup({
           word,
           userId: options.userId,
-          localizationLanguage: options.localizationLanguage,
+          localizationLanguage: settings.localizationLanguage,
         })
         return [word, entry, null]
       } catch (error) {
@@ -855,10 +896,7 @@ export class DictionaryService {
       for (const [word, entry, reason] of batchResults) {
         results.set(word, entry)
         if (!entry) {
-          diagnostics.failedWords.push({
-            word,
-            reason: reason || 'Unknown lookup failure',
-          })
+          failedWordReasons.set(word, reason || 'Unknown lookup failure')
           continue
         }
 
@@ -874,6 +912,43 @@ export class DictionaryService {
       }
     }
 
+    if (options.allowAiEnrichment && failedWordReasons.size > 0) {
+      const failedWords = Array.from(failedWordReasons.keys())
+      const aiChunks = this.splitWordsIntoChunks(failedWords, 5)
+
+      for (const chunk of aiChunks) {
+        const repairedEntries = await this.generateAiDictionaryEntries({
+          words: chunk,
+          localizationLanguage: settings.localizationLanguage,
+        })
+
+        if (repairedEntries.length === 0) {
+          diagnostics.aiBatchFailedChunks++
+          diagnostics.aiBatchFailedWords += chunk.length
+          continue
+        }
+
+        for (const entry of repairedEntries) {
+          const normalizedWord = this.normalizeWord(entry.word)
+          if (!failedWordReasons.has(normalizedWord)) {
+            continue
+          }
+
+          await this.saveGlobalEntry(entry)
+          await this.cacheEntry(entry)
+          results.set(normalizedWord, entry)
+          failedWordReasons.delete(normalizedWord)
+          diagnostics.succeededWords++
+          diagnostics.aiFallbackWords++
+        }
+      }
+    }
+
+    diagnostics.failedWords = Array.from(failedWordReasons.entries()).map(([word, reason]) => ({
+      word,
+      reason,
+    }))
+
     return {
       entries: results,
       diagnostics,
@@ -888,7 +963,11 @@ export class DictionaryService {
     const normalizedLanguage = this.normalizeLocalizationLanguage(localizationLanguage)
     const cacheKey = this.getCacheKey(normalizedWord, normalizedLanguage)
     await redis.del(cacheKey)
-    await this.lookup({ word: normalizedWord, localizationLanguage: normalizedLanguage })
+    await this.lookup({
+      word: normalizedWord,
+      localizationLanguage: normalizedLanguage,
+      allowAiEnrichment: false,
+    })
   }
 
   async getExpiringKeys(days: number = DICTIONARY.EXPIRING_DAYS): Promise<string[]> {

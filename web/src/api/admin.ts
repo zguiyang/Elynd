@@ -1,5 +1,5 @@
 import { request } from '@/lib/request'
-import type { BookStatusResponse } from '@/types/book'
+import type { BookProcessingRunSummary, BookStatusResponse } from '@/types/book'
 
 export interface ChapterAudioSummary {
   total: number
@@ -35,6 +35,7 @@ export interface AdminBook {
     pending: number
     failed: number
   }
+  latestRun?: BookProcessingRunSummary | null
   createdAt: string
   updatedAt: string
 }

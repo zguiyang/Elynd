@@ -2,9 +2,12 @@ import { test } from '@japa/runner'
 import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import BookChapterAudio from '#models/book_chapter_audio'
+import BookProcessingRunLog from '#models/book_processing_run_log'
+import BookProcessingStepLog from '#models/book_processing_step_log'
 import BookVocabulary from '#models/book_vocabulary'
 import drive from '@adonisjs/drive/services/main'
 import crypto from 'node:crypto'
+import { DateTime } from 'luxon'
 import { bearerAuthHeader, createAuthenticatedUser } from '#tests/helpers/auth'
 
 const createAdminUser = () =>
@@ -247,6 +250,93 @@ test.group('Admin Books Management API', () => {
     assert.equal(targetBook.bookHash, 'abc123def456', 'bookHash should be returned')
     assert.equal(targetBook.vocabularyStatus, 'processing', 'vocabularyStatus should be returned')
     assert.equal(targetBook.audioStatus, 'completed', 'audioStatus should be returned')
+  })
+
+  test('GET /api/admin/books returns latestRun outputRef for vocabulary diagnostics', async ({
+    assert,
+    client,
+    cleanup,
+  }) => {
+    const { user: admin, token } = await createAdminUser()
+    cleanup(async () => {
+      await admin.delete()
+    })
+
+    const book = await Book.create({
+      title: 'Vocabulary Diagnostics Book',
+      author: 'Test Author',
+      source: 'user_uploaded',
+      levelId: 2,
+      status: 'processing',
+      processingStep: 'generating_vocabulary',
+      processingProgress: 55,
+      audioStatus: 'completed',
+      vocabularyStatus: 'processing',
+      wordCount: 2000,
+      readingTime: 10,
+      isPublished: true,
+      createdBy: admin.id,
+      contentHash: crypto.randomUUID(),
+      bookHash: 'diag-book-hash',
+    })
+    cleanup(async () => await book.delete())
+
+    const run = await BookProcessingRunLog.create({
+      bookId: book.id,
+      jobType: 'import',
+      status: 'success',
+      currentStep: 'generating_vocabulary',
+      progress: 65,
+      startedAt: DateTime.now(),
+      finishedAt: DateTime.now(),
+      durationMs: 1200,
+      errorCode: null,
+      errorMessage: null,
+      metadata: null,
+    })
+
+    cleanup(async () => {
+      await BookProcessingStepLog.query().where('runLogId', run.id).delete()
+      await BookProcessingRunLog.query().where('id', run.id).delete()
+    })
+
+    await BookProcessingStepLog.create({
+      runLogId: run.id,
+      bookId: book.id,
+      stepKey: 'enrich_vocabulary',
+      itemKey: null,
+      inputHash: null,
+      status: 'success',
+      startedAt: DateTime.now(),
+      finishedAt: DateTime.now(),
+      durationMs: 450,
+      errorCode: null,
+      errorMessage: null,
+      outputRef: {
+        dictionaryOnlyWords: 10,
+        aiRepairedWords: 5,
+        aiBatchFailedChunks: 1,
+        aiBatchFailedWords: 5,
+        failedWords: ['alpha', 'beta'],
+      },
+    })
+
+    const response = await client
+      .get('/api/admin/books')
+      .header('Authorization', bearerAuthHeader(token))
+
+    response.assertStatus(200)
+
+    const targetBook = response.body().data.find((item: { id: number }) => item.id === book.id)
+    assert.exists(targetBook, 'Response should contain the target book')
+    assert.exists(targetBook.latestRun, 'latestRun should be returned')
+    assert.deepEqual(targetBook.latestRun.outputRef, {
+      dictionaryOnlyWords: 10,
+      aiRepairedWords: 5,
+      aiBatchFailedChunks: 1,
+      aiBatchFailedWords: 5,
+      failedWords: ['alpha', 'beta'],
+    })
   })
 
   test('GET /api/admin/books/:id/status returns vocabularyStatus and bookHash in enriched status', async ({

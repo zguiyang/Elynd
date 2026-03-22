@@ -57,6 +57,19 @@ export interface BookImportRun {
   updatedAt: string
 }
 
+export interface BookProcessingRunSummary {
+  id: number
+  jobType: string
+  status: string
+  currentStep: string | null
+  progress: number
+  startedAt: string | null
+  finishedAt: string | null
+  errorCode: string | null
+  errorMessage: string | null
+  outputRef: Record<string, unknown> | null
+}
+
 export interface BookStatusResponse {
   id: number
   status: 'processing' | 'ready' | 'failed'
@@ -65,17 +78,7 @@ export interface BookStatusResponse {
   processingError: string | null
   audioStatus?: AudioStatus | null
   vocabularyStatus?: 'pending' | 'processing' | 'completed' | 'failed' | null
-  latestRun?: {
-    id: number
-    jobType: string
-    status: string
-    currentStep: string | null
-    progress: number
-    startedAt: string | null
-    finishedAt: string | null
-    errorCode: string | null
-    errorMessage: string | null
-  } | null
+  latestRun?: BookProcessingRunSummary | null
   chapterAudioSummary?: {
     total: number
     completed: number

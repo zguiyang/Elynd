@@ -8,6 +8,7 @@ import { DictionaryService } from '#services/shared/dictionary_service'
 import { VocabularyAnalyzerService } from '#services/book-parse/vocabulary_analyzer_service'
 import { BookImportOrchestratorService } from '#services/book-import/book_import_orchestrator_service'
 import { ImportStateService } from '#services/book-import/import_state_service'
+import FinalizeImportJob from '#jobs/finalize_import_job'
 import GenerateTtsJob from '#jobs/generate_tts_job'
 import type { SerialImportPayload } from '#types/book_import_pipeline'
 
@@ -59,9 +60,22 @@ export class BookVocabularyPipelineService {
       }
 
       const words = allVocabularies.map((item) => item.word)
-      const lookupResult = await this.dictionaryService.lookupBatchWithDiagnostics(words)
+      const lookupResult = await this.dictionaryService.lookupBatchWithDiagnostics(words, 5, {
+        allowAiEnrichment: true,
+      })
       const results = lookupResult.entries
       const diagnostics = lookupResult.diagnostics
+      const stepOutputRef = {
+        totalWords: allVocabularies.length,
+        enrichedWords: 0,
+        dictionaryOnlyWords: diagnostics.dictionaryOnlyWords,
+        aiEnrichedWords: diagnostics.aiEnrichedWords,
+        aiFallbackWords: diagnostics.aiFallbackWords,
+        aiRepairedWords: diagnostics.aiFallbackWords,
+        aiBatchFailedChunks: diagnostics.aiBatchFailedChunks,
+        aiBatchFailedWords: diagnostics.aiBatchFailedWords,
+        failedWords: diagnostics.failedWords,
+      }
 
       let enrichedWords = 0
       for (const vocabulary of allVocabularies) {
@@ -84,7 +98,9 @@ export class BookVocabularyPipelineService {
         const failureSummary = failedSamples.length
           ? failedSamples.map((item) => `${item.word}: ${item.reason}`).join('; ')
           : 'unknown reason'
-        throw new Error(`All dictionary lookups failed: ${failureSummary}`)
+        throw new Error(
+          `All dictionary lookups failed: ${failureSummary}; aiBatchFailedChunks=${diagnostics.aiBatchFailedChunks}; aiBatchFailedWords=${diagnostics.aiBatchFailedWords}`
+        )
       }
 
       await book.merge({ vocabularyStatus: 'completed' }).save()
@@ -96,25 +112,35 @@ export class BookVocabularyPipelineService {
         BOOK_IMPORT_STEP.ENRICH_VOCABULARY,
         progress,
         {
-          totalWords: allVocabularies.length,
+          ...stepOutputRef,
           enrichedWords,
-          dictionaryOnlyWords: diagnostics.dictionaryOnlyWords,
-          aiEnrichedWords: diagnostics.aiEnrichedWords,
-          aiFallbackWords: diagnostics.aiFallbackWords,
-          failedWords: diagnostics.failedWords,
         }
       )
 
-      await GenerateTtsJob.dispatch(
-        { bookId, runId, userId },
-        {
-          jobId: BookImportOrchestratorService.buildPipelineJobId({
-            runId,
-            bookId,
-            stepKey: BOOK_IMPORT_STEP.GENERATE_TTS,
-          }),
-        }
-      )
+      await book.refresh()
+      if (book.audioStatus === 'completed') {
+        await FinalizeImportJob.dispatch(
+          { bookId, runId, userId },
+          {
+            jobId: BookImportOrchestratorService.buildPipelineJobId({
+              runId,
+              bookId,
+              stepKey: BOOK_IMPORT_STEP.FINALIZE_IMPORT,
+            }),
+          }
+        )
+      } else {
+        await GenerateTtsJob.dispatch(
+          { bookId, runId, userId },
+          {
+            jobId: BookImportOrchestratorService.buildPipelineJobId({
+              runId,
+              bookId,
+              stepKey: BOOK_IMPORT_STEP.GENERATE_TTS,
+            }),
+          }
+        )
+      }
       logger.info(
         {
           bookId,
@@ -125,6 +151,9 @@ export class BookVocabularyPipelineService {
           dictionaryOnlyWords: diagnostics.dictionaryOnlyWords,
           aiEnrichedWords: diagnostics.aiEnrichedWords,
           aiFallbackWords: diagnostics.aiFallbackWords,
+          aiRepairedWords: diagnostics.aiFallbackWords,
+          aiBatchFailedChunks: diagnostics.aiBatchFailedChunks,
+          aiBatchFailedWords: diagnostics.aiBatchFailedWords,
           failedWords: diagnostics.failedWords.length,
         },
         '[VocabularyPipeline] Step run completed'

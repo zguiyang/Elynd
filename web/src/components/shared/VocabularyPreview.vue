@@ -11,6 +11,12 @@ const emit = defineEmits<{
 }>()
 
 const expandedItems = ref<Set<number>>(new Set())
+const canUseSpeechSynthesis = computed(
+  () =>
+    typeof window !== 'undefined' &&
+    'speechSynthesis' in window &&
+    'SpeechSynthesisUtterance' in window,
+)
 
 const toggleItem = (id: number) => {
   if (expandedItems.value.has(id)) {
@@ -22,11 +28,25 @@ const toggleItem = (id: number) => {
 
 const isExpanded = (id: number) => expandedItems.value.has(id)
 
-const playAudio = (audioUrl: string | null) => {
-  if (!audioUrl) return
-  
-  const audio = new Audio(audioUrl)
-  audio.play().catch(console.error)
+const playPronunciation = (item: VocabularyItem) => {
+  const audioUrl = getAudioUrl(item)
+  if (audioUrl) {
+    const audio = new Audio(audioUrl)
+    audio.play().catch(console.error)
+    return
+  }
+
+  if (!canUseSpeechSynthesis.value || typeof window === 'undefined') {
+    return
+  }
+
+  const utterance = new SpeechSynthesisUtterance(item.word)
+  utterance.lang = 'en-US'
+  utterance.rate = 0.95
+  utterance.pitch = 1
+
+  window.speechSynthesis.cancel()
+  window.speechSynthesis.speak(utterance)
 }
 
 const hasDetails = (item: VocabularyItem) => {
@@ -73,11 +93,11 @@ const getPrimaryMeaning = (item: VocabularyItem) => {
           </div>
           <div class="flex items-center gap-2">
             <Button
-              v-if="getAudioUrl(item)"
+              v-if="getAudioUrl(item) || canUseSpeechSynthesis"
               variant="ghost"
               size="icon"
               class="size-7"
-              @click.stop="playAudio(getAudioUrl(item))"
+              @click.stop="playPronunciation(item)"
             >
               <Volume2 class="size-4" />
             </Button>

@@ -10,8 +10,9 @@ import BookChapter from '#models/book_chapter'
 import BookVocabulary from '#models/book_vocabulary'
 import BookChapterAudio from '#models/book_chapter_audio'
 import BookProcessingRunLog from '#models/book_processing_run_log'
+import BookProcessingStepLog from '#models/book_processing_step_log'
 import GenerateTtsJob from '#jobs/generate_tts_job'
-import GenerateBookVocabularyJob from '#jobs/generate_book_vocabulary_job'
+import EnrichVocabularyJob from '#jobs/enrich_vocabulary_job'
 import { BookImportOrchestratorService } from '#services/book-import/book_import_orchestrator_service'
 import { BOOK_IMPORT_STEP } from '#constants'
 import type { BookImportStep } from '#constants'
@@ -31,6 +32,19 @@ export interface VocabularySummary {
   failed: number
 }
 
+export interface LatestRunSummary {
+  id: number
+  jobType: string
+  status: string
+  currentStep: string | null
+  progress: number
+  startedAt: string | null
+  finishedAt: string | null
+  errorCode: string | null
+  errorMessage: string | null
+  outputRef: Record<string, unknown> | null
+}
+
 export interface EnrichedBookStatus {
   id: number
   status: string
@@ -40,17 +54,7 @@ export interface EnrichedBookStatus {
   bookHash: string | null
   audioStatus: string | null
   vocabularyStatus: string
-  latestRun: {
-    id: number
-    jobType: string
-    status: string
-    currentStep: string | null
-    progress: number
-    startedAt: string | null
-    finishedAt: string | null
-    errorCode: string | null
-    errorMessage: string | null
-  } | null
+  latestRun: LatestRunSummary | null
   chapterAudioSummary: ChapterAudioSummary
   vocabularySummary: VocabularySummary
 }
@@ -123,6 +127,75 @@ export class BookService {
     }
 
     return query
+  }
+
+  private serializeLatestRun(
+    latestRun: BookProcessingRunLog,
+    outputRef: Record<string, unknown> | null
+  ): LatestRunSummary {
+    return {
+      id: latestRun.id,
+      jobType: latestRun.jobType,
+      status: latestRun.status,
+      currentStep: latestRun.currentStep,
+      progress: latestRun.progress,
+      startedAt: latestRun.startedAt ? latestRun.startedAt.toISO() : null,
+      finishedAt: latestRun.finishedAt ? latestRun.finishedAt.toISO() : null,
+      errorCode: latestRun.errorCode,
+      errorMessage: latestRun.errorMessage,
+      outputRef,
+    }
+  }
+
+  async getLatestRunSummary(bookId: number): Promise<LatestRunSummary | null> {
+    const summaries = await this.getLatestRunSummaries([bookId])
+    return summaries.get(bookId) || null
+  }
+
+  async getLatestRunSummaries(bookIds: number[]): Promise<Map<number, LatestRunSummary>> {
+    if (bookIds.length === 0) {
+      return new Map()
+    }
+
+    const latestRuns = await BookProcessingRunLog.query()
+      .whereIn('bookId', bookIds)
+      .orderBy('startedAt', 'desc')
+      .orderBy('id', 'desc')
+
+    const latestRunByBookId = new Map<number, BookProcessingRunLog>()
+    for (const latestRun of latestRuns) {
+      if (!latestRunByBookId.has(latestRun.bookId)) {
+        latestRunByBookId.set(latestRun.bookId, latestRun)
+      }
+    }
+
+    if (latestRunByBookId.size === 0) {
+      return new Map()
+    }
+
+    const runIds = Array.from(latestRunByBookId.values()).map((latestRun) => latestRun.id)
+    const stepLogs = await BookProcessingStepLog.query()
+      .whereIn('runLogId', runIds)
+      .where('stepKey', BOOK_IMPORT_STEP.ENRICH_VOCABULARY)
+      .orderBy('createdAt', 'desc')
+      .orderBy('id', 'desc')
+
+    const outputRefByRunId = new Map<number, Record<string, unknown> | null>()
+    for (const stepLog of stepLogs) {
+      if (!outputRefByRunId.has(stepLog.runLogId)) {
+        outputRefByRunId.set(stepLog.runLogId, stepLog.outputRef || null)
+      }
+    }
+
+    const summaries = new Map<number, LatestRunSummary>()
+    for (const [bookId, latestRun] of latestRunByBookId.entries()) {
+      summaries.set(
+        bookId,
+        this.serializeLatestRun(latestRun, outputRefByRunId.get(latestRun.id) || null)
+      )
+    }
+
+    return summaries
   }
 
   async getChapterByIndex(bookId: number, chapterIndex: number) {
@@ -243,7 +316,7 @@ export class BookService {
     }
   }
 
-  async retryVocabularyGeneration(bookId: number) {
+  async retryVocabularyGeneration(bookId: number, userId: number) {
     const book = await Book.find(bookId)
 
     if (!book) {
@@ -254,11 +327,49 @@ export class BookService {
       throw new Exception('Can only retry books with failed vocabulary status', { status: 400 })
     }
 
+    let runId = 0
+
     await db.transaction(async (trx) => {
-      await book.useTransaction(trx).merge({ vocabularyStatus: 'pending' }).save()
+      const runLog = await BookProcessingRunLog.create(
+        {
+          bookId: book.id,
+          jobType: 'import',
+          status: 'processing',
+          currentStep: BOOK_IMPORT_STEP.ENRICH_VOCABULARY,
+          progress: BookImportOrchestratorService.getBaseProgressByStep(
+            BOOK_IMPORT_STEP.ENRICH_VOCABULARY
+          ),
+          startedAt: DateTime.now(),
+          metadata: {
+            retryRequestedAt: DateTime.now().toISO(),
+            retryRequestedBy: userId,
+            retryStep: BOOK_IMPORT_STEP.ENRICH_VOCABULARY,
+            retryMode: 'vocabulary_only',
+          },
+        },
+        { client: trx }
+      )
+      runId = runLog.id
+
+      await book
+        .useTransaction(trx)
+        .merge({
+          status: 'processing',
+          processingStep: BOOK_IMPORT_STEP.ENRICH_VOCABULARY,
+          processingProgress: BookImportOrchestratorService.getBaseProgressByStep(
+            BOOK_IMPORT_STEP.ENRICH_VOCABULARY
+          ),
+          processingError: null,
+          vocabularyStatus: 'pending',
+        })
+        .save()
     })
 
-    await GenerateBookVocabularyJob.dispatch({ bookId: book.id })
+    await EnrichVocabularyJob.dispatch({
+      bookId: book.id,
+      userId,
+      runId,
+    })
 
     return {
       bookId: book.id,
@@ -341,11 +452,7 @@ export class BookService {
       throw new Exception('Book not found', { status: 404 })
     }
 
-    // Get latest run log
-    const latestRun = await BookProcessingRunLog.query()
-      .where('bookId', bookId)
-      .orderBy('startedAt', 'desc')
-      .first()
+    const latestRun = await this.getLatestRunSummary(bookId)
 
     // Get chapter audio summary
     const totalChaptersResult = await BookChapter.query()
@@ -411,19 +518,7 @@ export class BookService {
       bookHash: book.bookHash,
       audioStatus: book.audioStatus,
       vocabularyStatus: book.vocabularyStatus,
-      latestRun: latestRun
-        ? {
-            id: latestRun.id,
-            jobType: latestRun.jobType,
-            status: latestRun.status,
-            currentStep: latestRun.currentStep,
-            progress: latestRun.progress,
-            startedAt: latestRun.startedAt ? latestRun.startedAt.toISO() : null,
-            finishedAt: latestRun.finishedAt ? latestRun.finishedAt.toISO() : null,
-            errorCode: latestRun.errorCode,
-            errorMessage: latestRun.errorMessage,
-          }
-        : null,
+      latestRun,
       chapterAudioSummary: {
         total: totalChapters,
         completed: completedCount,

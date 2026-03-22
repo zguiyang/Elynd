@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { toast } from 'vue-sonner'
-import { adminApi   } from '@/api/admin'
-import type {AdminBook, AdminUpdateBookPayload} from '@/api/admin';
+import { adminApi } from '@/api/admin'
+import type { AdminBook, AdminUpdateBookPayload } from '@/api/admin'
 import { bookApi } from '@/api/book'
 import type { BookLevel } from '@/types/book'
 import { formatBookLevelRange } from '@/lib/book-level'
 import { RefreshCw, Loader2, CheckCircle, XCircle, AlertCircle, Upload } from 'lucide-vue-next'
-import { getStepText, getProgressComposition, getTaskSummary, canRetryVocabulary, canRetryAudio } from '@/composables/useBookImportStatus'
+import {
+  getStepText,
+  getProgressComposition,
+  getTaskSummary,
+  canRetryVocabulary,
+  canRetryAudio,
+} from '@/composables/useBookImportStatus'
 import { useBookImportSse } from '@/composables/useBookImportSse'
 import { useAuthStore } from '@/stores/auth'
 
@@ -386,7 +392,64 @@ const getDisplayStep = (book: AdminBook) => {
     return getStepText(book.processingStep)
   }
 
+  if (book.latestRun?.currentStep) {
+    return getStepText(book.latestRun.currentStep)
+  }
+
   return '-'
+}
+
+const getNumberFromOutputRef = (
+  outputRef: Record<string, unknown> | null | undefined,
+  key: string
+) => {
+  const value = outputRef?.[key]
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+const getArrayLengthFromOutputRef = (
+  outputRef: Record<string, unknown> | null | undefined,
+  key: string
+) => {
+  const value = outputRef?.[key]
+  return Array.isArray(value) ? value.length : null
+}
+
+const getVocabularyStepSummary = (book: AdminBook) => {
+  const outputRef = book.latestRun?.outputRef
+
+  if (!outputRef) {
+    return null
+  }
+
+  const dictionaryOnlyWords = getNumberFromOutputRef(outputRef, 'dictionaryOnlyWords')
+  const aiRepairedWords =
+    getNumberFromOutputRef(outputRef, 'aiRepairedWords') ??
+    getNumberFromOutputRef(outputRef, 'aiFallbackWords') ??
+    getNumberFromOutputRef(outputRef, 'aiEnrichedWords')
+  const aiBatchFailedChunks = getNumberFromOutputRef(outputRef, 'aiBatchFailedChunks')
+  const aiBatchFailedWords = getNumberFromOutputRef(outputRef, 'aiBatchFailedWords')
+  const failedWords = getArrayLengthFromOutputRef(outputRef, 'failedWords')
+
+  const parts: string[] = []
+
+  if (dictionaryOnlyWords !== null) {
+    parts.push(`词典成功 ${dictionaryOnlyWords}`)
+  }
+
+  if (aiRepairedWords !== null) {
+    parts.push(`AI修复成功 ${aiRepairedWords}`)
+  }
+
+  if (aiBatchFailedChunks !== null || aiBatchFailedWords !== null) {
+    parts.push(`AI批量失败 ${aiBatchFailedChunks ?? 0} 批 / ${aiBatchFailedWords ?? 0} 词`)
+  }
+
+  if (failedWords !== null) {
+    parts.push(`最终失败 ${failedWords}`)
+  }
+
+  return parts.length > 0 ? parts.join('，') : null
 }
 
 const getProgressSummary = (book: AdminBook) => {
@@ -462,14 +525,14 @@ onUnmounted(() => {
     <!-- Table -->
     <Card>
       <CardContent class="p-0">
-        <Table class="w-full table-fixed min-w-[1260px]">
+        <Table class="w-full table-fixed min-w-[1340px]">
           <TableHeader>
             <TableRow>
               <TableHead class="w-[190px]">书名</TableHead>
               <TableHead class="w-[110px]">作者</TableHead>
               <TableHead class="w-[90px]">状态</TableHead>
               <TableHead class="w-[180px]">进度</TableHead>
-              <TableHead class="w-[140px]">步骤</TableHead>
+              <TableHead class="w-[220px]">步骤</TableHead>
               <TableHead class="w-[220px]">错误</TableHead>
               <TableHead class="w-[170px]">创建时间</TableHead>
               <TableHead class="sticky right-0 z-20 w-[270px] bg-background text-right">操作</TableHead>
@@ -535,10 +598,23 @@ onUnmounted(() => {
               <TableCell>
                 <Tooltip>
                   <TooltipTrigger as-child>
-                    <div class="w-full truncate">{{ getDisplayStep(book) }}</div>
+                    <div class="w-full space-y-1">
+                      <div class="w-full truncate">{{ getDisplayStep(book) }}</div>
+                      <p
+                        v-if="getVocabularyStepSummary(book)"
+                        class="w-full truncate text-xs text-muted-foreground"
+                      >
+                        {{ getVocabularyStepSummary(book) }}
+                      </p>
+                    </div>
                   </TooltipTrigger>
-                  <TooltipContent>
-                    {{ getDisplayStep(book) }}
+                  <TooltipContent class="max-w-[380px]">
+                    <div class="space-y-1">
+                      <p>{{ getDisplayStep(book) }}</p>
+                      <p v-if="getVocabularyStepSummary(book)">
+                        {{ getVocabularyStepSummary(book) }}
+                      </p>
+                    </div>
                   </TooltipContent>
                 </Tooltip>
               </TableCell>

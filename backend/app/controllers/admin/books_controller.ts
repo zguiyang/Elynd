@@ -45,10 +45,11 @@ export default class AdminBooksController {
     }
   }
 
-  async retryVocabulary({ params }: HttpContext) {
-    logger.info({ bookId: params.id }, 'Vocabulary retry requested')
+  async retryVocabulary({ auth, params }: HttpContext) {
+    const user = auth.getUserOrFail()
+    logger.info({ bookId: params.id, userId: user.id }, 'Vocabulary retry requested')
 
-    const result = await this.bookService.retryVocabularyGeneration(params.id)
+    const result = await this.bookService.retryVocabularyGeneration(params.id, user.id)
 
     return {
       message: 'Vocabulary retry task added to queue',
@@ -203,31 +204,33 @@ export default class AdminBooksController {
       return serialized
     }
 
-    const [chapterTotals, completedAudios, failedAudios, pendingAudios] = await Promise.all([
-      BookChapter.query()
-        .whereIn('bookId', bookIds)
-        .select('bookId')
-        .count('* as total')
-        .groupBy('bookId'),
-      BookChapterAudio.query()
-        .whereIn('bookId', bookIds)
-        .where('status', 'completed')
-        .select('bookId')
-        .count('* as total')
-        .groupBy('bookId'),
-      BookChapterAudio.query()
-        .whereIn('bookId', bookIds)
-        .where('status', 'failed')
-        .select('bookId')
-        .count('* as total')
-        .groupBy('bookId'),
-      BookChapterAudio.query()
-        .whereIn('bookId', bookIds)
-        .where('status', 'pending')
-        .select('bookId')
-        .count('* as total')
-        .groupBy('bookId'),
-    ])
+    const [chapterTotals, completedAudios, failedAudios, pendingAudios, latestRunSummaries] =
+      await Promise.all([
+        BookChapter.query()
+          .whereIn('bookId', bookIds)
+          .select('bookId')
+          .count('* as total')
+          .groupBy('bookId'),
+        BookChapterAudio.query()
+          .whereIn('bookId', bookIds)
+          .where('status', 'completed')
+          .select('bookId')
+          .count('* as total')
+          .groupBy('bookId'),
+        BookChapterAudio.query()
+          .whereIn('bookId', bookIds)
+          .where('status', 'failed')
+          .select('bookId')
+          .count('* as total')
+          .groupBy('bookId'),
+        BookChapterAudio.query()
+          .whereIn('bookId', bookIds)
+          .where('status', 'pending')
+          .select('bookId')
+          .count('* as total')
+          .groupBy('bookId'),
+        this.bookService.getLatestRunSummaries(bookIds),
+      ])
 
     const toCountMap = (rows: Array<{ bookId: number; $extras: Record<string, unknown> }>) =>
       rows.reduce<Record<number, number>>((acc, row) => {
@@ -242,6 +245,7 @@ export default class AdminBooksController {
 
     serialized.data = serialized.data.map((book) => ({
       ...book,
+      latestRun: latestRunSummaries.get(book.id) || null,
       chapterAudioSummary: {
         total: chapterTotalsMap[book.id] ?? 0,
         completed: completedAudiosMap[book.id] ?? 0,

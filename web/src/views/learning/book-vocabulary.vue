@@ -10,20 +10,46 @@ const router = useRouter()
 const bookId = Number(route.params.id)
 
 const vocabularies = ref<VocabularyItem[]>([])
+const canUseSpeechSynthesis = computed(
+  () =>
+    typeof window !== 'undefined' &&
+    'speechSynthesis' in window &&
+    'SpeechSynthesisUtterance' in window,
+)
 
 const { execute, error, isLoading } = useRequest<VocabularyItem[]>({
   fetcher: () => bookApi.getVocabulary(bookId),
 })
 
-const playAudio = (audioUrl: string | null, event: Event) => {
+const playPronunciation = (item: VocabularyItem, event: Event) => {
   event.stopPropagation()
-  if (!audioUrl) return
-  const audio = new Audio(audioUrl)
-  audio.play().catch(console.error)
+  const audioUrl = getAudioUrl(item)
+
+  if (audioUrl) {
+    const audio = new Audio(audioUrl)
+    audio.play().catch(console.error)
+    return
+  }
+
+  if (!canUseSpeechSynthesis.value || typeof window === 'undefined') {
+    return
+  }
+
+  const utterance = new SpeechSynthesisUtterance(item.word)
+  utterance.lang = 'en-US'
+  utterance.rate = 0.95
+  utterance.pitch = 1
+
+  window.speechSynthesis.cancel()
+  window.speechSynthesis.speak(utterance)
 }
 
 const getAudioUrl = (item: VocabularyItem) => {
   return item.phonetics.find((phonetic) => phonetic.audio)?.audio || null
+}
+
+const canPlayPronunciation = (item: VocabularyItem) => {
+  return Boolean(getAudioUrl(item) || canUseSpeechSynthesis.value)
 }
 
 const getPhoneticText = (item: VocabularyItem) => {
@@ -116,11 +142,11 @@ onMounted(() => {
                 </p>
               </div>
               <Button
-                v-if="getAudioUrl(item)"
+                v-if="canPlayPronunciation(item)"
                 variant="ghost"
                 size="icon"
                 class="size-7 shrink-0"
-                @click="playAudio(getAudioUrl(item), $event)"
+                @click="playPronunciation(item, $event)"
               >
                 <Volume2 class="size-4" />
               </Button>

@@ -9,10 +9,17 @@ import GenerateTtsJob from '#jobs/generate_tts_job'
 import FinalizeImportJob from '#jobs/finalize_import_job'
 
 test.group('BookVocabularyPipelineService', (group) => {
+  const createdBookIds: number[] = []
+
   group.each.teardown(async () => {
-    await BookVocabulary.query().delete()
-    await BookChapter.query().delete()
-    await Book.query().where('title', 'like', 'Vocabulary Pipeline Test%').delete()
+    if (createdBookIds.length === 0) {
+      return
+    }
+
+    await BookVocabulary.query().whereIn('bookId', createdBookIds).delete()
+    await BookChapter.query().whereIn('bookId', createdBookIds).delete()
+    await Book.query().whereIn('id', createdBookIds).delete()
+    createdBookIds.length = 0
   })
 
   test('dispatches tts generation after vocabulary enrichment instead of tags', async ({
@@ -38,6 +45,7 @@ test.group('BookVocabularyPipelineService', (group) => {
       contentHash: null,
       bookHash: null,
     })
+    createdBookIds.push(book.id)
 
     await BookChapter.createMany([
       {
@@ -190,6 +198,7 @@ test.group('BookVocabularyPipelineService', (group) => {
       contentHash: null,
       bookHash: null,
     })
+    createdBookIds.push(book.id)
 
     await BookChapter.createMany([
       {

@@ -57,10 +57,19 @@ test.group('BookImportOrchestratorService serial contract', () => {
 })
 
 test.group('BookImportOrchestratorService persistChaptersAndContentHash transaction', (group) => {
+  const createdBookIds: number[] = []
+
   group.each.teardown(async () => {
+    if (createdBookIds.length === 0) {
+      return
+    }
+
     await db.transaction(async (trx) => {
-      await Book.query({ client: trx }).where('title', 'like', 'Transaction Test Book%').delete()
+      await BookChapter.query({ client: trx }).whereIn('bookId', createdBookIds).delete()
+      await Book.query({ client: trx }).whereIn('id', createdBookIds).delete()
     })
+
+    createdBookIds.length = 0
   })
 
   test('createMany 失败时章节数据回滚，book 元数据不变', async ({ assert }) => {
@@ -78,6 +87,7 @@ test.group('BookImportOrchestratorService persistChaptersAndContentHash transact
       createdBy: user.id,
       contentHash: 'original-hash',
     })
+    createdBookIds.push(book.id)
 
     const originalWordCount = book.wordCount
     const originalContentHash = book.contentHash
@@ -141,6 +151,7 @@ test.group('BookImportOrchestratorService persistChaptersAndContentHash transact
       createdBy: user.id,
       contentHash: 'original-hash',
     })
+    createdBookIds.push(book.id)
 
     let errorThrown = false
     try {
@@ -180,6 +191,7 @@ test.group('BookImportOrchestratorService persistChaptersAndContentHash transact
       createdBy: user.id,
       contentHash: 'original-hash',
     })
+    createdBookIds.push(book.id)
 
     const newContentHash = 'new-success-hash'
     const newWordCount = 500
@@ -247,6 +259,7 @@ test.group('BookImportOrchestratorService persistChaptersAndContentHash transact
       createdBy: user.id,
       contentHash: 'original-hash',
     })
+    createdBookIds.push(book.id)
 
     const orchestrator = new BookImportOrchestratorService(
       {} as any,

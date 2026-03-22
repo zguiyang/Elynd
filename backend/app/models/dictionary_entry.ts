@@ -2,6 +2,7 @@ import { DateTime } from 'luxon'
 import { BaseModel, column, hasMany } from '@adonisjs/lucid/orm'
 import type { HasMany } from '@adonisjs/lucid/types/relations'
 import BookVocabulary from '#models/book_vocabulary'
+import { normalizeDictionaryMeanings } from '#utils/dictionary_meanings'
 
 const parseJsonColumn = <T>(value: unknown, fallback: T): T => {
   if (typeof value === 'string') {
@@ -35,19 +36,7 @@ export default class DictionaryEntry extends BaseModel {
 
   @column({
     prepare: stringifyJsonColumn,
-    consume: (value) =>
-      parseJsonColumn<
-        Array<{
-          partOfSpeech: string
-          localizedMeaning: string
-          explanation: string
-          examples: Array<{
-            sourceText: string
-            localizedText: string
-            source: 'dictionary' | 'article' | 'ai'
-          }>
-        }>
-      >(value, []),
+    consume: (value) => normalizeDictionaryMeanings(parseJsonColumn(value, [])),
   })
   declare meanings: Array<{
     partOfSpeech: string

@@ -35,64 +35,29 @@ export default class DictionaryEntry extends BaseModel {
 
   @column({
     prepare: stringifyJsonColumn,
-    consume: (value) => parseJsonColumn<Array<{ text: string; audio?: string }>>(value, []),
-  })
-  declare phonetics: Array<{ text: string; audio?: string }>
-
-  @column({
-    prepare: stringifyJsonColumn,
     consume: (value) =>
       parseJsonColumn<
         Array<{
           partOfSpeech: string
-          sourceMeaning: string
           localizedMeaning: string
-          plainExplanation: string
-          definitions: Array<{
+          explanation: string
+          examples: Array<{
             sourceText: string
             localizedText: string
-            plainExplanation: string
-            examples: Array<{
-              sourceText: string
-              localizedText: string
-              source: 'dictionary' | 'article' | 'ai'
-            }>
+            source: 'dictionary' | 'article' | 'ai'
           }>
         }>
       >(value, []),
   })
   declare meanings: Array<{
     partOfSpeech: string
-    sourceMeaning: string
     localizedMeaning: string
-    plainExplanation: string
-    definitions: Array<{
+    explanation: string
+    examples: Array<{
       sourceText: string
       localizedText: string
-      plainExplanation: string
-      examples: Array<{
-        sourceText: string
-        localizedText: string
-        source: 'dictionary' | 'article' | 'ai'
-      }>
+      source: 'dictionary' | 'article' | 'ai'
     }>
-  }>
-
-  @column({
-    prepare: stringifyJsonColumn,
-    consume: (value) =>
-      parseJsonColumn<
-        Array<{
-          sourceText: string
-          localizedText: string
-          source: 'article' | 'ai'
-        }>
-      >(value, []),
-  })
-  declare articleExamples: Array<{
-    sourceText: string
-    localizedText: string
-    source: 'article' | 'ai'
   }>
 
   @column()

@@ -8,7 +8,7 @@ Task:
 - Generate a complete dictionary-style payload for the given word.
 - Choose the most common and useful meanings first.
 - Provide a simple localized explanation for each meaning.
-- Include source-language examples and localized examples.
+- Include source-language examples and localized examples in a single flat examples array.
 - If article context is provided, prefer article-aware examples.
 - Keep the result practical, learner-friendly, and concise.
 - Do not invent obscure senses unless they are clearly common.
@@ -17,14 +17,11 @@ Context:
 - Word: {{ html.safe(word) }}
 - Source language: {{ html.safe(sourceLanguage) }}
 - Localization language: {{ html.safe(localizationLanguage) }}
-@if(articleContext)
-- Article context: {{ html.safe(JSON.stringify(articleContext, null, 2)) }}
-@endif
 
 {!! contract !!}
 
 Output rules:
 - Return one JSON object only.
 - Do not explain the fallback process.
-- Return at least one meaning and one definition.
+- Return at least one meaning and one example when possible.
 - Preserve source-language and localized-language fields side by side.

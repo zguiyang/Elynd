@@ -23,14 +23,6 @@ const { execute, error, isLoading } = useRequest<VocabularyItem[]>({
 
 const playPronunciation = (item: VocabularyItem, event: Event) => {
   event.stopPropagation()
-  const audioUrl = getAudioUrl(item)
-
-  if (audioUrl) {
-    const audio = new Audio(audioUrl)
-    audio.play().catch(console.error)
-    return
-  }
-
   if (!canUseSpeechSynthesis.value || typeof window === 'undefined') {
     return
   }
@@ -44,16 +36,8 @@ const playPronunciation = (item: VocabularyItem, event: Event) => {
   window.speechSynthesis.speak(utterance)
 }
 
-const getAudioUrl = (item: VocabularyItem) => {
-  return item.phonetics.find((phonetic) => phonetic.audio)?.audio || null
-}
-
-const canPlayPronunciation = (item: VocabularyItem) => {
-  return Boolean(getAudioUrl(item) || canUseSpeechSynthesis.value)
-}
-
 const getPhoneticText = (item: VocabularyItem) => {
-  return item.phonetic || item.phonetics[0]?.text || null
+  return item.phonetic || null
 }
 
 const goBack = () => {
@@ -142,7 +126,7 @@ onMounted(() => {
                 </p>
               </div>
               <Button
-                v-if="canPlayPronunciation(item)"
+                v-if="canUseSpeechSynthesis"
                 variant="ghost"
                 size="icon"
                 class="size-7 shrink-0"
@@ -169,16 +153,14 @@ onMounted(() => {
               </div>
 
               <div v-for="meaning in item.meanings" :key="meaning.partOfSpeech" class="space-y-1">
-                <div v-for="(def, defIndex) in meaning.definitions.slice(0, 2)" :key="defIndex" class="ml-1">
+                <p class="text-sm">{{ meaning.explanation }}</p>
+                <div v-for="(example, exampleIndex) in meaning.examples.slice(0, 2)" :key="exampleIndex" class="ml-1">
                   <p class="text-xs">
-                    <span class="text-muted-foreground">{{ defIndex + 1 }}.</span>
-                    <span class="ml-1">{{ def.sourceText }}</span>
+                    <span class="text-muted-foreground">{{ exampleIndex + 1 }}.</span>
+                    <span class="ml-1">{{ example.sourceText }}</span>
                   </p>
                   <p class="text-xs text-muted-foreground ml-4">
-                    {{ def.localizedText }}
-                  </p>
-                  <p class="text-xs ml-4">
-                    {{ def.plainExplanation }}
+                    {{ example.localizedText }}
                   </p>
                 </div>
               </div>

@@ -10,40 +10,25 @@ Shared schema:
   "sourceLanguage": "string",
   "localizationLanguage": "string",
   "phonetic": "string | null",
-  "phonetics": [
-    {
-      "text": "string"
-    }
-  ],
   "meanings": [
     {
       "partOfSpeech": "string",
-      "sourceMeaning": "string",
       "localizedMeaning": "string",
-      "plainExplanation": "string",
-      "definitions": [
+      "explanation": "string",
+      "examples": [
         {
           "sourceText": "string",
           "localizedText": "string",
-          "plainExplanation": "string",
-          "examples": [
-            {
-              "sourceText": "string",
-              "localizedText": "string",
-              "source": "dictionary | article | ai"
-            }
-          ]
+          "source": "dictionary | article | ai"
         }
       ]
     }
   ],
-  "articleExamples": [
-    {
-      "sourceText": "string",
-      "localizedText": "string",
-      "source": "article | ai"
-    }
-  ]
+  "meta": {
+    "source": "dictionary",
+    "localizationLanguage": "string",
+    "lookupMode": "dictionary_only | ai_enriched | ai_fallback"
+  }
 }
 
 Rules:

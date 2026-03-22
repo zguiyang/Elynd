@@ -17,7 +17,96 @@ export default class BackfillDictionaryEntries extends BaseCommand {
     word: string,
     details: Record<string, unknown>
   ): DictionaryEntry | null {
-    const meanings = Array.isArray(details.meanings) ? details.meanings : []
+    const meanings = Array.isArray(details.meanings)
+      ? details.meanings
+          .map((meaning: unknown) => {
+            if (typeof meaning !== 'object' || meaning === null || Array.isArray(meaning)) {
+              return null
+            }
+
+            const record = meaning as Record<string, unknown>
+            const partOfSpeech =
+              typeof record.partOfSpeech === 'string' && record.partOfSpeech.trim().length > 0
+                ? record.partOfSpeech.trim()
+                : null
+            const localizedMeaning =
+              typeof record.localizedMeaning === 'string' &&
+              record.localizedMeaning.trim().length > 0
+                ? record.localizedMeaning.trim()
+                : null
+            const explanation =
+              typeof record.explanation === 'string' && record.explanation.trim().length > 0
+                ? record.explanation.trim()
+                : typeof record.plainExplanation === 'string' &&
+                    record.plainExplanation.trim().length > 0
+                  ? record.plainExplanation.trim()
+                  : localizedMeaning
+            const examples = Array.isArray(record.examples)
+              ? (record.examples as Array<Record<string, unknown>>)
+                  .map((example) => {
+                    const sourceText =
+                      typeof example.sourceText === 'string' && example.sourceText.trim().length > 0
+                        ? example.sourceText.trim()
+                        : null
+                    const localizedText =
+                      typeof example.localizedText === 'string' &&
+                      example.localizedText.trim().length > 0
+                        ? example.localizedText.trim()
+                        : sourceText
+
+                    if (!sourceText || !localizedText) {
+                      return null
+                    }
+
+                    return {
+                      sourceText,
+                      localizedText,
+                      source:
+                        example.source === 'dictionary' ||
+                        example.source === 'article' ||
+                        example.source === 'ai'
+                          ? example.source
+                          : 'dictionary',
+                    }
+                  })
+                  .filter((example): example is NonNullable<typeof example> => example !== null)
+              : []
+
+            if (!partOfSpeech || !localizedMeaning || !explanation) {
+              return null
+            }
+
+            return {
+              partOfSpeech,
+              localizedMeaning,
+              explanation,
+              examples:
+                examples.length > 0
+                  ? examples
+                  : [
+                      {
+                        sourceText: localizedMeaning,
+                        localizedText: localizedMeaning,
+                        source: 'dictionary',
+                      },
+                    ],
+            }
+          })
+          .filter(
+            (
+              meaning
+            ): meaning is {
+              partOfSpeech: string
+              localizedMeaning: string
+              explanation: string
+              examples: Array<{
+                sourceText: string
+                localizedText: string
+                source: 'dictionary' | 'article' | 'ai'
+              }>
+            } => meaning !== null
+          )
+      : []
 
     if (meanings.length === 0) {
       return null
@@ -29,15 +118,7 @@ export default class BackfillDictionaryEntries extends BaseCommand {
       localizationLanguage:
         typeof details.localizationLanguage === 'string' ? details.localizationLanguage : 'zh-CN',
       phonetic: typeof details.phonetic === 'string' ? details.phonetic : null,
-      phonetics: Array.isArray(details.phonetics)
-        ? (details.phonetics as Array<{ text: string; audio?: string }>).filter(
-            (item) => typeof item?.text === 'string'
-          )
-        : [],
       meanings: meanings as DictionaryEntry['meanings'],
-      articleExamples: Array.isArray(details.articleExamples)
-        ? (details.articleExamples as DictionaryEntry['articleExamples'])
-        : [],
       meta: {
         source: 'dictionary',
         localizationLanguage:

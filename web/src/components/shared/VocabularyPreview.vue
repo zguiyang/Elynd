@@ -29,13 +29,6 @@ const toggleItem = (id: number) => {
 const isExpanded = (id: number) => expandedItems.value.has(id)
 
 const playPronunciation = (item: VocabularyItem) => {
-  const audioUrl = getAudioUrl(item)
-  if (audioUrl) {
-    const audio = new Audio(audioUrl)
-    audio.play().catch(console.error)
-    return
-  }
-
   if (!canUseSpeechSynthesis.value || typeof window === 'undefined') {
     return
   }
@@ -54,11 +47,7 @@ const hasDetails = (item: VocabularyItem) => {
 }
 
 const getPhoneticText = (item: VocabularyItem) => {
-  return item.phonetic || item.phonetics[0]?.text || null
-}
-
-const getAudioUrl = (item: VocabularyItem) => {
-  return item.phonetics.find((phonetic) => phonetic.audio)?.audio || null
+  return item.phonetic || null
 }
 
 const getPrimaryMeaning = (item: VocabularyItem) => {
@@ -93,7 +82,7 @@ const getPrimaryMeaning = (item: VocabularyItem) => {
           </div>
           <div class="flex items-center gap-2">
             <Button
-              v-if="getAudioUrl(item) || canUseSpeechSynthesis"
+              v-if="canUseSpeechSynthesis"
               variant="ghost"
               size="icon"
               class="size-7"
@@ -112,15 +101,13 @@ const getPrimaryMeaning = (item: VocabularyItem) => {
           <template v-if="hasDetails(item)">
             <div v-for="(meaning, mIndex) in item.meanings" :key="mIndex" class="mt-3">
               <p class="text-xs font-semibold text-primary">{{ meaning.partOfSpeech }}</p>
-              <ul class="mt-1 space-y-1">
-                <li v-for="(def, dIndex) in meaning.definitions" :key="dIndex" class="text-sm">
-                  <span class="text-muted-foreground">{{ dIndex + 1 }}.</span>
-                  <span class="ml-1">{{ def.sourceText }}</span>
+              <p class="text-sm mt-1">{{ meaning.explanation }}</p>
+              <ul v-if="meaning.examples.length > 0" class="mt-2 space-y-1">
+                <li v-for="(example, eIndex) in meaning.examples" :key="eIndex" class="text-sm">
+                  <span class="text-muted-foreground">{{ eIndex + 1 }}.</span>
+                  <span class="ml-1">{{ example.sourceText }}</span>
                   <p class="text-xs text-muted-foreground ml-3 mt-0.5">
-                    {{ def.localizedText }}
-                  </p>
-                  <p class="text-xs italic ml-3 mt-0.5">
-                    {{ def.plainExplanation }}
+                    {{ example.localizedText }}
                   </p>
                 </li>
               </ul>

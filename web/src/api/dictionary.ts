@@ -5,30 +5,17 @@ export interface DictionaryLookupContext {
   chapterIndex?: number
 }
 
-export interface DictionaryDefinition {
-  sourceText: string
-  localizedText: string
-  plainExplanation: string
-  examples: DictionaryExample[]
-}
-
 export interface DictionaryExample {
   sourceText: string
-  localizedText?: string | null
+  localizedText: string
   source: 'dictionary' | 'article' | 'ai'
 }
 
 export interface DictionaryMeaning {
   partOfSpeech: string
-  sourceMeaning: string
   localizedMeaning: string
-  plainExplanation: string
-  definitions: DictionaryDefinition[]
-}
-
-export interface DictionaryPhonetic {
-  text?: string
-  audio?: string
+  explanation: string
+  examples: DictionaryExample[]
 }
 
 export interface DictionaryEntry {
@@ -36,9 +23,7 @@ export interface DictionaryEntry {
   sourceLanguage: string
   localizationLanguage: string
   phonetic?: string | null
-  phonetics: DictionaryPhonetic[]
   meanings: DictionaryMeaning[]
-  articleExamples: DictionaryExample[]
   meta?: {
     source: 'dictionary' | 'dictionary_plus_ai' | 'ai_fallback'
     localizationLanguage: string

@@ -165,30 +165,15 @@ export interface VocabularyItem {
   sourceLanguage: string | null
   localizationLanguage: string | null
   phonetic: string | null
-  phonetics: Array<{
-    text: string
-    audio?: string
-  }>
   meanings: Array<{
     partOfSpeech: string
-    sourceMeaning: string
     localizedMeaning: string
-    plainExplanation: string
-    definitions: Array<{
+    explanation: string
+    examples: Array<{
       sourceText: string
       localizedText: string
-      plainExplanation: string
-      examples: Array<{
-        sourceText: string
-        localizedText: string
-        source: 'dictionary' | 'article' | 'ai'
-      }>
+      source: 'dictionary' | 'article' | 'ai'
     }>
-  }>
-  articleExamples: Array<{
-    sourceText: string
-    localizedText: string
-    source: 'article' | 'ai'
   }>
   meta: {
     source: 'dictionary'

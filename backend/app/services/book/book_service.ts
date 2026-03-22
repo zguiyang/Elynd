@@ -237,9 +237,7 @@ export class BookService {
         sourceLanguage: dictionaryEntry?.sourceLanguage || null,
         localizationLanguage: dictionaryEntry?.localizationLanguage || null,
         phonetic: dictionaryEntry?.phonetic || null,
-        phonetics: dictionaryEntry?.phonetics || [],
         meanings: dictionaryEntry?.meanings || [],
-        articleExamples: dictionaryEntry?.articleExamples || [],
         meta: dictionaryEntry
           ? {
               source: 'dictionary',

@@ -10,27 +10,54 @@ interface AiDictionaryExample {
   source: 'dictionary' | 'article' | 'ai'
 }
 
-interface AiDictionaryDefinition {
-  sourceText: string
-  localizedText: string
-  plainExplanation: string
-  examples: AiDictionaryExample[]
-}
-
 interface AiDictionaryMeaning {
   partOfSpeech: string
   localizedMeaning: string
-  plainExplanation: string
-  definitions: AiDictionaryDefinition[]
+  explanation: string
+  examples: AiDictionaryExample[]
+}
+
+interface AiDictionaryLegacyDefinition {
+  sourceText?: string
+  localizedText?: string
+  plainExplanation?: string
+  examples?: AiDictionaryExample[]
+}
+
+interface AiDictionaryEntryInput {
+  word?: string
+  phonetic?: string
+  meanings?: Array<{
+    partOfSpeech?: string
+    localizedMeaning?: string
+    explanation?: string
+    plainExplanation?: string
+    sourceMeaning?: string
+    examples?: AiDictionaryExample[]
+    definitions?: AiDictionaryLegacyDefinition[]
+  }>
+  meta?: {
+    source: 'dictionary'
+    localizationLanguage: string
+  }
+  // Legacy compatibility fields accepted by the builder, but omitted from the normalized output.
+  phonetics?: Array<{
+    text?: string
+    audio?: string
+  }>
+  plainExplanation?: string
+  sourceMeaning?: string
+  definitions?: AiDictionaryLegacyDefinition[]
+  articleExamples?: Array<{
+    sourceText: string
+    localizedText: string
+    source: 'article' | 'ai'
+  }>
 }
 
 interface AiDictionaryEntry {
   word: string
   phonetic?: string
-  phonetics: Array<{
-    text?: string
-    audio?: string
-  }>
   meanings: AiDictionaryMeaning[]
   meta: {
     source: 'dictionary'
@@ -38,37 +65,52 @@ interface AiDictionaryEntry {
   }
 }
 
-const buildAiDictionaryEntry = (overrides: Partial<AiDictionaryEntry> = {}): AiDictionaryEntry => ({
-  word: 'apple',
-  phonetic: '/ˈæp.əl/',
-  phonetics: [{ text: '/ˈæp.əl/' }],
-  meanings: [
+const buildAiDictionaryEntry = (overrides: AiDictionaryEntryInput = {}): AiDictionaryEntry => {
+  const legacyDefinitions = overrides.definitions || overrides.meanings?.[0]?.definitions || []
+  const legacyExamples = legacyDefinitions.flatMap((definition) => definition.examples || [])
+  const normalizedMeanings = overrides.meanings || [
     {
       partOfSpeech: 'noun',
       localizedMeaning: '苹果',
-      plainExplanation: '就是一种常见水果，日常生活里很常见。',
-      definitions: [
+      explanation: '就是一种常见水果，日常生活里很常见。',
+      examples: [
         {
-          sourceText: 'A fruit',
-          localizedText: '一种水果',
-          plainExplanation: '能吃的水果。',
-          examples: [
-            {
-              sourceText: 'An apple a day keeps the doctor away.',
-              localizedText: '一天一个苹果，医生远离我。',
-              source: 'dictionary',
-            },
-          ],
+          sourceText: 'An apple a day keeps the doctor away.',
+          localizedText: '一天一个苹果，医生远离我。',
+          source: 'dictionary',
         },
       ],
     },
-  ],
-  meta: {
-    source: 'dictionary',
-    localizationLanguage: 'zh-CN',
-  },
-  ...overrides,
-})
+  ]
+
+  return {
+    word: overrides.word ?? 'apple',
+    phonetic: overrides.phonetic ?? '/ˈæp.əl/',
+    meanings: normalizedMeanings.map((meaning, index) => ({
+      partOfSpeech: meaning.partOfSpeech ?? 'noun',
+      localizedMeaning: meaning.localizedMeaning === undefined ? '苹果' : meaning.localizedMeaning,
+      explanation:
+        meaning.explanation ??
+        meaning.plainExplanation ??
+        overrides.plainExplanation ??
+        '就是一种常见水果，日常生活里很常见。',
+      examples: (meaning.examples && meaning.examples.length > 0
+        ? meaning.examples
+        : index === 0
+          ? legacyExamples
+          : []
+      ).map((example) => ({
+        sourceText: example.sourceText,
+        localizedText: example.localizedText,
+        source: example.source,
+      })),
+    })),
+    meta: overrides.meta || {
+      source: 'dictionary',
+      localizationLanguage: 'zh-CN',
+    },
+  }
+}
 
 const createDictionaryService = (
   overrides: {
@@ -80,9 +122,6 @@ const createDictionaryService = (
     }
     configService?: {
       getAiConfig: () => Promise<{ baseUrl: string; apiKey: string; model: string }>
-    }
-    bookService?: {
-      getChapterByIndex: (bookId: number, chapterIndex: number) => Promise<{ title: string; content: string }>
     }
   } = {}
 ) => {
@@ -108,21 +147,12 @@ const createDictionaryService = (
         model: 'test-model',
       }),
     } as never)
-  const bookService =
-    overrides.bookService ||
-    ({
-      getChapterByIndex: async () => ({
-        title: 'Chapter title',
-        content: 'Chapter content',
-      }),
-    } as never)
 
   return new DictionaryService(
     userConfigService,
     aiService as never,
     promptService as never,
-    configService as never,
-    bookService as never
+    configService as never
   )
 }
 
@@ -504,8 +534,9 @@ test.group('DictionaryService.lookup', (group) => {
 
     assert.equal(result?.word, 'apple')
     assert.equal(result?.meanings[0]?.localizedMeaning, 'A fruit')
-    assert.equal(result?.meanings[0]?.definitions[0]?.sourceText, 'A fruit')
-    assert.equal(result?.meanings[0]?.definitions[0]?.examples[0]?.localizedText, 'An apple a day.')
+    assert.equal(result?.meanings[0]?.explanation, 'A fruit')
+    assert.equal(result?.meanings[0]?.examples[0]?.sourceText, 'An apple a day.')
+    assert.equal(result?.meanings[0]?.examples[0]?.localizedText, 'An apple a day.')
     assert.equal(result?.meta.source, 'dictionary')
     assert.equal(cachedKey, `${DICTIONARY.CACHE_PREFIX}zh-CN:apple`)
     assert.equal(cachedTtl, DICTIONARY.DEFAULT_TTL_DAYS * 24 * 60 * 60)
@@ -534,9 +565,7 @@ test.group('DictionaryService.lookup', (group) => {
       sourceLanguage: 'en',
       localizationLanguage: 'zh-CN',
       phonetic: '/ˈæp.əl/',
-      phonetics: entry.phonetics,
       meanings: entry.meanings,
-      articleExamples: [],
       metaSource: 'dictionary',
     })
     service.fetchUpstreamEntry = async () => {
@@ -548,22 +577,14 @@ test.group('DictionaryService.lookup', (group) => {
       sourceLanguage: string
       localizationLanguage: string
       phonetic: string | null
-      phonetics: Array<{ text?: string; audio?: string }>
       meanings: AiDictionaryEntry['meanings']
-      articleExamples: Array<{
-        sourceText: string
-        localizedText: string
-        source: 'article' | 'ai'
-      }>
       metaSource: 'dictionary'
     }) => ({
       word: record.word,
       sourceLanguage: record.sourceLanguage,
       localizationLanguage: record.localizationLanguage,
       phonetic: record.phonetic,
-      phonetics: record.phonetics,
       meanings: record.meanings,
-      articleExamples: record.articleExamples,
       meta: {
         source: record.metaSource,
         localizationLanguage: record.localizationLanguage,
@@ -620,9 +641,7 @@ test.group('DictionaryService.lookup', (group) => {
       sourceLanguage: 'en',
       localizationLanguage: 'zh-CN',
       phonetic: dbEntry.phonetic,
-      phonetics: dbEntry.phonetics,
       meanings: dbEntry.meanings,
-      articleExamples: [],
       metaSource: 'dictionary',
     })
     service.fetchUpstreamEntry = async () => {
@@ -682,8 +701,8 @@ test.group('DictionaryService.lookup', (group) => {
     assert.equal(result.word, 'carrying')
     assert.equal(result.meanings[0]?.partOfSpeech, 'verb')
     assert.equal(result.meanings[0]?.localizedMeaning, 'to carry something')
-    assert.equal(result.meanings[0]?.plainExplanation, 'to carry something')
-    assert.equal(result.meanings[0]?.definitions[0]?.localizedText, 'to carry something')
+    assert.equal(result.meanings[0]?.explanation, 'to carry something')
+    assert.equal(result.meanings[0]?.examples[0]?.localizedText, 'She is carrying a bag.')
     assert.equal(
       (savedEntry as AiDictionaryEntry | null)?.meanings[0]?.localizedMeaning,
       'to carry something'

@@ -9,7 +9,6 @@ import DictionaryEntryModel from '#models/dictionary_entry'
 import { AiService } from '#services/ai/ai_service'
 import { ConfigService } from '#services/ai/config_service'
 import PromptService from '#services/ai/prompt_service'
-import { BookService } from '#services/book/book_service'
 import { UserConfigService } from '#services/user/user_config_service'
 
 const SOURCE_LANGUAGE = 'en'
@@ -18,7 +17,6 @@ const SAFE_LOOKUP_FAILURE_MESSAGE = '查询失败，请稍后重试'
 const DICTIONARY_AI_SYSTEM_PROMPT = 'You are a bilingual dictionary engine. Return valid JSON only.'
 
 type DictionaryExampleSourceType = 'dictionary' | 'article' | 'ai'
-type DictionaryArticleExampleSourceType = 'article' | 'ai'
 type DictionaryLookupMode = 'dictionary_only' | 'ai_enriched' | 'ai_fallback'
 type DictionaryEnrichmentMode = 'enrich' | 'fallback'
 
@@ -55,31 +53,17 @@ export interface DictionaryEnrichmentPayload {
   mode: DictionaryEnrichmentMode
 }
 
-interface DictionaryLocalizedExample {
+interface DictionaryMeaningExample {
   sourceText: string
   localizedText: string
   source: DictionaryExampleSourceType
 }
 
-interface DictionaryArticleExample {
-  sourceText: string
-  localizedText: string
-  source: DictionaryArticleExampleSourceType
-}
-
-interface DictionaryDefinition {
-  sourceText: string
-  localizedText: string
-  plainExplanation: string
-  examples: DictionaryLocalizedExample[]
-}
-
 interface DictionaryMeaning {
   partOfSpeech: string
-  sourceMeaning: string
   localizedMeaning: string
-  plainExplanation: string
-  definitions: DictionaryDefinition[]
+  explanation: string
+  examples: DictionaryMeaningExample[]
 }
 
 export interface DictionaryEntry {
@@ -87,12 +71,7 @@ export interface DictionaryEntry {
   sourceLanguage: string
   localizationLanguage: string
   phonetic: string | null
-  phonetics: Array<{
-    text: string
-    audio?: string
-  }>
   meanings: DictionaryMeaning[]
-  articleExamples: DictionaryArticleExample[]
   meta: {
     source: 'dictionary'
     localizationLanguage: string
@@ -117,41 +96,32 @@ export const isDictionaryEntryComplete = (entry: DictionaryEntry): boolean => {
     return false
   }
 
-  const localizationLanguage =
-    entry.localizationLanguage || entry.meta?.localizationLanguage || ''
+  const localizationLanguage = entry.localizationLanguage || entry.meta?.localizationLanguage || ''
   const requiresChineseLocalization = localizationLanguage.toLowerCase().startsWith('zh')
 
   return meanings.every((meaning) => {
     if (
       !meaning.partOfSpeech?.trim() ||
       !meaning.localizedMeaning?.trim() ||
-      !meaning.plainExplanation?.trim() ||
-      !Array.isArray(meaning.definitions) ||
-      meaning.definitions.length === 0
+      !meaning.explanation?.trim() ||
+      !Array.isArray(meaning.examples)
     ) {
       return false
     }
 
     if (
       requiresChineseLocalization &&
-      (!hasChineseText(meaning.localizedMeaning) || !hasChineseText(meaning.plainExplanation))
+      (!hasChineseText(meaning.localizedMeaning) || !hasChineseText(meaning.explanation))
     ) {
       return false
     }
 
-    return meaning.definitions.every((definition) => {
-      if (
-        requiresChineseLocalization &&
-        (!hasChineseText(definition.localizedText) || !hasChineseText(definition.plainExplanation))
-      ) {
+    return meaning.examples.every((example) => {
+      if (requiresChineseLocalization && !hasChineseText(example.localizedText)) {
         return false
       }
 
-      return Boolean(
-        definition.sourceText?.trim() &&
-          definition.localizedText?.trim() &&
-          definition.plainExplanation?.trim()
-      )
+      return Boolean(example.sourceText?.trim() && example.localizedText?.trim())
     })
   })
 }
@@ -182,13 +152,6 @@ interface DictionaryLookupResolution {
   source: 'cache' | 'db' | 'upstream'
 }
 
-interface DictionaryArticleContext {
-  bookId: number
-  chapterIndex: number
-  chapterTitle: string
-  chapterSnippet: string
-}
-
 export interface DictionaryBatchLookupDiagnostics {
   totalWords: number
   succeededWords: number
@@ -213,8 +176,7 @@ export class DictionaryService {
     private userConfigService: UserConfigService,
     private aiService: AiService,
     private promptService: PromptService,
-    private configService: ConfigService,
-    private bookService: BookService
+    private configService: ConfigService
   ) {
     this.freeDictionaryApiUrl = env.get(
       'FREE_DICTIONARY_API_URL',
@@ -280,38 +242,7 @@ export class DictionaryService {
     return typeof value === 'object' && value !== null && !Array.isArray(value)
   }
 
-  private normalizePhonetics(value: unknown): Array<{ text: string; audio?: string }> {
-    if (typeof value === 'string') {
-      try {
-        return this.normalizePhonetics(JSON.parse(value))
-      } catch {
-        return []
-      }
-    }
-
-    if (!Array.isArray(value)) {
-      return []
-    }
-
-    return value
-      .map((item) => {
-        if (typeof item === 'string') {
-          const text = item.trim()
-          return text ? { text } : null
-        }
-
-        if (!this.isRecord(item)) {
-          return null
-        }
-
-        const text = this.pickString(item.text)
-        const audio = this.pickString(item.audio)
-        return text ? { text, audio: audio || undefined } : null
-      })
-      .filter((item): item is { text: string; audio?: string } => item !== null)
-  }
-
-  private normalizeExamples(value: unknown): DictionaryLocalizedExample[] {
+  private normalizeExamples(value: unknown): DictionaryMeaningExample[] {
     if (!Array.isArray(value)) {
       return []
     }
@@ -340,13 +271,13 @@ export class DictionaryService {
           source,
         }
       })
-      .filter((item): item is DictionaryLocalizedExample => item !== null)
+      .filter((item): item is DictionaryMeaningExample => item !== null)
   }
 
-  private normalizeDefinitions(value: unknown): DictionaryDefinition[] {
+  private normalizeMeaningExamples(value: unknown): DictionaryMeaningExample[] {
     if (typeof value === 'string') {
       try {
-        return this.normalizeDefinitions(JSON.parse(value))
+        return this.normalizeMeaningExamples(JSON.parse(value))
       } catch {
         return []
       }
@@ -364,20 +295,43 @@ export class DictionaryService {
 
         const sourceText = this.pickString(item.sourceText) || this.pickString(item.localizedText)
         const localizedText = this.pickString(item.localizedText) || sourceText
-        const plainExplanation = this.pickString(item.plainExplanation) || localizedText
 
-        if (!sourceText || !localizedText || !plainExplanation) {
+        if (!sourceText || !localizedText) {
           return null
         }
 
         return {
           sourceText,
           localizedText,
-          plainExplanation,
-          examples: this.normalizeExamples(item.examples),
+          source:
+            item.source === 'dictionary' || item.source === 'article' || item.source === 'ai'
+              ? item.source
+              : 'dictionary',
         }
       })
-      .filter((item): item is DictionaryDefinition => item !== null)
+      .filter((item): item is DictionaryMeaningExample => item !== null)
+  }
+
+  private normalizeDefinitionExamples(value: unknown): DictionaryMeaningExample[] {
+    if (typeof value === 'string') {
+      try {
+        return this.normalizeDefinitionExamples(JSON.parse(value))
+      } catch {
+        return []
+      }
+    }
+
+    if (!Array.isArray(value)) {
+      return []
+    }
+
+    return value.flatMap((item) => {
+      if (!this.isRecord(item)) {
+        return []
+      }
+
+      return this.normalizeExamples(item.examples)
+    })
   }
 
   private normalizeMeanings(value: unknown): DictionaryMeaning[] {
@@ -404,73 +358,48 @@ export class DictionaryService {
           return null
         }
 
-        const definitions = this.normalizeDefinitions(item.definitions)
+        const legacyExamples = this.normalizeDefinitionExamples(item.definitions)
+        const examples = [
+          ...this.normalizeExamples(item.examples),
+          ...legacyExamples.map((example) => ({
+            sourceText: example.sourceText,
+            localizedText: example.localizedText,
+            source: example.source,
+          })),
+        ]
         const sourceMeaning =
           this.pickString(item.sourceMeaning) ||
-          definitions[0]?.sourceText ||
-          definitions[0]?.localizedText
+          legacyExamples[0]?.sourceText ||
+          this.pickString(item.definition) ||
+          this.pickString(item.localizedMeaning) ||
+          partOfSpeech
         const localizedMeaning = this.pickString(item.localizedMeaning) || sourceMeaning
-        const plainExplanation = this.pickString(item.plainExplanation) || localizedMeaning
+        const explanation =
+          this.pickString(item.explanation) ||
+          this.pickString(item.plainExplanation) ||
+          localizedMeaning
 
-        if (!sourceMeaning || !localizedMeaning || !plainExplanation) {
+        if (!localizedMeaning || !explanation) {
           return null
         }
 
         return {
           partOfSpeech,
-          sourceMeaning,
           localizedMeaning,
-          plainExplanation,
-          definitions:
-            definitions.length > 0
-              ? definitions
+          explanation,
+          examples:
+            examples.length > 0
+              ? examples
               : [
                   {
                     sourceText: sourceMeaning,
                     localizedText: localizedMeaning,
-                    plainExplanation,
-                    examples: [],
+                    source: 'dictionary',
                   },
                 ],
         }
       })
       .filter((item): item is DictionaryMeaning => item !== null)
-  }
-
-  private normalizeArticleExamples(value: unknown): DictionaryArticleExample[] {
-    if (typeof value === 'string') {
-      try {
-        return this.normalizeArticleExamples(JSON.parse(value))
-      } catch {
-        return []
-      }
-    }
-
-    if (!Array.isArray(value)) {
-      return []
-    }
-
-    return value
-      .map((item) => {
-        if (!this.isRecord(item)) {
-          return null
-        }
-
-        const sourceText = this.pickString(item.sourceText) || this.pickString(item.localizedText)
-        const localizedText = this.pickString(item.localizedText) || sourceText
-        if (!sourceText || !localizedText) {
-          return null
-        }
-
-        const source = item.source === 'article' || item.source === 'ai' ? item.source : 'article'
-
-        return {
-          sourceText,
-          localizedText,
-          source,
-        }
-      })
-      .filter((item): item is DictionaryArticleExample => item !== null)
   }
 
   private normalizeAiDictionaryEntry(
@@ -491,10 +420,8 @@ export class DictionaryService {
     const normalizedLocalizationLanguage = this.normalizeLocalizationLanguage(
       this.pickString(value.localizationLanguage) || localizationLanguage
     )
-    const phonetics = this.normalizePhonetics(value.phonetics)
-    const phonetic = this.pickString(value.phonetic) || phonetics[0]?.text || null
+    const phonetic = this.pickString(value.phonetic) || null
     const meanings = this.normalizeMeanings(value.meanings)
-    const articleExamples = this.normalizeArticleExamples(value.articleExamples)
 
     if (meanings.length === 0) {
       const fallbackPartOfSpeech = this.pickString(value.partOfSpeech) || 'noun'
@@ -505,36 +432,35 @@ export class DictionaryService {
         normalizedWord
       const fallbackLocalizedMeaning =
         this.pickString(value.localizedMeaning) || '可能是专有名词、缩写、罕见词或拼写变体。'
-      const fallbackPlainExplanation =
-        this.pickString(value.plainExplanation) || fallbackLocalizedMeaning
-      const fallbackDefinitions = this.normalizeDefinitions(value.definitions)
+      const fallbackExplanation =
+        this.pickString(value.explanation) ||
+        this.pickString(value.plainExplanation) ||
+        fallbackLocalizedMeaning
+      const fallbackExamples = this.normalizeMeaningExamples(value.examples)
+      const fallbackLegacyExamples = this.normalizeDefinitionExamples(value.definitions)
 
       return {
         word: normalizedWord,
         sourceLanguage,
         localizationLanguage: normalizedLocalizationLanguage,
         phonetic,
-        phonetics,
         meanings: [
           {
             partOfSpeech: fallbackPartOfSpeech,
-            sourceMeaning: fallbackSourceMeaning,
             localizedMeaning: fallbackLocalizedMeaning,
-            plainExplanation: fallbackPlainExplanation,
-            definitions:
-              fallbackDefinitions.length > 0
-                ? fallbackDefinitions
+            explanation: fallbackExplanation,
+            examples:
+              [...fallbackExamples, ...fallbackLegacyExamples].length > 0
+                ? [...fallbackExamples, ...fallbackLegacyExamples]
                 : [
                     {
                       sourceText: fallbackSourceMeaning,
                       localizedText: fallbackLocalizedMeaning,
-                      plainExplanation: fallbackPlainExplanation,
-                      examples: [],
+                      source: 'dictionary',
                     },
                   ],
           },
         ],
-        articleExamples,
         meta: {
           source: 'dictionary',
           localizationLanguage: normalizedLocalizationLanguage,
@@ -547,9 +473,7 @@ export class DictionaryService {
       sourceLanguage,
       localizationLanguage: normalizedLocalizationLanguage,
       phonetic,
-      phonetics,
       meanings,
-      articleExamples,
       meta: {
         source: 'dictionary',
         localizationLanguage: normalizedLocalizationLanguage,
@@ -677,14 +601,14 @@ export class DictionaryService {
           return null
         }
 
-        const definitions: DictionaryDefinition[] = (entry.senses || [])
+        const senses = (entry.senses || [])
           .map((sense) => {
             const sourceText = this.pickString(sense.definition)
             if (!sourceText) {
               return null
             }
 
-            const examples: DictionaryLocalizedExample[] = (sense.examples || [])
+            const examples: DictionaryMeaningExample[] = (sense.examples || [])
               .map((example) => this.pickString(example))
               .filter((example): example is string => Boolean(example))
               .map((example) => ({
@@ -695,25 +619,26 @@ export class DictionaryService {
 
             return {
               sourceText,
-              localizedText: sourceText,
-              plainExplanation: sourceText,
               examples,
             }
           })
-          .filter((definition): definition is DictionaryDefinition => definition !== null)
+          .filter(
+            (sense): sense is { sourceText: string; examples: DictionaryMeaningExample[] } =>
+              sense !== null
+          )
 
-        if (definitions.length === 0) {
+        if (senses.length === 0) {
           return null
         }
 
-        const sourceMeaning = definitions[0]!.sourceText
+        const sourceMeaning = senses[0]!.sourceText
+        const examples = senses.flatMap((sense) => sense.examples)
 
         return {
           partOfSpeech,
-          sourceMeaning,
           localizedMeaning: sourceMeaning,
-          plainExplanation: sourceMeaning,
-          definitions,
+          explanation: sourceMeaning,
+          examples,
         }
       })
       .filter((meaning): meaning is DictionaryMeaning => meaning !== null)
@@ -722,20 +647,16 @@ export class DictionaryService {
       return null
     }
 
-    const phonetics = (upstream.entries || [])
-      .flatMap((entry) => entry.pronunciations || [])
-      .map((item) => this.pickString(item.text))
-      .filter((item): item is string => Boolean(item))
-      .map((text) => ({ text }))
-
     return {
       word,
       sourceLanguage: SOURCE_LANGUAGE,
       localizationLanguage,
-      phonetic: phonetics[0]?.text || null,
-      phonetics,
+      phonetic:
+        (upstream.entries || [])
+          .flatMap((entry) => entry.pronunciations || [])
+          .map((item) => this.pickString(item.text))
+          .find((item): item is string => Boolean(item)) || null,
       meanings,
-      articleExamples: [],
       meta: {
         source: 'dictionary',
         localizationLanguage,
@@ -799,9 +720,7 @@ export class DictionaryService {
       sourceLanguage: record.sourceLanguage || SOURCE_LANGUAGE,
       localizationLanguage: record.localizationLanguage,
       phonetic: record.phonetic,
-      phonetics: this.normalizePhonetics(record.phonetics),
       meanings: this.normalizeMeanings(record.meanings),
-      articleExamples: this.normalizeArticleExamples(record.articleExamples),
       meta: {
         source: 'dictionary',
         localizationLanguage: record.localizationLanguage,
@@ -823,9 +742,7 @@ export class DictionaryService {
         word: normalizedWord,
         sourceLanguage: entry.sourceLanguage || SOURCE_LANGUAGE,
         phonetic: entry.phonetic,
-        phonetics: entry.phonetics,
         meanings: entry.meanings,
-        articleExamples: entry.articleExamples,
         metaSource: 'dictionary',
       })
       await existing.save()
@@ -837,9 +754,7 @@ export class DictionaryService {
       localizationLanguage,
       sourceLanguage: entry.sourceLanguage || SOURCE_LANGUAGE,
       phonetic: entry.phonetic,
-      phonetics: entry.phonetics,
       meanings: entry.meanings,
-      articleExamples: entry.articleExamples,
       metaSource: 'dictionary',
     })
   }
@@ -854,46 +769,10 @@ export class DictionaryService {
     return this.getEntry(word)
   }
 
-  private async buildArticleContext(
-    payload: DictionaryEnrichmentPayload
-  ): Promise<DictionaryArticleContext | null> {
-    if (
-      payload.bookId === undefined ||
-      payload.bookId === null ||
-      payload.chapterIndex === undefined ||
-      payload.chapterIndex === null
-    ) {
-      return null
-    }
-
-    try {
-      const chapter = await this.bookService.getChapterByIndex(payload.bookId, payload.chapterIndex)
-
-      return {
-        bookId: payload.bookId,
-        chapterIndex: payload.chapterIndex,
-        chapterTitle: chapter.title,
-        chapterSnippet: chapter.content.slice(0, 2000),
-      }
-    } catch (error) {
-      logger.warn(
-        {
-          err: error,
-          word: payload.word,
-          bookId: payload.bookId,
-          chapterIndex: payload.chapterIndex,
-        },
-        'Failed to build dictionary article context'
-      )
-      return null
-    }
-  }
-
   private async generateAiEnrichedEntry(params: {
     word: string
     localizationLanguage: string
     dictionarySnapshot: DictionaryEntry
-    articleContext: DictionaryArticleContext | null
   }): Promise<DictionaryEntry | null> {
     try {
       const aiConfig = await this.configService.getAiConfig()
@@ -902,7 +781,6 @@ export class DictionaryService {
         word: params.word,
         sourceLanguage: SOURCE_LANGUAGE,
         localizationLanguage: params.localizationLanguage,
-        articleContext: params.articleContext,
         dictionarySnapshot: params.dictionarySnapshot,
         contract,
       })
@@ -940,7 +818,6 @@ export class DictionaryService {
   private async generateAiFallbackEntry(params: {
     word: string
     localizationLanguage: string
-    articleContext: DictionaryArticleContext | null
   }): Promise<DictionaryEntry | null> {
     try {
       const aiConfig = await this.configService.getAiConfig()
@@ -949,7 +826,6 @@ export class DictionaryService {
         word: params.word,
         sourceLanguage: SOURCE_LANGUAGE,
         localizationLanguage: params.localizationLanguage,
-        articleContext: params.articleContext,
         contract,
       })
 
@@ -1065,12 +941,6 @@ export class DictionaryService {
       'Dictionary enrichment processing started'
     )
 
-    const articleContext = await this.buildArticleContext({
-      ...payload,
-      word: normalizedWord,
-      localizationLanguage: settings.localizationLanguage,
-    })
-
     if (payload.mode === 'enrich') {
       const snapshot = await this.resolveDictionaryCandidate({
         word: normalizedWord,
@@ -1097,15 +967,12 @@ export class DictionaryService {
           sourceLanguage: SOURCE_LANGUAGE,
           localizationLanguage: settings.localizationLanguage,
           phonetic: null,
-          phonetics: [],
           meanings: [],
-          articleExamples: [],
           meta: {
             source: 'dictionary',
             localizationLanguage: settings.localizationLanguage,
           },
         },
-        articleContext,
       })
 
       if (!enriched) {
@@ -1135,7 +1002,6 @@ export class DictionaryService {
     const fallback = await this.generateAiFallbackEntry({
       word: normalizedWord,
       localizationLanguage: settings.localizationLanguage,
-      articleContext,
     })
 
     if (!fallback) {

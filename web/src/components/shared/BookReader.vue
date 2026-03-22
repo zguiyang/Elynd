@@ -7,15 +7,13 @@ import {
   Search,
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
-import {
-  lookupWord
-  
-  
-  
-  
-  
+import { lookupWord } from '@/api/dictionary'
+import type {
+  DictionaryEntry,
+  DictionaryExample,
+  DictionaryLookupContext,
+  DictionaryLookupError,
 } from '@/api/dictionary'
-import type {DictionaryDefinition, DictionaryEntry, DictionaryExample, DictionaryLookupContext, DictionaryLookupError} from '@/api/dictionary';
 import { READER_SELECTION } from '@/constants'
 import { isSingleWordSelection, normalizeSelectionText } from '@/lib/selection-actions'
 import type { ReaderActionType, ReaderSelectionActionPayload } from '@/types/reader-selection'
@@ -188,10 +186,6 @@ const getMetaLabel = (source?: DictionaryEntry['meta'] | null) => {
   }
 
   return labelMap[source.source]
-}
-
-const hasPlainExplanation = (definition: DictionaryDefinition) => {
-  return Boolean(definition.plainExplanation)
 }
 
 const handleLookup = async () => {
@@ -459,45 +453,31 @@ onUnmounted(() => {
                     </p>
                   </div>
 
-                  <div class="space-y-3">
-                    <div
-                      v-for="(definition, definitionIndex) in meaning.definitions.slice(0, 2)"
-                      :key="`${definition.sourceText}-${definitionIndex}`"
-                      class="space-y-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-3"
-                    >
-                      <p class="font-medium leading-6 text-foreground">
-                        {{ definition.sourceText }}
-                      </p>
+                  <div class="space-y-3 rounded-lg border border-border/60 bg-muted/30 px-3 py-3">
+                    <p class="leading-6 text-foreground/90">
+                      {{ meaning.explanation }}
+                    </p>
 
-                      <p class="leading-6 text-muted-foreground">
-                        {{ definition.localizedText }}
-                      </p>
-
-                      <p v-if="hasPlainExplanation(definition)" class="leading-6 text-foreground/90">
-                        {{ definition.plainExplanation }}
-                      </p>
-
-                      <div v-if="definition.examples.length > 0" class="space-y-2 border-t border-border/50 pt-2">
-                        <div
-                          v-for="(example, exampleIndex) in definition.examples.slice(0, 2)"
-                          :key="`${definitionIndex}-${exampleIndex}-${example.source}`"
-                          class="space-y-1"
-                        >
-                          <div class="flex items-center justify-between gap-2">
-                            <p class="text-xs text-muted-foreground">
-                              例句
-                            </p>
-                            <span class="text-[11px] text-muted-foreground">
-                              {{ getExampleSourceLabel(example.source) }}
-                            </span>
-                          </div>
-                          <p class="leading-6 text-foreground">
-                            {{ example.sourceText }}
+                    <div v-if="meaning.examples.length > 0" class="space-y-2 border-t border-border/50 pt-2">
+                      <div
+                        v-for="(example, exampleIndex) in meaning.examples.slice(0, 2)"
+                        :key="`${meaningIndex}-${exampleIndex}-${example.source}`"
+                        class="space-y-1"
+                      >
+                        <div class="flex items-center justify-between gap-2">
+                          <p class="text-xs text-muted-foreground">
+                            例句
                           </p>
-                          <p v-if="example.localizedText" class="leading-6 text-muted-foreground">
-                            {{ example.localizedText }}
-                          </p>
+                          <span class="text-[11px] text-muted-foreground">
+                            {{ getExampleSourceLabel(example.source) }}
+                          </span>
                         </div>
+                        <p class="leading-6 text-foreground">
+                          {{ example.sourceText }}
+                        </p>
+                        <p v-if="example.localizedText" class="leading-6 text-muted-foreground">
+                          {{ example.localizedText }}
+                        </p>
                       </div>
                     </div>
                   </div>

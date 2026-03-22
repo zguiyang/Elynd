@@ -6,23 +6,14 @@ import { bearerAuthHeader, createAuthenticatedUser } from '#tests/helpers/auth'
 interface AiDictionaryEntry {
   word: string
   phonetic?: string
-  phonetics: Array<{
-    text?: string
-    audio?: string
-  }>
   meanings: Array<{
     partOfSpeech: string
     localizedMeaning: string
-    plainExplanation: string
-    definitions: Array<{
+    explanation: string
+    examples: Array<{
       sourceText: string
       localizedText: string
-      plainExplanation: string
-      examples: Array<{
-        sourceText: string
-        localizedText: string
-        source: 'dictionary' | 'article' | 'ai'
-      }>
+      source: 'dictionary' | 'article' | 'ai'
     }>
   }>
   meta: {
@@ -34,24 +25,21 @@ interface AiDictionaryEntry {
 const buildAiDictionaryEntry = (overrides: Partial<AiDictionaryEntry> = {}): AiDictionaryEntry => ({
   word: 'apple',
   phonetic: '/ˈæp.əl/',
-  phonetics: [{ text: '/ˈæp.əl/' }],
   meanings: [
     {
       partOfSpeech: 'noun',
       localizedMeaning: '苹果',
-      plainExplanation: '就是一种常见水果，日常生活里很常见。',
-      definitions: [
+      explanation: '就是一种常见水果，日常生活里很常见。',
+      examples: [
         {
           sourceText: 'A fruit',
           localizedText: '一种水果',
-          plainExplanation: '能吃的水果。',
-          examples: [
-            {
-              sourceText: 'An apple a day keeps the doctor away.',
-              localizedText: '一天一个苹果，医生远离我。',
-              source: 'dictionary',
-            },
-          ],
+          source: 'dictionary',
+        },
+        {
+          sourceText: 'An apple a day keeps the doctor away.',
+          localizedText: '一天一个苹果，医生远离我。',
+          source: 'dictionary',
         },
       ],
     },
@@ -102,11 +90,8 @@ test.group('Dictionary API contract', () => {
     assert.equal(response.body().word, 'apple')
     assert.equal(response.body().phonetic, '/ˈæp.əl/')
     assert.equal(response.body().meanings[0].localizedMeaning, '苹果')
-    assert.equal(response.body().meanings[0].definitions[0].localizedText, '一种水果')
-    assert.equal(
-      response.body().meanings[0].definitions[0].examples[0].localizedText,
-      '一天一个苹果，医生远离我。'
-    )
+    assert.equal(response.body().meanings[0].explanation, '就是一种常见水果，日常生活里很常见。')
+    assert.equal(response.body().meanings[0].examples[0].localizedText, '一种水果')
     assert.equal(response.body().meta.source, 'dictionary')
     assert.deepEqual(capturedParams, {
       word: 'apple',

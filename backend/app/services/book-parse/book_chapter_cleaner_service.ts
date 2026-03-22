@@ -64,7 +64,8 @@ export class BookChapterCleanerService {
   }
 
   /**
-   * Clean chapters by removing empty, short, and noisy title chapters
+   * First-pass rule cleaner only.
+   * Keep this service narrow: empty, short, and noisy title filtering.
    */
   clean(chapters: ChapterInput[]): CleanResult {
     const stats: CleanStats = {

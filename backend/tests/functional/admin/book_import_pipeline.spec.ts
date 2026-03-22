@@ -1,7 +1,20 @@
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { test } from '@japa/runner'
 import Book from '#models/book'
 import { BOOK_IMPORT_PROGRESS, BOOK_IMPORT_STEP } from '#constants'
 import { bearerAuthHeader, createAuthenticatedUser } from '#tests/helpers/auth'
+import { BookContentGuardService } from '#services/book-parse/book_content_guard_service'
+import {
+  buildCanonicalChapterText,
+  extractCanonicalChapterParts,
+} from '#services/book-parse/book_text_normalizer'
+
+async function loadFixture<T>(name: string): Promise<T> {
+  const filePath = join(process.cwd(), 'tests/fixtures/chapters', `${name}.json`)
+  const raw = await readFile(filePath, 'utf8')
+  return JSON.parse(raw) as T
+}
 
 test.group('Admin Book Import Pipeline Contract', () => {
   test('canonical scheduler step keys should match final pipeline', async ({ assert }) => {
@@ -75,5 +88,22 @@ test.group('Admin Book Import Pipeline Contract', () => {
     } finally {
       await user.delete()
     }
+  })
+
+  test('canonical chapter fixture should stay identical for persistence and TTS text', async ({
+    assert,
+  }) => {
+    const fixture = await loadFixture<{ title: string; content: string }>(
+      '9268_chapter0_mixed'
+    )
+    const canonical = extractCanonicalChapterParts(fixture)
+    const canonicalText = buildCanonicalChapterText(canonical.title, canonical.content)
+    const contentGuard = new BookContentGuardService()
+
+    assert.isTrue(contentGuard.validate(canonicalText).valid)
+    assert.equal(
+      canonicalText,
+      'THE TALE OF PETER RABBIT\n\nOnce upon a time there were four little Rabbits, and their names were Flopsy, Mopsy, Cotton-tail, and Peter.'
+    )
   })
 })

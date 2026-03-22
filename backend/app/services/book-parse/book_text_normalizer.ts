@@ -3,6 +3,7 @@ import { convert } from 'html-to-text'
 const LEADING_DANGLING_ATTR_RE = /^(?:\s*[A-Za-z][A-Za-z0-9:-]*="[^"]*">\s*)+/gm
 const TRAILING_DANGLING_TAG_RE = /\s*<\s*[A-Za-z][^>\n]*$/gm
 const HTML_RESIDUE_RE = /<[^>]+>|(?:^\s*[A-Za-z][A-Za-z0-9:-]*="[^"]*">\s*)+/m
+const DIVIDER_RE = /^[-*_—–\s]{3,}$/
 const FRONT_MATTER_KEYWORDS = [
   'copyright',
   'all rights reserved',
@@ -97,7 +98,7 @@ export function extractCanonicalChapterParts(input: {
 }): CanonicalChapterParts {
   const originalTitle = normalizeBookText(input.title)
   const normalizedContent = normalizeSpeechText(input.content)
-  const blocks = splitBlocks(normalizedContent)
+  const blocks = splitIntoBlocks(normalizedContent)
 
   if (blocks.length === 0) {
     return {
@@ -110,7 +111,7 @@ export function extractCanonicalChapterParts(input: {
   const firstBlock = blocks[0]
   const titleCandidate = isTitleLikeBlock(firstBlock) ? firstBlock : null
   const bodyStartIndex = findBodyStartIndex(blocks, titleCandidate ? 1 : 0)
-  const bodyBlocks = blocks.slice(bodyStartIndex)
+  const bodyBlocks = removeBlockNoise(blocks.slice(bodyStartIndex))
 
   if (bodyBlocks.length === 0) {
     return {
@@ -149,11 +150,90 @@ export function hasMarkdownResidue(content: string): boolean {
   )
 }
 
-function splitBlocks(content: string): string[] {
+export function isDividerBlock(block: string): boolean {
+  return DIVIDER_RE.test(normalizeBookText(block).replace(/\n/g, ''))
+}
+
+export function isIllustrationPlaceholder(block: string): boolean {
+  const normalized = normalizeBookText(block).replace(/\s+/g, ' ')
+  return (
+    /^\[illustration\]$/i.test(normalized) ||
+    /^\[illustration:\s*.+\]$/i.test(normalized) ||
+    /^\[illustration\s+\d+\]$/i.test(normalized)
+  )
+}
+
+export function isFrontMatterBlock(block: string): boolean {
+  const normalized = normalizeBookText(block)
+  const lower = normalized.toLowerCase()
+
+  if (!normalized) {
+    return true
+  }
+
+  if (isDividerBlock(normalized) || isIllustrationPlaceholder(normalized)) {
+    return true
+  }
+
+  if (FRONT_MATTER_KEYWORDS.some((keyword) => lower.includes(keyword))) {
+    return true
+  }
+
+  if (/^(?:by\s+|illustrated by\s+)/i.test(normalized)) {
+    return true
+  }
+
+  if (
+    isMostlyUppercase(normalized) &&
+    /\b\d{4}\b/.test(normalized) &&
+    normalized.split(/\s+/).filter(Boolean).length <= 10 &&
+    /(CO\.?|LTD\.?|LIMITED|PRESS|PUBLISHED|PRINTED|BIND|PUBLISHER|LONDON|BRITAIN)/i.test(
+      normalized
+    )
+  ) {
+    return true
+  }
+
+  return false
+}
+
+function isMostlyUppercase(value: string): boolean {
+  const letters = value.match(/[A-Za-z]/g) || []
+  if (letters.length === 0) {
+    return false
+  }
+
+  const uppercaseLetters = (value.match(/[A-Z]/g) || []).length
+  return uppercaseLetters / letters.length >= 0.7
+}
+
+export function splitIntoBlocks(content: string): string[] {
   return normalizeBookText(content)
     .split(/\n\s*\n/)
     .map((block) => block.trim())
     .filter(Boolean)
+}
+
+export function removeBlockNoise(blocks: string[]): string[] {
+  return blocks
+    .map((block) => normalizeBookText(block))
+    .flatMap((block) => {
+      if (!block) {
+        return []
+      }
+
+      const sanitized = block
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line && !isDividerBlock(line) && !isIllustrationPlaceholder(line))
+        .join('\n')
+
+      if (!sanitized || isDividerBlock(sanitized) || isIllustrationPlaceholder(sanitized)) {
+        return []
+      }
+
+      return [normalizeBookText(sanitized)]
+    })
 }
 
 function findBodyStartIndex(blocks: string[], startIndex: number): number {
@@ -200,29 +280,6 @@ function removeLeadingDuplicateTitle(blocks: string[], title: string): string[] 
   }
 
   return blocks
-}
-
-function isFrontMatterBlock(block: string): boolean {
-  const normalized = normalizeBookText(block)
-  const lower = normalized.toLowerCase()
-
-  if (!normalized) {
-    return true
-  }
-
-  if (/^[-*_—–\s]{8,}$/.test(normalized.replace(/\n/g, ''))) {
-    return true
-  }
-
-  if (FRONT_MATTER_KEYWORDS.some((keyword) => lower.includes(keyword))) {
-    return true
-  }
-
-  if (/^(?:by\s+|illustrated by\s+)/i.test(normalized)) {
-    return true
-  }
-
-  return false
 }
 
 function isFrontMatterTitle(title: string): boolean {

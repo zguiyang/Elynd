@@ -38,6 +38,7 @@ const NON_READING_SECTION_KEYWORDS = [
   'about the author',
   'about the publisher',
   'title page',
+  'publisher',
   'cover',
   'disclaimer',
   'contents',

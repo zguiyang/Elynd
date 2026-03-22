@@ -482,6 +482,16 @@ export class BookAudioPipelineService {
 
   private assertTtsInput(chapter: ChapterInput) {
     const canonicalText = buildCanonicalChapterText(chapter.title, chapter.content)
+    logger.debug(
+      {
+        chapterIndex: chapter.chapterIndex,
+        canonicalTitleLength: chapter.title.length,
+        canonicalContentLength: chapter.content.length,
+        canonicalTextLength: canonicalText.length,
+      },
+      'TTS canonical text prepared'
+    )
+
     if (!canonicalText.trim()) {
       throw new Error(`Invalid TTS input for chapter ${chapter.chapterIndex}: empty_content`)
     }

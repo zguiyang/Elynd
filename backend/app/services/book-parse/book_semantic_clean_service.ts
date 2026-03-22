@@ -144,6 +144,16 @@ export class BookSemanticCleanService {
         title: chapter.title,
         content: chapter.content,
       })
+      if (canonical.droppedPrefix) {
+        logger.info(
+          {
+            chapterTitle: chapter.title,
+            chapterIndex: chapter.chapterIndex,
+            canonicalTitle: canonical.title,
+          },
+          'Canonical chapter trimmed non-reading prefix'
+        )
+      }
       if (!canonical.content) {
         logger.info(
           {

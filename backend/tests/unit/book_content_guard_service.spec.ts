@@ -17,6 +17,17 @@ id="pgepubid00000">THE TALE OF PETER RABBIT
     assert.include(result.errors, 'Content contains HTML residue')
   })
 
+  test('rejects raw noisy front matter text', async ({ assert }) => {
+    const service = new BookContentGuardService()
+
+    const result = service.validate(`PUBLISHER INFO
+
+-----`)
+
+    assert.isFalse(result.valid)
+    assert.isTrue(result.errors.length > 0)
+  })
+
   test('accepts canonical title plus readable body', async ({ assert }) => {
     const service = new BookContentGuardService()
 

@@ -371,7 +371,7 @@ test.group('BookSemanticCleanService', () => {
       {
         title: 'FREDERICK WARNE',
         content:
-          'THE TALE OF PETER RABBIT\n\n----------------------------------------\n\nFIRST PUBLISHED 1902\n\nFREDERICK WARNE & CO., 1902\n\nPRINTED AND BOUND IN GREAT BRITAIN BY WILLIAM CLOWES LIMITED, BECCLES AND LONDON\n\n----------------------------------------\n\nOnce upon a time there were four little Rabbits, and their names were Flopsy, Mopsy, Cotton-tail, and Peter.',
+          'THE TALE OF PETER RABBIT\n\n----------------------------------------\n\n[Illustration]\n\nFIRST PUBLISHED 1902\n\nFREDERICK WARNE & CO., 1902\n\nPRINTED AND BOUND IN GREAT BRITAIN BY WILLIAM CLOWES LIMITED, BECCLES AND LONDON\n\n----------------------------------------\n\nOnce upon a time there were four little Rabbits, and their names were Flopsy, Mopsy, Cotton-tail, and Peter.',
       },
     ])
 
@@ -379,6 +379,7 @@ test.group('BookSemanticCleanService', () => {
     assert.equal(result[0].title, 'THE TALE OF PETER RABBIT')
     assert.include(result[0].content, 'Once upon a time there were four little Rabbits')
     assert.notInclude(result[0].content, 'FIRST PUBLISHED 1902')
+    assert.notInclude(result[0].content, '[Illustration]')
   })
 
   test('cleanChapters drops broken paragraphs and noisy sections', async ({ assert }) => {

@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { test } from '@japa/runner'
 import { BOOK_IMPORT_STEP } from '#constants'
 import { BOOK_IMPORT_STEP_TRANSITIONS } from '#types/book_import_pipeline'
@@ -5,6 +7,18 @@ import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import db from '@adonisjs/lucid/services/db'
 import { createAuthenticatedUser } from '#tests/helpers/auth'
+import { BookImportOrchestratorService } from '#services/book-import/book_import_orchestrator_service'
+import { BookContentGuardService } from '#services/book-parse/book_content_guard_service'
+import { BookHashService } from '#services/book-parse/book_hash_service'
+import { VocabularyAnalyzerService } from '#services/book-parse/vocabulary_analyzer_service'
+import { BookLevelService } from '#services/book/book_level_service'
+import { buildCanonicalChapterText, extractCanonicalChapterParts } from '#services/book-parse/book_text_normalizer'
+
+async function loadFixture<T>(name: string): Promise<T> {
+  const filePath = join(process.cwd(), 'tests/fixtures/chapters', `${name}.json`)
+  const raw = await readFile(filePath, 'utf8')
+  return JSON.parse(raw) as T
+}
 
 test.group('BookImportOrchestratorService serial contract', () => {
   test('step transition chain is deterministic and strictly serial', async ({ assert }) => {
@@ -214,5 +228,84 @@ test.group('BookImportOrchestratorService persistChaptersAndContentHash transact
 
     await book.delete()
     await user.delete()
+  })
+
+  test('persistChaptersAndContentHash stores canonical chapter text and hash', async ({
+    assert,
+  }) => {
+    const { user } = await createAuthenticatedUser({ emailPrefix: 'orch-canonical' })
+    const book = await Book.create({
+      title: `Transaction Test Book Canonical ${Date.now()}`,
+      author: 'Original Author',
+      description: 'Original Description',
+      source: 'user_uploaded',
+      levelId: 1,
+      status: 'ready',
+      wordCount: 100,
+      readingTime: 1,
+      isPublished: false,
+      createdBy: user.id,
+      contentHash: 'original-hash',
+    })
+
+    const orchestrator = new BookImportOrchestratorService(
+      {} as any,
+      new VocabularyAnalyzerService(),
+      new BookHashService(),
+      new BookContentGuardService(),
+      {} as any,
+      new BookLevelService() as any
+    )
+
+    try {
+      const fixture = await loadFixture<{ title: string; content: string }>(
+        '9268_chapter0_mixed'
+      )
+      const canonical = extractCanonicalChapterParts(fixture)
+
+      const persisted = await orchestrator.persistChaptersAndContentHash({
+        book,
+        metadata: {
+          title: 'Canonical Alignment Book',
+          author: 'Canonical Author',
+          description: 'Canonical Description',
+        },
+        cleanedChapters: [
+          {
+            title: canonical.title,
+            content: canonical.content,
+            chapterIndex: 0,
+          },
+        ],
+      })
+
+      await book.refresh()
+      const chapters = await BookChapter.query()
+        .where('bookId', book.id)
+        .orderBy('chapterIndex', 'asc')
+
+      assert.equal(chapters.length, 1)
+      assert.equal(chapters[0].title, canonical.title)
+      assert.equal(chapters[0].content, canonical.content)
+      assert.equal(
+        buildCanonicalChapterText(chapters[0].title, chapters[0].content),
+        buildCanonicalChapterText(canonical.title, canonical.content)
+      )
+      assert.equal(
+        persisted.contentHash,
+        new BookHashService().hashNormalizedBook([
+          {
+            title: canonical.title,
+            content: canonical.content,
+          },
+        ])
+      )
+      assert.equal(book.contentHash, persisted.contentHash)
+      assert.equal(book.wordCount, persisted.wordCount)
+      assert.equal(book.readingTime, persisted.readingTime)
+    } finally {
+      await book.delete()
+      await user.delete()
+    }
   })
 })

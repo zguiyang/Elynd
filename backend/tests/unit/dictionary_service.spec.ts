@@ -70,12 +70,48 @@ const buildAiDictionaryEntry = (overrides: Partial<AiDictionaryEntry> = {}): AiD
   ...overrides,
 })
 
-const createDictionaryService = () => {
+const createDictionaryService = (
+  overrides: {
+    aiService?: {
+      chatJson: (config: unknown, params: unknown) => Promise<AiDictionaryEntry | null>
+    }
+    promptService?: {
+      render: (name: string, data?: object) => string
+    }
+    configService?: {
+      getAiConfig: () => Promise<{ baseUrl: string; apiKey: string; model: string }>
+    }
+  } = {}
+) => {
   const userConfigService = {
     getConfigByUserId: async () => ({ nativeLanguage: 'zh-CN' }),
   } as never
+  const aiService =
+    overrides.aiService ||
+    ({
+      chatJson: async () => null,
+    } as never)
+  const promptService =
+    overrides.promptService ||
+    ({
+      render: (name: string, data?: object) => `${name}:${JSON.stringify(data ?? {})}`,
+    } as never)
+  const configService =
+    overrides.configService ||
+    ({
+      getAiConfig: async () => ({
+        baseUrl: 'https://example.com/v1',
+        apiKey: 'test-key',
+        model: 'test-model',
+      }),
+    } as never)
 
-  return new DictionaryService(userConfigService)
+  return new DictionaryService(
+    userConfigService,
+    aiService as never,
+    promptService as never,
+    configService as never
+  )
 }
 
 test.group('DictionaryService.getExpiringKeys', (group) => {
@@ -343,6 +379,157 @@ test.group('DictionaryService.lookup', (group) => {
     assert.equal(result.meta.source, 'dictionary')
     assert.equal(cacheWriteCount, 1)
     assert.isFalse(fetchCalled)
+  })
+
+  test('enriches upstream dictionary entries with Chinese meanings via AI', async ({ assert }) => {
+    let aiCalls = 0
+    let savedEntry: AiDictionaryEntry | null = null
+    let cachedEntry: AiDictionaryEntry | null = null
+
+    const service = createDictionaryService({
+      aiService: {
+        chatJson: async (_config, params) => {
+          aiCalls++
+          const promptText = JSON.stringify(params)
+          assert.include(promptText, 'dictionary/enrich')
+          assert.include(promptText, 'carrying')
+
+          return buildAiDictionaryEntry({
+            word: 'carrying',
+            phonetic: '/ˈkæriɪŋ/',
+            phonetics: [{ text: '/ˈkæriɪŋ/' }],
+            meanings: [
+              {
+                partOfSpeech: 'verb',
+                localizedMeaning: '携带',
+                plainExplanation: '拿着、提着某物。',
+                definitions: [
+                  {
+                    sourceText: 'to carry something',
+                    localizedText: '携带某物',
+                    plainExplanation: '把东西拿在身上或手里。',
+                    examples: [
+                      {
+                        sourceText: 'She is carrying a bag.',
+                        localizedText: '她正提着一个包。',
+                        source: 'dictionary',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+            meta: {
+              source: 'dictionary',
+              localizationLanguage: 'zh-CN',
+            },
+          })
+        },
+      },
+    }) as any
+
+    service.resolveLookupSettings = async () => ({
+      localizationLanguage: 'zh-CN',
+    })
+    service.findDictionaryEntryRecord = async () => null
+    service.getCachedEntry = async () => null
+    service.fetchUpstreamEntry = async () => ({
+      word: 'carrying',
+      entries: [
+        {
+          partOfSpeech: 'verb',
+          pronunciations: [{ text: '/ˈkæriɪŋ/' }],
+          senses: [{ definition: 'to carry something', examples: ['She is carrying a bag.'] }],
+        },
+      ],
+    })
+    service.saveGlobalEntry = async (entry: AiDictionaryEntry) => {
+      savedEntry = entry
+      return { id: 42 }
+    }
+    service.setCachedEntry = async (_word: string, entry: AiDictionaryEntry) => {
+      cachedEntry = entry
+    }
+
+    const result = (await service.lookup('carrying', { userId: 9 })) as AiDictionaryEntry
+
+    assert.equal(aiCalls, 1)
+    assert.equal(result.word, 'carrying')
+    assert.equal(result.meanings[0]?.partOfSpeech, 'verb')
+    assert.equal(result.meanings[0]?.localizedMeaning, '携带')
+    assert.equal(result.meanings[0]?.plainExplanation, '拿着、提着某物。')
+    assert.equal(result.meanings[0]?.definitions[0]?.localizedText, '携带某物')
+    assert.equal((savedEntry as AiDictionaryEntry | null)?.meanings[0]?.localizedMeaning, '携带')
+    assert.equal((cachedEntry as AiDictionaryEntry | null)?.meanings[0]?.localizedMeaning, '携带')
+  })
+
+  test('generates a complete fallback entry when dictionary lookup misses', async ({ assert }) => {
+    let aiCalls = 0
+    let savedEntry: AiDictionaryEntry | null = null
+
+    const service = createDictionaryService({
+      aiService: {
+        chatJson: async (_config, params) => {
+          aiCalls++
+          const promptText = JSON.stringify(params)
+          assert.include(promptText, 'dictionary/fallback')
+          assert.include(promptText, 'banana')
+
+          return buildAiDictionaryEntry({
+            word: 'banana',
+            phonetic: '/bəˈnæn.ə/',
+            phonetics: [{ text: '/bəˈnæn.ə/' }],
+            meanings: [
+              {
+                partOfSpeech: 'noun',
+                localizedMeaning: '香蕉',
+                plainExplanation: '一种常见的黄色水果。',
+                definitions: [
+                  {
+                    sourceText: 'a long curved fruit',
+                    localizedText: '一种长而弯曲的水果',
+                    plainExplanation: '常见水果，通常呈黄色。',
+                    examples: [
+                      {
+                        sourceText: 'She ate a banana after lunch.',
+                        localizedText: '她午饭后吃了一根香蕉。',
+                        source: 'ai',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+            meta: {
+              source: 'dictionary',
+              localizationLanguage: 'zh-CN',
+            },
+          })
+        },
+      },
+    }) as any
+
+    service.resolveLookupSettings = async () => ({
+      localizationLanguage: 'zh-CN',
+    })
+    service.findDictionaryEntryRecord = async () => null
+    service.getCachedEntry = async () => null
+    service.fetchUpstreamEntry = async () => null
+    service.saveGlobalEntry = async (entry: AiDictionaryEntry) => {
+      savedEntry = entry
+      return { id: 99 }
+    }
+    service.setCachedEntry = async () => {}
+
+    const result = (await service.lookup('banana', { userId: 11 })) as AiDictionaryEntry
+
+    assert.equal(aiCalls, 1)
+    assert.equal(result.word, 'banana')
+    assert.equal(result.meanings[0]?.partOfSpeech, 'noun')
+    assert.equal(result.meanings[0]?.localizedMeaning, '香蕉')
+    assert.equal(result.meanings[0]?.plainExplanation, '一种常见的黄色水果。')
+    assert.equal(result.meanings[0]?.definitions[0]?.localizedText, '一种长而弯曲的水果')
+    assert.equal((savedEntry as AiDictionaryEntry | null)?.meanings[0]?.localizedMeaning, '香蕉')
   })
 
   test('throws unified query failure when dictionary upstream returns empty data', async ({

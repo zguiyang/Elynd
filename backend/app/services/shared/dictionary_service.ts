@@ -5,14 +5,19 @@ import env from '#start/env'
 import redis from '@adonisjs/redis/services/main'
 import { DICTIONARY } from '#constants'
 import DictionaryEntryModel from '#models/dictionary_entry'
+import { AiService } from '#services/ai/ai_service'
+import { ConfigService } from '#services/ai/config_service'
+import PromptService from '#services/ai/prompt_service'
 import { UserConfigService } from '#services/user/user_config_service'
 
 const SOURCE_LANGUAGE = 'en'
 const DEFAULT_LOCALIZATION_LANGUAGE = 'zh-CN'
 const SAFE_LOOKUP_FAILURE_MESSAGE = '查询失败，请稍后重试'
+const DICTIONARY_AI_SYSTEM_PROMPT = 'You are a bilingual dictionary engine. Return valid JSON only.'
 
 type DictionaryExampleSourceType = 'dictionary' | 'article' | 'ai'
 type DictionaryArticleExampleSourceType = 'article' | 'ai'
+type DictionaryLookupMode = 'dictionary_only' | 'ai_enriched' | 'ai_fallback'
 
 interface FreeDictionaryApiSense {
   definition?: string
@@ -75,6 +80,7 @@ export interface DictionaryEntry {
   meta: {
     source: 'dictionary'
     localizationLanguage: string
+    lookupMode?: DictionaryLookupMode
   }
 }
 
@@ -97,11 +103,30 @@ interface DictionaryBatchLookupOptions {
   concurrency?: number
 }
 
+export interface DictionaryBatchLookupDiagnostics {
+  totalWords: number
+  succeededWords: number
+  failedWords: Array<{ word: string; reason: string }>
+  dictionaryOnlyWords: number
+  aiEnrichedWords: number
+  aiFallbackWords: number
+}
+
+export interface DictionaryBatchLookupResult {
+  entries: Map<string, DictionaryEntry | null>
+  diagnostics: DictionaryBatchLookupDiagnostics
+}
+
 @inject()
 export class DictionaryService {
   private freeDictionaryApiUrl: string
 
-  constructor(private userConfigService: UserConfigService) {
+  constructor(
+    private userConfigService: UserConfigService,
+    private aiService: AiService,
+    private promptService: PromptService,
+    private configService: ConfigService
+  ) {
     this.freeDictionaryApiUrl = env.get(
       'FREE_DICTIONARY_API_URL',
       'https://freedictionaryapi.com/api/v1'
@@ -359,6 +384,110 @@ export class DictionaryService {
       .filter((item): item is DictionaryArticleExample => item !== null)
   }
 
+  private normalizeAiDictionaryEntry(
+    value: unknown,
+    localizationLanguage: string
+  ): DictionaryEntry | null {
+    if (!this.isRecord(value)) {
+      return null
+    }
+
+    const word = this.pickString(value.word)
+    if (!word) {
+      return null
+    }
+
+    const normalizedWord = this.normalizeWord(word)
+    const sourceLanguage = this.pickString(value.sourceLanguage) || SOURCE_LANGUAGE
+    const normalizedLocalizationLanguage = this.normalizeLocalizationLanguage(
+      this.pickString(value.localizationLanguage) || localizationLanguage
+    )
+    const phonetics = this.normalizePhonetics(value.phonetics)
+    const phonetic = this.pickString(value.phonetic) || phonetics[0]?.text || null
+    const meanings = this.normalizeMeanings(value.meanings)
+    const articleExamples = this.normalizeArticleExamples(value.articleExamples)
+
+    if (meanings.length === 0) {
+      return null
+    }
+
+    return {
+      word: normalizedWord,
+      sourceLanguage,
+      localizationLanguage: normalizedLocalizationLanguage,
+      phonetic,
+      phonetics,
+      meanings,
+      articleExamples,
+      meta: {
+        source: 'dictionary',
+        localizationLanguage: normalizedLocalizationLanguage,
+      },
+    }
+  }
+
+  private async generateAiDictionaryEntry(params: {
+    word: string
+    localizationLanguage: string
+    dictionarySnapshot?: unknown
+    lookupMode: DictionaryLookupMode
+  }): Promise<DictionaryEntry | null> {
+    try {
+      const aiConfig = await this.configService.getAiConfig()
+      const template = params.dictionarySnapshot ? 'dictionary/enrich' : 'dictionary/fallback'
+      const contract = this.promptService.render('dictionary/output-contract', {})
+      const userPrompt = this.promptService.render(template, {
+        word: params.word,
+        sourceLanguage: SOURCE_LANGUAGE,
+        localizationLanguage: params.localizationLanguage,
+        dictionarySnapshot: params.dictionarySnapshot || undefined,
+        contract,
+      })
+
+      const result = await this.aiService.chatJson<unknown>(aiConfig, {
+        messages: [
+          { role: 'system', content: DICTIONARY_AI_SYSTEM_PROMPT },
+          { role: 'user', content: userPrompt },
+        ],
+        maxTokens: 3000,
+        temperature: 0.2,
+        responseFormat: { type: 'json_object' },
+      })
+
+      const normalized = this.normalizeAiDictionaryEntry(result, params.localizationLanguage)
+      if (!normalized) {
+        logger.warn(
+          {
+            word: params.word,
+            localizationLanguage: params.localizationLanguage,
+            template,
+          },
+          'Dictionary AI response could not be normalized'
+        )
+        return null
+      }
+
+      return {
+        ...normalized,
+        meta: {
+          ...normalized.meta,
+          lookupMode: params.lookupMode,
+        },
+      }
+    } catch (error) {
+      logger.warn(
+        {
+          err: error,
+          word: params.word,
+          localizationLanguage: params.localizationLanguage,
+          hasSnapshot: Boolean(params.dictionarySnapshot),
+        },
+        'Dictionary AI generation failed'
+      )
+      return null
+    }
+  }
+
   private async fetchWithTimeout(url: string): Promise<Response> {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), DICTIONARY.LOOKUP_TIMEOUT_MS)
@@ -471,6 +600,7 @@ export class DictionaryService {
       meta: {
         source: 'dictionary',
         localizationLanguage,
+        lookupMode: 'dictionary_only',
       },
     }
   }
@@ -626,26 +756,46 @@ export class DictionaryService {
       }
 
       const upstreamEntry = await this.fetchUpstreamEntry(normalizedWord)
-      if (!upstreamEntry) {
-        this.throwLookupFailure(new Error('Dictionary upstream entry not found'), normalizedWord)
-      }
-
-      const entry = this.buildDictionaryOnlyEntry(
-        normalizedWord,
-        upstreamEntry,
-        settings.localizationLanguage
-      )
-      if (!entry) {
-        this.throwLookupFailure(
-          new Error('Dictionary upstream entry cannot be normalized'),
-          normalizedWord
+      if (upstreamEntry) {
+        const entry = this.buildDictionaryOnlyEntry(
+          normalizedWord,
+          upstreamEntry,
+          settings.localizationLanguage
         )
+        if (entry) {
+          const enrichedEntry =
+            (await this.generateAiDictionaryEntry({
+              word: normalizedWord,
+              localizationLanguage: settings.localizationLanguage,
+              dictionarySnapshot: upstreamEntry,
+              lookupMode: 'ai_enriched',
+            })) ||
+            (await this.generateAiDictionaryEntry({
+              word: normalizedWord,
+              localizationLanguage: settings.localizationLanguage,
+              lookupMode: 'ai_fallback',
+            }))
+
+          const finalEntry = enrichedEntry || entry
+          await this.saveGlobalEntry(finalEntry)
+          await this.setCachedEntry(normalizedWord, finalEntry, settings.localizationLanguage)
+
+          return finalEntry
+        }
       }
 
-      await this.saveGlobalEntry(entry)
-      await this.setCachedEntry(normalizedWord, entry, settings.localizationLanguage)
+      const fallbackEntry = await this.generateAiDictionaryEntry({
+        word: normalizedWord,
+        localizationLanguage: settings.localizationLanguage,
+        lookupMode: 'ai_fallback',
+      })
+      if (fallbackEntry) {
+        await this.saveGlobalEntry(fallbackEntry)
+        await this.setCachedEntry(normalizedWord, fallbackEntry, settings.localizationLanguage)
+        return fallbackEntry
+      }
 
-      return entry
+      throw new Error('Dictionary upstream entry not found')
     } catch (error) {
       this.throwLookupFailure(error, normalizedWord)
     }
@@ -656,22 +806,45 @@ export class DictionaryService {
     concurrency: number = 5,
     options: DictionaryBatchLookupOptions = {}
   ): Promise<Map<string, DictionaryEntry | null>> {
+    const detailed = await this.lookupBatchWithDiagnostics(words, concurrency, options)
+    return detailed.entries
+  }
+
+  async lookupBatchWithDiagnostics(
+    words: string[],
+    concurrency: number = 5,
+    options: DictionaryBatchLookupOptions = {}
+  ): Promise<DictionaryBatchLookupResult> {
     const results = new Map<string, DictionaryEntry | null>()
     const normalizedWords = words.map((word) => this.normalizeWord(word)).filter((word) => word)
-
-    if (normalizedWords.length === 0) {
-      return results
+    const diagnostics: DictionaryBatchLookupDiagnostics = {
+      totalWords: normalizedWords.length,
+      succeededWords: 0,
+      failedWords: [],
+      dictionaryOnlyWords: 0,
+      aiEnrichedWords: 0,
+      aiFallbackWords: 0,
     }
 
-    const processWord = async (word: string): Promise<[string, DictionaryEntry | null]> => {
+    if (normalizedWords.length === 0) {
+      return {
+        entries: results,
+        diagnostics,
+      }
+    }
+
+    const processWord = async (
+      word: string
+    ): Promise<[string, DictionaryEntry | null, string | null]> => {
       try {
         const entry = await this.lookup({
           word,
           userId: options.userId,
+          localizationLanguage: options.localizationLanguage,
         })
-        return [word, entry]
-      } catch {
-        return [word, null]
+        return [word, entry, null]
+      } catch (error) {
+        return [word, null, error instanceof Error ? error.message : 'Unknown lookup failure']
       }
     }
 
@@ -679,12 +852,32 @@ export class DictionaryService {
       const batch = normalizedWords.slice(i, i + concurrency)
       const batchResults = await Promise.all(batch.map(processWord))
 
-      for (const [word, entry] of batchResults) {
+      for (const [word, entry, reason] of batchResults) {
         results.set(word, entry)
+        if (!entry) {
+          diagnostics.failedWords.push({
+            word,
+            reason: reason || 'Unknown lookup failure',
+          })
+          continue
+        }
+
+        diagnostics.succeededWords++
+        const lookupMode = entry.meta.lookupMode
+        if (lookupMode === 'dictionary_only') {
+          diagnostics.dictionaryOnlyWords++
+        } else if (lookupMode === 'ai_enriched') {
+          diagnostics.aiEnrichedWords++
+        } else if (lookupMode === 'ai_fallback') {
+          diagnostics.aiFallbackWords++
+        }
       }
     }
 
-    return results
+    return {
+      entries: results,
+      diagnostics,
+    }
   }
 
   async refreshCache(

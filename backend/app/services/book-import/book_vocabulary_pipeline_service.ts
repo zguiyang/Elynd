@@ -59,7 +59,9 @@ export class BookVocabularyPipelineService {
       }
 
       const words = allVocabularies.map((item) => item.word)
-      const results = await this.dictionaryService.lookupBatch(words)
+      const lookupResult = await this.dictionaryService.lookupBatchWithDiagnostics(words)
+      const results = lookupResult.entries
+      const diagnostics = lookupResult.diagnostics
 
       let enrichedWords = 0
       for (const vocabulary of allVocabularies) {
@@ -78,7 +80,11 @@ export class BookVocabularyPipelineService {
       await this.importStateService.assertImportNotCancelled(runId, bookId)
 
       if (allVocabularies.length > 0 && enrichedWords === 0) {
-        throw new Error('All dictionary lookups failed')
+        const failedSamples = diagnostics.failedWords.slice(0, 5)
+        const failureSummary = failedSamples.length
+          ? failedSamples.map((item) => `${item.word}: ${item.reason}`).join('; ')
+          : 'unknown reason'
+        throw new Error(`All dictionary lookups failed: ${failureSummary}`)
       }
 
       await book.merge({ vocabularyStatus: 'completed' }).save()
@@ -92,6 +98,10 @@ export class BookVocabularyPipelineService {
         {
           totalWords: allVocabularies.length,
           enrichedWords,
+          dictionaryOnlyWords: diagnostics.dictionaryOnlyWords,
+          aiEnrichedWords: diagnostics.aiEnrichedWords,
+          aiFallbackWords: diagnostics.aiFallbackWords,
+          failedWords: diagnostics.failedWords,
         }
       )
 
@@ -112,6 +122,10 @@ export class BookVocabularyPipelineService {
           stepKey: BOOK_IMPORT_STEP.ENRICH_VOCABULARY,
           totalWords: allVocabularies.length,
           enrichedWords,
+          dictionaryOnlyWords: diagnostics.dictionaryOnlyWords,
+          aiEnrichedWords: diagnostics.aiEnrichedWords,
+          aiFallbackWords: diagnostics.aiFallbackWords,
+          failedWords: diagnostics.failedWords.length,
         },
         '[VocabularyPipeline] Step run completed'
       )

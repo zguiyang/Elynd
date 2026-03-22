@@ -50,7 +50,16 @@ test.group('BookVocabularyPipelineService', (group) => {
     const importStateService = {
       assertImportNotCancelled: async () => {},
       startStep: async () => ({ id: 900 }),
-      completeStep: async () => {},
+      completeStep: async (
+        _runId: number,
+        _stepLogId: number,
+        _bookId: number,
+        _stepKey: string,
+        _progress: number,
+        outputRef?: Record<string, unknown>
+      ) => {
+        calls.outputRef = outputRef || null
+      },
       failStep: async () => {},
     }
 
@@ -72,24 +81,41 @@ test.group('BookVocabularyPipelineService', (group) => {
     }
 
     const dictionaryService = {
-      lookupBatch: async () =>
-        new Map([
+      lookupBatchWithDiagnostics: async () => ({
+        entries: new Map([
           [
             'alpha',
             {
               id: 42,
               word: 'alpha',
               meanings: ['first letter of the Greek alphabet'],
+              meta: {
+                source: 'dictionary',
+                localizationLanguage: 'zh-CN',
+                lookupMode: 'ai_enriched',
+              },
             },
           ],
         ]),
+        diagnostics: {
+          totalWords: 1,
+          succeededWords: 1,
+          failedWords: [],
+          dictionaryOnlyWords: 0,
+          aiEnrichedWords: 1,
+          aiFallbackWords: 0,
+        },
+      }),
       saveGlobalEntry: async (entry: { id: number }) => entry,
       cacheEntry: async () => {},
     }
 
     const GenerateTtsAny = GenerateTtsJob as any
     const originalGenerateTtsDispatch = GenerateTtsAny.dispatch
-    const calls: { tts?: Array<Record<string, unknown>> } = {}
+    const calls: {
+      tts?: Array<Record<string, unknown>>
+      outputRef?: Record<string, unknown> | null
+    } = {}
 
     GenerateTtsAny.dispatch = async (payload: Record<string, unknown>) => {
       calls.tts = [...(calls.tts || []), payload]
@@ -113,6 +139,10 @@ test.group('BookVocabularyPipelineService', (group) => {
       assert.equal(calls.tts?.[0]?.bookId, book.id)
       assert.equal(calls.tts?.[0]?.runId, 321)
       assert.equal(calls.tts?.[0]?.userId, user.id)
+      assert.equal(calls.outputRef?.aiEnrichedWords, 1)
+      assert.equal(calls.outputRef?.aiFallbackWords, 0)
+      assert.equal(calls.outputRef?.dictionaryOnlyWords, 0)
+      assert.deepEqual(calls.outputRef?.failedWords, [])
     } finally {
       GenerateTtsAny.dispatch = originalGenerateTtsDispatch
       await user.delete()

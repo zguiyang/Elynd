@@ -21,6 +21,7 @@ import { isSingleWordSelection, normalizeSelectionText } from '@/lib/selection-a
 import type { ReaderActionType, ReaderSelectionActionPayload } from '@/types/reader-selection'
 import { useReadingSettingsStore } from '@/stores/reading-settings'
 import MarkdownRenderer from '@/components/shared/MarkdownRenderer.vue'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 interface Props {
   paragraphs: string[]
@@ -49,6 +50,7 @@ const selectedText = ref('')
 const isActionSurfaceVisible = ref(false)
 const isMobileViewport = ref(false)
 const surfacePosition = ref({ x: 0, y: 0 })
+const isLookupDialogOpen = ref(false)
 
 const lookupState = ref<{
   status: 'idle' | 'loading' | 'success' | 'error'
@@ -98,6 +100,7 @@ const closeActionSurface = () => {
   currentSelectionRange.value = null
   selectedText.value = ''
   resetLookupState()
+  isLookupDialogOpen.value = false
 }
 
 const updateViewportMode = () => {
@@ -143,6 +146,7 @@ const updateSelectionState = () => {
 
   currentSelectionRange.value = range
   selectedText.value = text
+  isLookupDialogOpen.value = false
   surfacePosition.value = {
     x: rect.left + rect.width / 2,
     y: rect.top - 12,
@@ -197,6 +201,7 @@ const handleLookup = async () => {
   }
 
   lookupState.value = { status: 'loading', result: null, errorMessage: null }
+  isLookupDialogOpen.value = true
   await lookupWord(normalizedSelection.value, lookupContext.value)
     .then((result) => {
       lookupState.value = {
@@ -386,87 +391,122 @@ onUnmounted(() => {
         </Button>
       </div>
 
-      <p v-if="lookupState.status === 'loading'" data-test="reader-lookup-loading" class="mt-2 text-xs text-muted-foreground">
-        查词中...
-      </p>
-      <p v-else-if="lookupState.status === 'error'" data-test="reader-lookup-error" class="mt-2 text-xs text-destructive">
-        {{ lookupState.errorMessage }}
-      </p>
-      <div
-        v-else-if="lookupState.status === 'success' && lookupState.result"
-        data-test="reader-lookup-result"
-        class="mt-2 rounded-md border bg-card/60 p-2 text-xs"
-      >
-        <div class="flex items-start justify-between gap-2">
-          <div>
-            <p class="font-semibold text-foreground">
-              {{ lookupState.result.word }}
-            </p>
-            <p v-if="lookupState.result.phonetic" class="mt-0.5 font-normal text-muted-foreground">
-              {{ lookupState.result.phonetic }}
-            </p>
-          </div>
-          <span
-            v-if="lookupState.result.meta"
-            class="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"
-          >
-            {{ getMetaLabel(lookupState.result.meta) }}
-          </span>
-        </div>
+    </div>
 
-        <div
-          v-for="(meaning, meaningIndex) in lookupState.result.meanings.slice(0, 3)"
-          :key="`${meaning.partOfSpeech}-${meaningIndex}`"
-          class="mt-2 rounded-md border border-border/60 bg-background/60 p-2"
-        >
-          <p class="text-[11px] uppercase tracking-wide text-muted-foreground">
-            {{ meaning.partOfSpeech }}
-          </p>
+    <Dialog v-model:open="isLookupDialogOpen">
+      <DialogContent class="w-[min(42rem,calc(100vw-1.5rem))] h-[min(82vh,calc(100vh-1.5rem))] overflow-hidden p-0">
+        <div class="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)]" @mousedown.stop>
+          <DialogHeader class="border-b px-5 py-4 text-left">
+            <DialogTitle class="text-base font-semibold">
+              查词结果
+            </DialogTitle>
+            <DialogDescription class="text-xs">
+              {{ normalizedSelection }}
+            </DialogDescription>
+          </DialogHeader>
 
-          <p v-if="meaning.localizedMeaning" class="mt-1 text-foreground/90 leading-5">
-            {{ meaning.localizedMeaning }}
-          </p>
-
-          <div
-            v-for="(definition, definitionIndex) in meaning.definitions.slice(0, 2)"
-            :key="`${definition.sourceText}-${definitionIndex}`"
-            class="mt-1 space-y-1"
-          >
-            <p class="text-foreground leading-5">
-              {{ definition.sourceText }}
-            </p>
-            <p class="text-muted-foreground leading-5">
-              {{ definition.localizedText }}
-            </p>
-            <p v-if="hasPlainExplanation(definition)" class="text-foreground/90 leading-5">
-              {{ definition.plainExplanation }}
+          <div class="flex-1 min-h-0 overflow-y-auto px-5 py-4">
+            <p
+              v-if="lookupState.status === 'loading'"
+              data-test="reader-lookup-loading"
+              class="text-sm text-muted-foreground"
+            >
+              查词中...
             </p>
 
-            <div v-if="definition.examples.length > 0" class="mt-1 space-y-1">
-              <div
-                v-for="(example, exampleIndex) in definition.examples.slice(0, 2)"
-                :key="`${definitionIndex}-${exampleIndex}-${example.source}`"
-                class="rounded border border-dashed border-border/70 p-2"
-              >
-                <div class="flex items-center justify-between gap-2">
-                  <p class="text-[11px] text-muted-foreground">
-                    例句
+            <p
+              v-else-if="lookupState.status === 'error'"
+              data-test="reader-lookup-error"
+              class="text-sm text-destructive"
+            >
+              {{ lookupState.errorMessage }}
+            </p>
+
+            <div
+              v-else-if="lookupState.status === 'success' && lookupState.result"
+              data-test="reader-lookup-result"
+              class="space-y-5 text-sm"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="text-xl font-semibold leading-tight text-foreground">
+                    {{ lookupState.result.word }}
                   </p>
-                  <span class="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-                    {{ getExampleSourceLabel(example.source) }}
-                  </span>
+                  <p v-if="lookupState.result.phonetic" class="mt-1 text-sm text-muted-foreground">
+                    {{ lookupState.result.phonetic }}
+                  </p>
                 </div>
-                <p class="mt-1 text-foreground leading-5">
-                  {{ example.sourceText }}
-                </p>
-                <p v-if="example.localizedText" class="mt-1 text-muted-foreground leading-5">
-                  {{ example.localizedText }}
-                </p>
+                <span
+                  v-if="lookupState.result.meta"
+                  class="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground"
+                >
+                  {{ getMetaLabel(lookupState.result.meta) }}
+                </span>
+              </div>
+
+              <div class="space-y-4">
+                <section
+                  v-for="(meaning, meaningIndex) in lookupState.result.meanings.slice(0, 3)"
+                  :key="`${meaning.partOfSpeech}-${meaningIndex}`"
+                  class="space-y-3"
+                >
+                  <div class="flex flex-wrap items-center gap-2">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {{ meaning.partOfSpeech }}
+                    </p>
+                    <p v-if="meaning.localizedMeaning" class="text-sm text-foreground">
+                      {{ meaning.localizedMeaning }}
+                    </p>
+                  </div>
+
+                  <div class="space-y-3">
+                    <div
+                      v-for="(definition, definitionIndex) in meaning.definitions.slice(0, 2)"
+                      :key="`${definition.sourceText}-${definitionIndex}`"
+                      class="space-y-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-3"
+                    >
+                      <p class="font-medium leading-6 text-foreground">
+                        {{ definition.sourceText }}
+                      </p>
+
+                      <p class="leading-6 text-muted-foreground">
+                        {{ definition.localizedText }}
+                      </p>
+
+                      <p v-if="hasPlainExplanation(definition)" class="leading-6 text-foreground/90">
+                        {{ definition.plainExplanation }}
+                      </p>
+
+                      <div v-if="definition.examples.length > 0" class="space-y-2 border-t border-border/50 pt-2">
+                        <div
+                          v-for="(example, exampleIndex) in definition.examples.slice(0, 2)"
+                          :key="`${definitionIndex}-${exampleIndex}-${example.source}`"
+                          class="space-y-1"
+                        >
+                          <div class="flex items-center justify-between gap-2">
+                            <p class="text-xs text-muted-foreground">
+                              例句
+                            </p>
+                            <span class="text-[11px] text-muted-foreground">
+                              {{ getExampleSourceLabel(example.source) }}
+                            </span>
+                          </div>
+                          <p class="leading-6 text-foreground">
+                            {{ example.sourceText }}
+                          </p>
+                          <p v-if="example.localizedText" class="leading-6 text-muted-foreground">
+                            {{ example.localizedText }}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </section>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>

@@ -40,12 +40,7 @@ test.group('book_text_normalizer', () => {
   })
 
   test('removes divider and illustration blocks from content', async ({ assert }) => {
-    const cleaned = removeBlockNoise([
-      'publisher info',
-      '-----',
-      '[Illustration]',
-      'real content',
-    ])
+    const cleaned = removeBlockNoise(['publisher info', '-----', '[Illustration]', 'real content'])
 
     assert.deepEqual(cleaned, ['publisher info', 'real content'])
   })

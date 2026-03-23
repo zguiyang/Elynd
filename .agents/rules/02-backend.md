@@ -789,6 +789,8 @@ export class SearchService {
 
 **Conventions**:
 - Create migration files before modifying database structure
+- MUST create migration files via `node ace make:migration <name>` first, then modify the generated file as needed
+- NEVER create migration files manually in `database/migrations/`
 - Use descriptive names with timestamp
 - Define schema using Knex schema builder
 

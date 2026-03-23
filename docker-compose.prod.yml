@@ -4,7 +4,7 @@ services:
     container_name: elynd-server
     restart: always
     volumes:
-      - ./backend:/app
+      - ./:/app
       - pnpm-cache:/root/.cache/pnpm
     environment:
       - NODE_ENV=production
@@ -12,7 +12,7 @@ services:
       - PATH=/root/.cache/pnpm:$PATH
     working_dir: /app
     command: >
-      sh -c "cd /app && pnpm install --prod && node bin/server.js"
+      sh -c "rm -rf node_modules backend/node_modules && pnpm install --prod --frozen-lockfile --force && cd /app/backend && node bin/server.js"
     ports:
       - "3335:3335"
     networks:
@@ -29,7 +29,7 @@ services:
     container_name: elynd-jobs
     restart: always
     volumes:
-      - ./backend:/app
+      - ./:/app
       - pnpm-cache:/root/.cache/pnpm
     environment:
       - NODE_ENV=production
@@ -37,7 +37,7 @@ services:
       - PATH=/root/.cache/pnpm:$PATH
     working_dir: /app
     command: >
-      sh -c "cd /app && pnpm install --prod && node ace jobs:listen"
+      sh -c "rm -rf node_modules backend/node_modules && pnpm install --prod --frozen-lockfile --force && cd /app/backend && node ace jobs:listen"
     networks:
       - 1panel-network
 

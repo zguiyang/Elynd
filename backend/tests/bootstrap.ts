@@ -1,6 +1,7 @@
 import { assert } from '@japa/assert'
 import { apiClient } from '@japa/api-client'
 import app from '@adonisjs/core/services/app'
+import redis from '@adonisjs/redis/services/main'
 import type { Config } from '@japa/runner/types'
 import { pluginAdonisJS } from '@japa/plugin-adonisjs'
 import testUtils from '@adonisjs/core/services/test_utils'
@@ -24,7 +25,19 @@ export const plugins: Config['plugins'] = [assert(), apiClient(), pluginAdonisJS
  */
 export const runnerHooks: Required<Pick<Config, 'setup' | 'teardown'>> = {
   setup: [],
-  teardown: [],
+  teardown: [
+    async () => {
+      /**
+       * Ensure Redis connections are gracefully closed to avoid unhandled
+       * "Connection is closed" errors when tests finish.
+       */
+      try {
+        await redis.quitAll()
+      } catch {
+        await redis.disconnectAll().catch(() => undefined)
+      }
+    },
+  ],
 }
 
 /**

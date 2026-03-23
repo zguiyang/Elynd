@@ -3,7 +3,7 @@ import Book from '#models/book'
 import BookProcessingRunLog from '#models/book_processing_run_log'
 import { BOOK_IMPORT_STEP } from '#constants'
 import { BookImportOrchestratorService } from '#services/book-import/book_import_orchestrator_service'
-import { ImportStateService } from '#services/book-import/import_state_service'
+import { ImportStateService } from '#services/book-import/state/import_state_service'
 import type { SerialImportPayload } from '#types/book_import_pipeline'
 
 @inject()

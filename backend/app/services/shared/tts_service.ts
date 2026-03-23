@@ -5,7 +5,7 @@ import drive from '@adonisjs/drive/services/main'
 import * as sdk from 'microsoft-cognitiveservices-speech-sdk'
 import { speechSdkTicksToMs } from '#utils/speech_sdk_time'
 import { TTS_CHUNK_STRATEGY } from '#constants'
-import { buildCanonicalChapterText } from '#services/book-parse/book_text_normalizer'
+import { buildCanonicalChapterText } from '#utils/book_text_normalizer'
 import type {
   TtsResult,
   AudioTiming,

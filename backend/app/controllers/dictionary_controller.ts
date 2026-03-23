@@ -1,7 +1,7 @@
 import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
 import { Exception } from '@adonisjs/core/exceptions'
-import { DictionaryService } from '#services/shared/dictionary_service'
+import { DictionaryService } from '#services/dictionary/dictionary_service'
 import { dictionaryLookupValidator } from '#validators/dictionary_validator'
 
 @inject()

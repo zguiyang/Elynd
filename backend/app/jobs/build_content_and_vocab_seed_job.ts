@@ -1,6 +1,6 @@
 import { Job } from 'adonisjs-jobs'
 import app from '@adonisjs/core/services/app'
-import { BookContentPipelineService } from '#services/book-import/book_content_pipeline_service'
+import { BookContentPipelineService } from '#services/book-import/pipeline/book_content_pipeline_service'
 import type { SerialImportPayload } from '#types/book_import_pipeline'
 
 export default class BuildContentAndVocabSeedJob extends Job {

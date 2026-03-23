@@ -1,6 +1,6 @@
 import { Job } from 'adonisjs-jobs'
 import app from '@adonisjs/core/services/app'
-import { BookImportPreparationService } from '#services/book-import/book_import_preparation_service'
+import { BookImportPreparationService } from '#services/book-import/pipeline/book_import_preparation_service'
 import type { SerialImportPayload } from '#types/book_import_pipeline'
 
 export default class PrepareImportJob extends Job {

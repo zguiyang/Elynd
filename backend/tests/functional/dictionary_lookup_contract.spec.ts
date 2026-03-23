@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import { Exception } from '@adonisjs/core/exceptions'
-import { DictionaryService } from '#services/shared/dictionary_service'
+import { DictionaryService } from '#services/dictionary/dictionary_service'
 import { bearerAuthHeader, createAuthenticatedUser } from '#tests/helpers/auth'
 
 interface AiDictionaryEntry {

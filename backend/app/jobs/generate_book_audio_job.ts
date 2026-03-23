@@ -8,7 +8,7 @@ import { BOOK_IMPORT_STEP } from '#constants'
 import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import BookChapterAudio from '#models/book_chapter_audio'
-import { BookProcessingLogService } from '#services/book-import/book_processing_log_service'
+import { BookProcessingLogService } from '#services/book-import/state/book_processing_log_service'
 import type { ChapterInput } from '#types/tts'
 import crypto from 'node:crypto'
 

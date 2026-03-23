@@ -8,7 +8,7 @@ import { BookContentGuardService } from '#services/book-parse/book_content_guard
 import {
   buildCanonicalChapterText,
   extractCanonicalChapterParts,
-} from '#services/book-parse/book_text_normalizer'
+} from '#utils/book_text_normalizer'
 
 async function loadFixture<T>(name: string): Promise<T> {
   const filePath = join(process.cwd(), 'tests/fixtures/chapters', `${name}.json`)

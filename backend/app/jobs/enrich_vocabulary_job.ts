@@ -1,6 +1,6 @@
 import { Job } from 'adonisjs-jobs'
 import app from '@adonisjs/core/services/app'
-import { BookVocabularyPipelineService } from '#services/book-import/book_vocabulary_pipeline_service'
+import { BookVocabularyPipelineService } from '#services/book-import/pipeline/book_vocabulary_pipeline_service'
 import type { SerialImportPayload } from '#types/book_import_pipeline'
 
 export default class EnrichVocabularyJob extends Job {

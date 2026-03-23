@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { WordAudioService } from '#services/word_audio_service'
+import { WordAudioService } from '#services/dictionary/word_audio_service'
 import { bearerAuthHeader, createAuthenticatedUser } from '#tests/helpers/auth'
 
 test.group('Word audio API contract', () => {

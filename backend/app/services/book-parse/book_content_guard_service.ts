@@ -6,7 +6,7 @@
  */
 
 import { inject } from '@adonisjs/core'
-import { hasHtmlResidue } from '#services/book-parse/book_text_normalizer'
+import { hasHtmlResidue } from '#utils/book_text_normalizer'
 
 export interface ValidationResult {
   valid: boolean

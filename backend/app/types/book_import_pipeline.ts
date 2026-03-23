@@ -14,6 +14,7 @@ const BOOK_IMPORT_SERIAL_STEPS = [
 ] as const
 
 type BookImportSerialStep = (typeof BOOK_IMPORT_SERIAL_STEPS)[number]
+type DispatchableImportStep = BookImportSerialStep
 
 type BookImportTerminalStep = typeof BOOK_IMPORT_STEP.COMPLETED | typeof BOOK_IMPORT_STEP.FAILED
 
@@ -44,11 +45,19 @@ interface SerialImportPayload {
   runId: number
 }
 
+interface ChapterArtifactItem {
+  title: string
+  content: string
+  chapterIndex: number
+}
+
 export { BOOK_IMPORT_SERIAL_STEPS, BOOK_IMPORT_STEP_TRANSITIONS }
 export type {
   BookImportPipelineStep,
   BookImportSerialStep,
+  DispatchableImportStep,
   BookImportStepTransitionMap,
   BookImportTerminalStep,
+  ChapterArtifactItem,
   SerialImportPayload,
 }

@@ -1,6 +1,6 @@
 import { Job } from 'adonisjs-jobs'
 import app from '@adonisjs/core/services/app'
-import { BookSemanticPipelineService } from '#services/book-import/book_semantic_pipeline_service'
+import { BookSemanticPipelineService } from '#services/book-import/pipeline/book_semantic_pipeline_service'
 import type { SerialImportPayload } from '#types/book_import_pipeline'
 
 export default class SemanticCleanJob extends Job {

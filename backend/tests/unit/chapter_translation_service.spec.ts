@@ -2,7 +2,7 @@ import { test } from '@japa/runner'
 import redis from '@adonisjs/redis/services/main'
 import ChapterTranslation from '#models/chapter_translation'
 import { CHAPTER_TRANSLATION } from '#constants'
-import { ChapterTranslationService } from '#services/chapter_translation_service'
+import { ChapterTranslationService } from '#services/book/chapter_translation_service'
 
 test.group('ChapterTranslationService cache key', (group) => {
   const originalRedisGet = redis.get.bind(redis)

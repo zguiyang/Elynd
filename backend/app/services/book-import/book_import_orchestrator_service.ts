@@ -1,8 +1,5 @@
 import { inject } from '@adonisjs/core'
-import { dispatch } from 'adonisjs-jobs/services/main'
 import { createHash } from 'node:crypto'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import path from 'node:path'
 import app from '@adonisjs/core/services/app'
 import drive from '@adonisjs/drive/services/main'
 import logger from '@adonisjs/core/services/logger'
@@ -12,15 +9,17 @@ import Book from '#models/book'
 import BookChapter from '#models/book_chapter'
 import BookChapterAudio from '#models/book_chapter_audio'
 import BookVocabulary from '#models/book_vocabulary'
-import BookProcessingStepLog from '#models/book_processing_step_log'
 import { BookParserService } from '#services/book-parse/book_parser_service'
 import { BookSemanticCleanService } from '#services/book-parse/book_semantic_clean_service'
 import { VocabularyAnalyzerService } from '#services/book-parse/vocabulary_analyzer_service'
 import { BookHashService } from '#services/book-parse/book_hash_service'
 import { BookContentGuardService } from '#services/book-parse/book_content_guard_service'
-import { buildCanonicalChapterText } from '#services/book-parse/book_text_normalizer'
+import { buildCanonicalChapterText } from '#utils/book_text_normalizer'
 import { BookLevelService } from '#services/book/book_level_service'
+import { BookImportJobDispatcherService } from '#services/book-import/book_import_job_dispatcher_service'
+import { BookImportArtifactService } from '#services/book-import/book_import_artifact_service'
 import { BOOK_IMPORT_PROGRESS, BOOK_IMPORT_STEP } from '#constants'
+import type { ChapterArtifactItem, DispatchableImportStep } from '#types/book_import_pipeline'
 
 export interface ParsedSourceResult {
   title: string
@@ -30,20 +29,6 @@ export interface ParsedSourceResult {
   wordCount: number
 }
 
-export interface ChapterArtifactItem {
-  title: string
-  content: string
-  chapterIndex: number
-}
-
-type DispatchableImportStep =
-  | typeof BOOK_IMPORT_STEP.PREPARE_IMPORT
-  | typeof BOOK_IMPORT_STEP.SEMANTIC_CLEAN
-  | typeof BOOK_IMPORT_STEP.BUILD_CONTENT_AND_VOCAB_SEED
-  | typeof BOOK_IMPORT_STEP.ENRICH_VOCABULARY
-  | typeof BOOK_IMPORT_STEP.GENERATE_TTS
-  | typeof BOOK_IMPORT_STEP.FINALIZE_IMPORT
-
 @inject()
 export class BookImportOrchestratorService {
   constructor(
@@ -52,7 +37,9 @@ export class BookImportOrchestratorService {
     private hashService: BookHashService,
     private guardService: BookContentGuardService,
     private semanticCleaner: BookSemanticCleanService,
-    private bookLevelService: BookLevelService
+    private bookLevelService: BookLevelService,
+    private jobDispatcher: BookImportJobDispatcherService = new BookImportJobDispatcherService(),
+    private artifactService: BookImportArtifactService = new BookImportArtifactService()
   ) {}
 
   static getBaseProgressByStep(step: string): number {
@@ -80,14 +67,11 @@ export class BookImportOrchestratorService {
   }
 
   static buildPipelineJobId(params: { runId: number; bookId: number; stepKey: string }): string {
-    const { runId, bookId, stepKey } = params
-    return `import-run-${runId}-book-${bookId}-step-${stepKey}`
+    return BookImportJobDispatcherService.buildPipelineJobId(params)
   }
 
   async scheduleImportPipeline(payload: { bookId: number; userId: number }) {
-    const { default: ProcessBookJob } = await import('#jobs/process_book_job')
-    const jobId = (await dispatch(ProcessBookJob, payload)) as string | undefined
-    return jobId || `manual-import-${Date.now()}`
+    return this.jobDispatcher.scheduleImportPipeline(payload)
   }
 
   async scheduleImportPipelineFromStep(payload: {
@@ -96,62 +80,7 @@ export class BookImportOrchestratorService {
     runId: number
     stepKey: DispatchableImportStep
   }) {
-    const { bookId, userId, runId, stepKey } = payload
-    const commonPayload = { bookId, userId, runId }
-    const jobId = BookImportOrchestratorService.buildPipelineJobId({
-      runId,
-      bookId,
-      stepKey,
-    })
-
-    switch (stepKey) {
-      case BOOK_IMPORT_STEP.PREPARE_IMPORT: {
-        const { default: PrepareImportJob } = await import('#jobs/prepare_import_job')
-        return (
-          ((await dispatch(PrepareImportJob, commonPayload, { jobId })) as string | undefined) ||
-          jobId
-        )
-      }
-      case BOOK_IMPORT_STEP.SEMANTIC_CLEAN: {
-        const { default: SemanticCleanJob } = await import('#jobs/semantic_clean_job')
-        return (
-          ((await dispatch(SemanticCleanJob, commonPayload, { jobId })) as string | undefined) ||
-          jobId
-        )
-      }
-      case BOOK_IMPORT_STEP.BUILD_CONTENT_AND_VOCAB_SEED: {
-        const { default: BuildContentAndVocabSeedJob } =
-          await import('#jobs/build_content_and_vocab_seed_job')
-        return (
-          ((await dispatch(BuildContentAndVocabSeedJob, commonPayload, { jobId })) as
-            | string
-            | undefined) || jobId
-        )
-      }
-      case BOOK_IMPORT_STEP.ENRICH_VOCABULARY: {
-        const { default: EnrichVocabularyJob } = await import('#jobs/enrich_vocabulary_job')
-        return (
-          ((await dispatch(EnrichVocabularyJob, commonPayload, { jobId })) as string | undefined) ||
-          jobId
-        )
-      }
-      case BOOK_IMPORT_STEP.GENERATE_TTS: {
-        const { default: GenerateTtsJob } = await import('#jobs/generate_tts_job')
-        return (
-          ((await dispatch(GenerateTtsJob, commonPayload, { jobId })) as string | undefined) ||
-          jobId
-        )
-      }
-      case BOOK_IMPORT_STEP.FINALIZE_IMPORT: {
-        const { default: FinalizeImportJob } = await import('#jobs/finalize_import_job')
-        return (
-          ((await dispatch(FinalizeImportJob, commonPayload, { jobId })) as string | undefined) ||
-          jobId
-        )
-      }
-      default:
-        throw new Error(`Unsupported dispatch step: ${String(stepKey)}`)
-    }
+    return this.jobDispatcher.scheduleImportPipelineFromStep(payload)
   }
 
   async validateSourceFile(
@@ -235,83 +164,22 @@ export class BookImportOrchestratorService {
     stepKey: string
     chapters: ChapterArtifactItem[]
   }): Promise<string> {
-    const artifactsDir = app.makePath('tmp', 'book-import-artifacts')
-    await mkdir(artifactsDir, { recursive: true })
-
-    const fileName = `run-${params.runId}-book-${params.bookId}-${params.stepKey}-${Date.now()}.json`
-    const artifactPath = path.join(artifactsDir, fileName)
-
-    await writeFile(
-      artifactPath,
-      JSON.stringify(
-        {
-          runId: params.runId,
-          bookId: params.bookId,
-          stepKey: params.stepKey,
-          chapters: params.chapters,
-        },
-        null,
-        2
-      ),
-      'utf8'
-    )
-
-    return artifactPath
+    return this.artifactService.writeChapterArtifact(params)
   }
 
   async readChapterArtifact(artifactPath: string): Promise<ChapterArtifactItem[]> {
-    const raw = await readFile(artifactPath, 'utf8')
-    const parsed = JSON.parse(raw) as { chapters?: unknown }
-
-    if (!Array.isArray(parsed.chapters)) {
-      throw new Error(`Invalid chapter artifact payload: ${artifactPath}`)
-    }
-
-    return parsed.chapters.map((chapter, index) => {
-      const item = chapter as Record<string, unknown>
-      const title = typeof item.title === 'string' ? item.title.trim() : ''
-      const content = typeof item.content === 'string' ? item.content.trim() : ''
-      const chapterIndex =
-        typeof item.chapterIndex === 'number'
-          ? item.chapterIndex
-          : Number.parseInt(String(index), 10)
-
-      if (!title || !content) {
-        throw new Error(`Invalid chapter artifact item at index ${index}: ${artifactPath}`)
-      }
-
-      return {
-        title,
-        content,
-        chapterIndex,
-      }
-    })
+    return this.artifactService.readChapterArtifact(artifactPath)
   }
 
   async getSuccessfulStepOutputRef(
     runId: number,
     stepKey: string
   ): Promise<Record<string, unknown>> {
-    const stepLog = await BookProcessingStepLog.query()
-      .where('runLogId', runId)
-      .where('stepKey', stepKey)
-      .where('status', 'success')
-      .orderBy('id', 'desc')
-      .first()
-
-    if (!stepLog?.outputRef) {
-      throw new Error(`Missing successful output ref for step: ${stepKey}`)
-    }
-
-    return stepLog.outputRef
+    return this.artifactService.getSuccessfulStepOutputRef(runId, stepKey)
   }
 
   requireOutputRefString(outputRef: Record<string, unknown>, key: string): string {
-    const value = outputRef[key]
-    if (typeof value !== 'string' || value.trim().length === 0) {
-      throw new Error(`Missing output reference field: ${key}`)
-    }
-    return value
+    return this.artifactService.requireOutputRefString(outputRef, key)
   }
 
   async persistChaptersAndContentHash(params: {

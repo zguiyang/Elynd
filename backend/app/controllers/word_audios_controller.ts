@@ -1,6 +1,6 @@
 import { inject } from '@adonisjs/core'
 import type { HttpContext } from '@adonisjs/core/http'
-import { WordAudioService } from '#services/word_audio_service'
+import { WordAudioService } from '#services/dictionary/word_audio_service'
 import { wordAudioValidator } from '#validators/word_audio_validator'
 
 @inject()

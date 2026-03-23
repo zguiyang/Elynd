@@ -5,7 +5,7 @@ import BookProcessingRunLog from '#models/book_processing_run_log'
 import BookProcessingStepLog from '#models/book_processing_step_log'
 import { createAuthenticatedUser } from '#tests/helpers/auth'
 import { BOOK_IMPORT_STEP } from '#constants'
-import { ImportStateService } from '#services/book-import/import_state_service'
+import { ImportStateService } from '#services/book-import/state/import_state_service'
 import type { TransmitService } from '#services/shared/transmit_service'
 
 const createImportStateService = () => {

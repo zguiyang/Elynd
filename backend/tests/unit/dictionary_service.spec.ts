@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
 import redis from '@adonisjs/redis/services/main'
 import { Exception } from '@adonisjs/core/exceptions'
-import { DictionaryService } from '#services/shared/dictionary_service'
+import { DictionaryService } from '#services/dictionary/dictionary_service'
 import { DICTIONARY } from '#constants'
 
 interface AiDictionaryExample {

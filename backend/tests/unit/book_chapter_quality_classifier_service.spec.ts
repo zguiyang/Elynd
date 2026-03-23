@@ -1,18 +1,25 @@
 import { test } from '@japa/runner'
-import { BookChapterQualityClassifierService } from '#services/book_chapter_quality_classifier_service'
+import { BookChapterQualityClassifierService } from '#services/book-parse/book_chapter_quality_classifier_service'
 
 function createService(overrides?: {
-  chatJson?: (config: unknown, params: { messages: Array<{ role: string; content: string }> }) => Promise<unknown>
+  chatJson?: (
+    config: unknown,
+    params: { messages: Array<{ role: string; content: string }> }
+  ) => Promise<unknown>
   render?: (name: string, data: Record<string, unknown>) => string
 }) {
   return new BookChapterQualityClassifierService(
     {
-      chatJson: overrides?.chatJson || (async () => {
-        throw new Error('chatJson should be mocked')
-      }),
+      chatJson:
+        overrides?.chatJson ||
+        (async () => {
+          throw new Error('chatJson should be mocked')
+        }),
     } as any,
     {
-      render: overrides?.render || ((name: string, data: Record<string, unknown>) => JSON.stringify({ name, data })),
+      render:
+        overrides?.render ||
+        ((name: string, data: Record<string, unknown>) => JSON.stringify({ name, data })),
     } as any,
     {
       getAiConfig: async () => ({
@@ -51,7 +58,7 @@ test.group('BookChapterQualityClassifierService', () => {
       chapterIndex: 0,
       title: 'FREDERICK WARNE',
       content:
-        '----------------------------------------\n\nFIRST PUBLISHED 1902\n\nFREDERICK WARNE & CO., 1902\n\nPRINTED AND BOUND IN GREAT BRITAIN BY WILLIAM CLOWES LIMITED, BECCLES AND LONDON\n\n----------------------------------------\n\nOnce upon a time there were four little Rabbits, and their names were Flopsy, Mopsy, Cotton-tail, and Peter.\n\nThey lived with their Mother in a sand-bank, underneath the root of a very big fir-tree.\n\nPeter went straight away to Mr. McGregor\'s garden, and the story continued from there.',
+        "----------------------------------------\n\nFIRST PUBLISHED 1902\n\nFREDERICK WARNE & CO., 1902\n\nPRINTED AND BOUND IN GREAT BRITAIN BY WILLIAM CLOWES LIMITED, BECCLES AND LONDON\n\n----------------------------------------\n\nOnce upon a time there were four little Rabbits, and their names were Flopsy, Mopsy, Cotton-tail, and Peter.\n\nThey lived with their Mother in a sand-bank, underneath the root of a very big fir-tree.\n\nPeter went straight away to Mr. McGregor's garden, and the story continued from there.",
       previousTitle: null,
       nextTitle: 'THE TALE OF PETER RABBIT',
     })

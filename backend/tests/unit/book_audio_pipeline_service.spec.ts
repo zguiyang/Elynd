@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { BookAudioPipelineService } from '#services/book-import/book_audio_pipeline_service'
+import { BookAudioPipelineService } from '#services/book-import/pipeline/book_audio_pipeline_service'
 import type { ChapterInput, WordTiming } from '#types/tts'
 
 function createService() {

@@ -7,7 +7,7 @@ import BookChapterAudio from '#models/book_chapter_audio'
 import { TtsService } from '#services/shared/tts_service'
 import { BOOK_IMPORT_STEP, TTS_CHUNK_STRATEGY } from '#constants'
 import { BookImportOrchestratorService } from '#services/book-import/book_import_orchestrator_service'
-import { ImportStateService } from '#services/book-import/import_state_service'
+import { ImportStateService } from '#services/book-import/state/import_state_service'
 import FinalizeImportJob from '#jobs/finalize_import_job'
 import type { SerialImportPayload } from '#types/book_import_pipeline'
 import type { ChapterInput, WordTiming } from '#types/tts'
@@ -15,7 +15,7 @@ import {
   buildCanonicalChapterText,
   hasHtmlResidue,
   hasMarkdownResidue,
-} from '#services/book-parse/book_text_normalizer'
+} from '#utils/book_text_normalizer'
 
 const MIN_WORD_BOUNDARIES = 20
 const HEAD_WORD_MATCH_SIZE = 30

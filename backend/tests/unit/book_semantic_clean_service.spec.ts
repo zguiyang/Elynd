@@ -4,7 +4,7 @@ import { test } from '@japa/runner'
 import { BookChapterCleanerService } from '#services/book-parse/book_chapter_cleaner_service'
 import { BookContentGuardService } from '#services/book-parse/book_content_guard_service'
 import { BookSemanticCleanService } from '#services/book-parse/book_semantic_clean_service'
-import { buildCanonicalChapterText } from '#services/book-parse/book_text_normalizer'
+import { buildCanonicalChapterText } from '#utils/book_text_normalizer'
 
 async function loadFixture<T>(name: string): Promise<T> {
   const filePath = join(process.cwd(), 'tests/fixtures/chapters', `${name}.json`)

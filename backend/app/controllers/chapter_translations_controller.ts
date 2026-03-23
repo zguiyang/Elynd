@@ -1,7 +1,7 @@
 import { inject } from '@adonisjs/core'
 import { Exception } from '@adonisjs/core/exceptions'
 import type { HttpContext } from '@adonisjs/core/http'
-import { ChapterTranslationService } from '#services/chapter_translation_service'
+import { ChapterTranslationService } from '#services/book/chapter_translation_service'
 import { createSseWriter } from '#utils/sse'
 import {
   queryChapterTranslationValidator,

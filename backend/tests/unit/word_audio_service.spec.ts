@@ -1,6 +1,6 @@
 import { test } from '@japa/runner'
 import redis from '@adonisjs/redis/services/main'
-import { WordAudioService } from '#services/word_audio_service'
+import { WordAudioService } from '#services/dictionary/word_audio_service'
 
 test.group('WordAudioService', (group) => {
   const originalRedisGet = redis.get.bind(redis)

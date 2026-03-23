@@ -4,7 +4,7 @@ import { BOOK_IMPORT_AI } from '#constants'
 import { AiService } from '#services/ai/ai_service'
 import { ConfigService } from '#services/ai/config_service'
 import PromptService from '#services/ai/prompt_service'
-import { normalizeBookText } from '#services/book-parse/book_text_normalizer'
+import { normalizeBookText } from '#utils/book_text_normalizer'
 import type { AiChatParams, AiClientConfig } from '#types/ai'
 
 export const CHAPTER_QUALITY_DECISIONS = {

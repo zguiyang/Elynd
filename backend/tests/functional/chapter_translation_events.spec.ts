@@ -1,5 +1,5 @@
 import { test } from '@japa/runner'
-import { ChapterTranslationService } from '#services/chapter_translation_service'
+import { ChapterTranslationService } from '#services/book/chapter_translation_service'
 import { bearerAuthHeader, createAuthenticatedUser } from '#tests/helpers/auth'
 
 test.group('Chapter Translation Events API', (group) => {

@@ -4,7 +4,7 @@ import { Exception } from '@adonisjs/core/exceptions'
 import type { MultipartFile } from '@adonisjs/core/bodyparser'
 import EPub from 'epub'
 import type { ManifestItem } from 'epub'
-import { extractPlainTextFromHtml, normalizeBookText } from '#services/book-parse/book_text_normalizer'
+import { extractPlainTextFromHtml, normalizeBookText } from '#utils/book_text_normalizer'
 
 export interface ParsedBookChapter {
   chapterIndex: number

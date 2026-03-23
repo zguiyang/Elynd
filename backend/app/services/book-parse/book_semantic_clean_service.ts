@@ -8,13 +8,13 @@ import { BookContentGuardService } from '#services/book-parse/book_content_guard
 import {
   buildCanonicalChapterText,
   extractCanonicalChapterParts,
-} from '#services/book-parse/book_text_normalizer'
+} from '#utils/book_text_normalizer'
 import PromptService from '#services/ai/prompt_service'
 import { ConfigService } from '#services/ai/config_service'
 import {
   BookChapterQualityClassifierService,
   CHAPTER_QUALITY_DECISIONS,
-} from '#services/book_chapter_quality_classifier_service'
+} from '#services/book-parse/book_chapter_quality_classifier_service'
 
 export interface SemanticMetadataInput {
   fileName: string

@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { BookParserService } from '#services/book-parse/book_parser_service'
-import { extractPlainTextFromHtml } from '#services/book-parse/book_text_normalizer'
+import { extractPlainTextFromHtml } from '#utils/book_text_normalizer'
 
 const execFileAsync = promisify(execFile)
 

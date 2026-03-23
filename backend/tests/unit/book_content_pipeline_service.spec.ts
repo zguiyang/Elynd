@@ -1,7 +1,7 @@
 import { test } from '@japa/runner'
 import Book from '#models/book'
 import { BOOK_IMPORT_STEP } from '#constants'
-import { BookContentPipelineService } from '#services/book-import/book_content_pipeline_service'
+import { BookContentPipelineService } from '#services/book-import/pipeline/book_content_pipeline_service'
 import EnrichVocabularyJob from '#jobs/enrich_vocabulary_job'
 
 test.group('BookContentPipelineService', () => {

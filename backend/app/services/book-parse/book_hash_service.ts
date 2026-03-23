@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { inject } from '@adonisjs/core'
-import { normalizeSpeechText } from '#services/book-parse/book_text_normalizer'
+import { normalizeSpeechText } from '#utils/book_text_normalizer'
 
 @inject()
 export class BookHashService {

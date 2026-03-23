@@ -1,6 +1,6 @@
 import { Job } from 'adonisjs-jobs'
 import app from '@adonisjs/core/services/app'
-import { BookImportFinalizeService } from '#services/book-import/book_import_finalize_service'
+import { BookImportFinalizeService } from '#services/book-import/pipeline/book_import_finalize_service'
 import type { SerialImportPayload } from '#types/book_import_pipeline'
 
 export default class FinalizeImportJob extends Job {

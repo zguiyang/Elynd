@@ -1,6 +1,6 @@
 import { BaseCommand } from '@adonisjs/core/ace'
-import { DictionaryService } from '#services/shared/dictionary_service'
-import type { DictionaryEntry } from '#services/shared/dictionary_service'
+import { DictionaryService } from '#services/dictionary/dictionary_service'
+import type { DictionaryEntry } from '#services/dictionary/dictionary_service'
 
 interface LegacyVocabularyRow {
   id: number

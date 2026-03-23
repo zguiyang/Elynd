@@ -86,6 +86,14 @@ Once started, open **http://localhost:3000** in your browser.
 
 ### Production Deployment
 
+> **Deployment Notes**
+>
+> This project depends on AI model services and TTS (text-to-speech) services:
+> - **AI Models**: Uses OpenAI-compatible API format, with more providers coming soon
+> - **TTS Services**: Currently only Azure TTS is supported, with more options planned
+>
+> After deployment, **the first registered user will become the administrator**. Please configure AI services in the admin panel after logging in.
+
 **Step 1: Configure environment variables**
 
 ```bash
@@ -126,6 +134,51 @@ exit
 | `DB_DATABASE` | Database name | `app` |
 | `REDIS_HOST` | Redis host | `redis` |
 | `APP_KEY` | Application key | (required) |
+
+#### Nginx Configuration (Domain Access)
+
+If you need to access the application via domain, use the following Nginx configuration:
+
+```nginx
+# /__transmit/ proxy (for SSE real-time communication)
+location ^~ /__transmit/ {
+    proxy_pass http://127.0.0.1:3335;
+    proxy_set_header Host $host;
+    proxy_set_header Cookie $http_cookie;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # SSE critical settings
+    proxy_buffering off;
+    proxy_cache off;
+    proxy_read_timeout 86400s;
+    proxy_send_timeout 86400s;
+}
+
+# /static/ proxy (static assets)
+location ^~ /static/ {
+    proxy_pass http://127.0.0.1:3335;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # Static assets long-term cache
+    expires 7d;
+    add_header Cache-Control "public, immutable";
+}
+
+# /api/ proxy (backend API)
+location ^~ /api/ {
+    proxy_pass http://127.0.0.1:3335;
+    proxy_set_header Host $host;
+    proxy_set_header Cookie $http_cookie;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
 
 ## FAQ
 

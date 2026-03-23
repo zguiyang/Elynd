@@ -86,6 +86,14 @@ pnpm run dev:web
 
 #### 生产环境部署
 
+> **部署须知**
+>
+> 本项目依赖 AI 模型服务与 TTS（文本转语音）服务：
+> - **AI 模型**：采用 OpenAI 格式的 API，后续将扩展支持更多提供商
+> - **TTS 服务**：目前仅支持 Azure TTS，后续将扩展更多选项
+>
+> 部署完成后，**首个注册用户将自动成为管理员**。进入系统后，请先在管理后台配置 AI 服务。
+
 **步骤 1：配置环境变量**
 
 ```bash
@@ -126,6 +134,51 @@ exit
 | `DB_DATABASE` | 数据库名称 | `app` |
 | `REDIS_HOST` | Redis 地址 | `redis` |
 | `APP_KEY` | 应用密钥 | （必需） |
+
+#### Nginx 配置（域名访问）
+
+如果需要通过域名访问应用，请参考以下 Nginx 配置：
+
+```nginx
+# /__transmit/ 路径代理（用于 SSE 实时通信）
+location ^~ /__transmit/ {
+    proxy_pass http://127.0.0.1:3335;
+    proxy_set_header Host $host;
+    proxy_set_header Cookie $http_cookie;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # SSE 关键配置
+    proxy_buffering off;
+    proxy_cache off;
+    proxy_read_timeout 86400s;
+    proxy_send_timeout 86400s;
+}
+
+# /static/ 路径代理（静态资源）
+location ^~ /static/ {
+    proxy_pass http://127.0.0.1:3335;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # 静态资源长期缓存
+    expires 7d;
+    add_header Cache-Control "public, immutable";
+}
+
+# /api 路径代理（后端 API）
+location ^~ /api/ {
+    proxy_pass http://127.0.0.1:3335;
+    proxy_set_header Host $host;
+    proxy_set_header Cookie $http_cookie;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
 
 ### 常见问题
 

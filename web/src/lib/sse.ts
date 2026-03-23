@@ -1,3 +1,4 @@
+import { resolveSseBaseUrl } from '@/lib/sse-base-url'
 import { useAuthStore } from '@/stores/auth'
 
 export interface SseOptions<T = unknown> {
@@ -25,8 +26,7 @@ export function createSSE<T = unknown>(options: SseOptions<T>): SseHandle {
     onError
   } = options
 
-  const baseUrl = import.meta.env.VITE_SSE_BASE_URL
-  const fullUrl = new URL(`/api${url}`, baseUrl)
+  const fullUrl = new URL(`/api${url}`, resolveSseBaseUrl())
 
   Object.entries(params).forEach(([k, v]) => {
     fullUrl.searchParams.append(k, String(v))

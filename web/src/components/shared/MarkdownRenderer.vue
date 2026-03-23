@@ -17,7 +17,7 @@ let streamingTimer: ReturnType<typeof setTimeout> | null = null
 
 marked.use({
   gfm: true,
-  breaks: true,
+  breaks: false,
 })
 
 const renderedHtml = computed(() => {

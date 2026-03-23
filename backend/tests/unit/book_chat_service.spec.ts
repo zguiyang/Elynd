@@ -1,6 +1,7 @@
 import { test } from '@japa/runner'
 import BookChat from '#models/book_chat'
 import { BookChatService } from '#services/book/book_chat_service'
+import type { AiClientConfig, AiChatParams, AiStreamHandlers } from '#types/ai'
 
 test.group('BookChatService prompt selection', (group) => {
   const originalBookChatCreate = BookChat.create
@@ -13,7 +14,7 @@ test.group('BookChatService prompt selection', (group) => {
     assert,
   }) => {
     let capturedPromptName: string | null = null
-    let capturedPromptData: Record<string, unknown> | null = null
+    let capturedPromptData: { actionType?: string; selectedText?: string } | null = null
     let capturedUserMessage: string | null = null
 
     BookChat.create = async function fakeCreate() {
@@ -22,7 +23,11 @@ test.group('BookChatService prompt selection', (group) => {
 
     const service = new BookChatService(
       {
-        streamChat: async (_config, payload, handlers) => {
+        streamChat: async (
+          _config: AiClientConfig,
+          payload: AiChatParams,
+          handlers: AiStreamHandlers
+        ) => {
           capturedUserMessage = payload.messages[1]?.content ?? null
           handlers.onComplete({
             content: 'ok',
@@ -48,9 +53,9 @@ test.group('BookChatService prompt selection', (group) => {
         }),
       } as never,
       {
-        render: (name: string, data: object = {}) => {
+        render: (name: string, data: { actionType?: string; selectedText?: string } = {}) => {
           capturedPromptName = name
-          capturedPromptData = data as Record<string, unknown>
+          capturedPromptData = data
           return `${name}:${JSON.stringify(data)}`
         },
       } as never,
@@ -77,8 +82,8 @@ test.group('BookChatService prompt selection', (group) => {
     )
 
     assert.equal(capturedPromptName, 'book/selection-chat')
-    assert.equal(capturedPromptData?.actionType, 'qa')
-    assert.equal(capturedPromptData?.selectedText, 'were')
+    assert.equal(capturedPromptData!.actionType, 'qa')
+    assert.equal(capturedPromptData!.selectedText, 'were')
     assert.equal(capturedUserMessage, 'were')
   })
 
@@ -93,7 +98,11 @@ test.group('BookChatService prompt selection', (group) => {
 
     const service = new BookChatService(
       {
-        streamChat: async (_config, _payload, handlers) => {
+        streamChat: async (
+          _config: AiClientConfig,
+          _payload: AiChatParams,
+          handlers: AiStreamHandlers
+        ) => {
           handlers.onComplete({
             content: 'ok',
             usage: {

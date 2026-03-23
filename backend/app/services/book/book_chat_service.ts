@@ -41,14 +41,14 @@ export interface SimpleChatParams {
 }
 
 const LANGUAGE_LABEL_MAP: Record<string, string> = {
-  zh: 'Chinese',
+  'zh': 'Chinese',
   'zh-CN': 'Chinese',
   'zh-TW': 'Traditional Chinese',
-  en: 'English',
+  'en': 'English',
   'en-US': 'American English',
   'en-GB': 'British English',
-  ja: 'Japanese',
-  ko: 'Korean',
+  'ja': 'Japanese',
+  'ko': 'Korean',
 }
 
 @inject()

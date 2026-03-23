@@ -1,6 +1,7 @@
 import { test } from '@japa/runner'
 import crypto from 'node:crypto'
 import Book from '#models/book'
+import type { ChatParams, StreamHandlers } from '#services/book/book_chat_service'
 import { BookChatService } from '#services/book/book_chat_service'
 import { bearerAuthHeader, createAuthenticatedUser } from '#tests/helpers/auth'
 
@@ -34,11 +35,14 @@ test.group('Book Chat SSE API', () => {
       await book.delete()
     })
 
-    let capturedParams: Record<string, unknown> | null = null
+    let capturedParams: ChatParams | null = null
 
     const originalStreamChat = BookChatService.prototype.streamChat
-    BookChatService.prototype.streamChat = async function fakeStreamChat(params, handlers) {
-      capturedParams = params as Record<string, unknown>
+    BookChatService.prototype.streamChat = async function fakeStreamChat(
+      params: ChatParams,
+      handlers: StreamHandlers
+    ) {
+      capturedParams = params
       handlers.onChunk({ delta: 'Hello', isComplete: false })
       handlers.onComplete({
         content: 'Hello world',
@@ -75,8 +79,8 @@ test.group('Book Chat SSE API', () => {
       'data: {"type":"done","content":"Hello world","usage":{"promptTokens":10,"completionTokens":2,"totalTokens":12}}',
       'Response should emit a done event'
     )
-    assert.equal(capturedParams?.message, 'were')
-    assert.equal(capturedParams?.actionType, 'qa')
+    assert.equal(capturedParams!.message, 'were')
+    assert.equal(capturedParams!.actionType, 'qa')
   })
 
   test('GET /api/books/:id/chats forbids non-admin user to read unpublished books', async ({

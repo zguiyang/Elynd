@@ -35,4 +35,16 @@ describe('MarkdownRenderer', () => {
     expect(wrapper.html()).not.toContain('<script>')
     expect(wrapper.html()).toContain('Safe content')
   })
+
+  it('inherits typography styles from parent container', () => {
+    const wrapper = mount(MarkdownRenderer, {
+      props: {
+        content: 'Paragraph text',
+      },
+    })
+
+    const root = wrapper.get('.markdown-body')
+    expect(root.attributes('style')).toContain('font-size: inherit')
+    expect(root.attributes('style')).toContain('line-height: inherit')
+  })
 })

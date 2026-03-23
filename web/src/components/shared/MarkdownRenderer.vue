@@ -96,7 +96,8 @@ onUnmounted(() => {
   </div>
   <div
     v-else
-    class="markdown-body prose prose-sm dark:prose-invert max-w-none"
+    class="markdown-body max-w-none"
+    style="font-size: inherit; line-height: inherit;"
     v-html="renderedHtml"
   />
 </template>

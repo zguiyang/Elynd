@@ -42,12 +42,10 @@ test.group('PromptService', () => {
     assert.include(rendered, 'Test Book')
     assert.include(rendered, 'Chapter 3')
     assert.include(rendered, 'selected text')
-    assert.include(rendered, 'Answer the user\'s question about the selected English text')
+    assert.include(rendered, "Answer the user's question about the selected English text")
   })
 
-  test('renders chapter translation prompt without HTML entity escaping', async ({
-    assert,
-  }) => {
+  test('renders chapter translation prompt without HTML entity escaping', async ({ assert }) => {
     const { default: PromptService } = await import('#services/ai/prompt_service')
 
     const promptService = new PromptService()
@@ -117,7 +115,7 @@ test.group('PromptService', () => {
       samples: {
         head: 'FIRST PUBLISHED 1902',
         middle: 'Once upon a time there were four little Rabbits.',
-        tail: 'Peter went straight away to Mr. McGregor\'s garden.',
+        tail: "Peter went straight away to Mr. McGregor's garden.",
       },
       signals: ['front_matter_keywords'],
     })

@@ -93,9 +93,7 @@ test.group('Admin Book Import Pipeline Contract', () => {
   test('canonical chapter fixture should stay identical for persistence and TTS text', async ({
     assert,
   }) => {
-    const fixture = await loadFixture<{ title: string; content: string }>(
-      '9268_chapter0_mixed'
-    )
+    const fixture = await loadFixture<{ title: string; content: string }>('9268_chapter0_mixed')
     const canonical = extractCanonicalChapterParts(fixture)
     const canonicalText = buildCanonicalChapterText(canonical.title, canonical.content)
     const contentGuard = new BookContentGuardService()

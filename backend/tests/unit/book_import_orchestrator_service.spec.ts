@@ -12,7 +12,10 @@ import { BookContentGuardService } from '#services/book-parse/book_content_guard
 import { BookHashService } from '#services/book-parse/book_hash_service'
 import { VocabularyAnalyzerService } from '#services/book-parse/vocabulary_analyzer_service'
 import { BookLevelService } from '#services/book/book_level_service'
-import { buildCanonicalChapterText, extractCanonicalChapterParts } from '#utils/book_text_normalizer'
+import {
+  buildCanonicalChapterText,
+  extractCanonicalChapterParts,
+} from '#utils/book_text_normalizer'
 
 async function loadFixture<T>(name: string): Promise<T> {
   const filePath = join(process.cwd(), 'tests/fixtures/chapters', `${name}.json`)
@@ -271,9 +274,7 @@ test.group('BookImportOrchestratorService persistChaptersAndContentHash transact
     )
 
     try {
-      const fixture = await loadFixture<{ title: string; content: string }>(
-        '9268_chapter0_mixed'
-      )
+      const fixture = await loadFixture<{ title: string; content: string }>('9268_chapter0_mixed')
       const canonical = extractCanonicalChapterParts(fixture)
 
       const persisted = await orchestrator.persistChaptersAndContentHash({

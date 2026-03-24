@@ -13,9 +13,7 @@ async function loadFixture<T>(name: string): Promise<T> {
 }
 
 test.group('BookSemanticCleanService canonicalization', () => {
-  test('returns canonical chapters with identical persistence and TTS text', async ({
-    assert,
-  }) => {
+  test('returns canonical chapters with identical persistence and TTS text', async ({ assert }) => {
     const mockAiService = {
       chatJson: async () => {
         throw new Error('AI should not be called in this test')
@@ -55,9 +53,7 @@ test.group('BookSemanticCleanService canonicalization', () => {
       mockChapterClassifier as any
     )
 
-    const fixture = await loadFixture<{ title: string; content: string }>(
-      '9268_chapter0_mixed'
-    )
+    const fixture = await loadFixture<{ title: string; content: string }>('9268_chapter0_mixed')
     const result = await service.cleanChapters([fixture])
 
     assert.equal(result.length, 1)

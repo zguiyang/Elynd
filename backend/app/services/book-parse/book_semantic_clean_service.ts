@@ -137,7 +137,7 @@ export class BookSemanticCleanService {
           },
           'AI chapter classifier dropped chapter'
         )
-          continue
+        continue
       }
 
       const canonical = extractCanonicalChapterParts({

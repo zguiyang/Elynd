@@ -37,7 +37,10 @@ export class WordAudioService {
   }
 
   normalizeWord(word: string): string {
-    return word.trim().toLowerCase().replace(/^[^a-z]+|[^a-z]+$/gi, '')
+    return word
+      .trim()
+      .toLowerCase()
+      .replace(/^[^a-z]+|[^a-z]+$/gi, '')
   }
 
   private getCacheKey(word: string): string {

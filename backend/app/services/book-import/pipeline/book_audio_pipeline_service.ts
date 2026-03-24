@@ -380,9 +380,7 @@ export class BookAudioPipelineService {
   private computeTextHash(title: string, content: string): string {
     const normalized = buildCanonicalChapterText(title, content)
 
-    return createHash('sha256')
-      .update(normalized, 'utf-8')
-      .digest('hex')
+    return createHash('sha256').update(normalized, 'utf-8').digest('hex')
   }
 
   private computeVoiceHash(voiceName: string): string {
@@ -508,7 +506,10 @@ export class BookAudioPipelineService {
       )
     }
 
-    const body = canonicalText.split(/\n\s*\n/).slice(1).join('\n\n')
+    const body = canonicalText
+      .split(/\n\s*\n/)
+      .slice(1)
+      .join('\n\n')
     const firstBodyLine =
       body
         .split('\n')
@@ -522,9 +523,13 @@ export class BookAudioPipelineService {
   }
 
   private assertWordTimings(chapter: ChapterInput, words: WordTiming[]) {
-    const expectedWords = this.extractWords(buildCanonicalChapterText(chapter.title, chapter.content))
+    const expectedWords = this.extractWords(
+      buildCanonicalChapterText(chapter.title, chapter.content)
+    )
     const minRequiredWords =
-      expectedWords.length >= MIN_WORD_BOUNDARIES ? MIN_WORD_BOUNDARIES : Math.max(1, expectedWords.length)
+      expectedWords.length >= MIN_WORD_BOUNDARIES
+        ? MIN_WORD_BOUNDARIES
+        : Math.max(1, expectedWords.length)
 
     if (words.length < minRequiredWords) {
       logger.warn(

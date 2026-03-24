@@ -226,7 +226,11 @@ export class BookContentGuardService {
   }
 
   private getBody(content: string): string {
-    return content.split(/\n\s*\n/).slice(1).join('\n\n').trim()
+    return content
+      .split(/\n\s*\n/)
+      .slice(1)
+      .join('\n\n')
+      .trim()
   }
 
   private getBodyLines(content: string): string[] {

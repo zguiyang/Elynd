@@ -35,10 +35,7 @@ export class BookHashService {
    * - Convert to lowercase for consistent hashing
    */
   private normalizeContent(content: string): string {
-    return normalizeSpeechText(content)
-      .replace(/\n+/g, ' ')
-      .replace(/\s+/g, ' ')
-      .toLowerCase()
+    return normalizeSpeechText(content).replace(/\n+/g, ' ').replace(/\s+/g, ' ').toLowerCase()
   }
 
   /**

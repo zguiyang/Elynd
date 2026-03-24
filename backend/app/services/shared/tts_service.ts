@@ -35,10 +35,7 @@ export class TtsService {
       sdk.PropertyId.SpeechServiceResponse_RequestSentenceBoundary,
       'true'
     )
-    this.speechConfig.setProperty(
-      sdk.PropertyId.SpeechServiceResponse_RequestWordBoundary,
-      'true'
-    )
+    this.speechConfig.setProperty(sdk.PropertyId.SpeechServiceResponse_RequestWordBoundary, 'true')
   }
 
   /**

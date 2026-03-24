@@ -187,9 +187,7 @@ export function isFrontMatterBlock(block: string): boolean {
     isMostlyUppercase(normalized) &&
     /\b\d{4}\b/.test(normalized) &&
     normalized.split(/\s+/).filter(Boolean).length <= 10 &&
-    /(CO\.?|LTD\.?|LIMITED|PRESS|PUBLISHED|PRINTED|BIND|PUBLISHER|LONDON|BRITAIN)/i.test(
-      normalized
-    )
+    /(CO\.?|LTD\.?|LIMITED|PRESS|PUBLISHED|PRINTED|BIND|PUBLISHER|LONDON|BRITAIN)/i.test(normalized)
   ) {
     return true
   }

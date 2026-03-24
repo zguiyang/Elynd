@@ -106,10 +106,7 @@ export class BookChapterQualityClassifierService {
     }
 
     try {
-      const response = await this.aiService.chatJson<ChapterQualityReviewResponse>(
-        aiConfig,
-        params
-      )
+      const response = await this.aiService.chatJson<ChapterQualityReviewResponse>(aiConfig, params)
       return this.normalizeAiResult(response, analysis)
     } catch (error) {
       logger.warn(
@@ -224,7 +221,10 @@ export class BookChapterQualityClassifierService {
     const words = this.extractWords(normalized)
     const lines = normalized.split('\n')
     const lineCount = lines.filter((line) => line.trim().length > 0).length
-    const paragraphs = normalized.split(/\n\s*\n/).map((paragraph) => paragraph.trim()).filter(Boolean)
+    const paragraphs = normalized
+      .split(/\n\s*\n/)
+      .map((paragraph) => paragraph.trim())
+      .filter(Boolean)
     const sentenceCount = normalized.match(/[.!?]+/g)?.length || 0
     const letters = normalized.match(/[A-Za-z]/g)?.length || 0
     const uppercaseLetters = normalized.match(/[A-Z]/g)?.length || 0
@@ -256,7 +256,9 @@ export class BookChapterQualityClassifierService {
 
     const head = normalized.slice(0, Math.min(headChars, charCount)).trim()
     const middleStart = Math.max(0, Math.floor((charCount - middleChars) / 2))
-    const middle = normalized.slice(middleStart, middleStart + Math.min(middleChars, charCount)).trim()
+    const middle = normalized
+      .slice(middleStart, middleStart + Math.min(middleChars, charCount))
+      .trim()
     const tail = normalized.slice(Math.max(0, charCount - tailChars)).trim()
 
     return { head, middle, tail }
@@ -267,11 +269,19 @@ export class BookChapterQualityClassifierService {
     const normalizedTitle = title.trim().toLowerCase()
     const normalizedContent = content.toLowerCase()
 
-    if (/^(preface|foreword|copyright|contents|table of contents|acknowledgments?|dedication|index|appendix)\b/.test(normalizedTitle)) {
+    if (
+      /^(preface|foreword|copyright|contents|table of contents|acknowledgments?|dedication|index|appendix)\b/.test(
+        normalizedTitle
+      )
+    ) {
       signals.push('noisy_title')
     }
 
-    if (/first published|all rights reserved|printed and bound|publisher|publisher information|illustrated by|by [a-z]/i.test(normalizedContent)) {
+    if (
+      /first published|all rights reserved|printed and bound|publisher|publisher information|illustrated by|by [a-z]/i.test(
+        normalizedContent
+      )
+    ) {
       signals.push('front_matter_keywords')
     }
 

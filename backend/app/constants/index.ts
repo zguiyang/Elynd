@@ -176,6 +176,8 @@ type WordAudio = (typeof WORD_AUDIO)[keyof typeof WORD_AUDIO]
 const CHAPTER_TRANSLATION = {
   CACHE_PREFIX: 'chapter_translation',
   RESULT_TTL_SECONDS: 60 * 60 * 24 * 30,
+  PROGRESS_PREFIX: 'translation_progress',
+  PROGRESS_TTL_SECONDS: 3600,
 } as const
 
 type ChapterTranslation = (typeof CHAPTER_TRANSLATION)[keyof typeof CHAPTER_TRANSLATION]

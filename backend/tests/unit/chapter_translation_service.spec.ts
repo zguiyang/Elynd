@@ -4,6 +4,59 @@ import ChapterTranslation from '#models/chapter_translation'
 import { CHAPTER_TRANSLATION } from '#constants'
 import { ChapterTranslationService } from '#services/book/chapter_translation_service'
 
+test.group('ChapterTranslationService splitContentIntoParagraphs', (group) => {
+  const service = new ChapterTranslationService({} as any, {} as any, {} as any)
+
+  test('splits content into paragraphs by double newlines', ({ assert }) => {
+    const content = 'First paragraph.\n\nSecond paragraph.\n\nThird paragraph.'
+    const result = service.splitContentIntoParagraphs(content)
+    assert.equal(result.length, 3)
+    assert.equal(result[0], 'First paragraph.')
+    assert.equal(result[1], 'Second paragraph.')
+    assert.equal(result[2], 'Third paragraph.')
+  })
+
+  test('handles single paragraph content', ({ assert }) => {
+    const content = 'Single paragraph content.'
+    const result = service.splitContentIntoParagraphs(content)
+    assert.equal(result.length, 1)
+    assert.equal(result[0], 'Single paragraph content.')
+  })
+
+  test('filters out empty paragraphs', ({ assert }) => {
+    const content = 'First paragraph.\n\n\n\nSecond paragraph.'
+    const result = service.splitContentIntoParagraphs(content)
+    assert.equal(result.length, 2)
+    assert.equal(result[0], 'First paragraph.')
+    assert.equal(result[1], 'Second paragraph.')
+  })
+
+  test('handles Windows line endings', ({ assert }) => {
+    const content = 'First paragraph.\r\n\r\nSecond paragraph.'
+    const result = service.splitContentIntoParagraphs(content)
+    assert.equal(result.length, 2)
+    assert.equal(result[0], 'First paragraph.')
+    assert.equal(result[1], 'Second paragraph.')
+  })
+
+  test('handles mixed line endings', ({ assert }) => {
+    const content = 'First paragraph.\r\n\r\nSecond paragraph.\n\nThird paragraph.'
+    const result = service.splitContentIntoParagraphs(content)
+    assert.equal(result.length, 3)
+    assert.equal(result[0], 'First paragraph.')
+    assert.equal(result[1], 'Second paragraph.')
+    assert.equal(result[2], 'Third paragraph.')
+  })
+
+  test('trims whitespace from paragraphs', ({ assert }) => {
+    const content = '  First paragraph.  \n\n  Second paragraph.  '
+    const result = service.splitContentIntoParagraphs(content)
+    assert.equal(result.length, 2)
+    assert.equal(result[0], 'First paragraph.')
+    assert.equal(result[1], 'Second paragraph.')
+  })
+})
+
 test.group('ChapterTranslationService cache key', (group) => {
   const originalRedisGet = redis.get.bind(redis)
   const originalRedisSetex = redis.setex.bind(redis)

@@ -53,8 +53,7 @@ export default class ChapterTranslationsController {
     sse.comment('connected')
 
     let timer: ReturnType<typeof setInterval> | null = null
-    let lastStatus: string | null = null
-    let isReading = false
+    let lastProgress: string | null = null
 
     const cleanup = () => {
       if (timer) {
@@ -67,46 +66,93 @@ export default class ChapterTranslationsController {
       cleanup()
     })
 
-    const pushStatus = async () => {
-      if (sse.isClosed() || isReading) {
+    ctx.request.request.on('close', () => {
+      cleanup()
+    })
+
+    // Initial status
+    try {
+      const status = await this.chapterTranslationService.getStatus(translationId)
+      sse.send({
+        type: 'status',
+        translationId,
+        status: status.status,
+        errorMessage: status.errorMessage,
+      })
+
+      if (status.status === 'completed' || status.status === 'failed') {
+        sse.close()
         return
       }
-
-      isReading = true
-      try {
-        const status = await this.chapterTranslationService.getStatus(translationId)
-
-        if (status.status !== lastStatus) {
-          sse.send({
-            type: 'status',
-            translationId: status.translationId,
-            status: status.status,
-            errorMessage: status.errorMessage,
-          })
-          lastStatus = status.status
-        }
-
-        if (status.status === 'completed' || status.status === 'failed') {
-          cleanup()
-          sse.close()
-        }
-      } catch {
-        sse.send({ type: 'error', message: 'Failed to query translation status' })
-        cleanup()
-        sse.close()
-      } finally {
-        isReading = false
-      }
-    }
-
-    await pushStatus()
-    if (sse.isClosed()) {
+    } catch {
+      sse.send({ type: 'error', message: 'Failed to get initial status' })
+      sse.close()
       return
     }
 
-    timer = setInterval(() => {
-      void pushStatus()
-    }, 1500)
+    // Poll progress every 500ms
+    timer = setInterval(async () => {
+      if (sse.isClosed()) {
+        cleanup()
+        return
+      }
+
+      try {
+        const progress = await this.chapterTranslationService.getProgress(translationId)
+
+        if (!progress) {
+          return
+        }
+
+        const currentProgress = JSON.stringify(progress)
+
+        // Only send if progress has changed
+        if (currentProgress !== lastProgress) {
+          lastProgress = currentProgress
+
+          // Send paragraph updates
+          progress.paragraphs.forEach((p) => {
+            if (p.status === 'completed' && p.sentences) {
+              sse.send({
+                type: 'paragraph',
+                paragraphIndex: p.paragraphIndex,
+                sentences: p.sentences,
+              })
+            } else if (p.status === 'failed') {
+              sse.send({
+                type: 'error',
+                paragraphIndex: p.paragraphIndex,
+                message: p.error,
+              })
+            }
+          })
+
+          // Send title if translated
+          if (progress.title.translated) {
+            sse.send({
+              type: 'title',
+              title: progress.title,
+            })
+          }
+
+          // Send overall status
+          sse.send({
+            type: 'status',
+            translationId,
+            status: progress.status,
+            currentParagraph: progress.completedParagraphs,
+            totalParagraphs: progress.totalParagraphs,
+          })
+
+          if (progress.status === 'completed' || progress.status === 'failed') {
+            cleanup()
+            sse.close()
+          }
+        }
+      } catch {
+        // Ignore polling errors
+      }
+    }, 500)
   }
 
   async show({ params, request }: HttpContext) {

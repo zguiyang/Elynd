@@ -12,7 +12,36 @@ import {
   HelpCircle,
   Mail,
   MessageSquare,
+  Monitor,
+  Languages,
+  X,
+  ZoomIn,
 } from 'lucide-vue-next'
+import { ref, onMounted, onUnmounted } from 'vue'
+
+const SCREENSHOTS = [
+  {
+    id: 'learning',
+    title: '学习页',
+    description: '选择适合难度的书籍，开启学习之旅',
+    image: 'https://cloud.zgyk.cc/f/mksY/%E5%AD%A6%E4%B9%A0%E9%A1%B5.png',
+    icon: BookOpen,
+  },
+  {
+    id: 'reading',
+    title: '阅读页',
+    description: '沉浸式阅读体验，即点即查生词',
+    image: 'https://cloud.zgyk.cc/f/EMIP/%E9%98%85%E8%AF%BB%E9%A1%B5.png',
+    icon: FileText,
+  },
+  {
+    id: 'bilingual',
+    title: '双语阅读',
+    description: '中英文对照，辅助理解',
+    image: 'https://cloud.zgyk.cc/f/oxiD/%E5%8F%8C%E8%AF%AD%E9%98%85%E8%AF%BB.png',
+    icon: Languages,
+  },
+]
 
 const PAIN_POINTS = [
   {
@@ -110,6 +139,36 @@ const STEPS = [
     description: '针对难点进行 AI 提问，系统记录生词，在阅读中不断进步。',
   },
 ]
+
+// Image preview state
+const previewImage = ref<string | null>(null)
+const previewTitle = ref('')
+
+function openPreview(image: string, title: string) {
+  previewImage.value = image
+  previewTitle.value = title
+  document.body.style.overflow = 'hidden'
+}
+
+function closePreview() {
+  previewImage.value = null
+  previewTitle.value = ''
+  document.body.style.overflow = ''
+}
+
+function handleKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && previewImage.value) {
+    closePreview()
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('keydown', handleKeydown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
+})
 
 </script>
 
@@ -319,6 +378,96 @@ const STEPS = [
       </div>
     </section>
 
+    <!-- Screenshots Section -->
+    <section id="screenshots" class="py-20 lg:py-28 relative overflow-hidden">
+      <!-- Background decoration -->
+      <div class="absolute inset-0 -z-10">
+        <div class="absolute left-1/4 top-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl" />
+        <div class="absolute right-1/4 bottom-0 w-[400px] h-[400px] bg-secondary/10 rounded-full blur-3xl" />
+      </div>
+
+      <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16">
+          <Badge variant="outline" class="mb-4">
+            <Monitor class="size-3.5 mr-1" />
+            产品截图
+          </Badge>
+          <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">一睹为快</h2>
+          <p class="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+            简洁直观的界面设计，让英语学习变得轻松愉快
+          </p>
+        </div>
+
+        <!-- Screenshots Grid -->
+        <div class="relative">
+          <!-- Connecting line decoration -->
+          <div class="hidden lg:block absolute top-1/2 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent -translate-y-1/2" />
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-6">
+            <div
+              v-for="(screenshot, index) in SCREENSHOTS"
+              :key="screenshot.id"
+              class="relative group"
+              :class="[
+                index === 1 ? 'lg:mt-16' : '',
+              ]"
+            >
+              <!-- Browser Frame -->
+              <div class="relative bg-card rounded-xl shadow-2xl border border-border/50 overflow-hidden transition-all duration-500 group-hover:-translate-y-2 group-hover:shadow-3xl">
+                <!-- Browser Chrome -->
+                <div class="flex items-center gap-2 px-4 py-3 bg-muted/50 border-b border-border/30">
+                  <div class="flex gap-1.5">
+                    <div class="w-3 h-3 rounded-full bg-red-400/60" />
+                    <div class="w-3 h-3 rounded-full bg-yellow-400/60" />
+                    <div class="w-3 h-3 rounded-full bg-green-400/60" />
+                  </div>
+                  <div class="flex-1 mx-4">
+                    <div class="h-5 rounded-md bg-muted/80 px-3 flex items-center">
+                      <span class="text-xs text-muted-foreground truncate">{{ screenshot.title }}</span>
+                    </div>
+                  </div>
+                </div>
+                <!-- Screenshot Image -->
+                <div class="relative overflow-hidden cursor-pointer" @click="openPreview(screenshot.image, screenshot.title)">
+                  <img
+                    :src="screenshot.image"
+                    :alt="screenshot.title"
+                    class="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105"
+                    loading="lazy"
+                  />
+                  <!-- Overlay on hover -->
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                    <div class="bg-white/90 backdrop-blur-sm rounded-full p-3 shadow-lg transform scale-75 group-hover:scale-100 transition-transform duration-300">
+                      <ZoomIn class="size-6 text-foreground" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Label -->
+              <div class="mt-4 text-center lg:text-left" :class="index === 1 ? 'lg:pl-8' : ''">
+                <div class="inline-flex items-center gap-2 mb-1">
+                  <component :is="screenshot.icon" class="size-4 text-primary" />
+                  <h3 class="font-semibold text-foreground">{{ screenshot.title }}</h3>
+                </div>
+                <p class="text-sm text-muted-foreground">{{ screenshot.description }}</p>
+              </div>
+
+              <!-- Decorative element -->
+              <div
+                v-if="index === 1"
+                class="hidden lg:block absolute -right-3 top-1/2 -translate-y-1/2 z-10"
+              >
+                <div class="w-6 h-6 rounded-full bg-primary/20 backdrop-blur-sm border border-primary/30 flex items-center justify-center">
+                  <ArrowRight class="size-3 text-primary" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- How It Works Section -->
     <section id="how-it-works" class="py-20 lg:py-28">
       <div class="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -374,6 +523,54 @@ const STEPS = [
         </div>
       </div>
     </section>
+
+    <!-- Image Preview Modal -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition-opacity duration-300 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition-opacity duration-200 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="previewImage"
+          class="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+          @click="closePreview"
+        >
+          <!-- Close button -->
+          <button
+            class="absolute top-4 right-4 md:top-6 md:right-6 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+            @click="closePreview"
+          >
+            <X class="size-6" />
+          </button>
+
+          <!-- Title -->
+          <div class="absolute top-4 left-1/2 -translate-x-1/2 text-white text-lg font-medium">
+            {{ previewTitle }}
+          </div>
+
+          <!-- Image container -->
+          <div
+            class="relative max-w-5xl w-full max-h-[85vh] flex items-center justify-center"
+            @click.stop
+          >
+            <img
+              :src="previewImage"
+              :alt="previewTitle"
+              class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+            />
+          </div>
+
+          <!-- Hint -->
+          <div class="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-sm">
+            点击背景或按 ESC 关闭
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- Footer -->
     <footer class="border-t bg-muted/20">

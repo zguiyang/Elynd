@@ -66,6 +66,18 @@ export class BookService {
   async listPublished(params: ListPublishedParams) {
     const query = Book.query()
       .where('isPublished', true)
+      .select(
+        'id',
+        'title',
+        'source',
+        'author',
+        'description',
+        'levelId',
+        'status',
+        'wordCount',
+        'readingTime',
+        'createdAt'
+      )
       .preload('level')
       .preload('tags')
       .preload('chapters', (chapterQuery) => {
@@ -87,7 +99,7 @@ export class BookService {
   }
 
   async findPublishedById(id: number) {
-    const book = await this.buildBookQuery(true).where('id', id).first()
+    const book = await this.buildBookQuery(true, true).where('id', id).first()
 
     if (!book) {
       throw new Exception('Book not found', { status: 404 })
@@ -97,7 +109,7 @@ export class BookService {
   }
 
   async findById(id: number) {
-    const book = await this.buildBookQuery(false).where('id', id).first()
+    const book = await this.buildBookQuery(false, false).where('id', id).first()
 
     if (!book) {
       throw new Exception('Book not found', { status: 404 })
@@ -114,8 +126,28 @@ export class BookService {
     return this.findPublishedById(id)
   }
 
-  private buildBookQuery(requirePublished: boolean) {
+  private buildBookQuery(requirePublished: boolean, isPublic: boolean) {
+    const selectFields = isPublic
+      ? [
+          'id',
+          'title',
+          'source',
+          'author',
+          'description',
+          'levelId',
+          'status',
+          'wordCount',
+          'readingTime',
+          'isPublished',
+          'createdAt',
+          'updatedAt',
+          'audioUrl',
+          'audioStatus',
+        ]
+      : undefined
+
     const query = Book.query()
+      .if(selectFields, (q) => q.select(...selectFields!))
       .preload('level')
       .preload('tags')
       .preload('chapters', (chapterQuery) => {
@@ -202,6 +234,7 @@ export class BookService {
     const chapter = await BookChapter.query()
       .where('bookId', bookId)
       .where('chapterIndex', chapterIndex)
+      .select('id', 'bookId', 'chapterIndex', 'title', 'content')
       .first()
 
     if (!chapter) {
@@ -227,23 +260,9 @@ export class BookService {
       const dictionaryEntry = item.dictionaryEntry || null
 
       return {
-        id: item.id,
-        bookId: item.bookId,
-        dictionaryEntryId: item.dictionaryEntryId || null,
         word: item.word,
-        lemma: item.lemma,
-        frequency: item.frequency,
-        sentence: item.sentence,
-        sourceLanguage: dictionaryEntry?.sourceLanguage || null,
-        localizationLanguage: dictionaryEntry?.localizationLanguage || null,
         phonetic: dictionaryEntry?.phonetic || null,
         meanings: dictionaryEntry?.meanings || [],
-        meta: dictionaryEntry
-          ? {
-              source: 'dictionary',
-              localizationLanguage: dictionaryEntry.localizationLanguage,
-            }
-          : null,
       }
     })
   }

@@ -34,7 +34,10 @@ export class BookLevelService {
   }
 
   async listActiveLevels() {
-    return BookLevel.query().where('isActive', true).orderBy('sortOrder', 'asc')
+    return BookLevel.query()
+      .where('isActive', true)
+      .select('id', 'code', 'name', 'description', 'minWords', 'maxWords', 'sortOrder')
+      .orderBy('sortOrder', 'asc')
   }
 
   async getDefaultLevel() {

@@ -79,6 +79,21 @@ export class AdminBookService {
 
   async listBooks(page: number, perPage: number) {
     const books = await Book.query()
+      .select(
+        'id',
+        'title',
+        'author',
+        'description',
+        'source',
+        'levelId',
+        'status',
+        'processingStep',
+        'processingProgress',
+        'processingError',
+        'audioStatus',
+        'vocabularyStatus',
+        'createdAt'
+      )
       .preload('level')
       .orderBy('createdAt', 'desc')
       .paginate(page, perPage)
@@ -162,7 +177,15 @@ export class AdminBookService {
     }
 
     await book.save()
-    return book.serialize()
+
+    return {
+      id: book.id,
+      title: book.title,
+      author: book.author,
+      description: book.description,
+      source: book.source,
+      levelId: book.levelId,
+    }
   }
 
   async deleteBook(id: number) {

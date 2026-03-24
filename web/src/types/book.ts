@@ -1,7 +1,6 @@
 export interface Tag {
   id: number
   name: string
-  slug: string
 }
 
 export interface BookLevel {
@@ -12,7 +11,6 @@ export interface BookLevel {
   minWords: number | null
   maxWords: number | null
   sortOrder: number
-  isActive: boolean
 }
 
 export interface Chapter {
@@ -155,15 +153,7 @@ export interface BookListParams {
 }
 
 export interface VocabularyItem {
-  id: number
-  bookId: number
-  dictionaryEntryId: number | null
   word: string
-  lemma: string
-  frequency: number
-  sentence: string
-  sourceLanguage: string | null
-  localizationLanguage: string | null
   phonetic: string | null
   meanings: Array<{
     partOfSpeech: string
@@ -175,10 +165,6 @@ export interface VocabularyItem {
       source: 'dictionary' | 'article' | 'ai'
     }>
   }>
-  meta: {
-    source: 'dictionary'
-    localizationLanguage: string
-  } | null
 }
 
 export type ChapterTranslationStatus = 'queued' | 'processing' | 'completed' | 'failed'

@@ -34,6 +34,6 @@ export class TagService {
   }
 
   async listAll(): Promise<Tag[]> {
-    return Tag.query().orderBy('name', 'asc')
+    return Tag.query().select('id', 'name').orderBy('name', 'asc')
   }
 }

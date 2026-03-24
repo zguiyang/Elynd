@@ -84,6 +84,54 @@ export const useAuthStore = defineStore('auth', () => {
      }
   }
 
+  /**
+   * OAuth login - redirect to provider authorization page
+   * @param provider OAuth provider name (e.g., 'github', 'google')
+   */
+  const loginWithOAuth = async (provider: string): Promise<void> => {
+    const response = await authApi.getOAuthUrl(provider)
+      .then((res) => res as unknown as { url: string })
+      .catch(() => null)
+
+    if (response?.url) {
+      window.location.href = response.url
+    }
+  }
+
+  /**
+   * Handle OAuth callback - exchange code for token
+   * @param provider OAuth provider name
+   * @param code Authorization code from OAuth provider
+   */
+  const handleOAuthCallback = async (provider: string, code: string, rememberMe: boolean = false): Promise<boolean> => {
+    isLoading.value = true
+    const authResponse = await authApi.oauthCallback({ provider, code, rememberMe })
+      .then((res) => res as unknown as AuthResponse)
+      .catch(() => null)
+    isLoading.value = false
+
+    if (authResponse) {
+      token.value = authResponse.token
+      user.value = authResponse.user as unknown as User
+      return true
+    }
+    return false
+  }
+
+  /**
+   * @deprecated Use loginWithOAuth('github') instead
+   */
+  const loginWithGithub = async (): Promise<void> => {
+    await loginWithOAuth('github')
+  }
+
+  /**
+   * @deprecated Use handleOAuthCallback('github', code) instead
+   */
+  const handleGithubCallback = async (code: string, rememberMe: boolean = false): Promise<boolean> => {
+    return handleOAuthCallback('github', code, rememberMe)
+  }
+
   return {
     user,
     token,
@@ -95,6 +143,10 @@ export const useAuthStore = defineStore('auth', () => {
     forgotPassword,
     resetPassword,
     fetchUser,
+    loginWithGithub,
+    handleGithubCallback,
+    loginWithOAuth,
+    handleOAuthCallback,
   }
 }, {
   persist: {

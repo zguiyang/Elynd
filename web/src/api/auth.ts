@@ -20,6 +20,7 @@ export interface AuthResponse {
     avatar: string | null
   }
   token: string
+  isNew?: boolean
 }
 
 export interface ForgotPasswordResponse {
@@ -30,6 +31,16 @@ export interface ResetPasswordData {
   token: string
   password: string
   passwordConfirmation: string
+}
+
+export interface OAuthUrlResponse {
+  url: string
+}
+
+export interface OAuthCallbackData {
+  provider: string
+  code: string
+  rememberMe?: boolean
 }
 
 export const authApi = {
@@ -47,4 +58,18 @@ export const authApi = {
 
   resetPassword: (data: ResetPasswordData) =>
     request<void>({ method: 'POST', url: '/api/auth/reset-password', data }),
+
+  // Generic OAuth
+  getOAuthUrl: (provider: string) =>
+    request<OAuthUrlResponse>({ method: 'GET', url: `/api/auth/${provider}/url` }),
+
+  oauthCallback: (data: OAuthCallbackData) =>
+    request<AuthResponse>({ method: 'POST', url: `/api/auth/${data.provider}/callback`, data }),
+
+  // GitHub OAuth (deprecated - use getOAuthUrl and oauthCallback instead)
+  getGithubUrl: () =>
+    request<OAuthUrlResponse>({ method: 'GET', url: '/api/auth/github/url' }),
+
+  githubCallback: (data: Omit<OAuthCallbackData, 'provider'>) =>
+    request<AuthResponse>({ method: 'POST', url: '/api/auth/github/callback', data }),
 }

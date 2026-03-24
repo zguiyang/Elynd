@@ -112,8 +112,9 @@
 ```
 
 **段落分割逻辑：**
+- 先将 `\r\n` 统一替换为 `\n`
 - 按 `\n\n` 分割章节内容为空行分隔的段落
-- 过滤空段落
+- 过滤空段落和纯空白段落
 - 每个段落独立翻译
 
 **段落 prompt 设计：**
@@ -145,6 +146,13 @@
 3. 每 1500ms → 发送 `status` 心跳
 4. Job 完成 → 发送 `done` 事件
 5. 连接关闭 → 取消订阅
+
+**断连重连机制：**
+- Pub/Sub 是 fire-and-forget，断连期间消息会丢失
+- 前端断连后自动尝试重连 SSE
+- 重连后前端可调用 `GET /api/chapter-translations/:id/progress` 获取当前进度
+- `progress` 端点返回当前 `translation_progress:{translationId}` 数据
+- 前端收到进度后与本地状态合并，继续接收后续 SSE 事件
 
 ### 4.3 前端展示
 
@@ -188,11 +196,20 @@
 **处理流程：**
 1. 前端点击重试按钮
 2. 调用重试 API
-3. 创建新的 `TranslateParagraphJob`（独立于主 Job）
-4. 新 Job 完成后更新 Redis progress
-5. 通过 Pub/Sub 推送结果
+3. 检查 Redis 锁 `translation_lock:{translationId}:{paragraphIndex}`（SETNX，TTL 60s）
+4. 如果加锁成功，创建 `TranslateParagraphJob`
+5. 新 Job 完成后释放锁，更新 Redis progress
+6. 通过 Pub/Sub 推送结果
 
-**注意：** 重试 Job 与主 Job 并发执行，需要通过 paragraphIndex 作为锁防止竞争。
+**重试锁机制：**
+- Key: `translation_lock:{translationId}:{paragraphIndex}`
+- 使用 Redis SETNX 实现分布式锁
+- TTL: 60 秒（防止进程崩溃导致死锁）
+- 如果锁存在，返回 409 Conflict
+
+**重试 Job 与主 Job 时序：**
+- 如果主 Job 还在处理同一段落，重试会因加锁失败而被拒绝
+- 如果主 Job 已完成或失败，重试 Job 可正常执行并覆盖原结果
 
 ### 5.3 整体失败
 
@@ -216,8 +233,9 @@
 
 - Key: `translation_result:{translationId}`
 - TTL: 与现有 `CHAPTER_TRANSLATION.RESULT_TTL_SECONDS` 一致
-- 完成后从 progress 写入 result
-- 与现有 `result_json` 字段同步
+- Job 完成后，将 progress 数据格式转换为 result 格式并写入
+- 写入 result 前检查 `overallStatus === 'completed'`，确保只写入完整数据
+- 如果写入 result 失败，保留 progress 数据（TTL 1小时），可通过后台 job 修复
 
 ---
 
@@ -226,6 +244,26 @@
 - 现有缓存机制保持不变
 - 轮询模式作为 SSE 失败的 fallback
 - 现有 API 接口不变
+- 新增 `progress` 端点用于断连恢复
+
+### 7.1 新增 API
+
+**进度查询端点：** `GET /api/chapter-translations/:id/progress`
+
+**响应：**
+```json
+{
+  "translationId": 123,
+  "status": "processing",
+  "totalParagraphs": 10,
+  "completedParagraphs": 3,
+  "title": { "original": "...", "translated": "..." },
+  "paragraphs": [
+    { "paragraphIndex": 0, "status": "completed", "sentences": [...] },
+    ...
+  ]
+}
+```
 
 ---
 
@@ -233,13 +271,15 @@
 
 ### 后端
 - `app/jobs/translate_chapter_job.ts` - 改为逐段落翻译
-- `app/services/book/chapter_translation_service.ts` - 添加进度写入方法
-- `app/controllers/chapter_translations_controller.ts` - SSE 实时推送
+- `app/jobs/translate_paragraph_job.ts` - 新增单段落重试 Job
+- `app/services/book/chapter_translation_service.ts` - 添加进度写入方法、Pub/Sub 发布
+- `app/services/translation_progress_service.ts` - 新增进度管理服务
+- `app/controllers/chapter_translations_controller.ts` - SSE 实时推送 + progress 端点
 - `app/utils/sse.ts` - 可能需要 minor 调整
 
 ### 前端
 - `web/src/views/learning/learning-book.vue` - 增量展示逻辑
-- `web/src/api/chapter-translation.ts` - SSE paragraph 事件处理
+- `web/src/api/chapter-translation.ts` - SSE paragraph 事件处理 + progress 轮询
 - `web/src/types/book.ts` - 新增类型定义
 
 ---

@@ -8,7 +8,18 @@ import { BaseModel, column } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
 
 export class AuthAccessTokenSchema extends BaseModel {
-  static $columns = ['abilities', 'createdAt', 'expiresAt', 'hash', 'id', 'lastUsedAt', 'name', 'tokenableId', 'type', 'updatedAt'] as const
+  static $columns = [
+    'abilities',
+    'createdAt',
+    'expiresAt',
+    'hash',
+    'id',
+    'lastUsedAt',
+    'name',
+    'tokenableId',
+    'type',
+    'updatedAt',
+  ] as const
   $columns = AuthAccessTokenSchema.$columns
   @column()
   declare abilities: string
@@ -33,7 +44,22 @@ export class AuthAccessTokenSchema extends BaseModel {
 }
 
 export class BookChapterAudioSchema extends BaseModel {
-  static $columns = ['audioPath', 'bookId', 'chapterIndex', 'chunkCount', 'createdAt', 'durationMs', 'errorCode', 'errorMessage', 'id', 'status', 'textHash', 'timingWords', 'updatedAt', 'voiceHash'] as const
+  static $columns = [
+    'audioPath',
+    'bookId',
+    'chapterIndex',
+    'chunkCount',
+    'createdAt',
+    'durationMs',
+    'errorCode',
+    'errorMessage',
+    'id',
+    'status',
+    'textHash',
+    'timingWords',
+    'updatedAt',
+    'voiceHash',
+  ] as const
   $columns = BookChapterAudioSchema.$columns
   @column()
   declare audioPath: string | null
@@ -66,7 +92,15 @@ export class BookChapterAudioSchema extends BaseModel {
 }
 
 export class BookChapterSchema extends BaseModel {
-  static $columns = ['bookId', 'chapterIndex', 'content', 'createdAt', 'id', 'title', 'updatedAt'] as const
+  static $columns = [
+    'bookId',
+    'chapterIndex',
+    'content',
+    'createdAt',
+    'id',
+    'title',
+    'updatedAt',
+  ] as const
   $columns = BookChapterSchema.$columns
   @column()
   declare bookId: number
@@ -104,7 +138,18 @@ export class BookChatSchema extends BaseModel {
 }
 
 export class BookLevelSchema extends BaseModel {
-  static $columns = ['code', 'createdAt', 'description', 'id', 'isActive', 'maxWords', 'minWords', 'name', 'sortOrder', 'updatedAt'] as const
+  static $columns = [
+    'code',
+    'createdAt',
+    'description',
+    'id',
+    'isActive',
+    'maxWords',
+    'minWords',
+    'name',
+    'sortOrder',
+    'updatedAt',
+  ] as const
   $columns = BookLevelSchema.$columns
   @column()
   declare code: string
@@ -129,7 +174,22 @@ export class BookLevelSchema extends BaseModel {
 }
 
 export class BookProcessingRunLogSchema extends BaseModel {
-  static $columns = ['bookId', 'createdAt', 'currentStep', 'durationMs', 'errorCode', 'errorMessage', 'finishedAt', 'id', 'jobType', 'metadata', 'progress', 'startedAt', 'status', 'updatedAt'] as const
+  static $columns = [
+    'bookId',
+    'createdAt',
+    'currentStep',
+    'durationMs',
+    'errorCode',
+    'errorMessage',
+    'finishedAt',
+    'id',
+    'jobType',
+    'metadata',
+    'progress',
+    'startedAt',
+    'status',
+    'updatedAt',
+  ] as const
   $columns = BookProcessingRunLogSchema.$columns
   @column()
   declare bookId: number
@@ -162,7 +222,23 @@ export class BookProcessingRunLogSchema extends BaseModel {
 }
 
 export class BookProcessingStepLogSchema extends BaseModel {
-  static $columns = ['bookId', 'createdAt', 'durationMs', 'errorCode', 'errorMessage', 'finishedAt', 'id', 'inputHash', 'itemKey', 'outputRef', 'runLogId', 'startedAt', 'status', 'stepKey', 'updatedAt'] as const
+  static $columns = [
+    'bookId',
+    'createdAt',
+    'durationMs',
+    'errorCode',
+    'errorMessage',
+    'finishedAt',
+    'id',
+    'inputHash',
+    'itemKey',
+    'outputRef',
+    'runLogId',
+    'startedAt',
+    'status',
+    'stepKey',
+    'updatedAt',
+  ] as const
   $columns = BookProcessingStepLogSchema.$columns
   @column()
   declare bookId: number
@@ -227,7 +303,17 @@ export class BookTagSchema extends BaseModel {
 }
 
 export class BookVocabularySchema extends BaseModel {
-  static $columns = ['bookId', 'createdAt', 'dictionaryEntryId', 'frequency', 'id', 'lemma', 'sentence', 'updatedAt', 'word'] as const
+  static $columns = [
+    'bookId',
+    'createdAt',
+    'dictionaryEntryId',
+    'frequency',
+    'id',
+    'lemma',
+    'sentence',
+    'updatedAt',
+    'word',
+  ] as const
   $columns = BookVocabularySchema.$columns
   @column()
   declare bookId: number
@@ -250,7 +336,38 @@ export class BookVocabularySchema extends BaseModel {
 }
 
 export class BookSchema extends BaseModel {
-  static $columns = ['audioGeneratedAt', 'audioStatus', 'audioTiming', 'audioUrl', 'author', 'bookHash', 'contentHash', 'createdAt', 'createdBy', 'description', 'id', 'isPublished', 'levelClassifiedAt', 'levelClassifiedBy', 'levelId', 'processingError', 'processingProgress', 'processingStep', 'rawFileExt', 'rawFileHash', 'rawFileName', 'rawFilePath', 'rawFileSize', 'readingTime', 'source', 'status', 'title', 'updatedAt', 'vocabularyStatus', 'wordCount'] as const
+  static $columns = [
+    'audioGeneratedAt',
+    'audioStatus',
+    'audioTiming',
+    'audioUrl',
+    'author',
+    'bookHash',
+    'contentHash',
+    'createdAt',
+    'createdBy',
+    'description',
+    'id',
+    'isPublished',
+    'levelClassifiedAt',
+    'levelClassifiedBy',
+    'levelId',
+    'processingError',
+    'processingProgress',
+    'processingStep',
+    'rawFileExt',
+    'rawFileHash',
+    'rawFileName',
+    'rawFilePath',
+    'rawFileSize',
+    'readingTime',
+    'source',
+    'status',
+    'title',
+    'updatedAt',
+    'vocabularyStatus',
+    'wordCount',
+  ] as const
   $columns = BookSchema.$columns
   @column.dateTime()
   declare audioGeneratedAt: DateTime | null
@@ -315,7 +432,22 @@ export class BookSchema extends BaseModel {
 }
 
 export class ChapterTranslationSchema extends BaseModel {
-  static $columns = ['chapterId', 'contentHash', 'createdAt', 'createdByUserId', 'errorMessage', 'id', 'metadata', 'model', 'provider', 'resultJson', 'sourceLanguage', 'status', 'targetLanguage', 'updatedAt'] as const
+  static $columns = [
+    'chapterId',
+    'contentHash',
+    'createdAt',
+    'createdByUserId',
+    'errorMessage',
+    'id',
+    'metadata',
+    'model',
+    'provider',
+    'resultJson',
+    'sourceLanguage',
+    'status',
+    'targetLanguage',
+    'updatedAt',
+  ] as const
   $columns = ChapterTranslationSchema.$columns
   @column()
   declare chapterId: number
@@ -348,7 +480,19 @@ export class ChapterTranslationSchema extends BaseModel {
 }
 
 export class DictionaryEntrySchema extends BaseModel {
-  static $columns = ['articleExamples', 'createdAt', 'id', 'localizationLanguage', 'meanings', 'metaSource', 'phonetic', 'phonetics', 'sourceLanguage', 'updatedAt', 'word'] as const
+  static $columns = [
+    'articleExamples',
+    'createdAt',
+    'id',
+    'localizationLanguage',
+    'meanings',
+    'metaSource',
+    'phonetic',
+    'phonetics',
+    'sourceLanguage',
+    'updatedAt',
+    'word',
+  ] as const
   $columns = DictionaryEntrySchema.$columns
   @column()
   declare articleExamples: any
@@ -392,7 +536,14 @@ export class LearningRecordSchema extends BaseModel {
 }
 
 export class SystemConfigSchema extends BaseModel {
-  static $columns = ['aiApiKey', 'aiBaseUrl', 'aiModelName', 'createdAt', 'id', 'updatedAt'] as const
+  static $columns = [
+    'aiApiKey',
+    'aiBaseUrl',
+    'aiModelName',
+    'createdAt',
+    'id',
+    'updatedAt',
+  ] as const
   $columns = SystemConfigSchema.$columns
   @column()
   declare aiApiKey: string | null
@@ -422,7 +573,17 @@ export class TagSchema extends BaseModel {
 }
 
 export class UserConfigSchema extends BaseModel {
-  static $columns = ['createdAt', 'englishVariant', 'id', 'learningInitCompleted', 'nativeLanguage', 'targetLanguage', 'updatedAt', 'userId', 'vocabularyLevel'] as const
+  static $columns = [
+    'createdAt',
+    'englishVariant',
+    'id',
+    'learningInitCompleted',
+    'nativeLanguage',
+    'targetLanguage',
+    'updatedAt',
+    'userId',
+    'vocabularyLevel',
+  ] as const
   $columns = UserConfigSchema.$columns
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
@@ -445,7 +606,18 @@ export class UserConfigSchema extends BaseModel {
 }
 
 export class UserSchema extends BaseModel {
-  static $columns = ['avatar', 'createdAt', 'email', 'fullName', 'id', 'isAdmin', 'password', 'updatedAt'] as const
+  static $columns = [
+    'avatar',
+    'createdAt',
+    'email',
+    'fullName',
+    'id',
+    'isAdmin',
+    'password',
+    'provider',
+    'providerId',
+    'updatedAt',
+  ] as const
   $columns = UserSchema.$columns
   @column()
   declare avatar: string | null
@@ -461,6 +633,10 @@ export class UserSchema extends BaseModel {
   declare isAdmin: boolean
   @column({ serializeAs: null })
   declare password: string
+  @column()
+  declare provider: string | null
+  @column()
+  declare providerId: string | null
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
 }

@@ -19,6 +19,15 @@ Our target users are: **Adults with basic English skills who need to learn Engli
 | 🔍 **Instant Dictionary** | Click any word to see definitions instantly without interrupting your reading |
 | 🤖 **AI Q&A** | AI-powered Q&A based on the current article for deeper comprehension |
 
+### Screenshots
+
+| Page | Screenshot |
+|------|------------|
+| Landing Page | ![Landing Page](https://cloud.zgyk.cc/f/rLUd/%E8%90%BD%E5%9C%B0%E9%A1%B5.png) |
+| Learning Page | ![Learning Page](https://cloud.zgyk.cc/f/mksY/%E5%AD%A6%E4%B9%A0%E9%A1%B5.png) |
+| Reading Page | ![Reading Page](https://cloud.zgyk.cc/f/EMIP/%E9%98%85%E8%AF%BB%E9%A1%B5.png) |
+| Bilingual Reading Mode | ![Bilingual Reading Mode](https://cloud.zgyk.cc/f/oxiD/%E5%8F%8C%E8%AF%AD%E9%98%85%E8%AF%BB.png) |
+
 ## Quick Start
 
 ### Requirements

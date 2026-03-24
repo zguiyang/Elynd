@@ -19,6 +19,15 @@
 | 🔍 **即点查词** | 点击单词立即显示中英文释义，不打断阅读节奏 |
 | 🤖 **AI 问答** | 基于当前文章内容智能问答，深入理解文章含义 |
 
+### 截图展示
+
+| 页面 | 截图 |
+|-----|------|
+| 落地页 | ![落地页](https://cloud.zgyk.cc/f/rLUd/%E8%90%BD%E5%9C%B0%E9%A1%B5.png) |
+| 学习页 | ![学习页](https://cloud.zgyk.cc/f/mksY/%E5%AD%A6%E4%B9%A0%E9%A1%B5.png) |
+| 阅读页 | ![阅读页](https://cloud.zgyk.cc/f/EMIP/%E9%98%85%E8%AF%BB%E9%A1%B5.png) |
+| 双语阅读模式 | ![双语阅读模式](https://cloud.zgyk.cc/f/oxiD/%E5%8F%8C%E8%AF%AD%E9%98%85%E8%AF%BB.png) |
+
 ### 快速开始
 
 #### 环境要求

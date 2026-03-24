@@ -52,36 +52,43 @@
 
 ```
 # 翻译进度（实时更新）
-translation_progress:{translationId}
+# Key: translation_progress:{translationId}
+# 与现有 cache key (CHAPTER_TRANSLATION.CACHE_PREFIX) 用途区分：
+# - translation_progress: 仅用于 SSE 实时推送，Job 完成后可删除
+# - translation_result: 最终结果缓存，与现有语义一致
 {
   "totalParagraphs": 10,
   "title": { "original": "...", "translated": "..." },
-  "paragraphs": {
-    "0": { "status": "completed", "sentences": [...] },
-    "1": { "status": "completed", "sentences": [...] },
-    "2": { "status": "failed", "error": "..." }
-  },
+  "paragraphs": [
+    { "paragraphIndex": 0, "status": "completed", "sentences": [...] },
+    { "paragraphIndex": 1, "status": "completed", "sentences": [...] },
+    { "paragraphIndex": 2, "status": "failed", "error": "..." }
+  ],
   "currentParagraph": 3,
   "overallStatus": "processing"
 }
 
 # 最终结果（全部完成后写入）
-translation_result:{translationId}
+# Key: translation_result:{translationId}
+# 格式与现有 ChapterTranslationResult 类型完全一致
 {
   "title": { "original": "...", "translated": "..." },
   "paragraphs": [{ "paragraphIndex": 0, "sentences": [...] }, ...]
 }
+
+# Redis Pub/Sub 频道（用于 Job 与 SSE 解耦）
+# Channel: translation_events:{translationId}
 ```
 
 ### 3.2 SSE 事件类型
 
 | 事件类型 | payload | 说明 |
 |----------|---------|------|
+| `status` | `{ translationId, status, errorMessage? }` | 兼容现有前端 |
 | `paragraph` | `{ paragraphIndex, sentences, status }` | 单个段落翻译完成 |
-| `progress` | `{ currentParagraph, totalParagraphs }` | 进度更新 |
-| `error` | `{ paragraphIndex, message }` | 段落翻译失败 |
+| `error` | `{ translationId, message }` | 段落翻译失败或整体失败 |
 | `done` | `{ translationId }` | 全部完成 |
-| `failed` | `{ message }` | 整体失败 |
+| `failed` | `{ translationId, message }` | 整体失败 |
 
 ---
 
@@ -95,20 +102,29 @@ translation_result:{translationId}
 
 **改造方案：**
 ```
-1. 解析章节内容为段落数组
+1. 解析章节内容为段落数组（按 \n\n 分割）
 2. 先翻译标题（作为整体）
-3. 逐段落翻译：
+3. 逐段落翻译（每段落间延迟 200ms 避免速率限制）：
    a. 调用 AI 翻译单个段落
-   b. 写入 Redis progress
-   c. 推送 SSE paragraph 事件
-   d. 继续下一个段落
+   b. 写入 Redis progress + 发布 Pub/Sub 事件
+   c. 继续下一个段落
 4. 全部完成后写入 translation_result
 ```
+
+**段落分割逻辑：**
+- 按 `\n\n` 分割章节内容为空行分隔的段落
+- 过滤空段落
+- 每个段落独立翻译
 
 **段落 prompt 设计：**
 ```
 系统提示词保持简洁，要求 AI 只返回一个段落的翻译结果 JSON
 ```
+
+**Job 与 SSE 解耦机制：**
+- Job 通过 Redis Pub/Sub 发布事件到 `translation_events:{translationId}`
+- SSE 端点订阅同一频道，收到事件后推送给前端
+- 不需要 Job 直接持有 SSE writer 实例
 
 ### 4.2 SSE events 端点
 
@@ -118,10 +134,17 @@ translation_result:{translationId}
 
 **改造方案：**
 ```
-1. 建立 SSE 连接后，订阅 Redis pub/sub 或轮询 progress
-2. 每当有新段落完成，立即推送 paragraph 事件
-3. 监听 overallStatus 变化，completed 时推送 done
+1. 建立 SSE 连接后，订阅 Redis pub/sub 频道 `translation_events:{translationId}`
+2. 每当 Job 发布新事件（paragraph/status/done），立即推送给前端
+3. 保持现有 1500ms 心跳机制，发送 status 事件保持连接活跃
 ```
+
+**SSE 端点事件流：**
+1. 连接建立 → 发送 `status: processing`
+2. 订阅 Redis Pub/Sub → 收到事件立即转发
+3. 每 1500ms → 发送 `status` 心跳
+4. Job 完成 → 发送 `done` 事件
+5. 连接关闭 → 取消订阅
 
 ### 4.3 前端展示
 
@@ -147,11 +170,29 @@ translation_result:{translationId}
 - SSE 推送 error 事件
 - 前端显示失败状态 + 重试按钮
 
-### 5.2 失败重试
+### 5.2 单段落重试 API
 
-- 前端点击重试按钮
-- 调用单独的段落翻译 API
-- 成功后更新 Redis 和 SSE
+**端点：** `POST /api/chapter-translations/:id/paragraphs/:paragraphIndex/retry`
+
+**请求体：** 无
+
+**响应：**
+```json
+{
+  "status": "queued",
+  "translationId": 123,
+  "paragraphIndex": 2
+}
+```
+
+**处理流程：**
+1. 前端点击重试按钮
+2. 调用重试 API
+3. 创建新的 `TranslateParagraphJob`（独立于主 Job）
+4. 新 Job 完成后更新 Redis progress
+5. 通过 Pub/Sub 推送结果
+
+**注意：** 重试 Job 与主 Job 并发执行，需要通过 paragraphIndex 作为锁防止竞争。
 
 ### 5.3 整体失败
 
@@ -167,14 +208,16 @@ translation_result:{translationId}
 ### 6.1 进度缓存
 
 - Key: `translation_progress:{translationId}`
-- 不设置 TTL，Job 完成后保留
-- 前端可随时获取当前进度
+- TTL: 1 小时（防止孤儿数据）
+- Job 完成后保留，供前端查询
+- 后续可清理或转入最终结果
 
 ### 6.2 最终结果缓存
 
 - Key: `translation_result:{translationId}`
 - TTL: 与现有 `CHAPTER_TRANSLATION.RESULT_TTL_SECONDS` 一致
 - 完成后从 progress 写入 result
+- 与现有 `result_json` 字段同步
 
 ---
 
@@ -208,3 +251,6 @@ translation_result:{translationId}
 | AI 段落间上下文丢失 | prompt 包含章节标题和位置信息 |
 | SSE 断连 | 前端 fallback 到轮询模式 |
 | Redis 不可用 | Job 内部 catch，写入数据库状态 |
+| AI API 速率限制 | 每段落间延迟 200ms，并发 Job=2 |
+| Job 崩溃导致状态不一致 | progress 数据保留，Job 重启可恢复 |
+| 重复触发翻译 | 检查 existing active translation，阻止重复 Job |

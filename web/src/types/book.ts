@@ -196,3 +196,33 @@ export interface ChapterTranslationResponse {
   translationId: number | null
   data: ChapterTranslationResult | null
 }
+
+export interface TranslationSentence {
+  sentenceIndex: number
+  original: string
+  translated: string
+  sourceOffsets: [number, number] | null
+  targetOffsets: [number, number] | null
+}
+
+export interface TranslationParagraph {
+  paragraphIndex: number
+  sentences: TranslationSentence[]
+}
+
+export interface TranslationProgress {
+  translationId: number
+  status: 'queued' | 'processing' | 'completed' | 'failed'
+  totalParagraphs: number
+  completedParagraphs: number
+  title: {
+    original: string
+    translated: string
+  }
+  paragraphs: Array<{
+    paragraphIndex: number
+    status: 'pending' | 'completed' | 'failed'
+    sentences?: TranslationSentence[]
+    error?: string
+  }>
+}

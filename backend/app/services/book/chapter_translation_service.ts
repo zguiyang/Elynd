@@ -104,7 +104,11 @@ export class ChapterTranslationService {
     }
   }
 
-  async getStatus(translationId: number) {
+  async getStatus(translationId: number): Promise<{
+    translationId: number
+    status: string
+    errorMessage: string | null
+  }> {
     const translation = await ChapterTranslation.find(translationId)
     if (!translation) {
       throw new Exception('Translation task not found', { status: 404 })
@@ -289,7 +293,7 @@ export class ChapterTranslationService {
       }
 
       translation.status = 'completed'
-      translation.provider = 'openai'
+      translation.provider = this.deriveProvider(aiConfig.baseUrl)
       translation.model = aiConfig.model
       translation.resultJson = result
       await translation.save()
@@ -424,7 +428,16 @@ export class ChapterTranslationService {
     await redis.setex(key, CHAPTER_TRANSLATION.PROGRESS_TTL_SECONDS, JSON.stringify(progress))
   }
 
-  splitContentIntoParagraphs(content: string): string[] {
+  private deriveProvider(baseUrl: string): string {
+    const url = baseUrl.toLowerCase()
+    if (url.includes('openai')) return 'openai'
+    if (url.includes('anthropic')) return 'anthropic'
+    if (url.includes('google')) return 'google'
+    if (url.includes('azure')) return 'azure'
+    return 'unknown'
+  }
+
+  private splitContentIntoParagraphs(content: string): string[] {
     const normalized = content.replace(/\r\n/g, '\n')
     const paragraphs = normalized.split('\n\n').map(p => p.trim()).filter(p => p.length > 0)
     return paragraphs

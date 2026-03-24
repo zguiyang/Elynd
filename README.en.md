@@ -134,6 +134,37 @@ exit
 | `DB_DATABASE` | Database name | `app` |
 | `REDIS_HOST` | Redis host | `redis` |
 | `APP_KEY` | Application key | (required) |
+| `GITHUB_CLIENT_ID` | GitHub OAuth Client ID | (required for OAuth login) |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth Client Secret | (required for OAuth login) |
+| `GITHUB_CALLBACK_URL` | OAuth callback URL | `https://your-domain/auth/callback/github` |
+
+#### OAuth Login Configuration
+
+This system supports GitHub OAuth login. You need to create an OAuth App in GitHub Developer settings.
+
+**Step 1: Create GitHub OAuth App**
+
+1. Go to GitHub → Settings → Developer settings → OAuth Apps
+2. Click "New OAuth App"
+3. Fill in the details:
+   - **Application name**: Elynd
+   - **Homepage URL**: `https://your-domain`
+   - **Authorization callback URL**: `https://your-domain/auth/callback/github`
+4. After creation, you will get the `Client ID` and `Client Secret`
+
+**Step 2: Configure environment variables**
+
+Add the following to `backend/.env`:
+
+```env
+GITHUB_CLIENT_ID=your_github_oauth_app_client_id
+GITHUB_CLIENT_SECRET=your_github_oauth_app_client_secret
+GITHUB_CALLBACK_URL=https://your-domain/auth/callback/github
+```
+
+> **Callback URL Note**
+> - Development: `http://localhost:3000/auth/callback/github`
+> - Production: `https://your-domain/auth/callback/github`
 
 #### Nginx Configuration (Domain Access)
 

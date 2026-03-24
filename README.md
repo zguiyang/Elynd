@@ -134,6 +134,37 @@ exit
 | `DB_DATABASE` | 数据库名称 | `app` |
 | `REDIS_HOST` | Redis 地址 | `redis` |
 | `APP_KEY` | 应用密钥 | （必需） |
+| `GITHUB_CLIENT_ID` | GitHub OAuth Client ID | （OAuth 登录必需） |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth Client Secret | （OAuth 登录必需） |
+| `GITHUB_CALLBACK_URL` | OAuth 回调地址 | `https://你的域名/auth/callback/github` |
+
+#### OAuth 登录配置
+
+本系统支持 GitHub OAuth 登录，需要在 GitHub 开发者设置中创建 OAuth App。
+
+**步骤 1：创建 GitHub OAuth App**
+
+1. 登录 GitHub → Settings → Developer settings → OAuth Apps
+2. 点击 "New OAuth App"
+3. 填写信息：
+   - **Application name**: Elynd
+   - **Homepage URL**: `https://你的域名`
+   - **Authorization callback URL**: `https://你的域名/auth/callback/github`
+4. 创建后会获得 `Client ID` 和 `Client Secret`
+
+**步骤 2：配置环境变量**
+
+在 `backend/.env` 中添加：
+
+```env
+GITHUB_CLIENT_ID=你的GitHub OAuth App Client ID
+GITHUB_CLIENT_SECRET=你的GitHub OAuth App Client Secret
+GITHUB_CALLBACK_URL=https://你的域名/auth/callback/github
+```
+
+> **回调 URL 说明**
+> - 开发环境：`http://localhost:3000/auth/callback/github`
+> - 生产环境：`https://你的域名/auth/callback/github`
 
 #### Nginx 配置（域名访问）
 

@@ -42,7 +42,7 @@ export function createChapterTranslationStream(
       }
 
       if (payload.type === 'paragraph') {
-        const messageData = payload as Record<string, unknown>
+        const messageData = payload as unknown as Record<string, unknown>
         const paragraph: TranslationParagraph = {
           paragraphIndex: messageData.paragraphIndex as number,
           sentences: messageData.sentences as TranslationParagraph['sentences'],
@@ -63,9 +63,8 @@ export function createChapterTranslationStream(
 }
 
 export async function getChapterTranslationProgress(translationId: number): Promise<TranslationProgress> {
-  const { data } = await request<TranslationProgress>({
+  return request<TranslationProgress>({
     method: 'GET',
     url: `/api/chapter-translations/${translationId}/progress`,
   })
-  return data
 }

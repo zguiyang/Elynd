@@ -227,12 +227,28 @@ export class ChapterTranslationService {
     translation.errorMessage = null
     await translation.save()
 
+    // Declare progress with explicit type so it's accessible in catch block
+    type ParagraphProgress = {
+      paragraphIndex: number
+      status: 'pending' | 'completed' | 'failed'
+      sentences?: Array<{ sentenceIndex: number; original: string; translated: string }>
+      error?: string
+    }
+    type ProgressType = {
+      totalParagraphs: number
+      completedParagraphs: number
+      title: { original: string; translated: string }
+      paragraphs: ParagraphProgress[]
+      overallStatus: 'processing' | 'completed' | 'failed'
+    }
+    let progress: ProgressType | undefined
+
     try {
       const aiConfig = await this.configService.getAiConfig()
       const paragraphs = this.splitContentIntoParagraphs(chapter.content)
 
       // Initialize progress
-      const progress = {
+      progress = {
         totalParagraphs: paragraphs.length,
         completedParagraphs: 0,
         title: { original: chapter.title, translated: '' },
@@ -322,7 +338,14 @@ export class ChapterTranslationService {
         title: progress.title,
         paragraphs: progress.paragraphs.map((p, i) => ({
           paragraphIndex: i,
-          sentences: p.sentences || [],
+          sentences: (p.sentences || []).map((s) => ({
+            sentenceIndex: s.sentenceIndex,
+            original: s.original,
+            translated: s.translated,
+            sourceOffsets: null,
+            targetOffsets: null,
+            tokensMap: null,
+          })),
         })),
       }
 
@@ -346,7 +369,7 @@ export class ChapterTranslationService {
       await translation.save()
 
       // Try to write progress if it was initialized
-      if (typeof progress !== 'undefined') {
+      if (progress) {
         await this.writeTranslationProgress(translationId, {
           ...progress,
           overallStatus: 'failed',

@@ -65,6 +65,7 @@ router
     router.post('/chapters/:chapterId/translations', [ChapterTranslationsController, 'trigger'])
     router.get('/chapters/:chapterId/translations', [ChapterTranslationsController, 'show'])
     router.get('/chapter-translations/:id/status', [ChapterTranslationsController, 'status'])
+    router.get('/chapter-translations/:id/progress', [ChapterTranslationsController, 'progress'])
     router.get('/chapter-translations/:id/events', [ChapterTranslationsController, 'events'])
 
     // Dictionary

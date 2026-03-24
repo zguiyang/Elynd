@@ -43,6 +43,20 @@ export default class ChapterTranslationsController {
     return this.chapterTranslationService.getStatus(translationId)
   }
 
+  async progress({ params }: HttpContext) {
+    const translationId = Number(params.id)
+    if (!Number.isInteger(translationId) || translationId <= 0) {
+      throw new Exception('Invalid translation id', { status: 422 })
+    }
+
+    const progress = await this.chapterTranslationService.getProgress(translationId)
+    if (!progress) {
+      throw new Exception('Translation not found', { status: 404 })
+    }
+
+    return progress
+  }
+
   async events(ctx: HttpContext) {
     const translationId = Number(ctx.params.id)
     if (!Number.isInteger(translationId) || translationId <= 0) {

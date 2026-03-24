@@ -121,6 +121,40 @@ export class ChapterTranslationService {
     }
   }
 
+  async getProgress(translationId: number): Promise<{
+    translationId: number
+    status: string
+    totalParagraphs: number
+    completedParagraphs: number
+    title: { original: string; translated: string }
+    paragraphs: Array<{
+      paragraphIndex: number
+      status: string
+      sentences?: Array<{ sentenceIndex: number; original: string; translated: string }>
+      error?: string
+    }>
+  } | null> {
+    const progressKey = `${CHAPTER_TRANSLATION.PROGRESS_PREFIX}:${translationId}`
+    const raw = await redis.get(progressKey)
+
+    if (!raw) {
+      // Fall back to database status
+      const translation = await ChapterTranslation.find(translationId)
+      if (!translation) return null
+
+      return {
+        translationId,
+        status: translation.status,
+        totalParagraphs: 0,
+        completedParagraphs: 0,
+        title: { original: '', translated: '' },
+        paragraphs: [],
+      }
+    }
+
+    return JSON.parse(raw)
+  }
+
   async getChapterResult(params: {
     chapterId: number
     sourceLanguage: string

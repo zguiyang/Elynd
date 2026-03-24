@@ -37,7 +37,6 @@ const CHAPTER_TRANSLATION = {
   CACHE_PREFIX: 'chapter_translation',
   RESULT_TTL_SECONDS: 60 * 60 * 24 * 30,
   PROGRESS_PREFIX: 'translation_progress',
-  EVENTS_PREFIX: 'translation_events',
   PROGRESS_TTL_SECONDS: 3600,
 } as const
 ```
@@ -50,6 +49,7 @@ async writeTranslationProgress(
   translationId: number,
   progress: {
     totalParagraphs: number
+    completedParagraphs: number
     title: { original: string; translated: string }
     paragraphs: Array<{
       paragraphIndex: number
@@ -57,7 +57,6 @@ async writeTranslationProgress(
       sentences?: Array<{ sentenceIndex: number; original: string; translated: string }>
       error?: string
     }>
-    currentParagraph: number
     overallStatus: 'processing' | 'completed' | 'failed'
   }
 ): Promise<void> {
@@ -66,22 +65,9 @@ async writeTranslationProgress(
 }
 ```
 
-- [ ] **Step 3: Add Pub/Sub publish method**
+- [ ] **Step 3: Add paragraph splitting helper**
 
 Add after `writeTranslationProgress()`:
-```typescript
-async publishTranslationEvent(
-  translationId: number,
-  event: { type: string; [key: string]: unknown }
-): Promise<void> {
-  const channel = `${CHAPTER_TRANSLATION.EVENTS_PREFIX}:${translationId}`
-  await redis.publish(channel, JSON.stringify(event))
-}
-```
-
-- [ ] **Step 4: Add paragraph splitting helper**
-
-Add after `publishTranslationEvent()`:
 ```typescript
 splitContentIntoParagraphs(content: string): string[] {
   const normalized = content.replace(/\r\n/g, '\n')
@@ -116,21 +102,16 @@ async processTranslation(translationId: number): Promise<void> {
     // Initialize progress
     const progress = {
       totalParagraphs: paragraphs.length,
+      completedParagraphs: 0,
       title: { original: chapter.title, translated: '' },
       paragraphs: paragraphs.map((_, i) => ({
         paragraphIndex: i,
         status: 'pending' as const,
       })),
-      currentParagraph: 0,
       overallStatus: 'processing' as const,
     }
 
     await this.writeTranslationProgress(translationId, progress)
-    await this.publishTranslationEvent(translationId, {
-      type: 'status',
-      translationId,
-      status: 'processing',
-    })
 
     // Translate title first
     const titlePrompt = this.promptService.render('book/chapter-translation-title', {
@@ -154,16 +135,9 @@ async processTranslation(translationId: number): Promise<void> {
 
     progress.title = titleResult.title
     await this.writeTranslationProgress(translationId, progress)
-    await this.publishTranslationEvent(translationId, {
-      type: 'title',
-      title: titleResult.title,
-    })
 
     // Translate paragraphs one by one
     for (let i = 0; i < paragraphs.length; i++) {
-      progress.currentParagraph = i
-      await this.writeTranslationProgress(translationId, progress)
-
       try {
         const paragraphPrompt = this.promptService.render('book/chapter-translation-paragraph', {
           sourceLanguage: translation.sourceLanguage,
@@ -191,25 +165,13 @@ async processTranslation(translationId: number): Promise<void> {
           status: 'completed',
           sentences: paragraphResult.sentences,
         }
-
-        await this.publishTranslationEvent(translationId, {
-          type: 'paragraph',
-          paragraphIndex: i,
-          sentences: paragraphResult.sentences,
-          status: 'completed',
-        })
+        progress.completedParagraphs = i + 1
       } catch (error) {
         progress.paragraphs[i] = {
           paragraphIndex: i,
           status: 'failed',
           error: error instanceof Error ? error.message : 'Translation failed',
         }
-
-        await this.publishTranslationEvent(translationId, {
-          type: 'error',
-          paragraphIndex: i,
-          message: progress.paragraphs[i].error,
-        })
       }
 
       await this.writeTranslationProgress(translationId, progress)
@@ -238,11 +200,6 @@ async processTranslation(translationId: number): Promise<void> {
     translation.resultJson = result
     await translation.save()
 
-    await this.publishTranslationEvent(translationId, {
-      type: 'done',
-      translationId,
-    })
-
     const cacheKey = this.buildCacheKey({
       bookId: chapter.bookId,
       chapterId: chapter.id,
@@ -256,10 +213,9 @@ async processTranslation(translationId: number): Promise<void> {
     translation.errorMessage = error instanceof Error ? error.message : 'Translation failed'
     await translation.save()
 
-    await this.publishTranslationEvent(translationId, {
-      type: 'failed',
-      translationId,
-      message: translation.errorMessage,
+    await this.writeTranslationProgress(translationId, {
+      ...progress,
+      overallStatus: 'failed',
     })
 
     throw error
@@ -417,7 +373,6 @@ async events(ctx: HttpContext) {
               type: 'paragraph',
               paragraphIndex: p.paragraphIndex,
               sentences: p.sentences,
-              status: 'completed',
             })
           } else if (p.status === 'failed') {
             sse.send({

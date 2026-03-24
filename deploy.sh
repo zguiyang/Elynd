@@ -57,15 +57,24 @@ ls -ld "$BACKEND_BUILD_PATH" "$WEB_BUILD_PATH"
 echo "📁 正在远程创建目录: $REMOTE_PATH"
 ssh "$REMOTE_HOST" "mkdir -p $REMOTE_PATH"
 
-# 同步后端构建产物
+# 备份远端 storage（用户数据：书籍、音频等）
+echo "📦 备份远端用户数据..."
+ssh "$REMOTE_HOST" "mkdir -p /tmp/elynd_backup && cp -r $REMOTE_PATH/backend/storage /tmp/elynd_backup/ 2>/dev/null || true"
+
+# 同步后端构建产物（不使用 --delete，避免删除用户数据）
 echo "--- 同步 Backend ---"
 ssh "$REMOTE_HOST" "mkdir -p $REMOTE_PATH/backend"
-rsync -avz --delete --omit-dir-times --progress "$BACKEND_BUILD_PATH/" "$REMOTE_HOST:$REMOTE_PATH/backend"
+rsync -avz --omit-dir-times --progress "$BACKEND_BUILD_PATH/" "$REMOTE_HOST:$REMOTE_PATH/backend"
+
+# 还原 storage
+echo "📦 还原远端用户数据..."
+ssh "$REMOTE_HOST" "cp -r /tmp/elynd_backup/storage $REMOTE_PATH/backend/ 2>/dev/null || true"
+ssh "$REMOTE_HOST" "rm -rf /tmp/elynd_backup"
 
 # 同步前端构建产物
 echo "--- 同步 Web ---"
 ssh "$REMOTE_HOST" "mkdir -p $REMOTE_PATH/web"
-rsync -avz --delete --omit-dir-times --progress "$WEB_BUILD_PATH/" "$REMOTE_HOST:$REMOTE_PATH/web"
+rsync -avz --omit-dir-times --progress "$WEB_BUILD_PATH/" "$REMOTE_HOST:$REMOTE_PATH/web"
 
 # 同步项目配置文件
 echo "--- 同步项目配置文件 ---"
@@ -94,9 +103,9 @@ fi
 # 步骤 6: 启动多容器
 # ========================================
 echo "🚀 启动多容器..."
-ssh "$REMOTE_HOST" "cd $REMOTE_PATH && docker compose -f docker-compose.prod.yml down"
-echo "🧹 清理远端旧依赖..."
-ssh "$REMOTE_HOST" "rm -rf $REMOTE_PATH/node_modules $REMOTE_PATH/backend/node_modules"
+ssh "$REMOTE_HOST" "cd $REMOTE_PATH && docker compose -f docker-compose.prod.yml down || true"
+echo "🧹 清理远端旧依赖（容器启动时会自动处理，仅清理残留）..."
+ssh "$REMOTE_HOST" "rm -rf $REMOTE_PATH/node_modules 2>/dev/null || true"
 ssh "$REMOTE_HOST" "cd $REMOTE_PATH && docker compose -f docker-compose.prod.yml up -d"
 
 echo "✨ 部署完成!"

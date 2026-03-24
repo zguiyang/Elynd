@@ -9,7 +9,34 @@ const email = ref('')
 const password = ref('')
 const rememberMe = ref(false)
 
+const errors = reactive<{ email?: string; password?: string }>({})
+
+const validateEmail = (value: string): string | undefined => {
+  if (!value.trim()) {
+    return '请输入邮箱'
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(value)) {
+    return '请输入有效的邮箱地址'
+  }
+  return undefined
+}
+
+const validatePassword = (value: string): string | undefined => {
+  if (!value) {
+    return '请输入密码'
+  }
+  return undefined
+}
+
 const handleSubmit = async () => {
+  errors.email = validateEmail(email.value)
+  errors.password = validatePassword(password.value)
+
+  if (errors.email || errors.password) {
+    return
+  }
+
   const result = await authStore.login({
     email: email.value,
     password: password.value,
@@ -37,9 +64,10 @@ const handleSubmit = async () => {
             type="email"
             placeholder="you@example.com"
             v-model="email"
-            required
             :disabled="authStore.isLoading"
+            @blur="errors.email = validateEmail(email)"
           />
+          <p v-if="errors.email" class="text-sm text-destructive">{{ errors.email }}</p>
         </div>
 
         <div class="space-y-2">
@@ -49,9 +77,10 @@ const handleSubmit = async () => {
             type="password"
             placeholder="请输入密码"
             v-model="password"
-            required
             :disabled="authStore.isLoading"
+            @blur="errors.password = validatePassword(password)"
           />
+          <p v-if="errors.password" class="text-sm text-destructive">{{ errors.password }}</p>
         </div>
 
         <div class="flex items-center justify-between">

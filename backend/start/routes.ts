@@ -13,6 +13,7 @@ import transmit from '@adonisjs/transmit/services/main'
 import { apiLimiter, authLimiter, aiChatLimiter, dictionaryLimiter } from '#start/limiter'
 
 const AuthController = () => import('#controllers/auth_controller')
+const SocialAuthController = () => import('#controllers/social_auth_controller')
 const UsersController = () => import('#controllers/users_controller')
 const BooksController = () => import('#controllers/books_controller')
 const BookChatController = () => import('#controllers/book_chat_controller')
@@ -30,6 +31,10 @@ router
     router.post('/auth/login', [AuthController, 'login'])
     router.post('/auth/forgot-password', [AuthController, 'forgotPassword'])
     router.post('/auth/reset-password', [AuthController, 'resetPassword'])
+
+    // Social Auth (SPA/SFA - 前端分离)
+    router.get('/auth/:provider/url', [SocialAuthController, 'oauthUrl'])
+    router.post('/auth/:provider/callback', [SocialAuthController, 'oauthCallback'])
   })
   .prefix('api')
   .use(authLimiter)

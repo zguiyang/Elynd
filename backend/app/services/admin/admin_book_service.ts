@@ -92,6 +92,7 @@ export class AdminBookService {
         'processingError',
         'audioStatus',
         'vocabularyStatus',
+        'bookHash',
         'createdAt'
       )
       .preload('level')

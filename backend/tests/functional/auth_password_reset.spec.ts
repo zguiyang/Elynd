@@ -157,8 +157,8 @@ test.group('Auth API password reset contract', () => {
       .header('x-forwarded-for', makeForwardedFor())
       .json({
         token: resetToken,
-        password: 'another-password123',
-        passwordConfirmation: 'another-password123',
+        password: 'another-pwd123',
+        passwordConfirmation: 'another-pwd123',
       })
 
     reusedTokenResponse.assertStatus(403)

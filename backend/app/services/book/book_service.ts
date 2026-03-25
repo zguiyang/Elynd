@@ -263,6 +263,9 @@ export class BookService {
         word: item.word,
         phonetic: dictionaryEntry?.phonetic || null,
         meanings: dictionaryEntry?.meanings || [],
+        sentence: item.sentence || null,
+        meta: null,
+        dictionaryEntryId: dictionaryEntry?.id || null,
       }
     })
   }

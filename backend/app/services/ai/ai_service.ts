@@ -50,11 +50,13 @@ export class AiService {
             model: config.model,
             attempt,
             errorMessage: lastParseError.message,
+            rawResponse: response.content.substring(0, 500),
           },
           'AI chat JSON parse failed'
         )
 
         if (attempt === 2) {
+          logger.error({ rawResponse: response.content }, 'AI chat JSON parse failed after 2 attempts, raw response above')
           throw new AiServiceError(
             AI_ERROR_CODES.PARSE_ERROR,
             'Failed to parse AI response as JSON',

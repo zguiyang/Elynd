@@ -210,6 +210,13 @@ export interface TranslationParagraph {
   sentences: TranslationSentence[]
 }
 
+export interface TranslationParagraphState {
+  paragraphIndex: number
+  status: 'pending' | 'completed' | 'failed'
+  sentences?: TranslationSentence[]
+  error?: string
+}
+
 export interface TranslationProgress {
   translationId: number
   status: 'queued' | 'processing' | 'completed' | 'failed'
@@ -219,10 +226,5 @@ export interface TranslationProgress {
     original: string
     translated: string
   }
-  paragraphs: Array<{
-    paragraphIndex: number
-    status: 'pending' | 'completed' | 'failed'
-    sentences?: TranslationSentence[]
-    error?: string
-  }>
+  paragraphs: TranslationParagraphState[]
 }

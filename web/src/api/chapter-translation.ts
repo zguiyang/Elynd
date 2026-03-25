@@ -4,13 +4,17 @@ import { request } from '@/lib/request'
 import type { ChapterTranslationStatus, TranslationParagraph, TranslationProgress } from '@/types/book'
 
 interface ChapterTranslationStatusMessage {
-  type: 'status' | 'error' | 'paragraph'
+  type: 'status' | 'error' | 'paragraph' | 'title' | 'progress'
   translationId?: number
   status?: ChapterTranslationStatus
   errorMessage?: string | null
   message?: string
   paragraphIndex?: number
   sentences?: TranslationParagraph['sentences']
+  error?: string
+  title?: { original: string; translated: string }
+  completedParagraphs?: number
+  totalParagraphs?: number
 }
 
 interface ChapterTranslationStreamOptions {
@@ -20,6 +24,14 @@ interface ChapterTranslationStreamOptions {
     errorMessage: string | null
   }) => void
   onError: (message: string) => void
+  onParagraph?: (payload: {
+    paragraphIndex: number
+    status: 'completed' | 'failed'
+    sentences?: TranslationParagraph['sentences']
+    error?: string
+  }) => void
+  onTitle?: (payload: { original: string; translated: string }) => void
+  onProgress?: (payload: { completedParagraphs: number; totalParagraphs: number }) => void
   onChunk?: (data: ChapterTranslationStatusMessage) => void
 }
 
@@ -27,7 +39,7 @@ export function createChapterTranslationStream(
   translationId: number,
   options: ChapterTranslationStreamOptions
 ): SseHandle {
-  const { onStatus, onError, onChunk } = options
+  const { onStatus, onError, onChunk, onParagraph, onTitle, onProgress } = options
 
   return createSSE<ChapterTranslationStatusMessage>({
     url: `/chapter-translations/${translationId}/events`,
@@ -41,12 +53,35 @@ export function createChapterTranslationStream(
         return
       }
 
-      if (payload.type === 'paragraph') {
-        const messageData = payload as unknown as Record<string, unknown>
-        const paragraph: TranslationParagraph = {
-          paragraphIndex: messageData.paragraphIndex as number,
-          sentences: messageData.sentences as TranslationParagraph['sentences'],
+      if (payload.type === 'paragraph' && typeof payload.paragraphIndex === 'number') {
+        if (payload.status === 'completed') {
+          onParagraph?.({
+            paragraphIndex: payload.paragraphIndex,
+            status: 'completed',
+            sentences: payload.sentences,
+          })
+        } else if (payload.status === 'failed') {
+          onParagraph?.({
+            paragraphIndex: payload.paragraphIndex,
+            status: 'failed',
+            error: payload.error || payload.message,
+          })
         }
+        onChunk?.(payload)
+        return
+      }
+
+      if (payload.type === 'title' && payload.title) {
+        onTitle?.(payload.title)
+        onChunk?.(payload)
+        return
+      }
+
+      if (payload.type === 'progress' && typeof payload.completedParagraphs === 'number') {
+        onProgress?.({
+          completedParagraphs: payload.completedParagraphs,
+          totalParagraphs: payload.totalParagraphs || 0,
+        })
         onChunk?.(payload)
         return
       }
@@ -66,5 +101,15 @@ export async function getChapterTranslationProgress(translationId: number): Prom
   return request<TranslationProgress>({
     method: 'GET',
     url: `/api/chapter-translations/${translationId}/progress`,
+  })
+}
+
+export async function retryChapterTranslationParagraph(
+  translationId: number,
+  paragraphIndex: number
+): Promise<{ status: 'queued' | 'processing'; translationId: number; paragraphIndex: number }> {
+  return request({
+    method: 'POST',
+    url: `/api/chapter-translations/${translationId}/paragraphs/${paragraphIndex}/retry`,
   })
 }

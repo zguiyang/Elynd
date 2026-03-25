@@ -641,18 +641,20 @@ onUnmounted(() => {
             class="space-y-3"
           >
             <div v-if="paragraph.status === 'completed' && paragraph.sentences?.length" class="space-y-2">
-              <div
-                v-for="sentence in paragraph.sentences"
-                :key="`${paragraph.paragraphIndex}-${sentence.sentenceIndex}`"
-                class="rounded-lg border bg-card/50 p-3"
-              >
-                <p class="text-sm leading-7 text-foreground">
-                  {{ sentence.original }}
-                </p>
-                <p v-if="sentence.translated" class="mt-1 text-sm leading-7 text-muted-foreground">
-                  {{ sentence.translated }}
-                </p>
-              </div>
+              <TransitionGroup name="fade-slide" tag="div" class="space-y-2">
+                <div
+                  v-for="sentence in paragraph.sentences"
+                  :key="`${paragraph.paragraphIndex}-${sentence.sentenceIndex}`"
+                  class="rounded-lg border bg-card/50 p-3"
+                >
+                  <p class="text-sm leading-7 text-foreground">
+                    {{ sentence.original }}
+                  </p>
+                  <p v-if="sentence.translated" class="mt-1 text-sm leading-7 text-muted-foreground">
+                    {{ sentence.translated }}
+                  </p>
+                </div>
+              </TransitionGroup>
             </div>
 
             <div v-else-if="paragraph.status === 'failed'" class="rounded-lg border border-destructive/40 bg-card/50 p-3">
@@ -669,9 +671,15 @@ onUnmounted(() => {
               </Button>
             </div>
 
-            <div v-else class="rounded-lg border bg-card/40 p-3">
-              <div class="h-3 w-3/4 animate-pulse rounded bg-muted/70" />
-              <div class="h-3 w-1/2 animate-pulse rounded bg-muted/50 mt-2" />
+            <div v-else class="rounded-lg border bg-card/40 p-3 space-y-2">
+              <div class="space-y-1.5">
+                <div class="h-3.5 w-full animate-pulse rounded bg-muted/70" />
+                <div class="h-3.5 w-3/4 animate-pulse rounded bg-muted/60" />
+              </div>
+              <div class="space-y-1.5">
+                <div class="h-3.5 w-full animate-pulse rounded bg-muted/50" />
+                <div class="h-3.5 w-1/2 animate-pulse rounded bg-muted/40" />
+              </div>
             </div>
           </div>
         </div>
@@ -797,3 +805,27 @@ onUnmounted(() => {
     </Dialog>
   </div>
 </template>
+
+<style>
+.fade-slide-enter-active {
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.fade-slide-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.fade-slide-move {
+  transition: transform 0.4s ease;
+}
+</style>

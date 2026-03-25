@@ -11,6 +11,7 @@ export interface BookLevel {
   minWords: number | null
   maxWords: number | null
   sortOrder: number
+  isActive?: boolean
 }
 
 export interface Chapter {
@@ -153,8 +154,10 @@ export interface BookListParams {
 }
 
 export interface VocabularyItem {
+  id: number
   word: string
   phonetic: string | null
+  sentence?: string | null
   meanings: Array<{
     partOfSpeech: string
     localizedMeaning: string
@@ -192,7 +195,7 @@ export interface ChapterTranslationResult {
 }
 
 export interface ChapterTranslationResponse {
-  status: ChapterTranslationStatus
+  status: ChapterTranslationStatus | null
   translationId: number | null
   data: ChapterTranslationResult | null
 }
@@ -203,6 +206,7 @@ export interface TranslationSentence {
   translated: string
   sourceOffsets: [number, number] | null
   targetOffsets: [number, number] | null
+  tokensMap: Array<{ sourceToken: string; targetToken: string }> | null
 }
 
 export interface TranslationParagraph {

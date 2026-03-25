@@ -253,7 +253,7 @@ const refreshChapterTranslation = async () => {
       translationId.value = result.translationId
     }
   } else {
-    translationStatus.value = result.status
+    translationStatus.value = result.status ?? 'idle'
     translationId.value = result.translationId
   }
 }
@@ -316,6 +316,10 @@ const applyParagraphUpdate = (payload: {
       paragraphIndex: payload.paragraphIndex,
       sentences: payload.sentences,
     }
+    showTranslation.value = true
+  }
+
+  if (payload.status === 'failed') {
     showTranslation.value = true
   }
 }
@@ -454,21 +458,47 @@ const triggerTranslation = async () => {
   }
 
   translationError.value = null
-  translationStatus.value = 'queued'
+  showTranslation.value = true
 
   try {
     const lang = await ensureLanguageConfig()
+    const existing = await bookApi.getChapterTranslation(props.chapter.id, {
+      sourceLanguage: lang.sourceLanguage,
+      targetLanguage: lang.targetLanguage,
+    })
+
+    // completed 且有数据 => 直接展示
+    if (existing.status === 'completed' && existing.data) {
+      translationStatus.value = 'completed'
+      translationResult.value = existing.data
+      translationProgress.value = null
+      translationId.value = existing.translationId
+      return
+    }
+
+    // queued/processing 且有 id => 继续跟踪
+    if ((existing.status === 'queued' || existing.status === 'processing') && existing.translationId) {
+      translationStatus.value = existing.status
+      translationId.value = existing.translationId
+      translationProgress.value = null
+      await trackTranslationTask()
+      return
+    }
+
+    // 无数据或 data 为 null 时视为需新建
+    translationStatus.value = 'queued'
+
     const result = await bookApi.triggerChapterTranslation(props.chapter.id, {
       sourceLanguage: lang.sourceLanguage,
       targetLanguage: lang.targetLanguage,
     })
 
-    translationStatus.value = result.status
+    translationStatus.value = result.status ?? 'idle'
     translationId.value = result.translationId
 
     if (result.status === 'completed' && result.data) {
       translationResult.value = result.data
-      showTranslation.value = true
+      translationProgress.value = null
       return
     }
 
@@ -509,6 +539,34 @@ const displayParagraphs = computed<TranslationParagraphState[]>(() => {
     }))
   }
   return []
+})
+
+const translationProgressPercent = computed(() => {
+  if (translationProgress.value) {
+    const { completedParagraphs, totalParagraphs } = translationProgress.value
+    if (!totalParagraphs) return 0
+    return Math.min(100, Math.round((completedParagraphs / totalParagraphs) * 100))
+  }
+  if (translationResult.value) return 100
+  return 0
+})
+
+const translationCompletedCount = computed(() => {
+  if (translationProgress.value) return translationProgress.value.completedParagraphs
+  if (translationResult.value) return translationResult.value.paragraphs.length
+  return 0
+})
+
+const translationTotalCount = computed(() => {
+  if (translationProgress.value) return translationProgress.value.totalParagraphs
+  if (translationResult.value) return translationResult.value.paragraphs.length
+  return paragraphs.value.length
+})
+
+const shouldShowTranslationPanel = computed(() => {
+  if (translationStatus.value === 'queued' || translationStatus.value === 'processing') return true
+  if (showTranslation.value) return true
+  return false
 })
 
 watch(
@@ -555,12 +613,24 @@ onUnmounted(() => {
           {{ translationError }}
         </p>
 
-        <div v-if="showTranslation && displayTitle" class="space-y-6">
-          <div>
+        <div v-if="shouldShowTranslationPanel" class="mt-6 space-y-4">
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex-1 h-2 rounded-full bg-muted/70 overflow-hidden">
+              <div
+                class="h-full bg-primary transition-all"
+                :style="{ width: `${translationProgressPercent}%` }"
+              />
+            </div>
+            <span class="text-xs text-muted-foreground whitespace-nowrap">
+              {{ translationCompletedCount }} / {{ translationTotalCount }}
+            </span>
+          </div>
+
+          <div v-if="displayTitle" class="space-y-1">
             <h2 class="text-xl font-semibold text-foreground">
               {{ displayTitle.original }}
             </h2>
-            <p v-if="displayTitle.translated" class="mt-1 text-sm leading-6 text-muted-foreground">
+            <p v-if="displayTitle.translated" class="text-sm leading-6 text-muted-foreground">
               {{ displayTitle.translated }}
             </p>
           </div>
@@ -568,9 +638,9 @@ onUnmounted(() => {
           <div
             v-for="paragraph in displayParagraphs"
             :key="paragraph.paragraphIndex"
-            class="space-y-4"
+            class="space-y-3"
           >
-            <div v-if="paragraph.status === 'completed' && paragraph.sentences?.length">
+            <div v-if="paragraph.status === 'completed' && paragraph.sentences?.length" class="space-y-2">
               <div
                 v-for="sentence in paragraph.sentences"
                 :key="`${paragraph.paragraphIndex}-${sentence.sentenceIndex}`"
@@ -599,8 +669,9 @@ onUnmounted(() => {
               </Button>
             </div>
 
-            <div v-else class="rounded-lg border border-dashed bg-card/30 p-3">
-              <p class="text-xs text-muted-foreground">该段翻译中...</p>
+            <div v-else class="rounded-lg border bg-card/40 p-3">
+              <div class="h-3 w-3/4 animate-pulse rounded bg-muted/70" />
+              <div class="h-3 w-1/2 animate-pulse rounded bg-muted/50 mt-2" />
             </div>
           </div>
         </div>

@@ -24,9 +24,9 @@ test.group('Chapter Translation Events - Paragraph Status', (group) => {
     ChapterTranslationService.prototype.getProgress = async function fakeGetProgress(translationId: number) {
       return {
         translationId,
-        status: 'processing',
+        status: 'completed',
         totalParagraphs: 2,
-        completedParagraphs: 1,
+        completedParagraphs: 2,
         title: { original: 'T', translated: 'T' },
         paragraphs: [
           {

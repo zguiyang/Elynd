@@ -12,7 +12,7 @@ import {
 } from 'lucide-vue-next'
 import { useReadingSettingsStore } from '@/stores/reading-settings'
 import { bookApi } from '@/api/book'
-import { createChapterTranslationStream } from '@/api/chapter-translation'
+import { createChapterTranslationStream, retryChapterTranslationParagraph } from '@/api/chapter-translation'
 import { userApi } from '@/api/user'
 import type { LineHeight, ContentWidth } from '@/stores/reading-settings'
 import type { ReaderAiActionRequest, ReaderSelectionActionPayload } from '@/types/reader-selection'
@@ -22,6 +22,8 @@ import type {
   VocabularyItem,
   ChapterTranslationResult,
   ChapterTranslationStatus,
+  TranslationProgress,
+  TranslationParagraphState,
 } from '@/types/book'
 import { toast } from 'vue-sonner'
 
@@ -71,6 +73,7 @@ const translationStatus = ref<'idle' | ChapterTranslationStatus>('idle')
 const translationId = ref<number | null>(null)
 const translationResult = ref<ChapterTranslationResult | null>(null)
 const translationError = ref<string | null>(null)
+const translationProgress = ref<TranslationProgress | null>(null)
 const languageConfig = ref<{ sourceLanguage: string; targetLanguage: string } | null>(null)
 let translationStreamHandle: { close: () => void } | null = null
 let translationFallbackTimer: ReturnType<typeof setInterval> | null = null
@@ -198,6 +201,7 @@ const resetTranslationState = () => {
   translationId.value = null
   translationResult.value = null
   translationError.value = null
+  translationProgress.value = null
 }
 
 const ensureLanguageConfig = async () => {
@@ -244,6 +248,7 @@ const refreshChapterTranslation = async () => {
     translationStatus.value = 'completed'
     translationResult.value = result.data
     showTranslation.value = true
+    translationProgress.value = null
     if (result.translationId) {
       translationId.value = result.translationId
     }
@@ -251,6 +256,91 @@ const refreshChapterTranslation = async () => {
     translationStatus.value = result.status
     translationId.value = result.translationId
   }
+}
+
+const ensureTranslationProgress = () => {
+  if (translationProgress.value) return translationProgress.value
+  const total = paragraphs.value.length
+  translationProgress.value = {
+    translationId: translationId.value || 0,
+    status: 'processing',
+    totalParagraphs: total,
+    completedParagraphs: 0,
+    title: { original: props.chapter?.title || '', translated: '' },
+    paragraphs: Array.from({ length: total }, (_, index) => ({
+      paragraphIndex: index,
+      status: 'pending',
+    })),
+  }
+  return translationProgress.value
+}
+
+const ensureTranslationResult = () => {
+  if (translationResult.value) return translationResult.value
+  translationResult.value = {
+    title: { original: props.chapter?.title || '', translated: '' },
+    paragraphs: [],
+  }
+  return translationResult.value
+}
+
+const applyTitleUpdate = (title: { original: string; translated: string }) => {
+  const progress = ensureTranslationProgress()
+  progress.title = title
+  const result = ensureTranslationResult()
+  result.title = title
+  showTranslation.value = true
+}
+
+const applyParagraphUpdate = (payload: {
+  paragraphIndex: number
+  status: 'completed' | 'failed'
+  sentences?: TranslationParagraphState['sentences']
+  error?: string
+}) => {
+  const progress = ensureTranslationProgress()
+  const target = progress.paragraphs[payload.paragraphIndex] || {
+    paragraphIndex: payload.paragraphIndex,
+    status: 'pending',
+  }
+  progress.paragraphs[payload.paragraphIndex] = {
+    ...target,
+    status: payload.status,
+    sentences: payload.sentences,
+    error: payload.error,
+  }
+  progress.completedParagraphs = progress.paragraphs.filter(p => p.status !== 'pending').length
+  if (payload.status === 'completed' && payload.sentences) {
+    const result = ensureTranslationResult()
+    result.paragraphs[payload.paragraphIndex] = {
+      paragraphIndex: payload.paragraphIndex,
+      sentences: payload.sentences,
+    }
+    showTranslation.value = true
+  }
+}
+
+const retryParagraph = async (paragraphIndex: number) => {
+  if (!translationId.value) return
+  translationError.value = null
+  const progress = ensureTranslationProgress()
+  const target = progress.paragraphs[paragraphIndex]
+  if (target) {
+    progress.paragraphs[paragraphIndex] = {
+      paragraphIndex,
+      status: 'pending',
+    }
+  }
+  translationStatus.value = 'processing'
+
+  await retryChapterTranslationParagraph(translationId.value, paragraphIndex)
+    .then(() => {
+      showTranslation.value = true
+      startTranslationStream()
+    })
+    .catch(() => {
+      translationError.value = '重试失败，请稍后再试'
+    })
 }
 
 const startTranslationPolling = () => {
@@ -307,6 +397,17 @@ const startTranslationStream = () => {
         clearTranslationStream()
         clearTranslationFallbackPolling()
       }
+    },
+    onTitle: (title) => {
+      applyTitleUpdate(title)
+    },
+    onParagraph: (payload) => {
+      applyParagraphUpdate(payload)
+    },
+    onProgress: (payload) => {
+      const progress = ensureTranslationProgress()
+      progress.completedParagraphs = payload.completedParagraphs
+      progress.totalParagraphs = payload.totalParagraphs
     },
     onError: () => {
       clearTranslationStream()
@@ -390,6 +491,26 @@ defineExpose({
   fetchVocabulary,
 })
 
+const displayTitle = computed(() => {
+  if (translationResult.value?.title) return translationResult.value.title
+  if (translationProgress.value?.title) return translationProgress.value.title
+  return null
+})
+
+const displayParagraphs = computed<TranslationParagraphState[]>(() => {
+  if (translationProgress.value?.paragraphs?.length) {
+    return translationProgress.value.paragraphs
+  }
+  if (translationResult.value?.paragraphs?.length) {
+    return translationResult.value.paragraphs.map((paragraph) => ({
+      paragraphIndex: paragraph.paragraphIndex,
+      status: 'completed',
+      sentences: paragraph.sentences,
+    }))
+  }
+  return []
+})
+
 watch(
   () => props.chapter?.id,
   () => {
@@ -434,35 +555,52 @@ onUnmounted(() => {
           {{ translationError }}
         </p>
 
-        <div v-if="showTranslation && translationResult" class="space-y-6">
+        <div v-if="showTranslation && displayTitle" class="space-y-6">
           <div>
             <h2 class="text-xl font-semibold text-foreground">
-              {{ translationResult.title.original }}
+              {{ displayTitle.original }}
             </h2>
-            <p
-              v-if="translationResult.title.translated"
-              class="mt-1 text-sm leading-6 text-muted-foreground"
-            >
-              {{ translationResult.title.translated }}
+            <p v-if="displayTitle.translated" class="mt-1 text-sm leading-6 text-muted-foreground">
+              {{ displayTitle.translated }}
             </p>
           </div>
 
           <div
-            v-for="paragraph in translationResult.paragraphs"
+            v-for="paragraph in displayParagraphs"
             :key="paragraph.paragraphIndex"
             class="space-y-4"
           >
-            <div
-              v-for="sentence in paragraph.sentences"
-              :key="`${paragraph.paragraphIndex}-${sentence.sentenceIndex}`"
-              class="rounded-lg border bg-card/50 p-3"
-            >
-              <p class="text-sm leading-7 text-foreground">
-                {{ sentence.original }}
+            <div v-if="paragraph.status === 'completed' && paragraph.sentences?.length">
+              <div
+                v-for="sentence in paragraph.sentences"
+                :key="`${paragraph.paragraphIndex}-${sentence.sentenceIndex}`"
+                class="rounded-lg border bg-card/50 p-3"
+              >
+                <p class="text-sm leading-7 text-foreground">
+                  {{ sentence.original }}
+                </p>
+                <p v-if="sentence.translated" class="mt-1 text-sm leading-7 text-muted-foreground">
+                  {{ sentence.translated }}
+                </p>
+              </div>
+            </div>
+
+            <div v-else-if="paragraph.status === 'failed'" class="rounded-lg border border-destructive/40 bg-card/50 p-3">
+              <p class="text-sm text-destructive">
+                {{ paragraph.error || '该段翻译失败' }}
               </p>
-              <p v-if="sentence.translated" class="mt-1 text-sm leading-7 text-muted-foreground">
-                {{ sentence.translated }}
-              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                class="mt-2 h-7 text-xs"
+                @click="retryParagraph(paragraph.paragraphIndex)"
+              >
+                重试该段
+              </Button>
+            </div>
+
+            <div v-else class="rounded-lg border border-dashed bg-card/30 p-3">
+              <p class="text-xs text-muted-foreground">该段翻译中...</p>
             </div>
           </div>
         </div>

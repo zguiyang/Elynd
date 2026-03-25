@@ -207,7 +207,11 @@ export class ChapterTranslationService {
       }
     }
 
-    throw new Exception('Translation not found', { status: 404 })
+    return {
+      status: null,
+      translationId: null,
+      data: null,
+    }
   }
 
   async processTranslation(translationId: number): Promise<void> {

@@ -166,7 +166,9 @@ export default class ChapterTranslationsController {
             totalParagraphs: progress.totalParagraphs,
           })
 
-          if (progress.status === 'completed' || progress.status === 'failed') {
+          const shouldClose = progress.status === 'completed' || progress.status === 'failed'
+
+          if (shouldClose) {
             cleanup()
             sse.close()
           }

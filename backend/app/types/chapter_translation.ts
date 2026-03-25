@@ -40,7 +40,7 @@ export interface RequestChapterTranslationParams {
 }
 
 export interface ChapterTranslationResponse {
-  status: ChapterTranslationStatus
+  status: ChapterTranslationStatus | null
   translationId: number | null
   data: ChapterTranslationResult | null
 }

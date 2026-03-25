@@ -67,6 +67,10 @@ router
     router.get('/chapter-translations/:id/status', [ChapterTranslationsController, 'status'])
     router.get('/chapter-translations/:id/progress', [ChapterTranslationsController, 'progress'])
     router.get('/chapter-translations/:id/events', [ChapterTranslationsController, 'events'])
+    router.post('/chapter-translations/:id/paragraphs/:index/retry', [
+      ChapterTranslationsController,
+      'retryParagraph',
+    ])
 
     // Dictionary
     router.get('/dictionary/:word', [DictionaryController, 'lookup']).use(dictionaryLimiter)

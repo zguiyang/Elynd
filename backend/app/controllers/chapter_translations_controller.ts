@@ -130,13 +130,15 @@ export default class ChapterTranslationsController {
               sse.send({
                 type: 'paragraph',
                 paragraphIndex: p.paragraphIndex,
+                status: 'completed',
                 sentences: p.sentences,
               })
             } else if (p.status === 'failed') {
               sse.send({
-                type: 'error',
+                type: 'paragraph',
                 paragraphIndex: p.paragraphIndex,
-                message: p.error,
+                status: 'failed',
+                error: p.error,
               })
             }
           })
@@ -158,6 +160,12 @@ export default class ChapterTranslationsController {
             totalParagraphs: progress.totalParagraphs,
           })
 
+          sse.send({
+            type: 'progress',
+            completedParagraphs: progress.completedParagraphs,
+            totalParagraphs: progress.totalParagraphs,
+          })
+
           if (progress.status === 'completed' || progress.status === 'failed') {
             cleanup()
             sse.close()
@@ -167,6 +175,21 @@ export default class ChapterTranslationsController {
         // Ignore polling errors
       }
     }, 500)
+  }
+
+  async retryParagraph({ params, response }: HttpContext) {
+    const translationId = Number(params.id)
+    if (!Number.isInteger(translationId) || translationId <= 0) {
+      throw new Exception('Invalid translation id', { status: 422 })
+    }
+
+    const paragraphIndex = Number(params.index)
+    if (!Number.isInteger(paragraphIndex) || paragraphIndex < 0) {
+      throw new Exception('Invalid paragraph index', { status: 422 })
+    }
+
+    const result = await this.chapterTranslationService.retryParagraph(translationId, paragraphIndex)
+    return response.status(202).send(result)
   }
 
   async show({ params, request }: HttpContext) {

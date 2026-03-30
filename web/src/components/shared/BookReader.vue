@@ -59,15 +59,18 @@ const isMobileViewport = ref(false)
 const surfacePosition = ref({ x: 0, y: 0 })
 const isLookupDialogOpen = ref(false)
 const activeSentenceKey = ref<string | null>(null)
+const recentlyActivatedSentenceKey = ref<string | null>(null)
 const userScrollPauseUntil = ref(0)
 const isProgrammaticScroll = ref(false)
 const sentenceElementMap = new Map<string, HTMLElement>()
 let scrollGuardTimer: ReturnType<typeof setTimeout> | null = null
+let activePulseTimer: ReturnType<typeof setTimeout> | null = null
 
 const SENTENCE_SWITCH_HYSTERESIS_MS = 120
 const AUTO_FOLLOW_VIEWPORT_RATIO = 0.48
 const AUTO_FOLLOW_TOLERANCE_PX = 56
 const AUTO_FOLLOW_USER_SCROLL_PAUSE_MS = 2500
+const SENTENCE_ACTIVE_PULSE_MS = 420
 
 const lookupState = ref<{
   status: 'idle' | 'loading' | 'success' | 'error'
@@ -272,6 +275,24 @@ const followActiveSentence = async () => {
 
 const isSentenceActive = (sentence: ChapterSentenceTiming) => {
   return activeSentenceKey.value === getSentenceKey(sentence)
+}
+
+const isSentenceRecentlyActivated = (sentence: ChapterSentenceTiming) => {
+  return recentlyActivatedSentenceKey.value === getSentenceKey(sentence)
+}
+
+const getSentenceClass = (sentence: ChapterSentenceTiming) => {
+  if (isSentenceActive(sentence)) {
+    return {
+      'reader-sentence--active': true,
+      'reader-sentence--active-pulse': isSentenceRecentlyActivated(sentence),
+      'bg-amber-200/70 dark:bg-amber-400/30 text-foreground ring-1 ring-amber-300/40 dark:ring-amber-300/30': true,
+    }
+  }
+
+  return {
+    'reader-sentence--inactive': true,
+  }
 }
 
 const resetLookupState = () => {
@@ -482,6 +503,10 @@ onUnmounted(() => {
     clearTimeout(scrollGuardTimer)
     scrollGuardTimer = null
   }
+  if (activePulseTimer) {
+    clearTimeout(activePulseTimer)
+    activePulseTimer = null
+  }
   sentenceElementMap.clear()
 })
 
@@ -501,6 +526,18 @@ watch(
     if (!nextKey || nextKey === prevKey) {
       return
     }
+
+    recentlyActivatedSentenceKey.value = nextKey
+    if (activePulseTimer) {
+      clearTimeout(activePulseTimer)
+    }
+    activePulseTimer = setTimeout(() => {
+      if (recentlyActivatedSentenceKey.value === nextKey) {
+        recentlyActivatedSentenceKey.value = null
+      }
+      activePulseTimer = null
+    }, SENTENCE_ACTIVE_PULSE_MS)
+
     void followActiveSentence()
   }
 )
@@ -532,11 +569,9 @@ watch(
               v-for="sentence in titleSentenceTimings"
               :key="`title-${sentence.sentenceIndex}`"
               :ref="(el) => registerSentenceElement(sentence, el)"
-              class="rounded px-1 py-0.5 transition-colors duration-200"
+              class="reader-sentence"
               :data-sentence-key="getSentenceKey(sentence)"
-              :class="isSentenceActive(sentence)
-                ? 'bg-amber-200/70 dark:bg-amber-400/30 text-foreground ring-1 ring-amber-300/40 dark:ring-amber-300/30'
-                : ''"
+              :class="getSentenceClass(sentence)"
             >
               {{ sentence.text }}{{ ' ' }}
             </span>
@@ -554,11 +589,9 @@ watch(
             v-for="sentence in paragraph.sentences"
             :key="`${sentence.paragraphIndex}-${sentence.sentenceIndex}`"
             :ref="(el) => registerSentenceElement(sentence, el)"
-            class="rounded px-1 py-0.5 transition-colors duration-200"
+            class="reader-sentence"
             :data-sentence-key="getSentenceKey(sentence)"
-            :class="isSentenceActive(sentence)
-              ? 'bg-amber-200/70 dark:bg-amber-400/30 text-foreground ring-1 ring-amber-300/40 dark:ring-amber-300/30'
-              : ''"
+            :class="getSentenceClass(sentence)"
             :data-test="isSentenceActive(sentence) ? 'reader-sentence-active' : undefined"
           >
             {{ sentence.text }}{{ ' ' }}
@@ -768,3 +801,56 @@ watch(
     </Dialog>
   </div>
 </template>
+
+<style scoped>
+.reader-sentence {
+  border-radius: 0.35rem;
+  padding: 0.125rem 0.25rem;
+  transition-property: background-color, color, box-shadow, transform, opacity, filter;
+  transition-duration: 260ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, background-color, box-shadow;
+}
+
+.reader-sentence--inactive {
+  opacity: 0.78;
+  filter: saturate(0.92);
+}
+
+.reader-sentence--active {
+  opacity: 1;
+  transform: translateY(-0.5px);
+  filter: saturate(1.08);
+}
+
+.reader-sentence--active-pulse {
+  animation: sentence-active-pulse 420ms cubic-bezier(0.2, 0.9, 0.3, 1) 1;
+}
+
+@keyframes sentence-active-pulse {
+  0% {
+    transform: translateY(1px) scale(0.992);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0), 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+
+  62% {
+    transform: translateY(-0.5px) scale(1.012);
+    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.4), 0 10px 24px -16px rgba(245, 158, 11, 0.7);
+  }
+
+  100% {
+    transform: translateY(-0.5px) scale(1);
+    box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.38), 0 8px 20px -16px rgba(245, 158, 11, 0.7);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reader-sentence {
+    transition-duration: 1ms;
+  }
+
+  .reader-sentence--active-pulse {
+    animation: none;
+  }
+}
+</style>

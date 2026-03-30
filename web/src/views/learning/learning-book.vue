@@ -217,11 +217,6 @@ const ensureLanguageConfig = async () => {
   return languageConfig.value
 }
 
-const getNativeLanguageCode = async () => {
-  const lang = await ensureLanguageConfig()
-  return lang.targetLanguage || 'zh'
-}
-
 const handleReaderSelectionAction = (payload: ReaderSelectionActionPayload) => {
   if (payload.actionType === 'lookup') {
     return

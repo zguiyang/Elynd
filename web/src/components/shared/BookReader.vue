@@ -58,6 +58,16 @@ const isActionSurfaceVisible = ref(false)
 const isMobileViewport = ref(false)
 const surfacePosition = ref({ x: 0, y: 0 })
 const isLookupDialogOpen = ref(false)
+const activeSentenceKey = ref<string | null>(null)
+const userScrollPauseUntil = ref(0)
+const isProgrammaticScroll = ref(false)
+const sentenceElementMap = new Map<string, HTMLElement>()
+let scrollGuardTimer: ReturnType<typeof setTimeout> | null = null
+
+const SENTENCE_SWITCH_HYSTERESIS_MS = 120
+const AUTO_FOLLOW_VIEWPORT_RATIO = 0.48
+const AUTO_FOLLOW_TOLERANCE_PX = 56
+const AUTO_FOLLOW_USER_SCROLL_PAUSE_MS = 2500
 
 const lookupState = ref<{
   status: 'idle' | 'loading' | 'success' | 'error'
@@ -133,12 +143,11 @@ const bodyParagraphSentenceTimings = computed(() => {
   return paragraphSentenceTimings.value.filter((paragraph) => paragraph.paragraphIndex >= 0)
 })
 
-const activeSentenceKey = computed(() => {
+const computeTimelineActiveSentence = (currentMs: number) => {
   if (!props.sentenceTimings?.length) {
     return null
   }
 
-  const currentMs = Math.round((props.currentTime || 0) * 1000)
   const inRangeCandidates = props.sentenceTimings.filter((sentence) => {
     if (sentence.startMs === null || sentence.endMs === null) {
       return false
@@ -151,15 +160,118 @@ const activeSentenceKey = computed(() => {
       .filter((sentence) => sentence.startMs !== null && currentMs >= (sentence.startMs || 0))
       .sort((a, b) => (b.startMs || 0) - (a.startMs || 0))[0]
 
-  if (!active) {
-    return null
+  return active ? `${active.paragraphIndex}-${active.sentenceIndex}` : null
+}
+
+const getSentenceKey = (sentence: ChapterSentenceTiming) => {
+  return `${sentence.paragraphIndex}-${sentence.sentenceIndex}`
+}
+
+const getSortedTimedSentences = () => {
+  return (props.sentenceTimings || [])
+    .filter((sentence) => sentence.startMs !== null && sentence.endMs !== null)
+    .slice()
+    .sort((a, b) => {
+      if ((a.startMs || 0) !== (b.startMs || 0)) {
+        return (a.startMs || 0) - (b.startMs || 0)
+      }
+      if (a.paragraphIndex !== b.paragraphIndex) {
+        return a.paragraphIndex - b.paragraphIndex
+      }
+      return a.sentenceIndex - b.sentenceIndex
+    })
+}
+
+const applySentenceSwitchHysteresis = (candidateKey: string | null, currentMs: number) => {
+  const currentKey = activeSentenceKey.value
+  if (!candidateKey || !currentKey || candidateKey === currentKey) {
+    return candidateKey
   }
 
-  return `${active.paragraphIndex}-${active.sentenceIndex}`
-})
+  const timedSentences = getSortedTimedSentences()
+  const nextIndex = timedSentences.findIndex((sentence) => getSentenceKey(sentence) === candidateKey)
+  if (nextIndex <= 0) {
+    return candidateKey
+  }
+
+  const nextSentence = timedSentences[nextIndex]
+  const previousSentence = timedSentences[nextIndex - 1]
+  if (!nextSentence || !previousSentence) {
+    return candidateKey
+  }
+
+  if (getSentenceKey(previousSentence) !== currentKey) {
+    return candidateKey
+  }
+
+  const nextStart = nextSentence.startMs || 0
+  const previousEnd = previousSentence.endMs || 0
+  const canKeepPrevious = currentMs < nextStart + SENTENCE_SWITCH_HYSTERESIS_MS
+    && currentMs <= previousEnd + SENTENCE_SWITCH_HYSTERESIS_MS
+
+  return canKeepPrevious ? currentKey : candidateKey
+}
+
+const registerSentenceElement = (
+  sentence: ChapterSentenceTiming,
+  element: unknown
+) => {
+  const key = getSentenceKey(sentence)
+  if (element instanceof HTMLElement) {
+    sentenceElementMap.set(key, element)
+    return
+  }
+  sentenceElementMap.delete(key)
+}
+
+const pauseAutoFollowAfterUserScroll = () => {
+  if (isProgrammaticScroll.value) {
+    return
+  }
+  userScrollPauseUntil.value = Date.now() + AUTO_FOLLOW_USER_SCROLL_PAUSE_MS
+}
+
+const followActiveSentence = async () => {
+  if (!activeSentenceKey.value || Date.now() < userScrollPauseUntil.value) {
+    return
+  }
+
+  await nextTick()
+  const activeElement = sentenceElementMap.get(activeSentenceKey.value)
+  if (!activeElement) {
+    return
+  }
+
+  const rect = activeElement.getBoundingClientRect()
+  const viewportTargetY = window.innerHeight * AUTO_FOLLOW_VIEWPORT_RATIO
+  const sentenceCenterY = rect.top + rect.height / 2
+  const deltaY = sentenceCenterY - viewportTargetY
+  if (Math.abs(deltaY) <= AUTO_FOLLOW_TOLERANCE_PX) {
+    return
+  }
+
+  isProgrammaticScroll.value = true
+  try {
+    window.scrollBy({
+      top: deltaY,
+      behavior: 'smooth',
+    })
+  } catch {
+    isProgrammaticScroll.value = false
+    return
+  }
+
+  if (scrollGuardTimer) {
+    clearTimeout(scrollGuardTimer)
+  }
+  scrollGuardTimer = setTimeout(() => {
+    isProgrammaticScroll.value = false
+    scrollGuardTimer = null
+  }, 320)
+}
 
 const isSentenceActive = (sentence: ChapterSentenceTiming) => {
-  return activeSentenceKey.value === `${sentence.paragraphIndex}-${sentence.sentenceIndex}`
+  return activeSentenceKey.value === getSentenceKey(sentence)
 }
 
 const resetLookupState = () => {
@@ -352,6 +464,8 @@ const handleOutsideClick = (event: MouseEvent) => {
 onMounted(() => {
   updateViewportMode()
   window.addEventListener('resize', updateViewportMode)
+  window.addEventListener('wheel', pauseAutoFollowAfterUserScroll, { passive: true })
+  window.addEventListener('touchmove', pauseAutoFollowAfterUserScroll, { passive: true })
   document.addEventListener('selectionchange', updateSelectionState)
   document.addEventListener('keydown', handleEscapeClose)
   document.addEventListener('mousedown', handleOutsideClick)
@@ -359,10 +473,37 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', updateViewportMode)
+  window.removeEventListener('wheel', pauseAutoFollowAfterUserScroll)
+  window.removeEventListener('touchmove', pauseAutoFollowAfterUserScroll)
   document.removeEventListener('selectionchange', updateSelectionState)
   document.removeEventListener('keydown', handleEscapeClose)
   document.removeEventListener('mousedown', handleOutsideClick)
+  if (scrollGuardTimer) {
+    clearTimeout(scrollGuardTimer)
+    scrollGuardTimer = null
+  }
+  sentenceElementMap.clear()
 })
+
+watch(
+  () => [props.currentTime, props.sentenceTimings] as const,
+  ([currentTime]) => {
+    const currentMs = Math.round((currentTime || 0) * 1000)
+    const candidateKey = computeTimelineActiveSentence(currentMs)
+    activeSentenceKey.value = applySentenceSwitchHysteresis(candidateKey, currentMs)
+  },
+  { immediate: true, deep: true }
+)
+
+watch(
+  () => activeSentenceKey.value,
+  (nextKey, prevKey) => {
+    if (!nextKey || nextKey === prevKey) {
+      return
+    }
+    void followActiveSentence()
+  }
+)
 </script>
 
 <template>
@@ -390,7 +531,9 @@ onUnmounted(() => {
             <span
               v-for="sentence in titleSentenceTimings"
               :key="`title-${sentence.sentenceIndex}`"
+              :ref="(el) => registerSentenceElement(sentence, el)"
               class="rounded px-1 py-0.5 transition-colors duration-200"
+              :data-sentence-key="getSentenceKey(sentence)"
               :class="isSentenceActive(sentence)
                 ? 'bg-amber-200/70 dark:bg-amber-400/30 text-foreground ring-1 ring-amber-300/40 dark:ring-amber-300/30'
                 : ''"
@@ -410,7 +553,9 @@ onUnmounted(() => {
           <span
             v-for="sentence in paragraph.sentences"
             :key="`${sentence.paragraphIndex}-${sentence.sentenceIndex}`"
+            :ref="(el) => registerSentenceElement(sentence, el)"
             class="rounded px-1 py-0.5 transition-colors duration-200"
+            :data-sentence-key="getSentenceKey(sentence)"
             :class="isSentenceActive(sentence)
               ? 'bg-amber-200/70 dark:bg-amber-400/30 text-foreground ring-1 ring-amber-300/40 dark:ring-amber-300/30'
               : ''"

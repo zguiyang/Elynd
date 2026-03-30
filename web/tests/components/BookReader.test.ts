@@ -330,4 +330,124 @@ describe('BookReader', () => {
     expect(active.text()).toContain('Bye now.')
     expect(wrapper.text()).toContain('Chapter 1')
   })
+
+  it('keeps previous sentence active briefly near boundary before switching', async () => {
+    const scrollBySpy = vi.spyOn(window, 'scrollBy').mockImplementation(() => {})
+    const wrapper = mount(BookReader, {
+      props: {
+        paragraphs: [],
+        chapterTitle: 'Chapter 1',
+        currentTime: 0.95,
+        sentenceTimings: [
+          {
+            paragraphIndex: 0,
+            sentenceIndex: 0,
+            text: 'First sentence.',
+            startMs: 0,
+            endMs: 1000,
+          },
+          {
+            paragraphIndex: 0,
+            sentenceIndex: 1,
+            text: 'Second sentence.',
+            startMs: 1000,
+            endMs: 1800,
+          },
+        ],
+      } as any,
+      global: {
+        stubs: {
+          Button: ButtonStub,
+          Dialog: DialogStub,
+          DialogContent: DialogContentStub,
+          DialogDescription: DialogDescriptionStub,
+          DialogHeader: DialogHeaderStub,
+          DialogTitle: DialogTitleStub,
+        },
+      },
+    })
+
+    expect(wrapper.get('[data-test="reader-sentence-active"]').text()).toContain('First sentence.')
+
+    await wrapper.setProps({ currentTime: 1.05 })
+    await nextTick()
+    expect(wrapper.get('[data-test="reader-sentence-active"]').text()).toContain('First sentence.')
+
+    await wrapper.setProps({ currentTime: 1.13 })
+    await nextTick()
+    expect(wrapper.get('[data-test="reader-sentence-active"]').text()).toContain('Second sentence.')
+    scrollBySpy.mockRestore()
+  })
+
+  it('soft-follows active sentence on sentence switch', async () => {
+    const scrollBySpy = vi.spyOn(window, 'scrollBy').mockImplementation(() => {})
+    const rectSpy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const element = this as HTMLElement
+      const key = element.dataset?.sentenceKey
+      if (key === '0-1') {
+        return {
+          x: 0,
+          y: 980,
+          top: 980,
+          left: 0,
+          right: 400,
+          bottom: 1020,
+          width: 400,
+          height: 40,
+          toJSON: () => ({}),
+        } as DOMRect
+      }
+      return {
+        x: 0,
+        y: 120,
+        top: 120,
+        left: 0,
+        right: 400,
+        bottom: 160,
+        width: 400,
+        height: 40,
+        toJSON: () => ({}),
+      } as DOMRect
+    })
+
+    const wrapper = mount(BookReader, {
+      props: {
+        paragraphs: [],
+        currentTime: 0.4,
+        sentenceTimings: [
+          {
+            paragraphIndex: 0,
+            sentenceIndex: 0,
+            text: 'First sentence.',
+            startMs: 0,
+            endMs: 900,
+          },
+          {
+            paragraphIndex: 0,
+            sentenceIndex: 1,
+            text: 'Second sentence.',
+            startMs: 1000,
+            endMs: 1900,
+          },
+        ],
+      } as any,
+      global: {
+        stubs: {
+          Button: ButtonStub,
+          Dialog: DialogStub,
+          DialogContent: DialogContentStub,
+          DialogDescription: DialogDescriptionStub,
+          DialogHeader: DialogHeaderStub,
+          DialogTitle: DialogTitleStub,
+        },
+      },
+    })
+
+    await wrapper.setProps({ currentTime: 1.2 })
+    await nextTick()
+
+    expect(scrollBySpy).toHaveBeenCalled()
+    rectSpy.mockRestore()
+    scrollBySpy.mockRestore()
+  })
 })

@@ -53,12 +53,18 @@ export default class BooksController {
     const audioUrl = audioInfo?.audioPath ?? null
     const audioStatus = audioInfo?.status ?? null
     const audioDurationMs = audioInfo?.durationMs ?? null
+    const audioTimingSentences = this.bookService.getChapterSentenceTimings(
+      chapter.title,
+      chapter.content,
+      audioInfo?.timingWords ?? null
+    )
 
     return {
       ...serialized,
       audioUrl,
       audioStatus,
       audioDurationMs,
+      audioTimingSentences,
     }
   }
 

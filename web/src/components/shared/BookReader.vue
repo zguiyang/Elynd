@@ -22,6 +22,7 @@ import { getMeaningExamples } from '@/lib/dictionary-meaning'
 import { useWordAudio } from '@/composables/useWordAudio'
 import type { ReaderActionType, ReaderSelectionActionPayload } from '@/types/reader-selection'
 import { useReadingSettingsStore } from '@/stores/reading-settings'
+import type { ChapterSentenceTiming } from '@/types/book'
 import MarkdownRenderer from '@/components/shared/MarkdownRenderer.vue'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
@@ -31,6 +32,8 @@ interface Props {
   markdownContent?: string
   bookId?: number
   chapterIndex?: number
+  currentTime?: number
+  sentenceTimings?: ChapterSentenceTiming[] | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -38,6 +41,8 @@ const props = withDefaults(defineProps<Props>(), {
   markdownContent: '',
   bookId: undefined,
   chapterIndex: undefined,
+  currentTime: 0,
+  sentenceTimings: null,
 })
 
 const emit = defineEmits<{
@@ -90,6 +95,72 @@ const lookupContext = computed<DictionaryLookupContext | undefined>(() => {
 const isLookupEligible = computed(() => {
   return isSingleWordSelection(selectedText.value, currentSelectionRange.value)
 })
+
+const paragraphSentenceTimings = computed(() => {
+  if (!props.sentenceTimings?.length) {
+    return [] as Array<{
+      paragraphIndex: number
+      sentences: ChapterSentenceTiming[]
+    }>
+  }
+
+  const grouped = new Map<number, ChapterSentenceTiming[]>()
+  for (const sentence of props.sentenceTimings) {
+    const list = grouped.get(sentence.paragraphIndex) || []
+    list.push(sentence)
+    grouped.set(sentence.paragraphIndex, list)
+  }
+
+  return Array.from(grouped.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([paragraphIndex, sentences]) => ({
+      paragraphIndex,
+      sentences: [...sentences].sort((a, b) => a.sentenceIndex - b.sentenceIndex),
+    }))
+})
+
+const titleSentenceTimings = computed(() => {
+  if (!props.sentenceTimings?.length) {
+    return [] as ChapterSentenceTiming[]
+  }
+
+  return props.sentenceTimings
+    .filter((sentence) => sentence.isTitle)
+    .sort((a, b) => a.sentenceIndex - b.sentenceIndex)
+})
+
+const bodyParagraphSentenceTimings = computed(() => {
+  return paragraphSentenceTimings.value.filter((paragraph) => paragraph.paragraphIndex >= 0)
+})
+
+const activeSentenceKey = computed(() => {
+  if (!props.sentenceTimings?.length) {
+    return null
+  }
+
+  const currentMs = Math.round((props.currentTime || 0) * 1000)
+  const inRangeCandidates = props.sentenceTimings.filter((sentence) => {
+    if (sentence.startMs === null || sentence.endMs === null) {
+      return false
+    }
+    return currentMs >= sentence.startMs && currentMs <= sentence.endMs
+  })
+
+  const active = inRangeCandidates.sort((a, b) => (b.startMs || 0) - (a.startMs || 0))[0]
+    || props.sentenceTimings
+      .filter((sentence) => sentence.startMs !== null && currentMs >= (sentence.startMs || 0))
+      .sort((a, b) => (b.startMs || 0) - (a.startMs || 0))[0]
+
+  if (!active) {
+    return null
+  }
+
+  return `${active.paragraphIndex}-${active.sentenceIndex}`
+})
+
+const isSentenceActive = (sentence: ChapterSentenceTiming) => {
+  return activeSentenceKey.value === `${sentence.paragraphIndex}-${sentence.sentenceIndex}`
+}
 
 const resetLookupState = () => {
   lookupState.value = {
@@ -310,7 +381,46 @@ onUnmounted(() => {
         {{ props.chapterTitle }}
       </h2>
 
-      <div v-if="props.markdownContent" class="text-foreground">
+      <div v-if="paragraphSentenceTimings.length" class="text-foreground space-y-6">
+        <h2
+          v-if="props.chapterTitle"
+          class="text-2xl font-bold text-foreground"
+        >
+          <template v-if="titleSentenceTimings.length">
+            <span
+              v-for="sentence in titleSentenceTimings"
+              :key="`title-${sentence.sentenceIndex}`"
+              class="rounded px-1 py-0.5 transition-colors duration-200"
+              :class="isSentenceActive(sentence)
+                ? 'bg-amber-200/70 dark:bg-amber-400/30 text-foreground ring-1 ring-amber-300/40 dark:ring-amber-300/30'
+                : ''"
+            >
+              {{ sentence.text }}{{ ' ' }}
+            </span>
+          </template>
+          <template v-else>
+            {{ props.chapterTitle }}
+          </template>
+        </h2>
+        <p
+          v-for="paragraph in bodyParagraphSentenceTimings"
+          :key="paragraph.paragraphIndex"
+          class="leading-8"
+        >
+          <span
+            v-for="sentence in paragraph.sentences"
+            :key="`${sentence.paragraphIndex}-${sentence.sentenceIndex}`"
+            class="rounded px-1 py-0.5 transition-colors duration-200"
+            :class="isSentenceActive(sentence)
+              ? 'bg-amber-200/70 dark:bg-amber-400/30 text-foreground ring-1 ring-amber-300/40 dark:ring-amber-300/30'
+              : ''"
+            :data-test="isSentenceActive(sentence) ? 'reader-sentence-active' : undefined"
+          >
+            {{ sentence.text }}{{ ' ' }}
+          </span>
+        </p>
+      </div>
+      <div v-else-if="props.markdownContent" class="text-foreground">
         <MarkdownRenderer :content="props.markdownContent" />
       </div>
       <div v-else class="text-foreground">

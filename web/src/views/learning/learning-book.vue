@@ -686,6 +686,8 @@ onUnmounted(() => {
           :markdown-content="markdownContent"
           :book-id="bookId"
           :chapter-index="props.currentChapterIndex"
+          :current-time="props.currentTime"
+          :sentence-timings="props.chapter?.audioTimingSentences ?? null"
           @selection-action="handleReaderSelectionAction"
         />
       </div>

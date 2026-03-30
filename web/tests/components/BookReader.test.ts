@@ -92,6 +92,7 @@ const mountBookReader = () => {
       chapterTitle: 'Chapter 1',
       bookId: 12,
       chapterIndex: 4,
+      currentTime: 0,
     } as any,
     global: {
       stubs: {
@@ -287,5 +288,46 @@ describe('BookReader', () => {
       actionType: 'explain',
       selectedText: 'hello',
     }))
+  })
+
+  it('highlights active sentence with timing mapping based on currentTime', async () => {
+    const wrapper = mount(BookReader, {
+      props: {
+        paragraphs: [],
+        chapterTitle: 'Chapter 1',
+        currentTime: 1.2,
+        sentenceTimings: [
+          {
+            paragraphIndex: 0,
+            sentenceIndex: 0,
+            text: 'Hello world.',
+            startMs: 100,
+            endMs: 700,
+          },
+          {
+            paragraphIndex: 0,
+            sentenceIndex: 1,
+            text: 'Bye now.',
+            startMs: 900,
+            endMs: 1500,
+          },
+        ],
+      } as any,
+      global: {
+        stubs: {
+          Button: ButtonStub,
+          Dialog: DialogStub,
+          DialogContent: DialogContentStub,
+          DialogDescription: DialogDescriptionStub,
+          DialogHeader: DialogHeaderStub,
+          DialogTitle: DialogTitleStub,
+        },
+      },
+    })
+
+    const active = wrapper.find('[data-test="reader-sentence-active"]')
+    expect(active.exists()).toBe(true)
+    expect(active.text()).toContain('Bye now.')
+    expect(wrapper.text()).toContain('Chapter 1')
   })
 })

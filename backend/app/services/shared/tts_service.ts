@@ -98,7 +98,8 @@ export class TtsService {
       results.push(result)
     }
 
-    const merged = this.mergeChunkResults(results)
+    const chunkTextOffsets = this.resolveChunkTextOffsets(text, chunks)
+    const merged = this.mergeChunkResults(results, chunkTextOffsets)
 
     const elapsedMs = Date.now() - startTime
 
@@ -288,7 +289,20 @@ export class TtsService {
    * Merge multiple chunk synthesis results into a single result.
    * Offsets word timings from later chunks by cumulative duration of prior chunks.
    */
-  private mergeChunkResults(results: SynthesizedChunkResult[]): {
+  private resolveChunkTextOffsets(text: string, chunks: string[]) {
+    const offsets: number[] = []
+    let searchStart = 0
+
+    for (const chunk of chunks) {
+      const offset = text.indexOf(chunk, searchStart)
+      offsets.push(offset >= 0 ? offset : searchStart)
+      searchStart = (offset >= 0 ? offset : searchStart) + chunk.length
+    }
+
+    return offsets
+  }
+
+  private mergeChunkResults(results: SynthesizedChunkResult[], chunkTextOffsets: number[]): {
     audioBuffer: Buffer
     wordTimings: WordTiming[]
     duration: number
@@ -313,13 +327,15 @@ export class TtsService {
     const mergedWordTimings: WordTiming[] = []
     let cumulativeOffset = 0
 
-    for (const result of results) {
+    for (const [index, result] of results.entries()) {
       audioBuffers.push(result.audioBuffer)
+      const textOffsetBase = chunkTextOffsets[index] || 0
 
-      // Offset word timings by cumulative duration
+      // Offset chunk-local timings into chapter-global audio and text coordinates.
       const offsetWords = result.wordTimings.map((w) => ({
         ...w,
         audioOffset: w.audioOffset + cumulativeOffset,
+        textOffset: w.textOffset + textOffsetBase,
       }))
       mergedWordTimings.push(...offsetWords)
 

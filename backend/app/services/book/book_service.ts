@@ -14,9 +14,11 @@ import BookProcessingStepLog from '#models/book_processing_step_log'
 import GenerateTtsJob from '#jobs/generate_tts_job'
 import EnrichVocabularyJob from '#jobs/enrich_vocabulary_job'
 import { BookImportOrchestratorService } from '#services/book-import/book_import_orchestrator_service'
+import { buildCanonicalChapterText } from '#utils/book_text_normalizer'
 import { BOOK_IMPORT_STEP } from '#constants'
 import type { BookImportStep } from '#constants'
 import type { ListPublishedParams } from '#types/book'
+import type { WordTiming } from '#types/tts'
 
 export interface ChapterAudioSummary {
   total: number
@@ -59,9 +61,53 @@ export interface EnrichedBookStatus {
   vocabularySummary: VocabularySummary
 }
 
+export interface ChapterSentenceTiming {
+  paragraphIndex: number
+  sentenceIndex: number
+  text: string
+  startMs: number | null
+  endMs: number | null
+  isTitle?: boolean
+}
+
 @inject()
 export class BookService {
   constructor(private bookImportOrchestratorService: BookImportOrchestratorService) {}
+
+  private normalizeTimingWordOffsets(canonicalText: string, timingWords: WordTiming[] | null) {
+    if (!timingWords?.length) {
+      return [] as WordTiming[]
+    }
+
+    const words = [...timingWords].sort((a, b) => a.audioOffset - b.audioOffset)
+    const normalizedWords: WordTiming[] = []
+    let searchStart = 0
+
+    for (const word of words) {
+      const normalizedWord = buildCanonicalChapterText(word.word, '')
+        .replace(/\n\s*\n$/, '')
+        .trim()
+
+      if (!normalizedWord) {
+        normalizedWords.push(word)
+        continue
+      }
+
+      const matchedOffset = canonicalText.indexOf(normalizedWord, searchStart)
+      const resolvedOffset = matchedOffset >= 0 ? matchedOffset : word.textOffset
+
+      normalizedWords.push({
+        ...word,
+        textOffset: resolvedOffset,
+        wordLength: normalizedWord.length,
+      })
+
+      searchStart =
+        matchedOffset >= 0 ? matchedOffset + normalizedWord.length : word.textOffset + word.wordLength
+    }
+
+    return normalizedWords.sort((a, b) => a.textOffset - b.textOffset)
+  }
 
   async listPublished(params: ListPublishedParams) {
     const query = Book.query()
@@ -418,8 +464,121 @@ export class BookService {
       chapterIndex: audio.chapterIndex,
       audioPath: isCompleted ? audio.audioPath : null,
       durationMs: isCompleted ? audio.durationMs : null,
+      timingWords: isCompleted ? audio.timingWords : null,
       status: audio.status,
     }
+  }
+
+  getChapterSentenceTimings(
+    chapterTitle: string,
+    chapterContent: string,
+    timingWords: WordTiming[] | null
+  ): ChapterSentenceTiming[] {
+    const canonicalText = buildCanonicalChapterText(chapterTitle, chapterContent)
+    if (!canonicalText.trim()) {
+      return []
+    }
+
+    const words = this.normalizeTimingWordOffsets(canonicalText, timingWords)
+    const paragraphs = canonicalText.split(/\n\s*\n/)
+    const sentenceTimings: ChapterSentenceTiming[] = []
+    let paragraphSearchStart = 0
+
+    for (let paragraphIndex = 0; paragraphIndex < paragraphs.length; paragraphIndex++) {
+      const paragraphText = paragraphs[paragraphIndex]
+      if (!paragraphText.trim()) {
+        continue
+      }
+
+      const paragraphOffset = canonicalText.indexOf(paragraphText, paragraphSearchStart)
+      if (paragraphOffset < 0) {
+        continue
+      }
+      paragraphSearchStart = paragraphOffset + paragraphText.length
+
+      const sentences = this.splitParagraphIntoSentences(paragraphText)
+      for (let sentenceIndex = 0; sentenceIndex < sentences.length; sentenceIndex++) {
+        const sentence = sentences[sentenceIndex]
+        const sentenceStart = paragraphOffset + sentence.startOffset
+        const sentenceEnd = paragraphOffset + sentence.endOffset
+
+        const wordsInRange = words.filter((word) => {
+          const wordStart = word.textOffset
+          const wordEnd = word.textOffset + word.wordLength
+          return wordEnd > sentenceStart && wordStart < sentenceEnd
+        })
+
+        const fallbackWord = words.find((word) => word.textOffset >= sentenceStart)
+        const startMs = wordsInRange.length > 0
+          ? wordsInRange[0].audioOffset
+          : (fallbackWord?.audioOffset ?? null)
+        let endMs = wordsInRange.length > 0
+          ? Math.max(...wordsInRange.map((word) => word.audioOffset + word.duration))
+          : null
+
+        sentenceTimings.push({
+          paragraphIndex: paragraphIndex === 0 ? -1 : paragraphIndex - 1,
+          sentenceIndex,
+          text: sentence.text,
+          startMs,
+          endMs,
+          isTitle: paragraphIndex === 0,
+        })
+      }
+    }
+
+    for (let index = 0; index < sentenceTimings.length; index++) {
+      const current = sentenceTimings[index]
+      if (current.endMs !== null || current.startMs === null) {
+        continue
+      }
+
+      const nextWithStart = sentenceTimings
+        .slice(index + 1)
+        .find((item) => item.startMs !== null)
+      current.endMs = nextWithStart?.startMs !== null && nextWithStart?.startMs !== undefined
+        ? Math.max(current.startMs, nextWithStart.startMs - 1)
+        : current.startMs + 800
+    }
+
+    return sentenceTimings
+  }
+
+  private splitParagraphIntoSentences(paragraph: string) {
+    const segments: Array<{ text: string; startOffset: number; endOffset: number }> = []
+    // Split by mainstream English clause/sentence punctuation to support tighter sync highlights.
+    const pattern = /[^.!?,;:]+(?:[.!?,;:]+["')\]]*)?(?=\s+|$)/g
+    let match: RegExpExecArray | null
+
+    while ((match = pattern.exec(paragraph)) !== null) {
+      const raw = match[0]
+      const trimmed = raw.trim()
+      if (!trimmed) {
+        continue
+      }
+
+      const startInRaw = raw.indexOf(trimmed)
+      const startOffset = match.index + Math.max(0, startInRaw)
+      const endOffset = startOffset + trimmed.length
+
+      segments.push({
+        text: trimmed,
+        startOffset,
+        endOffset,
+      })
+    }
+
+    if (segments.length === 0 && paragraph.trim()) {
+      return [
+        {
+          text: paragraph.trim(),
+          startOffset: 0,
+          endOffset: paragraph.trim().length,
+        },
+      ]
+    }
+
+    return segments
   }
 
   /**

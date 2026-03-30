@@ -22,6 +22,16 @@ export interface Chapter {
   audioUrl: string | null
   audioStatus: AudioStatus | null
   audioDurationMs: number | null
+  audioTimingSentences?: ChapterSentenceTiming[]
+}
+
+export interface ChapterSentenceTiming {
+  paragraphIndex: number
+  sentenceIndex: number
+  text: string
+  startMs: number | null
+  endMs: number | null
+  isTitle?: boolean
 }
 
 export interface ChapterListItem {

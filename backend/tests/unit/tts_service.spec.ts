@@ -40,7 +40,8 @@ test.group('TtsService chunking', () => {
               textOffset: number
               wordLength: number
             }[]
-          }[]
+          }[],
+          chunkTextOffsets: number[]
         ) => {
           audioBuffer: Buffer
           duration: number
@@ -53,24 +54,28 @@ test.group('TtsService chunking', () => {
           }[]
         }
       }
-    )['mergeChunkResults']([
-      {
-        audioBuffer: Buffer.from('a'),
-        duration: 1000,
-        wordTimings: [
-          { word: 'Hello', audioOffset: 0, duration: 400, textOffset: 0, wordLength: 5 },
-        ],
-      },
-      {
-        audioBuffer: Buffer.from('b'),
-        duration: 800,
-        wordTimings: [
-          { word: 'World', audioOffset: 0, duration: 300, textOffset: 0, wordLength: 5 },
-        ],
-      },
-    ])
+    )['mergeChunkResults'](
+      [
+        {
+          audioBuffer: Buffer.from('a'),
+          duration: 1000,
+          wordTimings: [
+            { word: 'Hello', audioOffset: 0, duration: 400, textOffset: 0, wordLength: 5 },
+          ],
+        },
+        {
+          audioBuffer: Buffer.from('b'),
+          duration: 800,
+          wordTimings: [
+            { word: 'World', audioOffset: 0, duration: 300, textOffset: 0, wordLength: 5 },
+          ],
+        },
+      ],
+      [0, 14]
+    )
 
     assert.equal(merged.wordTimings[1].audioOffset, 1000)
+    assert.equal(merged.wordTimings[1].textOffset, 14)
     assert.equal(merged.duration, 1800)
   })
 

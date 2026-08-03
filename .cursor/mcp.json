@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "better-auth": {
+      "url": "https://mcp.better-auth.com/mcp",
+      "headers": {}
+    }
+  }
+}

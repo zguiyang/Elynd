@@ -1,11 +1,12 @@
 import type { BetterAuthOptions } from 'better-auth'
 import { betterAuth } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { username } from 'better-auth/plugins'
+import { bearer, username } from 'better-auth/plugins'
 
 import { accounts, sessions, setupDb, users, verifications } from '@elynd/db'
 
 import { authEnvSchema } from '../config/auth-env.schema.js'
+import { AUTH_SESSION_CONFIG } from './auth-session.config.js'
 
 type AuthInstance = ReturnType<typeof betterAuth>
 
@@ -21,6 +22,7 @@ export function getAuthInstance(): AuthInstance {
 
   const config: BetterAuthOptions = {
     plugins: [
+      bearer(),
       username({
         maxUsernameLength: 50
       })
@@ -49,8 +51,8 @@ export function getAuthInstance(): AuthInstance {
     },
     session: {
       modelName: 'sessions',
-      expiresIn: 60 * 60 * 24 * 7,
-      updateAge: 60 * 60 * 24
+      expiresIn: AUTH_SESSION_CONFIG.expiresIn,
+      updateAge: AUTH_SESSION_CONFIG.updateAge
     },
     baseURL: authEnv.BETTER_AUTH_CLIENT_URL,
     trustedOrigins: [authEnv.BETTER_AUTH_CLIENT_URL],

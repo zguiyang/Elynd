@@ -23,6 +23,11 @@ export type LoginInput = {
 
 export type SessionHeaders = Record<string, string | string[] | undefined>
 
+/** Primary client credential: `Authorization: Bearer <session-token>` */
+export type BearerSessionHeaders = SessionHeaders & {
+  authorization?: string
+}
+
 export type SignUpResult =
   | { ok: true; user: AuthUser; session: AuthSession | null }
   | { ok: false; code: 'DUPLICATE_EMAIL' | 'VALIDATION_ERROR'; message: string }

@@ -160,37 +160,36 @@ describe('AuthApplicationService', () => {
   })
 
   describe('AUTH-SESSION-001 verify session success', () => {
-    it('returns user and session for valid headers', async () => {
+    it('returns user and session for valid Bearer token', async () => {
       vi.mocked(authClient.getSession).mockResolvedValue({
         ok: true,
         user: mockUser,
         session: mockSession
       })
 
-      const result = await service.verifySession({
-        cookie: 'elynd-auth.session_token=token-abc'
-      })
+      const headers = { authorization: 'Bearer token-abc' }
+      const result = await service.verifySession(headers)
 
       expect(result.user).toEqual(mockUser)
       expect(result.session).toEqual(mockSession)
-      expect(authClient.getSession).toHaveBeenCalledOnce()
+      expect(authClient.getSession).toHaveBeenCalledWith(headers)
     })
   })
 
   describe('AUTH-SESSION-002 verify session expired or invalid', () => {
-    it('throws unauthorized for invalid session token', async () => {
+    it('throws unauthorized for invalid Bearer token', async () => {
       vi.mocked(authClient.getSession).mockResolvedValue({ ok: false })
 
       await expect(
         service.verifySession({
-          cookie: 'elynd-auth.session_token=expired-token'
+          authorization: 'Bearer expired-token'
         })
       ).rejects.toBeInstanceOf(UnauthorizedException)
     })
   })
 
   describe('AUTH-SESSION-003 verify session missing', () => {
-    it('throws unauthorized when no session headers are present', async () => {
+    it('throws unauthorized when Authorization header is absent', async () => {
       vi.mocked(authClient.getSession).mockResolvedValue({ ok: false })
 
       await expect(service.verifySession({})).rejects.toBeInstanceOf(

@@ -4,9 +4,25 @@ import { toNodeHandler } from 'better-auth/node'
 
 import { getAuthInstance } from '../core/auth.instance.js'
 
+type AuthInstance = ReturnType<typeof getAuthInstance>
+type AuthHandler = ReturnType<typeof toNodeHandler>
+
 @Injectable()
 export class AuthService {
-  public readonly auth = getAuthInstance()
+  private authInstance: AuthInstance | null = null
+  private authHandler: AuthHandler | null = null
 
-  public readonly handler = toNodeHandler(getAuthInstance().handler)
+  get auth(): AuthInstance {
+    if (!this.authInstance) {
+      this.authInstance = getAuthInstance()
+    }
+    return this.authInstance
+  }
+
+  get handler(): AuthHandler {
+    if (!this.authHandler) {
+      this.authHandler = toNodeHandler(this.auth.handler)
+    }
+    return this.authHandler
+  }
 }

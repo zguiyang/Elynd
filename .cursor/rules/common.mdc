@@ -1,0 +1,45 @@
+---
+description: Shared naming, TypeScript style, constants, and quality checks
+alwaysApply: true
+---
+
+# Common Rules
+
+## Naming
+
+| Type | File | Notes |
+|------|------|-------|
+| Controller | `auth_controller.ts` | kebab + `_controller.ts` |
+| Validator | `auth_validator.ts` | **must** end with `_validator.ts` |
+| Service | `auth_service.ts` | class with `@inject()` |
+| Middleware | `auth_middleware.ts` | |
+| Vue SFC | `sign-in.vue` | kebab-case files; PascalCase component names |
+| shadcn-vue | under `web/src/components/ui/` | |
+
+- Classes/interfaces: `PascalCase`
+- Functions/vars: `camelCase`
+- Constants: `as const` objects, not TypeScript `enum`
+
+## Style
+
+- 2 spaces, single quotes, ~100 cols, no semicolons, no trailing commas
+- Prefer `import type`; avoid `any`; prefer `| null` over `undefined` for optionals
+
+## Constants
+
+Put shared constants in one summary file per package (`app/constants/index.ts` or `web` equivalent). Split only past ~500 lines. Status/type/mode/API literals used ≥2 times must be constants—no scattered magic strings.
+
+## Services vs utils
+
+- **Services**: business logic classes with `@inject()` only
+- **Utils**: plain functions/values under `utils/`, never under `services/`
+
+## Quality
+
+Before commit when relevant:
+
+```bash
+pnpm run lint
+pnpm run typecheck
+pnpm run test   # backend / affected tests
+```

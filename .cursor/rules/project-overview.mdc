@@ -1,0 +1,43 @@
+---
+description: Elynd project overview, stack, and agent boundaries
+alwaysApply: true
+---
+
+# Elynd Overview
+
+Elynd is an AI-assisted English reading learning tool for adults with weaker English who need it for work. Core loops: graded reading, listen-and-read (TTS), instant dictionary, and article-based AI Q&A.
+
+## Architecture
+
+pnpm monorepo:
+
+- `backend/` — AdonisJS 7 API (port **3335**), PostgreSQL, Lucid, Redis, Access Token auth
+- `web/` — Vue 3 + Vite + Pinia + Vue Router + shadcn-vue + Tailwind CSS v4 (port **3000**)
+
+## Language
+
+- Conversation with the user: Chinese
+- Docs, comments, commit messages, code identifiers: English
+
+## Agent Boundaries
+
+**Must**
+
+- Prefer `node ace make:*` for backend scaffolding, then edit
+- Create migrations before schema changes
+- Run relevant lint/typecheck/tests before claiming done
+- Match existing patterns in nearby code
+
+**Ask first**
+
+- Auth provider or auth method changes
+- New dependencies or major version bumps
+- Large database schema changes affecting existing data
+
+**Never**
+
+- Commit secrets or `.env` values
+- Touch `node_modules/`
+- Operate on production data directly
+- Disable security middleware
+- Start `pnpm run dev:*` / `start` / `preview` without explicit user approval

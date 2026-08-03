@@ -1,0 +1,36 @@
+---
+description: TDD default and test data isolation for Elynd
+alwaysApply: true
+---
+
+# TDD Rules
+
+TDD is the **default** for behavior-changing work. If skipped for in-scope work, state the reason explicitly.
+
+## Cycle
+
+1. Failing test first → confirm expected failure  
+2. Minimal implementation → green  
+3. Refactor only while green  
+4. Run relevant verification before claiming done  
+
+## In scope
+
+Backend: controllers, services, validators, authz, model queries, API contracts, business rules, bug fixes.  
+Frontend: shared components, key interactions, composables, stores, `src/lib`, API adapters, route guards, bug fixes.
+
+## Exceptions (no TDD required)
+
+Docs/comments only, pure formatting/rename, minor style-only UI, small tooling config, generated/scaffold files, one-off migration helpers with no stable runtime behavior.
+
+## Test data isolation
+
+- Never truncate/drop/clear whole tables
+- Never delete without exact IDs/keys created and recorded by the same test
+- No broad cleanup (`like` on title/email, date ranges, flushall/flushdb)
+- External state (Redis, files, queues) only if uniquely namespaced by this test
+- Prefer create + tracked PK cleanup, transactions, or test-local namespaces
+
+## Design
+
+Prefer small units, explicit I/O, business logic outside framework/UI glue. Avoid snapshot-only proof for meaningful logic. Do not add abstraction only for theoretical testability.

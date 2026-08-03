@@ -1,0 +1,56 @@
+---
+description: AdonisJS backend conventions for Elynd
+globs: backend/**
+alwaysApply: false
+---
+
+# Backend Rules
+
+Stack: AdonisJS 7, Lucid, VineJS, Japa, Access Token auth. Prefer official AdonisJS docs and existing code patterns over inventing new structure.
+
+## Scaffolding
+
+```bash
+cd backend
+node ace make:controller|model|migration|validator|middleware|service <name>
+```
+
+Do not hand-create these files when Ace can generate them. Migrations: `make:migration` first, then edit.
+
+## Routes (`start/routes.ts`)
+
+- Prefix `/api`
+- Dynamic import + array handler: `[AuthController, 'login']`
+- Never magic-string handlers like `'#controllers/auth_controller.login'`
+- Protect with `middleware.auth()` when needed
+
+## Controllers
+
+- `@inject()` class; inject services in constructor; never `new Service()`
+- Thin: validate/HTTP only; business logic in services
+- Return data directly for JSON; use `response` only for custom status/headers
+
+## Services
+
+- `@inject()` classes for write paths and domain rules
+- Writes go through the owning service; do not cross-domain `Model.create/update/delete`
+- Simple reads may use models; keep side effects explicit
+
+## Validators
+
+- File: `{name}_validator.ts`
+- VineJS compile + exported `Infer<>` types where used
+
+## Logging & types
+
+- Use Adonis logger with structured fields (not printf-only messages)
+- Avoid `as any` and non-null `!` unless unavoidable and localized
+- Prefer throwing HTTP-aware exceptions over ad-hoc status hacks
+
+## Auth
+
+Bearer Access Token (`api` guard). Do not change auth model without asking first.
+
+## Port
+
+Dev API: **3335** (`pnpm run dev:backend`). Do not start it unless the user asks.

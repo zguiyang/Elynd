@@ -1,0 +1,50 @@
+---
+description: Vue 3 frontend conventions for Elynd
+globs: web/**
+alwaysApply: false
+---
+
+# Frontend Rules
+
+Stack: Vue 3 `<script setup>` + TS, Vite, Pinia, Vue Router, shadcn-vue (Reka UI), Tailwind CSS **v4**, Axios.
+
+## UI priority
+
+1. Prefer existing shadcn-vue components under `src/components/ui/`
+2. Install via CLI when missing: `pnpm dlx shadcn-vue@latest add <name>`
+3. Custom components only when shadcn cannot meet the need
+4. Project MCP `.mcp.json` exposes shadcn-vue MCP—use it when component docs/patterns are needed
+
+## Styling
+
+- Tailwind v4 only (`@import "tailwindcss"`, CSS-first theme)
+- Prefer semantic theme tokens (`bg-background`, `text-muted-foreground`, etc.) over raw colors
+- No Tailwind v3-only patterns
+
+## Auto-import
+
+unplugin-auto-import / vue-components: Vue, Vue Router, Pinia, local components/composables are auto-imported. Still **manually import VueUse** and non-auto modules (`@/api`, `@/lib`, icons).
+
+## Composables / Pinia
+
+- Destructure composable returns (VueUse style)
+- For Pinia state refs use `storeToRefs`; do not destructure store state without it
+
+## API layers
+
+| Layer | Location | Pattern |
+|-------|----------|---------|
+| API defs | `src/api/*.ts` | `request<T>({ method, url, data })` |
+| Stores/composables | JS layer | call api + `.catch` |
+| Views | `views/**` | `useRequest` for loading/error UX |
+
+Do not call raw axios from views when `request` / `useRequest` exist.
+
+## Forms & icons
+
+- Forms: vee-validate + zod when validating
+- Icons: `lucide-vue-next`
+
+## Port
+
+Dev web: **3000** (`pnpm run dev:web`). Do not start it unless the user asks.

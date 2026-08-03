@@ -1,0 +1,32 @@
+---
+description: Conventional Commits and commit safety for Elynd
+alwaysApply: true
+---
+
+# Git Commit Rules
+
+- Messages in English, Conventional Commits: `<type>(<scope>): <description>`
+- Imperative subject (`add`, `fix`, `remove`); one logical change per commit
+- No commit body unless needed for constraints/tradeoffs/multi-subsystem context
+- Do not push without explicit user approval
+- Never commit secrets, debug junk, unrelated files, or local artifacts
+
+## Types
+
+`feat` | `fix` | `refactor` | `test` | `docs` | `chore`
+
+## Scopes (preferred)
+
+`backend` | `web` | `auth` | `books` | `reader` | `admin` | `rules` | `infra`
+
+## Examples
+
+```text
+fix(backend): add missing book chat prompt template
+feat(web): add chapter vocabulary panel
+docs(rules): migrate agent rules to Cursor
+```
+
+## Before commit
+
+Run the smallest relevant verification (targeted test, lint, or typecheck). Review the staged diff so every file belongs to the same logical change.

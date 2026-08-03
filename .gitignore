@@ -27,10 +27,14 @@ yarn-error.log
 auto-imports.d.ts
 components.d.ts
 
-# ai generated files
+# ai generated / legacy tooling leftovers
 openspec/
 .ai/
 .output.txt
+.opencode/
+.claude/
+.codex/
+.agents/
 
 docs/
 # docker files

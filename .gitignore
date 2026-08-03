@@ -109,3 +109,5 @@ backend/.adonisjs
 .cursor/hooks/
 .cursor/hooks.json
 .gitattributes
+
+.pnpm-store/

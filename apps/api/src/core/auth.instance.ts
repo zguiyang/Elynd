@@ -1,0 +1,64 @@
+import type { BetterAuthOptions } from 'better-auth'
+import { betterAuth } from 'better-auth'
+import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { username } from 'better-auth/plugins'
+
+import { accounts, sessions, setupDb, users, verifications } from '@elynd/db'
+
+import { authEnvSchema } from '../config/auth-env.schema.js'
+
+type AuthInstance = ReturnType<typeof betterAuth>
+
+let authInstanceCache: AuthInstance | null = null
+
+export function getAuthInstance(): AuthInstance {
+  if (authInstanceCache) {
+    return authInstanceCache
+  }
+
+  const authEnv = authEnvSchema.parse(process.env)
+  const db = setupDb(authEnv.DATABASE_URI)
+
+  const config: BetterAuthOptions = {
+    plugins: [
+      username({
+        maxUsernameLength: 50
+      })
+    ],
+    database: drizzleAdapter(db, {
+      provider: 'pg',
+      schema: {
+        users,
+        sessions,
+        accounts,
+        verifications
+      }
+    }),
+    secret: authEnv.AUTH_SECRET,
+    emailAndPassword: {
+      enabled: true
+    },
+    user: {
+      modelName: 'users'
+    },
+    account: {
+      modelName: 'accounts'
+    },
+    verification: {
+      modelName: 'verifications'
+    },
+    session: {
+      modelName: 'sessions',
+      expiresIn: 60 * 60 * 24 * 7,
+      updateAge: 60 * 60 * 24
+    },
+    baseURL: authEnv.BETTER_AUTH_CLIENT_URL,
+    trustedOrigins: [authEnv.BETTER_AUTH_CLIENT_URL],
+    advanced: {
+      cookiePrefix: 'elynd-auth'
+    }
+  }
+
+  authInstanceCache = betterAuth(config)
+  return authInstanceCache
+}

@@ -36,7 +36,7 @@ Put shared constants in one summary file per package (`app/constants/index.ts` o
 
 ## Quality
 
-Before commit when relevant:
+Project verification commands (run the smallest relevant set before claiming done):
 
 ```bash
 pnpm run lint

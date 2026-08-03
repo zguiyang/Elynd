@@ -9,14 +9,14 @@ TDD is the **default** for behavior-changing work. If skipped for in-scope work,
 
 ## Cycle
 
-1. Failing test first → confirm expected failure  
-2. Minimal implementation → green  
-3. Refactor only while green  
-4. Run relevant verification before claiming done  
+1. Failing test first → confirm expected failure
+2. Minimal implementation → green
+3. Refactor only while green
+4. Run relevant verification before claiming done
 
 ## In scope
 
-Backend: controllers, services, validators, authz, model queries, API contracts, business rules, bug fixes.  
+Backend: controllers, services, validators, authz, model queries, API contracts, business rules, bug fixes.
 Frontend: shared components, key interactions, composables, stores, `src/lib`, API adapters, route guards, bug fixes.
 
 ## Exceptions (no TDD required)
@@ -33,4 +33,4 @@ Docs/comments only, pure formatting/rename, minor style-only UI, small tooling c
 
 ## Design
 
-Prefer small units, explicit I/O, business logic outside framework/UI glue. Avoid snapshot-only proof for meaningful logic. Do not add abstraction only for theoretical testability.
+Prefer small units, explicit I/O, and business logic outside framework/UI glue. Avoid snapshot-only proof for meaningful logic.

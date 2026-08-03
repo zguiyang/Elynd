@@ -4,7 +4,9 @@ Guidance for AI coding assistants working in the Elynd repository (Cursor).
 
 ## Rules Entry
 
-Project rules live in **`.cursor/rules/`** (Cursor `.mdc` rules). Read the relevant rule before implementing features, refactors, or tests.
+Behavioral guidelines (think / simplify / surgical edits / verifiable goals) live in **Cursor User Rules** (Customize → Rules) and apply across all projects.
+
+Project rules live in **`.cursor/rules/`** (Cursor `.mdc` rules). When they conflict with User Rules, **project rules win**.
 
 | Rule | When |
 |------|------|

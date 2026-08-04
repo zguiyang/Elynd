@@ -24,16 +24,13 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint .",
+    "lint": "pnpm -w exec eslint packages/shared",
     "test": "vitest run"
   },
   "dependencies": {
-    "@elynd/db": "workspace:*",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@elynd/eslint-config": "workspace:*",
-    "@elynd/tsconfig": "workspace:*",
     "eslint": "^9",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"

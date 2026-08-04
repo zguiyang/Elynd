@@ -4,9 +4,8 @@ import { and, type AnyColumn, asc, desc, eq, like, sql } from 'drizzle-orm'
 
 import type { Db } from '@elynd/db'
 import { examplesTable } from '@elynd/db'
-import type { CreateExampleDto, QueryExamplePageDto, UpdateExampleDto } from '@elynd/shared/schemas'
-
 import { DB } from '../../global/providers/db.provider.js'
+import type { CreateExampleDto, QueryExamplePageDto, UpdateExampleDto } from './examples.schema.js'
 
 @Injectable()
 export class ExamplesService {

@@ -1,11 +1,7 @@
 import { z } from 'zod'
 
 import { insertExampleSchema, selectExampleSchema, updateExampleSchema } from '@elynd/db'
-
-import {
-  createPaginatedRequestSchema,
-  createPaginatedResponseSchema
-} from '../common/response.schema.js'
+import { createPaginatedRequestSchema, createPaginatedResponseSchema } from '@elynd/shared/schemas'
 
 export const exampleItemSchema = selectExampleSchema
   .extend({

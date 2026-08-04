@@ -3,18 +3,19 @@ import { ApiTags } from '@nestjs/swagger'
 
 import { z } from 'zod'
 
-import type { CreateExampleDto, QueryExamplePageDto, UpdateExampleDto } from '@elynd/shared/schemas'
-import {
-  createExampleDtoSchema,
-  examplePageListResponseSchema,
-  exampleResponseSchema,
-  queryExamplePageDtoSchema,
-  updateExampleDtoSchema
-} from '@elynd/shared/schemas'
-
 import { GetUser } from '../../common/decorators/get-user.decorator.js'
 import { zodSwaggerDocs } from '../../common/decorators/zod-swagger.decorator.js'
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe.js'
+import {
+  type CreateExampleDto,
+  createExampleDtoSchema,
+  examplePageListResponseSchema,
+  exampleResponseSchema,
+  type QueryExamplePageDto,
+  queryExamplePageDtoSchema,
+  type UpdateExampleDto,
+  updateExampleDtoSchema
+} from './examples.schema.js'
 import { ExamplesService } from './examples.service.js'
 
 @ApiTags('examples')

@@ -17,6 +17,7 @@ Auth executable contracts: [`.trellis/spec/api/backend/auth-monorepo.md`](../../
 - Extend `../../tsconfig.base.json`; keep Nest-only flags (`experimentalDecorators`, `emitDecoratorMetadata`, …) in this app's `tsconfig.json`
 - Keep `outDir` / `rootDir` / `include` / `types` local
 - **Imports (N1):** relative NodeNext imports with `.js` suffixes inside the API. Do **not** enable `@/` path aliases in emitted code until a Nest emit rewrite (e.g. `tsc-alias`) is added
+- **Nest DI + `import type`:** constructor-injected classes/tokens must remain **value** imports. Prefer `@Inject(Token)` so `consistent-type-imports` does not erase runtime tokens. Pure type-only imports are fine for interfaces and for params already tagged with `@Inject(…)`
 
 ## Layout (Nest mapping of layering)
 

@@ -5,9 +5,9 @@
   "type": "module",
   "license": "GPL-3.0-or-later OR Commercial",
   "scripts": {
-    "build": "pnpm --filter @elynd/db build && pnpm --filter @elynd/shared build && nest build",
+    "build": "pnpm --filter @elynd/db build && pnpm --filter @elynd/auth build && pnpm --filter @elynd/shared build && nest build",
     "start": "NODE_ENV=development nest start",
-    "start:dev": "pnpm --filter @elynd/db build && pnpm --filter @elynd/shared build && NODE_ENV=development nest start --watch",
+    "start:dev": "pnpm --filter @elynd/db build && pnpm --filter @elynd/auth build && pnpm --filter @elynd/shared build && NODE_ENV=development nest start --watch",
     "start:prod": "NODE_ENV=production node dist/main.js",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -15,6 +15,7 @@
     "lint": "pnpm -w exec eslint apps/api"
   },
   "dependencies": {
+    "@elynd/auth": "workspace:*",
     "@elynd/db": "workspace:*",
     "@elynd/shared": "workspace:*",
     "@nestjs/common": "^11.1.28",
@@ -22,7 +23,7 @@
     "@nestjs/core": "^11.1.28",
     "@nestjs/platform-express": "^11.1.28",
     "@nestjs/swagger": "^11.2.0",
-    "better-auth": "^1.3.6",
+    "@thallesp/nestjs-better-auth": "^2.7.0",
     "drizzle-orm": "^0.44.4",
     "nestjs-zod": "^5.0.1",
     "reflect-metadata": "^0.2.2",

@@ -1,11 +1,10 @@
 import { Controller, Get } from '@nestjs/common';
-
-import { PublicAPI } from './common/decorators/public-api.decorator.js';
+import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
 
 @Controller()
 export class AppController {
   @Get('health')
-  @PublicAPI()
+  @AllowAnonymous()
   health() {
     return { status: 'ok' };
   }

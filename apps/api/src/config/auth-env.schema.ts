@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+/** Local copy for Nest CORS bootstrap (avoids importing `@elynd/auth/server` before env load). */
 export const authEnvSchema = z.object({
   BETTER_AUTH_URL: z.string().min(1),
   BETTER_AUTH_TRUSTED_ORIGINS: z.string().min(1),

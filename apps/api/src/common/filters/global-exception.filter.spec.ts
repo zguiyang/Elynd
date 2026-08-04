@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { GlobalExceptionFilter } from './global-exception.filter.js';
 
-function createHost(path = '/api/examples') {
+function createHost(path = '/api/test') {
   const json = vi.fn();
   const status = vi.fn().mockReturnValue({ json });
   const response = { status };

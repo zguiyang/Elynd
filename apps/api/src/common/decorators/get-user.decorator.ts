@@ -1,10 +1,10 @@
 import type { ExecutionContext } from '@nestjs/common';
 import { createParamDecorator } from '@nestjs/common';
 
-import type { SessionUser } from '@elynd/shared/types';
+import type { AuthUser } from '@elynd/auth/server';
 
-export const GetUser = createParamDecorator((key: keyof SessionUser | undefined, ctx: ExecutionContext) => {
-  const request = ctx.switchToHttp().getRequest<{ user: SessionUser }>();
+export const GetUser = createParamDecorator((key: keyof AuthUser | undefined, ctx: ExecutionContext) => {
+  const request = ctx.switchToHttp().getRequest<{ user: AuthUser }>();
   const user = request.user;
 
   if (!user) {

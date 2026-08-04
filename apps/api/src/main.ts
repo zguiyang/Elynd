@@ -1,21 +1,37 @@
+/**
+ * Env must be loaded before AppModule pulls in `@elynd/auth/server` (eager `auth`).
+ * Keep this import first.
+ */
+import './load-env.js';
+
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { cleanupOpenApiDoc } from 'nestjs-zod';
 
 import { AppModule } from './app.module.js';
+import { parseTrustedOrigins } from './config/auth-env.schema.js';
+import { resolveCorsOrigin } from './config/cors-origin.js';
 import { createComponents } from './swagger/zod-schema-registry.js';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  const app = await NestFactory.create(AppModule);
+  // bodyParser: false — required by @thallesp/nestjs-better-auth (library re-adds parsers for non-auth routes)
+  const app = await NestFactory.create(AppModule, {
+    bodyParser: false,
+  });
 
   app.setGlobalPrefix('api', {
     exclude: ['health', 'api-doc', 'api-doc/(.*)'],
   });
 
+  const trustedOriginsRaw = process.env.BETTER_AUTH_TRUSTED_ORIGINS?.trim() ?? '';
+  if (!trustedOriginsRaw) {
+    throw new Error('BETTER_AUTH_TRUSTED_ORIGINS must be set to configure CORS allowlist');
+  }
+
   app.enableCors({
-    origin: true,
+    origin: resolveCorsOrigin(parseTrustedOrigins(trustedOriginsRaw)),
     credentials: true,
   });
 

@@ -17,18 +17,18 @@ Guidance for AI coding assistants working in the Elynd repository (Cursor).
 
 ### Index
 
-| Rule                                                       | When                                      |
-| ---------------------------------------------------------- | ----------------------------------------- |
-| [invariants.mdc](.cursor/rules/invariants.mdc)             | Always — principles, cleanup, DoD         |
-| [layering.mdc](.cursor/rules/layering.mdc)                 | Always — package/module placement         |
-| [decisions.mdc](.cursor/rules/decisions.mdc)               | Always — create/delete/split/cross-layer  |
-| [project-overview.mdc](.cursor/rules/project-overview.mdc) | Always — product, stack, boundaries       |
-| [common.mdc](.cursor/rules/common.mdc)                     | Always — naming, style, security baseline |
-| [tdd.mdc](.cursor/rules/tdd.mdc)                           | Always — TDD default                      |
-| [git-commit.mdc](.cursor/rules/git-commit.mdc)             | Always — commits                          |
-| [backend.mdc](.cursor/rules/backend.mdc)                   | `apps/api/**`                             |
-| [frontend.mdc](.cursor/rules/frontend.mdc)                 | `apps/web/**`                             |
-| [packages.mdc](.cursor/rules/packages.mdc)                 | `packages/**`                             |
+| Rule                                                       | When                                                   |
+| ---------------------------------------------------------- | ------------------------------------------------------ |
+| [invariants.mdc](.cursor/rules/invariants.mdc)             | Always — principles, cleanup, DoD                      |
+| [layering.mdc](.cursor/rules/layering.mdc)                 | Always — package/module placement                      |
+| [decisions.mdc](.cursor/rules/decisions.mdc)               | Always — create/delete/split/cross-layer               |
+| [project-overview.mdc](.cursor/rules/project-overview.mdc) | Always — product, stack, boundaries                    |
+| [common.mdc](.cursor/rules/common.mdc)                     | Always — naming, style, security baseline              |
+| [tdd.mdc](.cursor/rules/tdd.mdc)                           | Always — TDD default                                   |
+| [git-commit.mdc](.cursor/rules/git-commit.mdc)             | Always — commit process/safety (format via commitlint) |
+| [backend.mdc](.cursor/rules/backend.mdc)                   | `apps/api/**`                                          |
+| [frontend.mdc](.cursor/rules/frontend.mdc)                 | `apps/web/**`                                          |
+| [packages.mdc](.cursor/rules/packages.mdc)                 | `packages/**`                                          |
 
 ## Language
 

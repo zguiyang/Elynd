@@ -1,50 +1,40 @@
 ---
-description: Vue 3 frontend conventions for Elynd
-globs: web/**
+description: Next.js frontend conventions for Elynd
+globs: apps/web/**
 alwaysApply: false
 ---
 
-# Frontend Rules
+# Frontend Rules (`apps/web`)
 
-Stack: Vue 3 `<script setup>` + TS, Vite, Pinia, Vue Router, shadcn-vue (Reka UI), Tailwind CSS **v4**, Axios.
+Stack: Next.js App Router, React, TypeScript, TanStack Form + Query, Zustand, Better Auth client (Bearer in `localStorage`), Axios, Tailwind CSS **v4**, shadcn/base-nova under `components/ui/`.
+
+Prefer [`.trellis/spec/web/frontend/`](../../.trellis/spec/web/frontend/index.md) for directory and state layering.
 
 ## UI priority
 
-1. Prefer existing shadcn-vue components under `src/components/ui/`
-2. Install via CLI when missing: `pnpm dlx shadcn-vue@latest add <name>`
-3. Custom components only when shadcn cannot meet the need
-4. Project MCP `.mcp.json` exposes shadcn-vue MCP—use it when component docs/patterns are needed
+1. Prefer existing components under `components/ui/`
+2. Install via shadcn CLI when missing
+3. Custom components only when the design system cannot meet the need
 
 ## Styling
 
 - Tailwind v4 only (`@import "tailwindcss"`, CSS-first theme)
 - Prefer semantic theme tokens (`bg-background`, `text-muted-foreground`, etc.) over raw colors
-- No Tailwind v3-only patterns
 
-## Auto-import
-
-unplugin-auto-import / vue-components: Vue, Vue Router, Pinia, local components/composables are auto-imported. Still **manually import VueUse** and non-auto modules (`@/api`, `@/lib`, icons).
-
-## Composables / Pinia
-
-- Destructure composable returns (VueUse style)
-- For Pinia state refs use `storeToRefs`; do not destructure store state without it
-
-## API layers
+## Layers
 
 | Layer | Location | Pattern |
 |-------|----------|---------|
-| API defs | `src/api/*.ts` | `request<T>({ method, url, data })` |
-| Stores/composables | JS layer | call api + `.catch` |
-| Views | `views/**` | `useRequest` for loading/error UX |
+| Routes | `app/**` | thin pages; compose feature modules |
+| Features | `features/**` | forms, panels, feature UI |
+| Auth client | `lib/auth/` | Better Auth client + token helpers |
+| HTTP | `lib/http/` | Axios + Bearer interceptor |
+| Server state | `lib/query/` | TanStack Query |
+| Client UI state | `stores/` | Zustand |
+| Validation | `lib/validations/` | Zod schemas for forms |
 
-Do not call raw axios from views when `request` / `useRequest` exist.
+## Auth
 
-## Forms & icons
-
-- Forms: vee-validate + zod when validating
-- Icons: `lucide-vue-next`
-
-## Port
-
-Dev web: **3000** (`pnpm run dev:web`). Do not start it unless the user asks.
+- Session token: `localStorage` key from `constants` (`AUTH_TOKEN_STORAGE_KEY`)
+- Inject `Authorization: Bearer <token>` on Better Auth client `fetchOptions` and Axios
+- Do not reintroduce cookie-only session assumptions unless a task explicitly changes auth mode

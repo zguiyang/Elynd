@@ -17,12 +17,12 @@ alwaysApply: true
 
 ## Scopes (preferred)
 
-`backend` | `web` | `auth` | `books` | `reader` | `admin` | `rules` | `infra`
+`api` | `web` | `auth` | `db` | `shared` | `books` | `reader` | `admin` | `rules` | `infra`
 
 ## Examples
 
 ```text
-fix(backend): add missing book chat prompt template
+fix(api): add missing book chat prompt template
 feat(web): add chapter vocabulary panel
 docs(rules): migrate agent rules to Cursor
 ```

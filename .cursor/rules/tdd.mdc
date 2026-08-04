@@ -16,8 +16,8 @@ TDD is the **default** for behavior-changing work. If skipped for in-scope work,
 
 ## In scope
 
-Backend: controllers, services, validators, authz, model queries, API contracts, business rules, bug fixes.
-Frontend: shared components, key interactions, composables, stores, `src/lib`, API adapters, route guards, bug fixes.
+Backend (`apps/api`): controllers, services, guards, validators/pipes, API contracts, business rules, bug fixes.
+Frontend (`apps/web`): shared components, key interactions, hooks, stores, `lib/`, route guards, bug fixes.
 
 ## Exceptions (no TDD required)
 

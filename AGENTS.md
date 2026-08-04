@@ -12,8 +12,8 @@ Project rules live in **`.cursor/rules/`** (Cursor `.mdc` rules). When they conf
 |------|------|
 | [project-overview.mdc](.cursor/rules/project-overview.mdc) | Always — product, stack, boundaries |
 | [common.mdc](.cursor/rules/common.mdc) | Always — naming, style, constants |
-| [backend.mdc](.cursor/rules/backend.mdc) | `backend/**` |
-| [frontend.mdc](.cursor/rules/frontend.mdc) | `web/**` |
+| [backend.mdc](.cursor/rules/backend.mdc) | `apps/api/**` |
+| [frontend.mdc](.cursor/rules/frontend.mdc) | `apps/web/**` |
 | [git-commit.mdc](.cursor/rules/git-commit.mdc) | Always — commits |
 | [tdd.mdc](.cursor/rules/tdd.mdc) | Always — TDD default |
 
@@ -28,32 +28,34 @@ Project rules live in **`.cursor/rules/`** (Cursor `.mdc` rules). When they conf
 
 **Stack**
 
-- Backend: AdonisJS 7 + PostgreSQL + Lucid + Redis, Access Token auth (port **3335**)
-- Frontend: Vue 3 + Vite + Pinia + Vue Router + shadcn-vue + Tailwind CSS v4 (port **3000**)
-- Package manager: pnpm workspace
+- API: NestJS + Better Auth (Bearer) + Drizzle + PostgreSQL + Redis (port **3336**)
+- Web: Next.js App Router + React + TanStack Query/Form + Zustand + Tailwind CSS v4 (port **3000**)
+- Shared: `@elynd/db`, `@elynd/shared`, `@elynd/tsconfig`
+- Package manager: pnpm workspace (`apps/*`, `packages/*`)
 
-## MCP
+## Legacy code
 
-Project MCP config: [`.mcp.json`](.mcp.json) (shadcn-vue MCP). Keep using it for component discovery when helpful. Prefer Context7 / official docs for library APIs.
+The former AdonisJS `backend/` and Vue `web/` apps were removed from this branch. Recover or migrate via branch comparison against `backup/pre-v2` or `main` (for example `git diff backup/pre-v2 -- backend web`).
 
 ## Common Commands
 
 **Do not** run `pnpm run dev:*`, `start`, or `preview` unless the user explicitly asks.
 
 ```bash
-pnpm run dev:backend    # Backend (3335)
-pnpm run dev:web        # Frontend (3000)
+pnpm run dev:api      # API (3336)
+pnpm run dev:web      # Web (3000)
 pnpm run lint
 pnpm run typecheck
 pnpm run test
 pnpm run build
+pnpm run db:push
 ```
 
 ## External Docs
 
-- [AdonisJS](https://docs.adonisjs.com)
-- [Vue](https://vuejs.org)
-- [shadcn-vue](https://shadcn-vue.com)
-- [Vue Router](https://router.vuejs.org)
-- [Pinia](https://pinia.vuejs.org)
+- [NestJS](https://docs.nestjs.com)
+- [Better Auth](https://www.better-auth.com/docs)
+- [Next.js](https://nextjs.org/docs)
+- [Drizzle ORM](https://orm.drizzle.team/docs/overview)
+- [TanStack Query](https://tanstack.com/query/latest)
 - [Tailwind CSS](https://tailwindcss.com/docs)

@@ -9,12 +9,11 @@ alwaysApply: true
 
 | Type | File | Notes |
 |------|------|-------|
-| Controller | `auth_controller.ts` | kebab + `_controller.ts` |
-| Validator | `auth_validator.ts` | **must** end with `_validator.ts` |
-| Service | `auth_service.ts` | class with `@inject()` |
-| Middleware | `auth_middleware.ts` | |
-| Vue SFC | `sign-in.vue` | kebab-case files; PascalCase component names |
-| shadcn-vue | under `web/src/components/ui/` | |
+| Nest controller | `auth.controller.ts` | Nest style under `apps/api` |
+| Nest service | `auth.service.ts` | injectable class |
+| Nest module | `auth.module.ts` | |
+| Web feature / page | `sign-in-form.tsx`, `page.tsx` | kebab-case files; PascalCase components |
+| shadcn UI | under `apps/web/components/ui/` | |
 
 - Classes/interfaces: `PascalCase`
 - Functions/vars: `camelCase`
@@ -27,12 +26,12 @@ alwaysApply: true
 
 ## Constants
 
-Put shared constants in one summary file per package (`app/constants/index.ts` or `web` equivalent). Split only past ~500 lines. Status/type/mode/API literals used ≥2 times must be constants—no scattered magic strings.
+Put shared constants in one summary file per package (`apps/web/constants/index.ts`, `apps/api` equivalent, or `@elynd/shared`). Split only past ~500 lines. Status/type/mode/API literals used ≥2 times must be constants—no scattered magic strings.
 
 ## Services vs utils
 
-- **Services**: business logic classes with `@inject()` only
-- **Utils**: plain functions/values under `utils/`, never under `services/`
+- **Services**: Nest injectable classes / application services with ports
+- **Utils**: plain functions/values under `utils/` or `lib/`, never mixed into service folders as catch-alls
 
 ## Quality
 
@@ -41,5 +40,5 @@ Project verification commands (run the smallest relevant set before claiming don
 ```bash
 pnpm run lint
 pnpm run typecheck
-pnpm run test   # backend / affected tests
+pnpm run test
 ```

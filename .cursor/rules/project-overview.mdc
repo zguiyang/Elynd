@@ -11,8 +11,13 @@ Elynd is an AI-assisted English reading learning tool for adults with weaker Eng
 
 pnpm monorepo:
 
-- `backend/` — AdonisJS 7 API (port **3335**), PostgreSQL, Lucid, Redis, Access Token auth
-- `web/` — Vue 3 + Vite + Pinia + Vue Router + shadcn-vue + Tailwind CSS v4 (port **3000**)
+- `apps/api` — NestJS API (port **3336**), Better Auth Bearer sessions, Drizzle via `@elynd/db`, PostgreSQL, Redis
+- `apps/web` — Next.js App Router (port **3000**), React, TanStack Query/Form, Zustand, Tailwind CSS v4
+- `packages/db` — Drizzle schemas and DB setup
+- `packages/shared` — shared Zod schemas and types
+- `packages/tsconfig` — shared TypeScript bases
+
+Legacy Adonis/Vue apps were removed from this branch; use `backup/pre-v2` / `main` for branch-diff migration.
 
 ## Language
 
@@ -23,8 +28,8 @@ pnpm monorepo:
 
 **Must**
 
-- Prefer `node ace make:*` for backend scaffolding, then edit
-- Create migrations before schema changes
+- Prefer existing Nest module patterns under `apps/api`; put schemas in `@elynd/db` / `@elynd/shared` before inventing new layout
+- Create or update Drizzle schema (and `db:push` / migrations when the project uses them) before schema changes
 
 **Ask first**
 

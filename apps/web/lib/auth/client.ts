@@ -1,7 +1,7 @@
-import { createAuthClient } from 'better-auth/react'
-import { usernameClient } from 'better-auth/client/plugins'
+import { usernameClient } from 'better-auth/client/plugins';
+import { createAuthClient } from 'better-auth/react';
 
-import { getAuthToken } from './token'
+import { getAuthToken } from './token';
 
 /**
  * Better Auth client for apps/api (`/api/auth/*`).
@@ -12,10 +12,10 @@ export const authClient = createAuthClient({
   plugins: [usernameClient()],
   fetchOptions: {
     onRequest(context) {
-      const token = getAuthToken()
+      const token = getAuthToken();
       if (token) {
-        context.headers.set('Authorization', `Bearer ${token}`)
+        context.headers.set('Authorization', `Bearer ${token}`);
       }
-    }
-  }
-})
+    },
+  },
+});

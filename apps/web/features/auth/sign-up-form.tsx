@@ -1,62 +1,62 @@
-'use client'
+'use client';
 
-import { useForm } from '@tanstack/react-form'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
-import { toast } from 'sonner'
+import { useForm } from '@tanstack/react-form';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
-import { Button } from '@/components/ui/button'
-import { AUTH_ROUTES } from '@/constants'
-import { AuthShell, Field, inputClassName } from '@/features/auth/auth-shell'
-import { authClient, extractSessionToken, setAuthToken } from '@/lib/auth'
-import { signUpSchema } from '@/lib/validations'
+import { Button } from '@/components/ui/button';
+import { AUTH_ROUTES } from '@/constants';
+import { AuthShell, Field, inputClassName } from '@/features/auth/auth-shell';
+import { authClient, extractSessionToken, setAuthToken } from '@/lib/auth';
+import { signUpSchema } from '@/lib/validations';
 
 export function SignUpForm() {
-  const router = useRouter()
-  const [formError, setFormError] = useState<string | null>(null)
+  const router = useRouter();
+  const [formError, setFormError] = useState<string | null>(null);
 
   const form = useForm({
     defaultValues: {
       name: '',
       username: '',
       email: '',
-      password: ''
+      password: '',
     },
     onSubmit: async ({ value }) => {
-      setFormError(null)
-      const parsed = signUpSchema.safeParse(value)
+      setFormError(null);
+      const parsed = signUpSchema.safeParse(value);
       if (!parsed.success) {
-        setFormError(parsed.error.issues[0]?.message ?? 'Invalid input')
-        return
+        setFormError(parsed.error.issues[0]?.message ?? 'Invalid input');
+        return;
       }
 
       const { data, error } = await authClient.signUp.email({
         email: parsed.data.email,
         password: parsed.data.password,
         name: parsed.data.name,
-        username: parsed.data.username
-      })
+        username: parsed.data.username,
+      });
 
       if (error) {
-        const message = error.message || 'Sign up failed'
-        setFormError(message)
-        toast.error(message)
-        return
+        const message = error.message || 'Sign up failed';
+        setFormError(message);
+        toast.error(message);
+        return;
       }
 
-      const token = extractSessionToken(data)
+      const token = extractSessionToken(data);
       if (!token) {
-        toast.success('Account created. Please sign in.')
-        router.replace(AUTH_ROUTES.signIn)
-        return
+        toast.success('Account created. Please sign in.');
+        router.replace(AUTH_ROUTES.signIn);
+        return;
       }
 
-      setAuthToken(token)
-      toast.success('Account created')
-      router.replace(AUTH_ROUTES.dashboard)
-    }
-  })
+      setAuthToken(token);
+      toast.success('Account created');
+      router.replace(AUTH_ROUTES.dashboard);
+    },
+  });
 
   return (
     <AuthShell
@@ -65,10 +65,7 @@ export function SignUpForm() {
       footer={
         <>
           Already have an account?{' '}
-          <Link
-            href={AUTH_ROUTES.signIn}
-            className="font-medium text-foreground underline-offset-4 hover:underline"
-          >
+          <Link href={AUTH_ROUTES.signIn} className="font-medium text-foreground underline-offset-4 hover:underline">
             Sign in
           </Link>
         </>
@@ -77,8 +74,8 @@ export function SignUpForm() {
       <form
         className="space-y-4"
         onSubmit={(event) => {
-          event.preventDefault()
-          void form.handleSubmit()
+          event.preventDefault();
+          void form.handleSubmit();
         }}
       >
         <form.Field name="name">
@@ -156,5 +153,5 @@ export function SignUpForm() {
         </form.Subscribe>
       </form>
     </AuthShell>
-  )
+  );
 }

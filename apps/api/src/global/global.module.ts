@@ -1,31 +1,31 @@
-import { Global, Module } from '@nestjs/common'
-import { ConfigModule } from '@nestjs/config'
-import { APP_FILTER, APP_GUARD } from '@nestjs/core'
+import { Global, Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 
-import { AuthModule } from '../auth/auth.module.js'
-import { GlobalExceptionFilter } from '../common/filters/global-exception.filter.js'
-import { AuthGuard } from '../common/guards/auth.guard.js'
-import { DB, DbProvider } from './providers/db.provider.js'
+import { AuthModule } from '../auth/auth.module.js';
+import { GlobalExceptionFilter } from '../common/filters/global-exception.filter.js';
+import { AuthGuard } from '../common/guards/auth.guard.js';
+import { DB, DbProvider } from './providers/db.provider.js';
 
 @Global()
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true
+      isGlobal: true,
     }),
-    AuthModule
+    AuthModule,
   ],
   providers: [
     DbProvider,
     {
       provide: APP_FILTER,
-      useClass: GlobalExceptionFilter
+      useClass: GlobalExceptionFilter,
     },
     {
       provide: APP_GUARD,
-      useClass: AuthGuard
-    }
+      useClass: AuthGuard,
+    },
   ],
-  exports: [DB]
+  exports: [DB],
 })
 export class GlobalModule {}

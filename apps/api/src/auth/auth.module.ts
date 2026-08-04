@@ -1,10 +1,10 @@
-import { Module } from '@nestjs/common'
+import { Module } from '@nestjs/common';
 
-import { AUTH_CLIENT } from './auth-client.port.js'
-import { AuthApplicationService } from './auth-application.service.js'
-import { AuthController } from './auth.controller.js'
-import { AuthService } from './auth.service.js'
-import { BetterAuthAdapter } from './better-auth.adapter.js'
+import { AuthController } from './auth.controller.js';
+import { AuthService } from './auth.service.js';
+import { AuthApplicationService } from './auth-application.service.js';
+import { AUTH_CLIENT } from './auth-client.port.js';
+import { BetterAuthAdapter } from './better-auth.adapter.js';
 
 @Module({
   controllers: [AuthController],
@@ -14,9 +14,9 @@ import { BetterAuthAdapter } from './better-auth.adapter.js'
     BetterAuthAdapter,
     {
       provide: AUTH_CLIENT,
-      useExisting: BetterAuthAdapter
-    }
+      useExisting: BetterAuthAdapter,
+    },
   ],
-  exports: [AuthService, AuthApplicationService]
+  exports: [AuthService, AuthApplicationService],
 })
 export class AuthModule {}

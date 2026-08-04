@@ -1,2 +1,2 @@
-export { scaffoldReadySchema, type ScaffoldReady } from './scaffold'
-export { signInSchema, signUpSchema, type SignInValues, type SignUpValues } from './auth'
+export { signInSchema, type SignInValues, signUpSchema, type SignUpValues } from './auth';
+export { type ScaffoldReady, scaffoldReadySchema } from './scaffold';

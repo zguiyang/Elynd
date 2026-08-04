@@ -1,1 +1,1 @@
-export * from './response.schema.js'
+export * from './response.schema.js';

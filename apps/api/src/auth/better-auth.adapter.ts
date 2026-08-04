@@ -1,8 +1,7 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable } from '@nestjs/common';
+import { fromNodeHeaders } from 'better-auth/node';
 
-import { fromNodeHeaders } from 'better-auth/node'
-
-import { getAuthInstance } from '../core/auth.instance.js'
+import { getAuthInstance } from '../core/auth.instance.js';
 import type {
   AuthClientPort,
   AuthSession,
@@ -12,23 +11,23 @@ import type {
   RegisterInput,
   SessionHeaders,
   SignInResult,
-  SignUpResult
-} from './auth-client.port.js'
+  SignUpResult,
+} from './auth-client.port.js';
 
 function toAuthUser(user: { id: string; email: string; name: string }): AuthUser {
   return {
     id: user.id,
     email: user.email,
-    name: user.name
-  }
+    name: user.name,
+  };
 }
 
 function toAuthSession(session: { id: string; userId: string; token: string }): AuthSession {
   return {
     id: session.id,
     userId: session.userId,
-    token: session.token
-  }
+    token: session.token,
+  };
 }
 
 @Injectable()
@@ -41,21 +40,21 @@ export class BetterAuthAdapter implements AuthClientPort {
           email: input.email,
           password: input.password,
           name: input.name,
-          username: input.username
+          username: input.username,
         } as {
-          email: string
-          password: string
-          name: string
-          username: string
-        }
-      })
+          email: string;
+          password: string;
+          name: string;
+          username: string;
+        },
+      });
 
       if (!response.user) {
         return {
           ok: false,
           code: 'VALIDATION_ERROR',
-          message: 'Registration failed'
-        }
+          message: 'Registration failed',
+        };
       }
 
       return {
@@ -65,26 +64,26 @@ export class BetterAuthAdapter implements AuthClientPort {
           ? {
               id: response.token,
               userId: response.user.id,
-              token: response.token
+              token: response.token,
             }
-          : null
-      }
+          : null,
+      };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Registration failed'
+      const message = error instanceof Error ? error.message : 'Registration failed';
 
       if (message.toLowerCase().includes('already') || message.toLowerCase().includes('exist')) {
         return {
           ok: false,
           code: 'DUPLICATE_EMAIL',
-          message
-        }
+          message,
+        };
       }
 
       return {
         ok: false,
         code: 'VALIDATION_ERROR',
-        message
-      }
+        message,
+      };
     }
   }
 
@@ -93,16 +92,16 @@ export class BetterAuthAdapter implements AuthClientPort {
       const response = await getAuthInstance().api.signInEmail({
         body: {
           email: input.email,
-          password: input.password
-        }
-      })
+          password: input.password,
+        },
+      });
 
       if (!response.user || !response.token) {
         return {
           ok: false,
           code: 'INVALID_CREDENTIALS',
-          message: 'Invalid email or password'
-        }
+          message: 'Invalid email or password',
+        };
       }
 
       return {
@@ -111,31 +110,31 @@ export class BetterAuthAdapter implements AuthClientPort {
         session: {
           id: response.token,
           userId: response.user.id,
-          token: response.token
-        }
-      }
+          token: response.token,
+        },
+      };
     } catch {
       return {
         ok: false,
         code: 'INVALID_CREDENTIALS',
-        message: 'Invalid email or password'
-      }
+        message: 'Invalid email or password',
+      };
     }
   }
 
   async getSession(headers: SessionHeaders): Promise<GetSessionResult> {
     const session = await getAuthInstance().api.getSession({
-      headers: fromNodeHeaders(headers)
-    })
+      headers: fromNodeHeaders(headers),
+    });
 
     if (!session?.user || !session.session) {
-      return { ok: false }
+      return { ok: false };
     }
 
     return {
       ok: true,
       user: toAuthUser(session.user),
-      session: toAuthSession(session.session)
-    }
+      session: toAuthSession(session.session),
+    };
   }
 }

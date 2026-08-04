@@ -1,6 +1,6 @@
-import Link from 'next/link'
+import Link from 'next/link';
 
-import { APP_NAME, AUTH_ROUTES } from '@/constants'
+import { APP_NAME, AUTH_ROUTES } from '@/constants';
 
 export default function Home() {
   return (
@@ -30,5 +30,5 @@ export default function Home() {
         </Link>
       </div>
     </main>
-  )
+  );
 }

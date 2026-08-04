@@ -1,20 +1,20 @@
 export function extractSessionToken(data: unknown): string | null {
   if (!data || typeof data !== 'object') {
-    return null
+    return null;
   }
 
-  const record = data as Record<string, unknown>
+  const record = data as Record<string, unknown>;
   if (typeof record.token === 'string') {
-    return record.token
+    return record.token;
   }
 
-  const session = record.session
+  const session = record.session;
   if (session && typeof session === 'object') {
-    const token = (session as Record<string, unknown>).token
+    const token = (session as Record<string, unknown>).token;
     if (typeof token === 'string') {
-      return token
+      return token;
     }
   }
 
-  return null
+  return null;
 }

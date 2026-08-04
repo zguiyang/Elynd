@@ -1,14 +1,14 @@
-'use client'
+'use client';
 
-import { Toaster } from 'sonner'
-import type { ReactNode } from 'react'
+import type { ReactNode } from 'react';
+import { Toaster } from 'sonner';
 
-import { QueryProvider } from '@/lib/query'
-import { StoreProvider } from '@/stores'
+import { QueryProvider } from '@/lib/query';
+import { StoreProvider } from '@/stores';
 
 type ProvidersProps = {
-  children: ReactNode
-}
+  children: ReactNode;
+};
 
 export function Providers({ children }: ProvidersProps) {
   return (
@@ -18,5 +18,5 @@ export function Providers({ children }: ProvidersProps) {
         <Toaster richColors closeButton position="top-right" />
       </StoreProvider>
     </QueryProvider>
-  )
+  );
 }

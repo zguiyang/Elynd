@@ -1,1 +1,1 @@
-export { DashboardPanel } from './dashboard-panel'
+export { DashboardPanel } from './dashboard-panel';

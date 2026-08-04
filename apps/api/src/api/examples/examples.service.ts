@@ -1,15 +1,15 @@
-import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common'
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { and, type AnyColumn, asc, desc, eq, like, sql } from 'drizzle-orm';
 
-import { and, type AnyColumn, asc, desc, eq, like, sql } from 'drizzle-orm'
+import type { Db } from '@elynd/db';
+import { examplesTable } from '@elynd/db';
 
-import type { Db } from '@elynd/db'
-import { examplesTable } from '@elynd/db'
-import { DB } from '../../global/providers/db.provider.js'
-import type { CreateExampleDto, QueryExamplePageDto, UpdateExampleDto } from './examples.schema.js'
+import { DB } from '../../global/providers/db.provider.js';
+import type { CreateExampleDto, QueryExamplePageDto, UpdateExampleDto } from './examples.schema.js';
 
 @Injectable()
 export class ExamplesService {
-  private readonly logger = new Logger(ExamplesService.name)
+  private readonly logger = new Logger(ExamplesService.name);
 
   constructor(@Inject(DB) private readonly db: Db) {}
 
@@ -19,16 +19,16 @@ export class ExamplesService {
         .insert(examplesTable)
         .values({
           user_id: userId,
-          ...createExampleDto
+          ...createExampleDto,
         })
-        .returning()
+        .returning();
 
-      this.logger.log(`Example created successfully: ${example.id}`)
-      return example
+      this.logger.log(`Example created successfully: ${example.id}`);
+      return example;
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error)
-      this.logger.error(`Failed to create example: ${message}`)
-      throw error
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to create example: ${message}`);
+      throw error;
     }
   }
 
@@ -37,74 +37,74 @@ export class ExamplesService {
       .select()
       .from(examplesTable)
       .where(and(eq(examplesTable.id, id), eq(examplesTable.user_id, userId)))
-      .limit(1)
+      .limit(1);
 
     if (!example || example.length === 0) {
-      throw new NotFoundException('Example not found or access denied')
+      throw new NotFoundException('Example not found or access denied');
     }
 
-    return example[0]
+    return example[0];
   }
 
   async updateExample(userId: string, id: string, updateExampleDto: UpdateExampleDto) {
-    await this.getExampleById(userId, id)
+    await this.getExampleById(userId, id);
 
     try {
       const [updatedExample] = await this.db
         .update(examplesTable)
         .set({
           ...updateExampleDto,
-          updated_at: new Date()
+          updated_at: new Date(),
         })
         .where(eq(examplesTable.id, id))
-        .returning()
+        .returning();
 
-      this.logger.log(`Example updated successfully: ${id}`)
-      return updatedExample
+      this.logger.log(`Example updated successfully: ${id}`);
+      return updatedExample;
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error)
-      this.logger.error(`Failed to update example ${id}: ${message}`)
-      throw error
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to update example ${id}: ${message}`);
+      throw error;
     }
   }
 
   async deleteExample(userId: string, id: string) {
-    await this.getExampleById(userId, id)
+    await this.getExampleById(userId, id);
 
     try {
-      await this.db.delete(examplesTable).where(eq(examplesTable.id, id))
-      this.logger.log(`Example deleted successfully: ${id}`)
+      await this.db.delete(examplesTable).where(eq(examplesTable.id, id));
+      this.logger.log(`Example deleted successfully: ${id}`);
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error)
-      this.logger.error(`Failed to delete example ${id}: ${message}`)
-      throw error
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to delete example ${id}: ${message}`);
+      throw error;
     }
   }
 
   async getExamples(userId: string, query: QueryExamplePageDto) {
-    const { page, pageSize, orderBy, direction, name, description } = query
+    const { page, pageSize, orderBy, direction, name, description } = query;
 
     try {
-      const conditions = [eq(examplesTable.user_id, userId)]
+      const conditions = [eq(examplesTable.user_id, userId)];
 
       if (name) {
-        conditions.push(like(examplesTable.name, `%${name}%`))
+        conditions.push(like(examplesTable.name, `%${name}%`));
       }
 
       if (description) {
-        conditions.push(like(examplesTable.description, `%${description}%`))
+        conditions.push(like(examplesTable.description, `%${description}%`));
       }
 
       const [countResult] = await this.db
         .select({ count: sql<number>`count(*)` })
         .from(examplesTable)
-        .where(and(...conditions))
+        .where(and(...conditions));
 
-      const total = Number(countResult.count)
-      const pages = Math.ceil(total / pageSize)
+      const total = Number(countResult.count);
+      const pages = Math.ceil(total / pageSize);
 
       const orderColumn: AnyColumn =
-        (examplesTable as unknown as Record<string, AnyColumn>)[orderBy] ?? examplesTable.created_at
+        (examplesTable as unknown as Record<string, AnyColumn>)[orderBy] ?? examplesTable.created_at;
 
       const examples = await this.db
         .select()
@@ -112,19 +112,19 @@ export class ExamplesService {
         .where(and(...conditions))
         .orderBy(direction === 'asc' ? asc(orderColumn) : desc(orderColumn))
         .limit(pageSize)
-        .offset((page - 1) * pageSize)
+        .offset((page - 1) * pageSize);
 
       return {
         content: examples,
         page,
         pages,
         pageSize,
-        total
-      }
+        total,
+      };
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error)
-      this.logger.error(`Failed to get examples: ${message}`)
-      throw error
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to get examples: ${message}`);
+      throw error;
     }
   }
 }

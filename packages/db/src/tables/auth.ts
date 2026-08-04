@@ -1,4 +1,4 @@
-import { boolean, pgTable, text, timestamp } from 'drizzle-orm/pg-core'
+import { boolean, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
@@ -9,8 +9,8 @@ export const users = pgTable('users', {
   emailVerified: boolean('emailVerified').notNull().default(false),
   image: text('image'),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
-  updatedAt: timestamp('updatedAt').notNull().defaultNow()
-})
+  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+});
 
 export const sessions = pgTable('sessions', {
   id: text('id').primaryKey(),
@@ -22,8 +22,8 @@ export const sessions = pgTable('sessions', {
   ipAddress: text('ipAddress'),
   userAgent: text('userAgent'),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
-  updatedAt: timestamp('updatedAt').notNull().defaultNow()
-})
+  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+});
 
 export const accounts = pgTable('accounts', {
   id: text('id').primaryKey(),
@@ -40,8 +40,8 @@ export const accounts = pgTable('accounts', {
   idToken: text('idToken'),
   password: text('password'),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
-  updatedAt: timestamp('updatedAt').notNull().defaultNow()
-})
+  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+});
 
 export const verifications = pgTable('verifications', {
   id: text('id').primaryKey(),
@@ -49,5 +49,5 @@ export const verifications = pgTable('verifications', {
   value: text('value').notNull(),
   expiresAt: timestamp('expiresAt').notNull(),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
-  updatedAt: timestamp('updatedAt').notNull().defaultNow()
-})
+  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+});

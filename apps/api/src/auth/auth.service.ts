@@ -1,28 +1,27 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable } from '@nestjs/common';
+import { toNodeHandler } from 'better-auth/node';
 
-import { toNodeHandler } from 'better-auth/node'
+import { getAuthInstance } from '../core/auth.instance.js';
 
-import { getAuthInstance } from '../core/auth.instance.js'
-
-type AuthInstance = ReturnType<typeof getAuthInstance>
-type AuthHandler = ReturnType<typeof toNodeHandler>
+type AuthInstance = ReturnType<typeof getAuthInstance>;
+type AuthHandler = ReturnType<typeof toNodeHandler>;
 
 @Injectable()
 export class AuthService {
-  private authInstance: AuthInstance | null = null
-  private authHandler: AuthHandler | null = null
+  private authInstance: AuthInstance | null = null;
+  private authHandler: AuthHandler | null = null;
 
   get auth(): AuthInstance {
     if (!this.authInstance) {
-      this.authInstance = getAuthInstance()
+      this.authInstance = getAuthInstance();
     }
-    return this.authInstance
+    return this.authInstance;
   }
 
   get handler(): AuthHandler {
     if (!this.authHandler) {
-      this.authHandler = toNodeHandler(this.auth.handler)
+      this.authHandler = toNodeHandler(this.auth.handler);
     }
-    return this.authHandler
+    return this.authHandler;
   }
 }

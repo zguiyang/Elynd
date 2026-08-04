@@ -1,74 +1,74 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
-import { Button } from '@/components/ui/button'
-import { APP_NAME, AUTH_ROUTES } from '@/constants'
-import { authClient, clearAuthToken, getAuthToken } from '@/lib/auth'
+import { Button } from '@/components/ui/button';
+import { APP_NAME, AUTH_ROUTES } from '@/constants';
+import { authClient, clearAuthToken, getAuthToken } from '@/lib/auth';
 
 type SessionUser = {
-  id?: string
-  email?: string
-  name?: string
-  username?: string | null
-}
+  id?: string;
+  email?: string;
+  name?: string;
+  username?: string | null;
+};
 
 export function DashboardPanel() {
-  const router = useRouter()
-  const [user, setUser] = useState<SessionUser | null>(null)
-  const [loading, setLoading] = useState(true)
+  const router = useRouter();
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
 
     async function loadSession() {
-      const token = getAuthToken()
+      const token = getAuthToken();
       if (!token) {
-        router.replace(AUTH_ROUTES.signIn)
-        return
+        router.replace(AUTH_ROUTES.signIn);
+        return;
       }
 
-      const { data, error } = await authClient.getSession()
+      const { data, error } = await authClient.getSession();
       if (cancelled) {
-        return
+        return;
       }
 
       if (error || !data?.user) {
-        clearAuthToken()
-        router.replace(AUTH_ROUTES.signIn)
-        return
+        clearAuthToken();
+        router.replace(AUTH_ROUTES.signIn);
+        return;
       }
 
-      setUser(data.user as SessionUser)
-      setLoading(false)
+      setUser(data.user as SessionUser);
+      setIsLoading(false);
     }
 
-    void loadSession()
+    void loadSession();
     return () => {
-      cancelled = true
-    }
-  }, [router])
+      cancelled = true;
+    };
+  }, [router]);
 
   async function handleSignOut() {
     try {
-      await authClient.signOut()
+      await authClient.signOut();
     } catch {
       // Clear local token even if the API call fails.
     }
-    clearAuthToken()
-    toast.success('Signed out')
-    router.replace(AUTH_ROUTES.signIn)
+    clearAuthToken();
+    toast.success('Signed out');
+    router.replace(AUTH_ROUTES.signIn);
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <main className="flex flex-1 items-center justify-center px-6 py-16">
         <p className="text-sm text-muted-foreground">Loading session…</p>
       </main>
-    )
+    );
   }
 
   return (
@@ -106,5 +106,5 @@ export function DashboardPanel() {
         </Link>
       </div>
     </main>
-  )
+  );
 }

@@ -11,8 +11,9 @@ Elynd is an AI-assisted English reading learning tool for adults with weaker Eng
 
 pnpm monorepo (`apps/*`, `packages/*`):
 
-- `apps/api` — NestJS API (port **3336**), Better Auth Bearer sessions, Drizzle via `@elynd/db`, PostgreSQL, Redis
-- `apps/web` — Next.js App Router (port **3000**), React, TanStack Query/Form, Zustand, Tailwind CSS v4
+- `apps/api` — NestJS API (port **3336**), Better Auth cookie sessions, Drizzle via `@elynd/db`, PostgreSQL, optional Redis (reserved)
+- `apps/web` — Next.js App Router (port **3000**), React, TanStack Query/Form, Tailwind CSS v4
+- `packages/auth` — Better Auth server/client factory and session config
 - `packages/db` — Drizzle schemas and DB setup
 - `packages/shared` — shared Zod schemas and types (no `@elynd/db`)
 

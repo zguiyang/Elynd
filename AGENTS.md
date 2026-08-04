@@ -41,9 +41,9 @@ Guidance for AI coding assistants working in the Elynd repository (Cursor).
 
 **Stack**
 
-- API: NestJS + Better Auth (Bearer) + Drizzle + PostgreSQL + Redis (port **3336**)
-- Web: Next.js App Router + React + TanStack Query/Form + Zustand + Tailwind CSS v4 (port **3000**)
-- Shared: `@elynd/db`, `@elynd/shared` (`shared` must not depend on `db`)
+- API: NestJS + Better Auth (cookie session) + Drizzle + PostgreSQL + optional Redis reserved (port **3336**)
+- Web: Next.js App Router + React + TanStack Query/Form + Tailwind CSS v4 (port **3000**)
+- Shared: `@elynd/db`, `@elynd/auth`, `@elynd/shared` (`shared` must not depend on `db`)
 - Tooling: root `tsconfig.base.json`, `prettier.config.js`, `eslint.config.mjs` (Nest/Next TS options in each app)
 - Package manager: pnpm workspace (`apps/*`, `packages/*`)
 

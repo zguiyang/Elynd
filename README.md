@@ -19,23 +19,23 @@
 | 即点查词 | 点击单词显示释义         |
 | AI 问答  | 基于当前文章内容智能问答 |
 
-> 当前 `refactor/v2` 分支已切到 Nest + Next 脚手架；业务功能仍在从旧栈迁移中。首个可用闭环是 **注册 / 登录（Bearer）/ Dashboard**。
+> 当前 `refactor/v2` 分支已切到 Nest + Next 脚手架；业务功能仍在从旧栈迁移中。首个可用闭环是 **注册 / 登录（cookie session）/ Dashboard**。
 
 ## 技术栈
 
-| 层     | 技术                                                                                      |
-| ------ | ----------------------------------------------------------------------------------------- |
-| API    | NestJS、Better Auth（Bearer）、Drizzle、PostgreSQL、Redis（端口 **3336**）                |
-| Web    | Next.js App Router、React、TanStack Query/Form、Zustand、Tailwind CSS v4（端口 **3000**） |
-| 包管理 | pnpm workspace（`apps/*`、`packages/*`）                                                  |
+| 层     | 技术                                                                                          |
+| ------ | --------------------------------------------------------------------------------------------- |
+| API    | NestJS、Better Auth（cookie session）、Drizzle、PostgreSQL、可选 Redis（预留，端口 **3336**） |
+| Web    | Next.js App Router、React、TanStack Query/Form、Tailwind CSS v4（端口 **3000**）              |
+| 包管理 | pnpm workspace（`apps/*`、`packages/*`）                                                      |
 
 ## 环境要求
 
-| 工具    | 版本                              |
-| ------- | --------------------------------- |
-| Node.js | ≥ 24.0.0                          |
-| pnpm    | ≥ 10.0.0                          |
-| Docker  | 用于本地 Postgres / Redis（可选） |
+| 工具    | 版本                                                    |
+| ------- | ------------------------------------------------------- |
+| Node.js | ≥ 24.0.0                                                |
+| pnpm    | ≥ 10.0.0                                                |
+| Docker  | 用于本地 Postgres（可选）；Redis 服务预留，应用暂不依赖 |
 
 ## 本地开发
 
@@ -45,7 +45,7 @@ cd elynd
 pnpm install
 ```
 
-### 1. 启动数据库与 Redis
+### 1. 启动数据库（Redis 可选 / 预留）
 
 ```bash
 pnpm compose:init
@@ -55,7 +55,7 @@ docker compose up -d
 默认连接（与 compose 示例一致）：
 
 - Postgres: `postgresql://root:root@127.0.0.1:5433/app`
-- Redis: `127.0.0.1:6380`
+- Redis: `127.0.0.1:6380`（compose 中预留；当前 cookie auth 不需要 Redis client / secondaryStorage）
 
 ### 2. 配置环境变量
 

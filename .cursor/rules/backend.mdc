@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Backend Rules (`apps/api`)
 
-Stack: NestJS, Better Auth (Bearer), Drizzle (`@elynd/db`), Zod (`@elynd/shared` / nestjs-zod), Vitest.
+Stack: NestJS, Better Auth (cookie session via `@elynd/auth` + `@thallesp/nestjs-better-auth`), Drizzle (`@elynd/db`), Zod (`@elynd/shared` / nestjs-zod), Vitest.
 
 Placement and package boundaries: **`layering.mdc`** + **`decisions.mdc`** (framework-agnostic; follow those first).
 
@@ -24,22 +24,20 @@ Auth executable contracts: [`.trellis/spec/api/backend/auth-monorepo.md`](../../
 | Folder | Role |
 | ------ | ---- |
 | `src/api/<feature>/` | Feature modules — business workflows |
-| `src/auth/` | Auth feature / Better Auth wiring |
-| `src/common/` | Transport cross-cutting: guards, pipes, filters, decorators — **no** domain workflows |
+| `src/common/` | Transport cross-cutting: pipes, filters, decorators — **no** domain workflows |
 | `src/global/` | Global providers |
 | `src/config/` | Env/config schemas |
-| `src/core/` | App composition / core wiring only |
 
 - Thin controllers: validate + map HTTP; business rules in injectable services
-- Auth application logic via `AuthApplicationService` + `AuthClientPort` (mock the port in unit tests)
+- Auth instance lives in `@elynd/auth/server`; wire via `AuthModule.forRoot` in `AppModule`. Load env before importing auth (`load-env.ts`)
+- Prefer `@elynd/auth` inferred types (`AuthUser` / `AuthSession`); do not reinvent session user shapes in apps
 - Tech helpers with zero domain knowledge may live under `common/` or small dedicated folders — never import feature modules from tech helpers
 - Do not use Adonis-style Access Token auth on the Nest path
-- Lazy Better Auth via `getAuthInstance()` — never eager-init at import time
 
 ## Validation & OpenAPI
 
 - Prefer shared Zod helpers from `@elynd/shared/schemas` (pagination, common shapes)
-- Compose feature HTTP DTOs from `@elynd/db` drizzle-zod in the feature module (e.g. `examples.schema.ts`)
+- Compose feature HTTP DTOs from `@elynd/db` drizzle-zod in the feature module
 - Use project Zod validation pipe / Swagger helpers already in `src/common`
 - Do not duplicate the same request/response schema in the web app — put cross-app contracts in `@elynd/shared`
 

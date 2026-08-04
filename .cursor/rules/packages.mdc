@@ -1,0 +1,27 @@
+---
+description: Shared packages conventions for Elynd
+globs: packages/**
+alwaysApply: false
+---
+
+# Packages Rules (`packages/**`)
+
+| Package | Role |
+|---------|------|
+| `@elynd/db` | Drizzle schemas + `setupDb()` |
+| `@elynd/shared` | Shared Zod schemas / types |
+| `@elynd/tsconfig` | Shareable TS presets only (no app `paths`) |
+| `@elynd/eslint-config` | Shareable ESLint flat configs |
+| `@elynd/prettier-config` | Shareable Prettier config |
+
+## TypeScript
+
+- Libraries extend `@elynd/tsconfig/library.json`
+- Keep `outDir` / `rootDir` / `include` / `exclude` local
+- Cross-package imports use workspace names (`@elynd/db`), not relative paths across packages
+- Package-internal relative imports are fine
+
+## Do not
+
+- Put app aliases (`@/*`) into `@elynd/tsconfig`
+- Publish secrets or environment-specific compose overrides into these packages

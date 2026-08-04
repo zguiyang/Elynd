@@ -9,15 +9,28 @@ Elynd is an AI-assisted English reading learning tool for adults with weaker Eng
 
 ## Architecture
 
-pnpm monorepo:
+pnpm monorepo (`apps/*`, `packages/*`):
 
 - `apps/api` — NestJS API (port **3336**), Better Auth Bearer sessions, Drizzle via `@elynd/db`, PostgreSQL, Redis
 - `apps/web` — Next.js App Router (port **3000**), React, TanStack Query/Form, Zustand, Tailwind CSS v4
 - `packages/db` — Drizzle schemas and DB setup
 - `packages/shared` — shared Zod schemas and types
-- `packages/tsconfig` — shared TypeScript bases
+- `packages/tsconfig` — shared TypeScript presets (`base` / `nest` / `next` / `library`)
+- `packages/eslint-config` — shared ESLint flat configs
+- `packages/prettier-config` — shared Prettier config
 
-Legacy Adonis/Vue apps were removed from this branch; use `backup/pre-v2` / `main` for branch-diff migration.
+Legacy Adonis/Vue apps were removed; use `backup/pre-v2` / `main` for branch-diff migration.
+
+## Shared vs local TypeScript
+
+**Share** (in `@elynd/tsconfig/*`): strictness, Nest/Next/library module families, decorator flags.
+
+**Keep local** (each app/package tsconfig): `paths`, `baseUrl`, `outDir`, `rootDir`, `include`/`exclude`, `types`, Next `plugins`. Relative paths in a tsconfig resolve against the file that defines them — never put app aliases in the shared package.
+
+## Docker
+
+- Commit `docker-compose.yaml.example` only.
+- Local `docker-compose.yaml` is gitignored. Init: `pnpm compose:init` or `cp docker-compose.yaml.example docker-compose.yaml`.
 
 ## Language
 
@@ -30,6 +43,7 @@ Legacy Adonis/Vue apps were removed from this branch; use `backup/pre-v2` / `mai
 
 - Prefer existing Nest module patterns under `apps/api`; put schemas in `@elynd/db` / `@elynd/shared` before inventing new layout
 - Create or update Drizzle schema (and `db:push` / migrations when the project uses them) before schema changes
+- Extend `@elynd/tsconfig/*` via package name, not relative paths into `packages/tsconfig`
 
 **Ask first**
 
@@ -40,6 +54,7 @@ Legacy Adonis/Vue apps were removed from this branch; use `backup/pre-v2` / `mai
 **Never**
 
 - Commit secrets or `.env` values
+- Commit local `docker-compose.yaml`
 - Touch `node_modules/`
 - Operate on production data directly
 - Disable security middleware

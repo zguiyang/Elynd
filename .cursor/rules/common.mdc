@@ -21,8 +21,9 @@ alwaysApply: true
 
 ## Style
 
-- 2 spaces, single quotes, ~100 cols, no semicolons, no trailing commas
+- **Prettier** (`@elynd/prettier-config`) is the format authority: 2 spaces, single quotes, no semicolons, printWidth ~100, no trailing commas
 - Prefer `import type`; avoid `any`; prefer `| null` over `undefined` for optionals
+- Run `pnpm format` / `pnpm format:check`; do not fight Prettier with one-off style
 
 ## Constants
 
@@ -35,10 +36,9 @@ Put shared constants in one summary file per package (`apps/web/constants/index.
 
 ## Quality
 
-Project verification commands (run the smallest relevant set before claiming done):
-
 ```bash
 pnpm run lint
+pnpm run format:check
 pnpm run typecheck
 pnpm run test
 ```

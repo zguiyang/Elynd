@@ -8,14 +8,15 @@ Behavioral guidelines (think / simplify / surgical edits / verifiable goals) liv
 
 Project rules live in **`.cursor/rules/`** (Cursor `.mdc` rules). When they conflict with User Rules, **project rules win**.
 
-| Rule | When |
-|------|------|
+| Rule                                                       | When                                |
+| ---------------------------------------------------------- | ----------------------------------- |
 | [project-overview.mdc](.cursor/rules/project-overview.mdc) | Always — product, stack, boundaries |
-| [common.mdc](.cursor/rules/common.mdc) | Always — naming, style, constants |
-| [backend.mdc](.cursor/rules/backend.mdc) | `apps/api/**` |
-| [frontend.mdc](.cursor/rules/frontend.mdc) | `apps/web/**` |
-| [git-commit.mdc](.cursor/rules/git-commit.mdc) | Always — commits |
-| [tdd.mdc](.cursor/rules/tdd.mdc) | Always — TDD default |
+| [common.mdc](.cursor/rules/common.mdc)                     | Always — naming, style, constants   |
+| [backend.mdc](.cursor/rules/backend.mdc)                   | `apps/api/**`                       |
+| [frontend.mdc](.cursor/rules/frontend.mdc)                 | `apps/web/**`                       |
+| [packages.mdc](.cursor/rules/packages.mdc)                 | `packages/**`                       |
+| [git-commit.mdc](.cursor/rules/git-commit.mdc)             | Always — commits                    |
+| [tdd.mdc](.cursor/rules/tdd.mdc)                           | Always — TDD default                |
 
 ## Language
 
@@ -30,21 +31,23 @@ Project rules live in **`.cursor/rules/`** (Cursor `.mdc` rules). When they conf
 
 - API: NestJS + Better Auth (Bearer) + Drizzle + PostgreSQL + Redis (port **3336**)
 - Web: Next.js App Router + React + TanStack Query/Form + Zustand + Tailwind CSS v4 (port **3000**)
-- Shared: `@elynd/db`, `@elynd/shared`, `@elynd/tsconfig`
+- Shared: `@elynd/db`, `@elynd/shared`, `@elynd/tsconfig`, `@elynd/eslint-config`, `@elynd/prettier-config`
 - Package manager: pnpm workspace (`apps/*`, `packages/*`)
 
 ## Legacy code
 
-The former AdonisJS `backend/` and Vue `web/` apps were removed from this branch. Recover or migrate via branch comparison against `backup/pre-v2` or `main` (for example `git diff backup/pre-v2 -- backend web`).
+Former AdonisJS `backend/` and Vue `web/` were removed. Recover via `backup/pre-v2` / `main` (e.g. `git diff backup/pre-v2 -- backend web`).
 
 ## Common Commands
 
 **Do not** run `pnpm run dev:*`, `start`, or `preview` unless the user explicitly asks.
 
 ```bash
-pnpm run dev:api      # API (3336)
-pnpm run dev:web      # Web (3000)
+pnpm compose:init   # copy docker-compose.yaml.example → docker-compose.yaml
+pnpm run dev:api    # API (3336)
+pnpm run dev:web    # Web (3000)
 pnpm run lint
+pnpm run format:check
 pnpm run typecheck
 pnpm run test
 pnpm run build

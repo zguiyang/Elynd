@@ -12,30 +12,30 @@
 
 ### 核心功能（产品方向）
 
-| 功能 | 说明 |
-|-----|------|
-| 分级阅读 | 预置难度分级的精选文章 |
-| 听读模式 | TTS 语音朗读，边听边读 |
-| 即点查词 | 点击单词显示释义 |
-| AI 问答 | 基于当前文章内容智能问答 |
+| 功能     | 说明                     |
+| -------- | ------------------------ |
+| 分级阅读 | 预置难度分级的精选文章   |
+| 听读模式 | TTS 语音朗读，边听边读   |
+| 即点查词 | 点击单词显示释义         |
+| AI 问答  | 基于当前文章内容智能问答 |
 
 > 当前 `refactor/v2` 分支已切到 Nest + Next 脚手架；业务功能仍在从旧栈迁移中。首个可用闭环是 **注册 / 登录（Bearer）/ Dashboard**。
 
 ## 技术栈
 
-| 层 | 技术 |
-|----|------|
-| API | NestJS、Better Auth（Bearer）、Drizzle、PostgreSQL、Redis（端口 **3336**） |
-| Web | Next.js App Router、React、TanStack Query/Form、Zustand、Tailwind CSS v4（端口 **3000**） |
-| 包管理 | pnpm workspace（`apps/*`、`packages/*`） |
+| 层     | 技术                                                                                      |
+| ------ | ----------------------------------------------------------------------------------------- |
+| API    | NestJS、Better Auth（Bearer）、Drizzle、PostgreSQL、Redis（端口 **3336**）                |
+| Web    | Next.js App Router、React、TanStack Query/Form、Zustand、Tailwind CSS v4（端口 **3000**） |
+| 包管理 | pnpm workspace（`apps/*`、`packages/*`）                                                  |
 
 ## 环境要求
 
-| 工具 | 版本 |
-|-----|------|
-| Node.js | ≥ 24.0.0 |
-| pnpm | ≥ 10.0.0 |
-| Docker | 用于本地 Postgres / Redis（可选） |
+| 工具    | 版本                              |
+| ------- | --------------------------------- |
+| Node.js | ≥ 24.0.0                          |
+| pnpm    | ≥ 10.0.0                          |
+| Docker  | 用于本地 Postgres / Redis（可选） |
 
 ## 本地开发
 
@@ -48,10 +48,11 @@ pnpm install
 ### 1. 启动数据库与 Redis
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d
+pnpm compose:init
+docker compose up -d
 ```
 
-默认连接（与 compose 一致）：
+默认连接（与 compose 示例一致）：
 
 - Postgres: `postgresql://root:root@127.0.0.1:5433/app`
 - Redis: `127.0.0.1:6380`
@@ -86,7 +87,9 @@ pnpm run dev:web
 ## 常用命令
 
 ```bash
+pnpm compose:init
 pnpm run lint
+pnpm run format:check
 pnpm run typecheck
 pnpm run test
 pnpm run build

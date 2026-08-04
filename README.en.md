@@ -12,30 +12,30 @@ Target users: adults with weaker English who need it for work.
 
 ### Product direction
 
-| Capability | Description |
-|------------|-------------|
-| Graded reading | Articles at L1/L2/L3 difficulty |
-| Listen-and-read | TTS while reading |
-| Instant dictionary | Tap a word for definitions |
-| AI Q&A | Questions grounded in the current article |
+| Capability         | Description                               |
+| ------------------ | ----------------------------------------- |
+| Graded reading     | Articles at L1/L2/L3 difficulty           |
+| Listen-and-read    | TTS while reading                         |
+| Instant dictionary | Tap a word for definitions                |
+| AI Q&A             | Questions grounded in the current article |
 
 > The `refactor/v2` branch uses a Nest + Next scaffold. Business features are still migrating from the legacy stack. The first working loop is **sign-up / sign-in (Bearer) / dashboard**.
 
 ## Stack
 
-| Layer | Tech |
-|-------|------|
-| API | NestJS, Better Auth (Bearer), Drizzle, PostgreSQL, Redis (port **3336**) |
-| Web | Next.js App Router, React, TanStack Query/Form, Zustand, Tailwind CSS v4 (port **3000**) |
-| Packages | pnpm workspace (`apps/*`, `packages/*`) |
+| Layer    | Tech                                                                                     |
+| -------- | ---------------------------------------------------------------------------------------- |
+| API      | NestJS, Better Auth (Bearer), Drizzle, PostgreSQL, Redis (port **3336**)                 |
+| Web      | Next.js App Router, React, TanStack Query/Form, Zustand, Tailwind CSS v4 (port **3000**) |
+| Packages | pnpm workspace (`apps/*`, `packages/*`)                                                  |
 
 ## Requirements
 
-| Tool | Version |
-|------|---------|
-| Node.js | ≥ 24.0.0 |
-| pnpm | ≥ 10.0.0 |
-| Docker | optional, for local Postgres / Redis |
+| Tool    | Version                              |
+| ------- | ------------------------------------ |
+| Node.js | ≥ 24.0.0                             |
+| pnpm    | ≥ 10.0.0                             |
+| Docker  | optional, for local Postgres / Redis |
 
 ## Local development
 
@@ -48,10 +48,11 @@ pnpm install
 ### 1. Start Postgres and Redis
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d
+pnpm compose:init
+docker compose up -d
 ```
 
-Defaults (from compose):
+Defaults (from the compose example):
 
 - Postgres: `postgresql://root:root@127.0.0.1:5433/app`
 - Redis: `127.0.0.1:6380`
@@ -86,7 +87,9 @@ Open **http://localhost:3000**.
 ## Common commands
 
 ```bash
+pnpm compose:init
 pnpm run lint
+pnpm run format:check
 pnpm run typecheck
 pnpm run test
 pnpm run build

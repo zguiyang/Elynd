@@ -10,6 +10,11 @@ Stack: Next.js App Router, React, TypeScript, TanStack Form + Query, Zustand, Be
 
 Prefer [`.trellis/spec/web/frontend/`](../../.trellis/spec/web/frontend/index.md) for directory and state layering.
 
+## TypeScript
+
+- Extend `@elynd/tsconfig/next.json`
+- Keep Next `plugins`, `paths` (`@/*` → `./*`), and `include` (`.next/types`, `next-env.d.ts`) local
+
 ## UI priority
 
 1. Prefer existing components under `components/ui/`
@@ -20,6 +25,7 @@ Prefer [`.trellis/spec/web/frontend/`](../../.trellis/spec/web/frontend/index.md
 
 - Tailwind v4 only (`@import "tailwindcss"`, CSS-first theme)
 - Prefer semantic theme tokens (`bg-background`, `text-muted-foreground`, etc.) over raw colors
+- Format with shared Prettier config
 
 ## Layers
 
@@ -38,3 +44,7 @@ Prefer [`.trellis/spec/web/frontend/`](../../.trellis/spec/web/frontend/index.md
 - Session token: `localStorage` key from `constants` (`AUTH_TOKEN_STORAGE_KEY`)
 - Inject `Authorization: Bearer <token>` on Better Auth client `fetchOptions` and Axios
 - Do not reintroduce cookie-only session assumptions unless a task explicitly changes auth mode
+
+## Lint
+
+Use `@elynd/eslint-config/next` via local `eslint.config.mjs`.

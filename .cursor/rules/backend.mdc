@@ -10,6 +10,12 @@ Stack: NestJS, Better Auth (Bearer), Drizzle (`@elynd/db`), Zod (`@elynd/shared`
 
 Prefer [`.trellis/spec/api/backend/`](../../.trellis/spec/api/backend/index.md) and official Nest / Better Auth docs over inventing new structure.
 
+## TypeScript
+
+- Extend `@elynd/tsconfig/nest.json`
+- Keep `outDir` / `rootDir` / `include` / `types` local
+- **Imports (N1):** use relative NodeNext imports with `.js` suffixes inside the API. Do **not** enable `@/` path aliases in emitted code until a Nest emit rewrite (e.g. `tsc-alias`) is added
+
 ## Layout
 
 - Feature modules under `src/api/<feature>/` or `src/auth/`
@@ -31,3 +37,7 @@ Prefer [`.trellis/spec/api/backend/`](../../.trellis/spec/api/backend/index.md) 
 ## Env
 
 Required auth-related keys: `DATABASE_URI`, `AUTH_SECRET`, `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS` (see `auth-env.schema.ts`).
+
+## Lint
+
+Use `@elynd/eslint-config/nest` via local `eslint.config.mjs`.

@@ -94,6 +94,9 @@ lerna-debug.log*
 __screenshots__/
 **/coverage/
 
+# Zod OpenAPI component cache (apps/api)
+.cache/
+
 # Vite
 *.timestamp-*-*.mjs
 

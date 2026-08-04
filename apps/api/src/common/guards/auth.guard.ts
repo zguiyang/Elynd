@@ -24,6 +24,11 @@ export class AuthGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<Request>()
+    const path = request.path || request.url || ''
+    if (path === '/api-doc' || path.startsWith('/api-doc/')) {
+      return true
+    }
+
     const session = await this.authApplicationService.verifySession(request.headers)
 
     request['user'] = session.user

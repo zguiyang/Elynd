@@ -22,7 +22,8 @@
     "typecheck:shared": "pnpm --filter @elynd/shared typecheck",
     "test": "pnpm --filter backend test & pnpm --filter @elynd/api test & pnpm --filter @elynd/shared test",
     "test:api": "pnpm --filter @elynd/api test",
-    "test:shared": "pnpm --filter @elynd/shared test"
+    "test:shared": "pnpm --filter @elynd/shared test",
+    "db:push": "pnpm --filter @elynd/db db:push"
   },
   "devDependencies": {
     "@elynd/api": "workspace:*",

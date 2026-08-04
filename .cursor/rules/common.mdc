@@ -23,7 +23,7 @@ Framework-agnostic style + naming. Placement/layering: see `layering.mdc` and `d
 
 ## Style
 
-- **Prettier** (`@elynd/prettier-config`) is the format authority: 2 spaces, single quotes, no semicolons, printWidth ~100, no trailing commas
+- **Prettier** (root `prettier.config.js`) is the format authority: 2 spaces, single quotes, no semicolons, printWidth ~100, no trailing commas
 - Prefer `import type`; avoid `any`; prefer `| null` over `undefined` for optionals
 - Run `pnpm format` / `pnpm format:check`; do not fight Prettier with one-off style
 

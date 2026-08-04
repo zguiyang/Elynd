@@ -14,7 +14,7 @@ Auth executable contracts: [`.trellis/spec/api/backend/auth-monorepo.md`](../../
 
 ## TypeScript
 
-- Extend `@elynd/tsconfig/nest.json`
+- Extend `../../tsconfig.base.json`; keep Nest-only flags (`experimentalDecorators`, `emitDecoratorMetadata`, …) in this app's `tsconfig.json`
 - Keep `outDir` / `rootDir` / `include` / `types` local
 - **Imports (N1):** relative NodeNext imports with `.js` suffixes inside the API. Do **not** enable `@/` path aliases in emitted code until a Nest emit rewrite (e.g. `tsc-alias`) is added
 
@@ -37,9 +37,10 @@ Auth executable contracts: [`.trellis/spec/api/backend/auth-monorepo.md`](../../
 
 ## Validation & OpenAPI
 
-- Prefer shared Zod schemas from `@elynd/shared/schemas`
+- Prefer shared Zod helpers from `@elynd/shared/schemas` (pagination, common shapes)
+- Compose feature HTTP DTOs from `@elynd/db` drizzle-zod in the feature module (e.g. `examples.schema.ts`)
 - Use project Zod validation pipe / Swagger helpers already in `src/common`
-- Do not duplicate the same request/response schema in the web app — put shared contracts in `@elynd/shared`
+- Do not duplicate the same request/response schema in the web app — put cross-app contracts in `@elynd/shared`
 
 ## Env
 
@@ -47,4 +48,4 @@ Required auth-related keys: `DATABASE_URI`, `AUTH_SECRET`, `BETTER_AUTH_URL`, `B
 
 ## Lint
 
-Use `@elynd/eslint-config/nest` via local `eslint.config.mjs`.
+Root `eslint.config.mjs` (run via `pnpm lint` / `pnpm -w exec eslint apps/api`).

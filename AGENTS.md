@@ -17,18 +17,18 @@ Guidance for AI coding assistants working in the Elynd repository (Cursor).
 
 ### Index
 
-| Rule | When |
-| ---- | ---- |
-| [invariants.mdc](.cursor/rules/invariants.mdc) | Always — principles, cleanup, DoD |
-| [layering.mdc](.cursor/rules/layering.mdc) | Always — package/module placement |
-| [decisions.mdc](.cursor/rules/decisions.mdc) | Always — create/delete/split/cross-layer |
-| [project-overview.mdc](.cursor/rules/project-overview.mdc) | Always — product, stack, boundaries |
-| [common.mdc](.cursor/rules/common.mdc) | Always — naming, style, security baseline |
-| [tdd.mdc](.cursor/rules/tdd.mdc) | Always — TDD default |
-| [git-commit.mdc](.cursor/rules/git-commit.mdc) | Always — commits |
-| [backend.mdc](.cursor/rules/backend.mdc) | `apps/api/**` |
-| [frontend.mdc](.cursor/rules/frontend.mdc) | `apps/web/**` |
-| [packages.mdc](.cursor/rules/packages.mdc) | `packages/**` |
+| Rule                                                       | When                                      |
+| ---------------------------------------------------------- | ----------------------------------------- |
+| [invariants.mdc](.cursor/rules/invariants.mdc)             | Always — principles, cleanup, DoD         |
+| [layering.mdc](.cursor/rules/layering.mdc)                 | Always — package/module placement         |
+| [decisions.mdc](.cursor/rules/decisions.mdc)               | Always — create/delete/split/cross-layer  |
+| [project-overview.mdc](.cursor/rules/project-overview.mdc) | Always — product, stack, boundaries       |
+| [common.mdc](.cursor/rules/common.mdc)                     | Always — naming, style, security baseline |
+| [tdd.mdc](.cursor/rules/tdd.mdc)                           | Always — TDD default                      |
+| [git-commit.mdc](.cursor/rules/git-commit.mdc)             | Always — commits                          |
+| [backend.mdc](.cursor/rules/backend.mdc)                   | `apps/api/**`                             |
+| [frontend.mdc](.cursor/rules/frontend.mdc)                 | `apps/web/**`                             |
+| [packages.mdc](.cursor/rules/packages.mdc)                 | `packages/**`                             |
 
 ## Language
 
@@ -43,7 +43,8 @@ Guidance for AI coding assistants working in the Elynd repository (Cursor).
 
 - API: NestJS + Better Auth (Bearer) + Drizzle + PostgreSQL + Redis (port **3336**)
 - Web: Next.js App Router + React + TanStack Query/Form + Zustand + Tailwind CSS v4 (port **3000**)
-- Shared: `@elynd/db`, `@elynd/shared`, `@elynd/tsconfig`, `@elynd/eslint-config`, `@elynd/prettier-config`
+- Shared: `@elynd/db`, `@elynd/shared` (`shared` must not depend on `db`)
+- Tooling: root `tsconfig.base.json`, `prettier.config.js`, `eslint.config.mjs` (Nest/Next TS options in each app)
 - Package manager: pnpm workspace (`apps/*`, `packages/*`)
 
 ## Legacy code

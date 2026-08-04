@@ -9,24 +9,24 @@ alwaysApply: false
 | Package | Role |
 |---------|------|
 | `@elynd/db` | Drizzle schemas + `setupDb()` — **only** persistence schema source of truth |
-| `@elynd/shared` | Shared Zod schemas / types / constants used by **2+** apps |
-| `@elynd/tsconfig` | Shareable TS presets only (no app `paths`) |
-| `@elynd/eslint-config` | Shareable ESLint flat configs |
-| `@elynd/prettier-config` | Shareable Prettier config |
+| `@elynd/shared` | Shared Zod schemas / types / constants used by **2+** apps — **no** `@elynd/db` |
+
+Tooling: root `tsconfig.base.json`, `prettier.config.js`, `eslint.config.mjs` — not workspace packages. Nest/Next TS options stay in each app.
 
 Layering detail: `layering.mdc`. Cross-layer edits: `decisions.mdc` §6.
 
 ## TypeScript
 
-- Libraries extend `@elynd/tsconfig/library.json`
+- Libraries extend `../../tsconfig.base.json`
 - Keep `outDir` / `rootDir` / `include` / `exclude` local
-- Cross-package imports use workspace names (`@elynd/db`), not relative paths across packages
+- Cross-package imports use workspace names (`@elynd/db`, `@elynd/shared`), not relative paths across packages
 - Package-internal relative imports are fine
 
 ## Ownership
 
 - Schema tables/columns/relations → `@elynd/db` only
 - Cross-app validators/DTO shapes → `@elynd/shared`
+- drizzle-zod / ORM Zod composition → `apps/api` or inside `@elynd/db` — never `@elynd/shared`
 - No feature workflows, Nest providers, or React components inside these packages
 - Do not add a symbol to `@elynd/shared` for a single consumer — keep it in the app until a second consumer appears
 
@@ -37,7 +37,8 @@ Layering detail: `layering.mdc`. Cross-layer edits: `decisions.mdc` §6.
 
 ## Do not
 
-- Put app aliases (`@/*`) into `@elynd/tsconfig`
+- Put app aliases (`@/*`) into root `tsconfig.base.json`
+- Let `@elynd/shared` depend on `@elynd/db`
 - Publish secrets or environment-specific compose overrides into these packages
 - Duplicate the same Zod schema in `apps/*` when it belongs in `@elynd/shared`
 - Add `zod@3` or import from `'zod/v4'` in first-party code

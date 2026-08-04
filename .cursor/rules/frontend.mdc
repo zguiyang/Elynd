@@ -14,7 +14,7 @@ Filled Trellis notes (directory/state only): [`.trellis/spec/web/frontend/`](../
 
 ## TypeScript
 
-- Extend `@elynd/tsconfig/next.json`
+- Extend `../../tsconfig.base.json`; override Next options (`module`/`moduleResolution`/`jsx`/`lib`/`noEmit`, …) in this app's `tsconfig.json`
 - Keep Next `plugins`, `paths` (`@/*` → `./*`), and `include` (`.next/types`, `next-env.d.ts`) local
 
 ## Layout (Next mapping of layering)
@@ -50,4 +50,4 @@ Filled Trellis notes (directory/state only): [`.trellis/spec/web/frontend/`](../
 
 ## Lint
 
-Use `@elynd/eslint-config/next` via local `eslint.config.mjs`.
+Root `eslint.config.mjs` scopes `eslint-config-next` to `apps/web/**` (run via `pnpm lint` / `pnpm -w exec eslint apps/web`).

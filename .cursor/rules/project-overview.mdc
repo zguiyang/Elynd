@@ -14,10 +14,9 @@ pnpm monorepo (`apps/*`, `packages/*`):
 - `apps/api` — NestJS API (port **3336**), Better Auth Bearer sessions, Drizzle via `@elynd/db`, PostgreSQL, Redis
 - `apps/web` — Next.js App Router (port **3000**), React, TanStack Query/Form, Zustand, Tailwind CSS v4
 - `packages/db` — Drizzle schemas and DB setup
-- `packages/shared` — shared Zod schemas and types
-- `packages/tsconfig` — shared TypeScript presets (`base` / `nest` / `next` / `library`)
-- `packages/eslint-config` — shared ESLint flat configs
-- `packages/prettier-config` — shared Prettier config
+- `packages/shared` — shared Zod schemas and types (no `@elynd/db`)
+
+Root tooling (not packages): `tsconfig.base.json`, `prettier.config.js`, `eslint.config.mjs`. Nest/Next TypeScript options live in `apps/api` and `apps/web`.
 
 Legacy Adonis/Vue apps were removed; use `backup/pre-v2` / `main` for branch-diff migration.
 
@@ -36,9 +35,9 @@ When instructions conflict, higher wins:
 
 ## Shared vs local TypeScript
 
-**Share** (in `@elynd/tsconfig/*`): strictness, Nest/Next/library module families, decorator flags.
+**Share** (root `tsconfig.base.json`): strictness + default Node ESM library compile flags (`nodenext`, `declaration`, `ES2023`, …).
 
-**Keep local** (each app/package tsconfig): `paths`, `baseUrl`, `outDir`, `rootDir`, `include`/`exclude`, `types`, Next `plugins`. Never put app aliases in the shared package.
+**Keep local** (each app/package tsconfig): Nest decorators / relaxed flags (`apps/api`), Next `jsx`/`bundler`/`plugins`/`paths` (`apps/web`), plus `outDir` / `rootDir` / `include` / `exclude` / `types`. Never put app aliases in `tsconfig.base.json`.
 
 ## Docker
 
@@ -57,7 +56,8 @@ When instructions conflict, higher wins:
 - Follow `layering.mdc` / `decisions.mdc` before adding files or directories
 - Prefer existing Nest/Next module patterns; put schemas in `@elynd/db` / `@elynd/shared` before inventing layout
 - Create or update Drizzle schema (and `db:push` / migrations when used) before schema consumers change
-- Extend `@elynd/tsconfig/*` via package name, not relative paths into `packages/tsconfig`
+- Compose drizzle-zod HTTP DTOs in `apps/api` (or keep generators in `@elynd/db`); never `@elynd/shared` → `@elynd/db`
+- Extend root `tsconfig.base.json` via relative paths; put Nest/Next-specific compiler options in each app
 
 **Ask first**
 

@@ -58,11 +58,11 @@ Downstream only. Each layer must typecheck before the next.
 
 Order of truth:
 
-`packages/db` → `packages/shared` → `apps/api` → `apps/web`
+`packages/db` and `packages/shared` (siblings; **shared ✗→ db**) → `apps/api` → `apps/web`
 
 | Trigger | Propagation |
 | ------- | ----------- |
-| DB schema change | schema → shared types/validators → API services/DTOs/tests → web client/forms/UI |
+| DB schema change | schema → API DTOs composed from drizzle-zod (+ shared pagination helpers if needed) → tests → web client/forms/UI |
 | Shared validator/type change | shared → API + web consumers |
 | API response shape change | API (+ tests) → shared if public contract → web client → UI |
 | New shared constant | define once in `@elynd/shared` (or the owning package); import everywhere — no duplicates |

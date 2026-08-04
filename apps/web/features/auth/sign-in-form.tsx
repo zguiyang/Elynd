@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { AUTH_ROUTES } from '@/constants';
 import { AuthShell, Field, inputClassName } from '@/features/auth/auth-shell';
-import { authClient, extractSessionToken, setAuthToken } from '@/lib/auth';
+import { authClient } from '@/lib/auth';
 import { signInSchema } from '@/lib/validations';
 
 export function SignInForm() {
@@ -29,7 +29,7 @@ export function SignInForm() {
         return;
       }
 
-      const { data, error } = await authClient.signIn.email({
+      const { error } = await authClient.signIn.email({
         email: parsed.data.email,
         password: parsed.data.password,
       });
@@ -41,15 +41,6 @@ export function SignInForm() {
         return;
       }
 
-      const token = extractSessionToken(data);
-      if (!token) {
-        const message = 'Sign in succeeded but no session token was returned';
-        setFormError(message);
-        toast.error(message);
-        return;
-      }
-
-      setAuthToken(token);
       toast.success('Signed in');
       router.replace(AUTH_ROUTES.dashboard);
     },

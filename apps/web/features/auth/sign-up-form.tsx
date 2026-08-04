@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { AUTH_ROUTES } from '@/constants';
 import { AuthShell, Field, inputClassName } from '@/features/auth/auth-shell';
-import { authClient, extractSessionToken, setAuthToken } from '@/lib/auth';
+import { authClient } from '@/lib/auth';
 import { signUpSchema } from '@/lib/validations';
 
 export function SignUpForm() {
@@ -45,14 +45,12 @@ export function SignUpForm() {
         return;
       }
 
-      const token = extractSessionToken(data);
-      if (!token) {
+      if (!data) {
         toast.success('Account created. Please sign in.');
         router.replace(AUTH_ROUTES.signIn);
         return;
       }
 
-      setAuthToken(token);
       toast.success('Account created');
       router.replace(AUTH_ROUTES.dashboard);
     },

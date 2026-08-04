@@ -1,21 +1,9 @@
-import { usernameClient } from 'better-auth/client/plugins';
-import { createAuthClient } from 'better-auth/react';
-
-import { getAuthToken } from './token';
+import { createElyndAuthClient } from '@elynd/auth/client';
 
 /**
- * Better Auth client for apps/api (`/api/auth/*`).
- * Session credential: Bearer token from localStorage (not cookie-primary).
+ * Cookie-session Better Auth client.
+ * Same-origin baseURL so requests hit Next `/api/auth` (rewritten to Nest).
  */
-export const authClient = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
-  plugins: [usernameClient()],
-  fetchOptions: {
-    onRequest(context) {
-      const token = getAuthToken();
-      if (token) {
-        context.headers.set('Authorization', `Bearer ${token}`);
-      }
-    },
-  },
+export const authClient = createElyndAuthClient({
+  baseURL: process.env.NEXT_PUBLIC_APP_URL ?? '',
 });

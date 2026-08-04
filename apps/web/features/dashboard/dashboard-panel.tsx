@@ -5,44 +5,32 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import type { AuthUser } from '@elynd/auth/server';
+
 import { Button } from '@/components/ui/button';
 import { APP_NAME, AUTH_ROUTES } from '@/constants';
-import { authClient, clearAuthToken, getAuthToken } from '@/lib/auth';
-
-type SessionUser = {
-  id?: string;
-  email?: string;
-  name?: string;
-  username?: string | null;
-};
+import { authClient } from '@/lib/auth';
 
 export function DashboardPanel() {
   const router = useRouter();
-  const [user, setUser] = useState<SessionUser | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadSession() {
-      const token = getAuthToken();
-      if (!token) {
-        router.replace(AUTH_ROUTES.signIn);
-        return;
-      }
-
       const { data, error } = await authClient.getSession();
       if (cancelled) {
         return;
       }
 
       if (error || !data?.user) {
-        clearAuthToken();
         router.replace(AUTH_ROUTES.signIn);
         return;
       }
 
-      setUser(data.user as SessionUser);
+      setUser(data.user as AuthUser);
       setIsLoading(false);
     }
 
@@ -56,9 +44,8 @@ export function DashboardPanel() {
     try {
       await authClient.signOut();
     } catch {
-      // Clear local token even if the API call fails.
+      // Still redirect if the API call fails; cookie may already be cleared client-side.
     }
-    clearAuthToken();
     toast.success('Signed out');
     router.replace(AUTH_ROUTES.signIn);
   }
@@ -76,7 +63,7 @@ export function DashboardPanel() {
       <div className="space-y-2">
         <p className="text-sm text-muted-foreground">{APP_NAME}</p>
         <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">You are signed in with a Bearer session.</p>
+        <p className="text-sm text-muted-foreground">You are signed in with a cookie session.</p>
       </div>
 
       <dl className="space-y-3 text-sm">

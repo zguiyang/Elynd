@@ -5,13 +5,17 @@
   "type": "module",
   "license": "GPL-3.0-or-later OR Commercial",
   "packageManager": "pnpm@10.26.1",
-  "prettier": "@elynd/prettier-config",
+  "prettier": "./prettier.config.js",
   "scripts": {
     "dev:api": "pnpm --filter @elynd/api start:dev",
     "dev:web": "pnpm --filter @elynd/web dev",
     "build": "pnpm --filter @elynd/db build && pnpm --filter @elynd/shared build && pnpm --filter @elynd/api build && pnpm --filter @elynd/web build",
     "build:api": "pnpm --filter @elynd/db build && pnpm --filter @elynd/shared build && pnpm --filter @elynd/api build",
-    "lint": "pnpm --filter @elynd/api lint && pnpm --filter @elynd/web lint && pnpm --filter @elynd/db lint && pnpm --filter @elynd/shared lint",
+    "lint": "eslint apps packages",
+    "lint:api": "eslint apps/api",
+    "lint:web": "eslint apps/web",
+    "lint:db": "eslint packages/db",
+    "lint:shared": "eslint packages/shared",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "pnpm --filter @elynd/api typecheck && pnpm --filter @elynd/web typecheck && pnpm --filter @elynd/db typecheck && pnpm --filter @elynd/shared typecheck",
@@ -27,13 +31,16 @@
   "devDependencies": {
     "@elynd/api": "workspace:*",
     "@elynd/db": "workspace:*",
-    "@elynd/eslint-config": "workspace:*",
-    "@elynd/prettier-config": "workspace:*",
     "@elynd/shared": "workspace:*",
-    "@elynd/tsconfig": "workspace:*",
     "@elynd/web": "workspace:*",
+    "@eslint/js": "^9.39.1",
     "@types/node": "^22.19.7",
-    "prettier": "^3.6.2"
+    "eslint": "^9",
+    "eslint-config-next": "16.2.12",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.4.0",
+    "prettier": "^3.6.2",
+    "typescript-eslint": "^8.46.2"
   },
   "engines": {
     "node": ">=24.0.0"

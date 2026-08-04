@@ -12,7 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint ."
+    "lint": "pnpm -w exec eslint apps/api"
   },
   "dependencies": {
     "@elynd/db": "workspace:*",
@@ -30,8 +30,6 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@elynd/eslint-config": "workspace:*",
-    "@elynd/tsconfig": "workspace:*",
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.1.28",

@@ -1,5 +1,5 @@
 {
-  "extends": "@elynd/tsconfig/library.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",

@@ -19,7 +19,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint .",
+    "lint": "pnpm -w exec eslint packages/db",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
@@ -30,8 +30,6 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@elynd/eslint-config": "workspace:*",
-    "@elynd/tsconfig": "workspace:*",
     "@types/pg": "^8.15.5",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",

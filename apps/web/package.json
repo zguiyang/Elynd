@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "pnpm -w exec eslint apps/web",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -29,8 +29,6 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
-    "@elynd/eslint-config": "workspace:*",
-    "@elynd/tsconfig": "workspace:*",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

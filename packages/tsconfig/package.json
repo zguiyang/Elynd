@@ -2,5 +2,11 @@
   "name": "@elynd/tsconfig",
   "version": "0.0.0",
   "private": true,
-  "license": "GPL-3.0-or-later OR Commercial"
+  "license": "GPL-3.0-or-later OR Commercial",
+  "exports": {
+    "./base.json": "./base.json",
+    "./nest.json": "./nest.json",
+    "./next.json": "./next.json",
+    "./library.json": "./library.json"
+  }
 }

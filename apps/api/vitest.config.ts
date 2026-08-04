@@ -20,16 +20,9 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': resolve(__dirname, './src'),
       '@elynd/db': resolve(__dirname, '../../packages/db/src/index.ts'),
-      '@elynd/shared/schemas': resolve(
-        __dirname,
-        '../../packages/shared/src/schemas/index.ts'
-      ),
-      '@elynd/shared/types': resolve(
-        __dirname,
-        '../../packages/shared/src/types/index.ts'
-      ),
+      '@elynd/shared/schemas': resolve(__dirname, '../../packages/shared/src/schemas/index.ts'),
+      '@elynd/shared/types': resolve(__dirname, '../../packages/shared/src/types/index.ts'),
       '@elynd/shared': resolve(__dirname, '../../packages/shared/src/index.ts')
     }
   }

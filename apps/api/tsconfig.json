@@ -1,14 +1,10 @@
 {
-  "extends": "../../packages/tsconfig/nest.json",
+  "extends": "@elynd/tsconfig/nest.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "outDir": "./dist",
     "rootDir": "./src",
     "noEmit": true,
-    "types": ["vitest/globals"],
-    "paths": {
-      "@/*": ["src/*"]
-    }
+    "types": ["vitest/globals"]
   },
   "include": ["src/**/*"]
 }

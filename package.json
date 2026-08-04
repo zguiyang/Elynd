@@ -5,28 +5,35 @@
   "type": "module",
   "license": "GPL-3.0-or-later OR Commercial",
   "packageManager": "pnpm@10.26.1",
+  "prettier": "@elynd/prettier-config",
   "scripts": {
     "dev:api": "pnpm --filter @elynd/api start:dev",
     "dev:web": "pnpm --filter @elynd/web dev",
     "build": "pnpm --filter @elynd/db build && pnpm --filter @elynd/shared build && pnpm --filter @elynd/api build && pnpm --filter @elynd/web build",
     "build:api": "pnpm --filter @elynd/db build && pnpm --filter @elynd/shared build && pnpm --filter @elynd/api build",
-    "lint": "pnpm --filter @elynd/web lint",
-    "typecheck": "pnpm --filter @elynd/api typecheck & pnpm --filter @elynd/web typecheck & pnpm --filter @elynd/db typecheck & pnpm --filter @elynd/shared typecheck",
+    "lint": "pnpm --filter @elynd/api lint && pnpm --filter @elynd/web lint && pnpm --filter @elynd/db lint && pnpm --filter @elynd/shared lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm --filter @elynd/api typecheck && pnpm --filter @elynd/web typecheck && pnpm --filter @elynd/db typecheck && pnpm --filter @elynd/shared typecheck",
     "typecheck:api": "pnpm --filter @elynd/api typecheck",
     "typecheck:db": "pnpm --filter @elynd/db typecheck",
     "typecheck:shared": "pnpm --filter @elynd/shared typecheck",
-    "test": "pnpm --filter @elynd/api test & pnpm --filter @elynd/shared test",
+    "test": "pnpm --filter @elynd/api test && pnpm --filter @elynd/shared test",
     "test:api": "pnpm --filter @elynd/api test",
     "test:shared": "pnpm --filter @elynd/shared test",
-    "db:push": "pnpm --filter @elynd/db db:push"
+    "db:push": "pnpm --filter @elynd/db db:push",
+    "compose:init": "test -f docker-compose.yaml || cp docker-compose.yaml.example docker-compose.yaml"
   },
   "devDependencies": {
     "@elynd/api": "workspace:*",
     "@elynd/db": "workspace:*",
+    "@elynd/eslint-config": "workspace:*",
+    "@elynd/prettier-config": "workspace:*",
     "@elynd/shared": "workspace:*",
     "@elynd/tsconfig": "workspace:*",
     "@elynd/web": "workspace:*",
-    "@types/node": "^22.19.7"
+    "@types/node": "^22.19.7",
+    "prettier": "^3.6.2"
   },
   "engines": {
     "node": ">=24.0.0"

@@ -24,6 +24,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
     "test": "vitest run"
   },
   "dependencies": {
@@ -31,6 +32,9 @@
     "zod": "^3.25.67"
   },
   "devDependencies": {
+    "@elynd/eslint-config": "workspace:*",
+    "@elynd/tsconfig": "workspace:*",
+    "eslint": "^9",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"
   }

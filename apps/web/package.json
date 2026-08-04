@@ -9,7 +9,6 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit"
   },
-
   "dependencies": {
     "@base-ui/react": "^1.6.0",
     "@tanstack/react-form": "^1.33.3",
@@ -30,6 +29,8 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@elynd/eslint-config": "workspace:*",
+    "@elynd/tsconfig": "workspace:*",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

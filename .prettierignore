@@ -1,0 +1,15 @@
+node_modules
+dist
+build
+.tmp
+.next
+coverage
+pnpm-lock.yaml
+*.tsbuildinfo
+.pnpm-store
+.trellis
+.cursor/skills
+.cursor/agents
+.cursor/commands
+.cursor/hooks
+apps/web/next-env.d.ts

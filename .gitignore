@@ -1,79 +1,28 @@
-# Dependencies and AdonisJS build
+# Dependencies and build output
 node_modules
+dist
 build
 tmp
+.next
 
 # Secrets
 .env
 .env.*
 !.env.example
 
-# Frontend assets compiled code
-public/assets
-
-# Build tools specific
-npm-debug.log
-yarn-error.log
-
-# Editors specific
-.fleet
-.idea
-.vscode
-
-# Platform specific
-.DS_Store
-
-# auto type declarations
-auto-imports.d.ts
-components.d.ts
-
-# ai generated / legacy tooling leftovers
-openspec/
-.ai/
-.output.txt
-.opencode/
-.claude/
-.codex/
-.agents/
-
-docs/
-# docker files
-docker-compose.dev.yml
-
-# web/ directory (Nuxt.js)
-dist
-dist-ssr
-*.local
-.nitro
-.tanstack
-.wrangler
-.output
-.vinxi
-__unconfig*
-todos.json
-
-!.env.example
-
-# Worktrees
-.worktrees/
-
 # Logs
 logs/
 *.log
-
-# deploy
-deploy.sh
-
-# Logs
-logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-
-# Editor directories and files
+# Editors
+.fleet
+.idea
+.vscode
 .vscode/*
 !.vscode/extensions.json
 *.suo
@@ -82,15 +31,25 @@ lerna-debug.log*
 *.sln
 *.sw?
 
-*.tsbuildinfo
+# Platform
+.DS_Store
 
+# Tooling leftovers
+openspec/
+.ai/
+.output.txt
+.opencode/
+.claude/
+.codex/
+.agents/
+
+# Worktrees
+.worktrees/
+
+*.tsbuildinfo
 .eslintcache
 
-# Cypress
-/cypress/videos/
-/cypress/screenshots/
-
-# Vitest
+# Vitest / coverage
 __screenshots__/
 **/coverage/
 
@@ -99,10 +58,6 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
-
-# backend local storage
-backend/storage
-backend/.adonisjs
 
 # Trellis local runtime / Cursor adapter (optional per-developer AI tooling)
 .trellis/

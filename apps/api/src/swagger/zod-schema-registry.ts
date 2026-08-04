@@ -2,8 +2,8 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import type { ZodObject, ZodRawShape } from 'zod/v4'
-import { z } from 'zod/v4'
+import type { ZodObject, ZodRawShape } from 'zod'
+import { z } from 'zod'
 
 const registry = new Map<string, { schema: ZodObject<ZodRawShape>; hash: string }>()
 const cacheDir = path.join(process.cwd(), '.cache')

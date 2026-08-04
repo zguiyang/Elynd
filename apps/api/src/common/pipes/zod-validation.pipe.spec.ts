@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common'
 import { describe, expect, it } from 'vitest'
-import { z } from 'zod/v4'
+import { z } from 'zod'
 
 import { createPaginatedRequestSchema } from '@elynd/shared/schemas'
 

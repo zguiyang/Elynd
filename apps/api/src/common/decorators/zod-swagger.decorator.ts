@@ -3,8 +3,8 @@ import { applyDecorators } from '@nestjs/common'
 import { ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse } from '@nestjs/swagger'
 
 import { createZodDto } from 'nestjs-zod'
-import type { ZodObject, ZodRawShape } from 'zod/v4'
-import { z } from 'zod/v4'
+import type { ZodObject, ZodRawShape } from 'zod'
+import { z } from 'zod'
 
 import { getRegisteredName, registerSchema } from '../../swagger/zod-schema-registry.js'
 

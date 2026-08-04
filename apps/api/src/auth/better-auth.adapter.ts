@@ -43,11 +43,18 @@ function toAuthSession(session: {
 export class BetterAuthAdapter implements AuthClientPort {
   async signUpEmail(input: RegisterInput): Promise<SignUpResult> {
     try {
+      // username plugin extends the runtime body; base BetterAuthOptions types omit it.
       const response = await getAuthInstance().api.signUpEmail({
         body: {
           email: input.email,
           password: input.password,
-          name: input.name
+          name: input.name,
+          username: input.username
+        } as {
+          email: string
+          password: string
+          name: string
+          username: string
         }
       })
 

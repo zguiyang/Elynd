@@ -7,7 +7,7 @@
   "scripts": {
     "build": "pnpm --filter @elynd/db build && pnpm --filter @elynd/shared build && nest build",
     "start": "NODE_ENV=development nest start",
-    "start:dev": "NODE_ENV=development nest start --watch",
+    "start:dev": "pnpm --filter @elynd/db build && pnpm --filter @elynd/shared build && NODE_ENV=development nest start --watch",
     "start:prod": "NODE_ENV=production node dist/main.js",
     "test": "vitest run",
     "test:watch": "vitest",

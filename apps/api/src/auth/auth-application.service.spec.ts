@@ -58,15 +58,18 @@ describe('AuthApplicationService', () => {
         session: mockSession
       })
 
-      const result = await service.register({
+      const input = {
         email: 'alice@example.com',
         password: 'password123',
-        name: 'Alice'
-      })
+        name: 'Alice',
+        username: 'alice'
+      }
+
+      const result = await service.register(input)
 
       expect(result.user).toEqual(mockUser)
       expect(result.session).toEqual(mockSession)
-      expect(authClient.signUpEmail).toHaveBeenCalledOnce()
+      expect(authClient.signUpEmail).toHaveBeenCalledExactlyOnceWith(input)
     })
   })
 
@@ -82,7 +85,8 @@ describe('AuthApplicationService', () => {
         service.register({
           email: 'alice@example.com',
           password: 'password123',
-          name: 'Alice'
+          name: 'Alice',
+          username: 'alice'
         })
       ).rejects.toBeInstanceOf(ConflictException)
     })
@@ -100,7 +104,8 @@ describe('AuthApplicationService', () => {
         service.register({
           email: 'not-an-email',
           password: 'short',
-          name: ''
+          name: '',
+          username: 'x'
         })
       ).rejects.toBeInstanceOf(BadRequestException)
     })

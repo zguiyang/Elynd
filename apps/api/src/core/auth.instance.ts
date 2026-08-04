@@ -5,7 +5,7 @@ import { bearer, username } from 'better-auth/plugins'
 
 import { accounts, sessions, setupDb, users, verifications } from '@elynd/db'
 
-import { authEnvSchema } from '../config/auth-env.schema.js'
+import { authEnvSchema, parseTrustedOrigins } from '../config/auth-env.schema.js'
 import { AUTH_SESSION_CONFIG } from './auth-session.config.js'
 
 type AuthInstance = ReturnType<typeof betterAuth>
@@ -54,8 +54,8 @@ export function getAuthInstance(): AuthInstance {
       expiresIn: AUTH_SESSION_CONFIG.expiresIn,
       updateAge: AUTH_SESSION_CONFIG.updateAge
     },
-    baseURL: authEnv.BETTER_AUTH_CLIENT_URL,
-    trustedOrigins: [authEnv.BETTER_AUTH_CLIENT_URL],
+    baseURL: authEnv.BETTER_AUTH_URL,
+    trustedOrigins: parseTrustedOrigins(authEnv.BETTER_AUTH_TRUSTED_ORIGINS),
     advanced: {
       cookiePrefix: 'elynd-auth'
     }

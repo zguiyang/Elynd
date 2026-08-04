@@ -26,9 +26,21 @@
     "test:api": "pnpm --filter @elynd/api test",
     "test:shared": "pnpm --filter @elynd/shared test",
     "db:push": "pnpm --filter @elynd/db db:push",
-    "compose:init": "test -f docker-compose.yaml || cp docker-compose.yaml.example docker-compose.yaml"
+    "compose:init": "test -f docker-compose.yaml || cp docker-compose.yaml.example docker-compose.yaml",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{js,jsx,mjs,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,css,md,yml,yaml}": [
+      "prettier --write"
+    ]
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.2.1",
+    "@commitlint/config-conventional": "^21.2.0",
     "@elynd/api": "workspace:*",
     "@elynd/db": "workspace:*",
     "@elynd/shared": "workspace:*",
@@ -42,6 +54,8 @@
     "eslint-plugin-import-x": "^4.17.1",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "globals": "^16.4.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.3.0",
     "prettier": "^3.6.2",
     "typescript-eslint": "^8.46.2"
   },

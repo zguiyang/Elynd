@@ -16,9 +16,9 @@ describe('NEST-001 Nest pin', () => {
     expect(pkg.version.startsWith('11.')).toBe(true)
     expect(pkg.version.startsWith('12.')).toBe(false)
 
-    const apiPkg = JSON.parse(
-      readFileSync(join(__dirname, '../package.json'), 'utf8')
-    ) as { dependencies: Record<string, string> }
+    const apiPkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf8')) as {
+      dependencies: Record<string, string>
+    }
 
     expect(apiPkg.dependencies['@nestjs/core']).toMatch(/\^?11\./)
   })

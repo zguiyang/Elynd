@@ -11,10 +11,9 @@ const cacheFile = path.join(cacheDir, 'zod-components.json')
 
 function schemaToHash(schema: ZodObject<ZodRawShape>) {
   try {
-    const json = (z as unknown as { toJSONSchema: (s: unknown, o: object) => unknown }).toJSONSchema(
-      schema,
-      { io: 'input' }
-    )
+    const json = (
+      z as unknown as { toJSONSchema: (s: unknown, o: object) => unknown }
+    ).toJSONSchema(schema, { io: 'input' })
     const str = JSON.stringify(json)
     return crypto.createHash('sha1').update(str).digest('hex')
   } catch {
@@ -59,8 +58,10 @@ export function getRegisteredName(schema: ZodObject<ZodRawShape>) {
 export function createComponents() {
   ensureCacheDir()
 
-  let cache: { version: number; entries: Record<string, { hash: string; component: unknown }> } | null =
-    null
+  let cache: {
+    version: number
+    entries: Record<string, { hash: string; component: unknown }>
+  } | null = null
 
   try {
     if (fs.existsSync(cacheFile)) {
@@ -85,7 +86,10 @@ export function createComponents() {
     try {
       const json = (
         z as unknown as {
-          toJSONSchema: (s: unknown, o: object) => {
+          toJSONSchema: (
+            s: unknown,
+            o: object
+          ) => {
             definitions?: Record<string, unknown>
             $ref?: string
             $schema?: string

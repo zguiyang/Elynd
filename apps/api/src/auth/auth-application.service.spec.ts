@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  UnauthorizedException
-} from '@nestjs/common'
+import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common'
 import { Test, type TestingModule } from '@nestjs/testing'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -197,9 +193,7 @@ describe('AuthApplicationService', () => {
     it('throws unauthorized when Authorization header is absent', async () => {
       vi.mocked(authClient.getSession).mockResolvedValue({ ok: false })
 
-      await expect(service.verifySession({})).rejects.toBeInstanceOf(
-        UnauthorizedException
-      )
+      await expect(service.verifySession({})).rejects.toBeInstanceOf(UnauthorizedException)
     })
   })
 })

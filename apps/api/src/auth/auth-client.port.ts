@@ -37,9 +37,7 @@ export type SignInResult =
   | { ok: true; user: AuthUser; session: AuthSession }
   | { ok: false; code: 'INVALID_CREDENTIALS'; message: string }
 
-export type GetSessionResult =
-  | { ok: true; user: AuthUser; session: AuthSession }
-  | { ok: false }
+export type GetSessionResult = { ok: true; user: AuthUser; session: AuthSession } | { ok: false }
 
 export interface AuthClientPort {
   signUpEmail(input: RegisterInput): Promise<SignUpResult>

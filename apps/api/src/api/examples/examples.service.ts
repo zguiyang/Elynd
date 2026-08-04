@@ -4,11 +4,7 @@ import { and, type AnyColumn, asc, desc, eq, like, sql } from 'drizzle-orm'
 
 import type { Db } from '@elynd/db'
 import { examplesTable } from '@elynd/db'
-import type {
-  CreateExampleDto,
-  QueryExamplePageDto,
-  UpdateExampleDto
-} from '@elynd/shared/schemas'
+import type { CreateExampleDto, QueryExamplePageDto, UpdateExampleDto } from '@elynd/shared/schemas'
 
 import { DB } from '../../global/providers/db.provider.js'
 
@@ -109,8 +105,7 @@ export class ExamplesService {
       const pages = Math.ceil(total / pageSize)
 
       const orderColumn: AnyColumn =
-        (examplesTable as unknown as Record<string, AnyColumn>)[orderBy] ??
-        examplesTable.created_at
+        (examplesTable as unknown as Record<string, AnyColumn>)[orderBy] ?? examplesTable.created_at
 
       const examples = await this.db
         .select()

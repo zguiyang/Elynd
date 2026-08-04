@@ -17,8 +17,6 @@ describe('AUTH-SESSION-005 long renewal window', () => {
   it('updateAge is 1 day and shorter than expiresIn', () => {
     expect(AUTH_SESSION_UPDATE_AGE_SECONDS).toBe(60 * 60 * 24)
     expect(AUTH_SESSION_CONFIG.updateAge).toBe(AUTH_SESSION_UPDATE_AGE_SECONDS)
-    expect(AUTH_SESSION_UPDATE_AGE_SECONDS).toBeLessThan(
-      AUTH_SESSION_EXPIRES_IN_SECONDS
-    )
+    expect(AUTH_SESSION_UPDATE_AGE_SECONDS).toBeLessThan(AUTH_SESSION_EXPIRES_IN_SECONDS)
   })
 })

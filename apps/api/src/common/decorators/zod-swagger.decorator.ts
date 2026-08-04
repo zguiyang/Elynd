@@ -6,10 +6,7 @@ import { createZodDto } from 'nestjs-zod'
 import type { ZodObject, ZodRawShape } from 'zod/v4'
 import { z } from 'zod/v4'
 
-import {
-  getRegisteredName,
-  registerSchema
-} from '../../swagger/zod-schema-registry.js'
+import { getRegisteredName, registerSchema } from '../../swagger/zod-schema-registry.js'
 
 let __zodSwaggerId = 0
 
@@ -71,7 +68,8 @@ export function zodSwaggerDocs(options: Opts) {
     const successStatus = options.successStatus ?? 200
     const respDesc =
       (options.response as { description?: string }).description ??
-      (options.response as { _def?: { meta?: { description?: string } } })._def?.meta?.description ??
+      (options.response as { _def?: { meta?: { description?: string } } })._def?.meta
+        ?.description ??
       options.summary ??
       ''
 
@@ -117,7 +115,10 @@ export function zodSwaggerDocs(options: Opts) {
           ) => {
             properties?: Record<string, { description?: string }>
             required?: string[]
-            definitions?: Record<string, { properties?: Record<string, unknown>; required?: string[] }>
+            definitions?: Record<
+              string,
+              { properties?: Record<string, unknown>; required?: string[] }
+            >
           }
         }
       ).toJSONSchema(options.query, { io: 'input' })
@@ -163,7 +164,10 @@ export function zodSwaggerDocs(options: Opts) {
           ) => {
             properties?: Record<string, { description?: string }>
             required?: string[]
-            definitions?: Record<string, { properties?: Record<string, unknown>; required?: string[] }>
+            definitions?: Record<
+              string,
+              { properties?: Record<string, unknown>; required?: string[] }
+            >
           }
         }
       ).toJSONSchema(options.params, { io: 'input' })

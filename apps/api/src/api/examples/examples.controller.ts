@@ -3,11 +3,7 @@ import { ApiTags } from '@nestjs/swagger'
 
 import { z } from 'zod/v4'
 
-import type {
-  CreateExampleDto,
-  QueryExamplePageDto,
-  UpdateExampleDto
-} from '@elynd/shared/schemas'
+import type { CreateExampleDto, QueryExamplePageDto, UpdateExampleDto } from '@elynd/shared/schemas'
 import {
   createExampleDtoSchema,
   examplePageListResponseSchema,

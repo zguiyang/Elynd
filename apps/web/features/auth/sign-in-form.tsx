@@ -62,7 +62,10 @@ export function SignInForm() {
       footer={
         <>
           No account?{' '}
-          <Link href={AUTH_ROUTES.signUp} className="font-medium text-foreground underline-offset-4 hover:underline">
+          <Link
+            href={AUTH_ROUTES.signUp}
+            className="font-medium text-foreground underline-offset-4 hover:underline"
+          >
             Sign up
           </Link>
         </>

@@ -1,10 +1,6 @@
 import { z } from 'zod/v4'
 
-import {
-  insertExampleSchema,
-  selectExampleSchema,
-  updateExampleSchema
-} from '@elynd/db'
+import { insertExampleSchema, selectExampleSchema, updateExampleSchema } from '@elynd/db'
 
 import {
   createPaginatedRequestSchema,

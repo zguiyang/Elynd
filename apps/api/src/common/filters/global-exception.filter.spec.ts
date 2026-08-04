@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  NotFoundException,
-  UnauthorizedException
-} from '@nestjs/common'
+import { BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common'
 import type { ArgumentsHost } from '@nestjs/common'
 import { describe, expect, it, vi } from 'vitest'
 

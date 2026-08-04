@@ -14,11 +14,7 @@ type StoreProviderProps = {
 export function StoreProvider({ children }: StoreProviderProps) {
   const [store] = useState(() => createUiStore())
 
-  return (
-    <UiStoreContext.Provider value={store}>
-      {children}
-    </UiStoreContext.Provider>
-  )
+  return <UiStoreContext.Provider value={store}>{children}</UiStoreContext.Provider>
 }
 
 export function useUiStore<T>(selector: (state: UiState) => T): T {

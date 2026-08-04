@@ -15,11 +15,7 @@ import type {
   SignUpResult
 } from './auth-client.port.js'
 
-function toAuthUser(user: {
-  id: string
-  email: string
-  name: string
-}): AuthUser {
+function toAuthUser(user: { id: string; email: string; name: string }): AuthUser {
   return {
     id: user.id,
     email: user.email,
@@ -27,11 +23,7 @@ function toAuthUser(user: {
   }
 }
 
-function toAuthSession(session: {
-  id: string
-  userId: string
-  token: string
-}): AuthSession {
+function toAuthSession(session: { id: string; userId: string; token: string }): AuthSession {
   return {
     id: session.id,
     userId: session.userId,

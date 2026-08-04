@@ -13,8 +13,7 @@ export const DbProvider: FactoryProvider<Db> = {
     const logger = new Logger('DB Provider')
     logger.log('Connecting to database...')
 
-    const connectionString =
-      config.get<string>('DATABASE_URI') ?? process.env.DATABASE_URI
+    const connectionString = config.get<string>('DATABASE_URI') ?? process.env.DATABASE_URI
 
     if (!connectionString) {
       throw new Error('DATABASE_URI is required to initialize the database')

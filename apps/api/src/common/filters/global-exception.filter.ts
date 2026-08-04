@@ -25,10 +25,7 @@ function messageFromHttpException(exception: HttpException, fallback: string): s
     return body || fallback
   }
   if (body && typeof body === 'object' && 'message' in body) {
-    return normalizeMessage(
-      (body as { message?: string | string[] }).message,
-      fallback
-    )
+    return normalizeMessage((body as { message?: string | string[] }).message, fallback)
   }
   return fallback
 }

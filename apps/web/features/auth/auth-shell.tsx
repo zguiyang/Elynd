@@ -23,9 +23,7 @@ export function AuthShell({ title, subtitle, children, footer }: AuthShellProps)
             {APP_NAME}
           </Link>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
-          {subtitle ? (
-            <p className="text-sm text-muted-foreground">{subtitle}</p>
-          ) : null}
+          {subtitle ? <p className="text-sm text-muted-foreground">{subtitle}</p> : null}
         </div>
         {children}
         {footer ? <div className="text-center text-sm text-muted-foreground">{footer}</div> : null}

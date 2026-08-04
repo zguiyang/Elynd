@@ -43,9 +43,7 @@ describe('ZodValidationPipe', () => {
       const schema = createPaginatedRequestSchema({})
       const pipe = new ZodValidationPipe(schema)
 
-      expect(() =>
-        pipe.transform({ page: 'abc' }, { type: 'query' })
-      ).toThrow(BadRequestException)
+      expect(() => pipe.transform({ page: 'abc' }, { type: 'query' })).toThrow(BadRequestException)
     })
   })
 })

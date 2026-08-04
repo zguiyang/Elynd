@@ -11,8 +11,6 @@ describe('parseTrustedOrigins', () => {
   })
 
   it('drops empty segments', () => {
-    expect(parseTrustedOrigins('http://localhost:3000,, ')).toEqual([
-      'http://localhost:3000'
-    ])
+    expect(parseTrustedOrigins('http://localhost:3000,, ')).toEqual(['http://localhost:3000'])
   })
 })

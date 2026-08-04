@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { PaginationDefaults } from '../../types/response.type.js'
-import {
-  createPaginatedRequestSchema,
-  createPaginatedResponseSchema
-} from './response.schema.js'
+import { createPaginatedRequestSchema, createPaginatedResponseSchema } from './response.schema.js'
 import { z } from 'zod/v4'
 
 describe('pagination schemas', () => {
@@ -36,10 +33,7 @@ describe('pagination schemas', () => {
 
   describe('PAGE-003 custom orderBy enums', () => {
     it('accepts only listed orderBy values', () => {
-      const schema = createPaginatedRequestSchema(
-        {},
-        { orderByEnums: ['name', 'created_at'] }
-      )
+      const schema = createPaginatedRequestSchema({}, { orderByEnums: ['name', 'created_at'] })
 
       expect(schema.parse({ orderBy: 'name' }).orderBy).toBe('name')
       expect(() => schema.parse({ orderBy: 'unknown' })).toThrow()

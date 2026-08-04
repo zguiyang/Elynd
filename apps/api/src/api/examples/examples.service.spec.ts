@@ -24,7 +24,6 @@ function createMockDb() {
   const pageOffset = vi.fn()
   const pageLimit = vi.fn()
   const pageOrderBy = vi.fn()
-  const pageWhere = vi.fn()
   const countWhere = vi.fn()
 
   const db = {

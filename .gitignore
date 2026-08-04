@@ -10,6 +10,12 @@ tmp
 .env.*
 !.env.example
 
+# Local Docker Compose (copy from docker-compose.yaml.example)
+docker-compose.yaml
+docker-compose.yml
+compose.yaml
+compose.yml
+
 # Logs
 logs/
 *.log

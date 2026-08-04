@@ -1,5 +1,3 @@
 packages:
-  - backend
-  - web
   - apps/*
   - packages/*

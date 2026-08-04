@@ -1,5 +1,5 @@
 {
-  "name": "@elynd/apps-web",
+  "name": "@elynd/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {

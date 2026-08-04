@@ -7,6 +7,8 @@ alwaysApply: true
 
 TDD is the **default** for behavior-changing work. If skipped for in-scope work, state the reason explicitly.
 
+Complements `invariants.mdc` (DoD) and `decisions.mdc` (testable-in-isolation).
+
 ## Cycle
 
 1. Failing test first → confirm expected failure

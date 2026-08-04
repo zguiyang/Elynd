@@ -8,36 +8,39 @@ alwaysApply: false
 
 Stack: Next.js App Router, React, TypeScript, TanStack Form + Query, Zustand, Better Auth client (Bearer in `localStorage`), Axios, Tailwind CSS **v4**, shadcn/base-nova under `components/ui/`.
 
-Prefer [`.trellis/spec/web/frontend/`](../../.trellis/spec/web/frontend/index.md) for directory and state layering.
+Placement and package boundaries: **`layering.mdc`** + **`decisions.mdc`** (framework-agnostic; follow those first).
+
+Filled Trellis notes (directory/state only): [`.trellis/spec/web/frontend/`](../../.trellis/spec/web/frontend/index.md). Ignore guides still marked **To fill**.
 
 ## TypeScript
 
 - Extend `@elynd/tsconfig/next.json`
 - Keep Next `plugins`, `paths` (`@/*` → `./*`), and `include` (`.next/types`, `next-env.d.ts`) local
 
-## UI priority
+## Layout (Next mapping of layering)
 
-1. Prefer existing components under `components/ui/`
-2. Install via shadcn CLI when missing
-3. Custom components only when the design system cannot meet the need
+| Layer | Location | Pattern |
+|-------|----------|---------|
+| Routes | `app/**` | thin pages; compose features |
+| Features | `features/**` | domain UI, forms, feature hooks |
+| Design system | `components/ui/` | shadcn atoms only |
+| Shared non-feature UI | `components/` | providers/shell — not domain workflows |
+| Auth client | `lib/auth/` | Better Auth client + token helpers |
+| HTTP | `lib/http/` | Axios + Bearer interceptor |
+| Server state | `lib/query/` | TanStack Query |
+| Client UI state | `stores/` | Zustand — UI only |
+| Validation | `lib/validations/` | form-local Zod; **shared** contracts → `@elynd/shared` |
+| Constants | `constants/` | app-wide literals used 2+ times |
+
+- Prefer existing `components/ui/`; add via shadcn CLI; custom only when the system cannot meet the need
+- Ask before editing `components/ui/**` source (see `decisions.mdc` §8)
+- NEVER treat Zustand as the source of truth for API/server data
 
 ## Styling
 
 - Tailwind v4 only (`@import "tailwindcss"`, CSS-first theme)
 - Prefer semantic theme tokens (`bg-background`, `text-muted-foreground`, etc.) over raw colors
 - Format with shared Prettier config
-
-## Layers
-
-| Layer | Location | Pattern |
-|-------|----------|---------|
-| Routes | `app/**` | thin pages; compose feature modules |
-| Features | `features/**` | forms, panels, feature UI |
-| Auth client | `lib/auth/` | Better Auth client + token helpers |
-| HTTP | `lib/http/` | Axios + Bearer interceptor |
-| Server state | `lib/query/` | TanStack Query |
-| Client UI state | `stores/` | Zustand |
-| Validation | `lib/validations/` | Zod schemas for forms |
 
 ## Auth
 

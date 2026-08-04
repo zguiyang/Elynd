@@ -8,11 +8,13 @@ alwaysApply: false
 
 | Package | Role |
 |---------|------|
-| `@elynd/db` | Drizzle schemas + `setupDb()` |
-| `@elynd/shared` | Shared Zod schemas / types |
+| `@elynd/db` | Drizzle schemas + `setupDb()` — **only** persistence schema source of truth |
+| `@elynd/shared` | Shared Zod schemas / types / constants used by **2+** apps |
 | `@elynd/tsconfig` | Shareable TS presets only (no app `paths`) |
 | `@elynd/eslint-config` | Shareable ESLint flat configs |
 | `@elynd/prettier-config` | Shareable Prettier config |
+
+Layering detail: `layering.mdc`. Cross-layer edits: `decisions.mdc` §6.
 
 ## TypeScript
 
@@ -21,7 +23,15 @@ alwaysApply: false
 - Cross-package imports use workspace names (`@elynd/db`), not relative paths across packages
 - Package-internal relative imports are fine
 
+## Ownership
+
+- Schema tables/columns/relations → `@elynd/db` only
+- Cross-app validators/DTO shapes → `@elynd/shared`
+- No feature workflows, Nest providers, or React components inside these packages
+- Do not add a symbol to `@elynd/shared` for a single consumer — keep it in the app until a second consumer appears
+
 ## Do not
 
 - Put app aliases (`@/*`) into `@elynd/tsconfig`
 - Publish secrets or environment-specific compose overrides into these packages
+- Duplicate the same Zod schema in `apps/*` when it belongs in `@elynd/shared`

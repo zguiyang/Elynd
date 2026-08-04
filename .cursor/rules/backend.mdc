@@ -8,31 +8,38 @@ alwaysApply: false
 
 Stack: NestJS, Better Auth (Bearer), Drizzle (`@elynd/db`), Zod (`@elynd/shared` / nestjs-zod), Vitest.
 
-Prefer [`.trellis/spec/api/backend/`](../../.trellis/spec/api/backend/index.md) and official Nest / Better Auth docs over inventing new structure.
+Placement and package boundaries: **`layering.mdc`** + **`decisions.mdc`** (framework-agnostic; follow those first).
+
+Auth executable contracts: [`.trellis/spec/api/backend/auth-monorepo.md`](../../.trellis/spec/api/backend/auth-monorepo.md) when touching auth.
 
 ## TypeScript
 
 - Extend `@elynd/tsconfig/nest.json`
 - Keep `outDir` / `rootDir` / `include` / `types` local
-- **Imports (N1):** use relative NodeNext imports with `.js` suffixes inside the API. Do **not** enable `@/` path aliases in emitted code until a Nest emit rewrite (e.g. `tsc-alias`) is added
+- **Imports (N1):** relative NodeNext imports with `.js` suffixes inside the API. Do **not** enable `@/` path aliases in emitted code until a Nest emit rewrite (e.g. `tsc-alias`) is added
 
-## Layout
+## Layout (Nest mapping of layering)
 
-- Feature modules under `src/api/<feature>/` or `src/auth/`
-- Cross-cutting code in `src/common/` (guards, pipes, filters, decorators)
-- Global providers in `src/global/`
-- Lazy Better Auth via `getAuthInstance()` — never eager-init at import time
-
-## Controllers / services
+| Folder | Role |
+| ------ | ---- |
+| `src/api/<feature>/` | Feature modules — business workflows |
+| `src/auth/` | Auth feature / Better Auth wiring |
+| `src/common/` | Transport cross-cutting: guards, pipes, filters, decorators — **no** domain workflows |
+| `src/global/` | Global providers |
+| `src/config/` | Env/config schemas |
+| `src/core/` | App composition / core wiring only |
 
 - Thin controllers: validate + map HTTP; business rules in injectable services
-- Auth application logic goes through `AuthApplicationService` + `AuthClientPort` (mock the port in unit tests)
+- Auth application logic via `AuthApplicationService` + `AuthClientPort` (mock the port in unit tests)
+- Tech helpers with zero domain knowledge may live under `common/` or small dedicated folders — never import feature modules from tech helpers
 - Do not use Adonis-style Access Token auth on the Nest path
+- Lazy Better Auth via `getAuthInstance()` — never eager-init at import time
 
 ## Validation & OpenAPI
 
 - Prefer shared Zod schemas from `@elynd/shared/schemas`
 - Use project Zod validation pipe / Swagger helpers already in `src/common`
+- Do not duplicate the same request/response schema in the web app — put shared contracts in `@elynd/shared`
 
 ## Env
 

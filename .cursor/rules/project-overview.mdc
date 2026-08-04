@@ -1,5 +1,5 @@
 ---
-description: 
+description: Elynd product overview, stack, agent boundaries, and rule precedence
 alwaysApply: true
 ---
 
@@ -21,16 +21,29 @@ pnpm monorepo (`apps/*`, `packages/*`):
 
 Legacy Adonis/Vue apps were removed; use `backup/pre-v2` / `main` for branch-diff migration.
 
+## Rule precedence
+
+When instructions conflict, higher wins:
+
+1. Tooling (ESLint, Prettier, typecheck, tests)
+2. Always-on project rules: `invariants`, `layering`, `decisions`, this file, `common`, `tdd`, `git-commit`
+3. Glob rules: `backend` / `frontend` / `packages`
+4. Current Trellis task artifacts + **filled** `.trellis/spec` contracts
+5. Project / third-party skills and MCP docs
+6. Cursor User Rules (general behavior)
+
+**`.cursor/rules/` is the project rules source of truth.** Incomplete or stale Trellis guides must not override these files.
+
 ## Shared vs local TypeScript
 
 **Share** (in `@elynd/tsconfig/*`): strictness, Nest/Next/library module families, decorator flags.
 
-**Keep local** (each app/package tsconfig): `paths`, `baseUrl`, `outDir`, `rootDir`, `include`/`exclude`, `types`, Next `plugins`. Relative paths in a tsconfig resolve against the file that defines them — never put app aliases in the shared package.
+**Keep local** (each app/package tsconfig): `paths`, `baseUrl`, `outDir`, `rootDir`, `include`/`exclude`, `types`, Next `plugins`. Never put app aliases in the shared package.
 
 ## Docker
 
 - Commit `docker-compose.yaml.example` only.
-- Local `docker-compose.yaml` is gitignored. Init: `pnpm compose:init` or `cp docker-compose.yaml.example docker-compose.yaml`.
+- Local `docker-compose.yaml` is gitignored. Init: `pnpm compose:init`.
 
 ## Language
 
@@ -41,8 +54,9 @@ Legacy Adonis/Vue apps were removed; use `backup/pre-v2` / `main` for branch-dif
 
 **Must**
 
-- Prefer existing Nest module patterns under `apps/api`; put schemas in `@elynd/db` / `@elynd/shared` before inventing new layout
-- Create or update Drizzle schema (and `db:push` / migrations when the project uses them) before schema changes
+- Follow `layering.mdc` / `decisions.mdc` before adding files or directories
+- Prefer existing Nest/Next module patterns; put schemas in `@elynd/db` / `@elynd/shared` before inventing layout
+- Create or update Drizzle schema (and `db:push` / migrations when used) before schema consumers change
 - Extend `@elynd/tsconfig/*` via package name, not relative paths into `packages/tsconfig`
 
 **Ask first**
@@ -50,6 +64,7 @@ Legacy Adonis/Vue apps were removed; use `backup/pre-v2` / `main` for branch-dif
 - Auth provider or auth method changes
 - New dependencies or major version bumps
 - Large database schema changes affecting existing data
+- Other items listed in `decisions.mdc` §8
 
 **Never**
 
@@ -59,3 +74,4 @@ Legacy Adonis/Vue apps were removed; use `backup/pre-v2` / `main` for branch-dif
 - Operate on production data directly
 - Disable security middleware
 - Start `pnpm run dev:*` / `start` / `preview` without explicit user approval
+- Import across `apps/web` ↔ `apps/api`

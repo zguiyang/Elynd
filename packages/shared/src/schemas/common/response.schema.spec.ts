@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { PaginationDefaults } from '../../types/response.type.js'
 import { createPaginatedRequestSchema, createPaginatedResponseSchema } from './response.schema.js'
-import { z } from 'zod/v4'
+import { z } from 'zod'
 
 describe('pagination schemas', () => {
   describe('PAGE-001 defaults', () => {

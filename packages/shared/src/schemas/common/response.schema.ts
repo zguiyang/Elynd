@@ -1,5 +1,5 @@
-import type { ZodObject, ZodRawShape } from 'zod/v4'
-import { z } from 'zod/v4'
+import type { ZodObject, ZodRawShape } from 'zod'
+import { z } from 'zod'
 
 import { PaginationDefaults, PaginationDirectionEnum } from '../../types/response.type.js'
 

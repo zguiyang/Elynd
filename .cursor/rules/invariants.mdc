@@ -1,0 +1,49 @@
+---
+description: Core engineering invariants, cleanup, and definition of done (framework-agnostic)
+alwaysApply: true
+---
+
+# Core Invariants
+
+Framework-agnostic. Apply to every non-trivial change in this repo.
+
+## Principles
+
+| Principle | Rule |
+| --------- | ---- |
+| KISS | Prefer the simplest readable solution. Early returns over deep nesting. |
+| YAGNI | No speculative features, abstractions, or "for later" helpers. |
+| DRY | Extract only after **three** real uses with a stabilized pattern. Fewer → keep local. |
+| SRP | One cohesive concern per module/file. |
+| Fail Fast | NEVER catch and swallow errors. Re-throw, map to a typed error, or return an explicit error result. |
+| Determinism | Tests must be deterministic. Prefer file-scoped checks after edits. |
+| Reversibility | Small changes with clear blast radius. |
+
+## Pre-change checklist
+
+1. Is the problem well-defined? If unclear → ask.
+2. What is the simplest solution that works today?
+3. Is this solving a current need (not a hypothetical)?
+4. Does duplication already exist three times? If not → do not extract.
+5. What is the blast radius / rollback?
+6. Are invalid states explicit errors?
+7. Can the change be tested in isolation? If not → redesign.
+
+## Cleanup (authoritative)
+
+- **Dead code**: zero callers → delete. No commented-out blocks, stubs, or "just in case" exports.
+- **Tests**: delete tests when the feature is removed; never leave green tests for nonexistent behavior.
+- **Impossible states**: do not guard what the type system already forbids.
+- **Comments**: stale or redundant comments are bugs — fix or delete.
+- **Scaffolding**: remove placeholders, empty handlers, hardcoded seeds, and example routes after real code ships.
+- **Empty directories**: delete when the last file is gone.
+
+## Definition of Done
+
+Before claiming done:
+
+- [ ] Relevant tests pass (file-scoped or package-scoped; full suite when the change is cross-cutting)
+- [ ] `pnpm lint` / `pnpm format:check` / `pnpm typecheck` for touched packages (or root scripts)
+- [ ] No new dead code or dangling imports
+- [ ] Error paths are explicit (no silent catches)
+- [ ] No new `TODO` / placeholder left in changed files unless the user asked to defer

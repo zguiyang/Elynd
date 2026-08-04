@@ -1,0 +1,65 @@
+---
+description: Package and module layering boundaries (framework-agnostic)
+alwaysApply: true
+---
+
+# Layering Rules
+
+Framework-agnostic placement rules. Stack-specific folders live in `backend.mdc` / `frontend.mdc`; **this file wins on "where does this concern belong?"**.
+
+## Package graph (non-negotiable)
+
+```text
+apps/web ──► packages/shared ──► packages/db
+apps/api ──► packages/shared ──► packages/db
+apps/api ──► packages/db
+```
+
+| Rule | Forbidden |
+| ---- | --------- |
+| One-way deps only | `apps/web` ↔ `apps/api` direct imports |
+| Shared packages stay lean | Business workflows inside `@elynd/db` / `@elynd/shared` |
+| Schema ownership | Tables/columns/relations defined outside `packages/db` |
+| UI ↔ API mix | One file containing both HTTP-server and UI-render concerns |
+
+**Type flow**: `packages/db` → `packages/shared` → apps. Do not redefine core domain types inside an app if they belong upstream. App-local UI/view types are fine when they are not the shared contract.
+
+Config-only packages (`@elynd/tsconfig`, `@elynd/eslint-config`, `@elynd/prettier-config`) have no runtime business types.
+
+## Concern → layer
+
+| Concern | Lives in | Must not |
+| ------- | -------- | -------- |
+| Business workflow / domain rules | Feature modules (`apps/api` feature folders, `apps/web/features/**`) | Generic `lib/`, shared config packages |
+| Technical capability (crypto, HTTP client, clock, id) | Tech `lib/` / `common/` with **zero** domain knowledge | Import feature modules |
+| Transport cross-cutting (auth guard, validation pipe, filters) | API `common/` (or web route guards) | Embed domain workflows |
+| Shared Zod / DTO contracts used by **2+** apps | `@elynd/shared` | Duplicate schemas in each app |
+| Persistence schema | `@elynd/db` only | Ad-hoc table defs in apps |
+| Server/remote state | Query/data layer (not UI store) | Zustand/local store as source of truth for API data |
+| Client UI state (modals, theme, ephemeral flags) | UI store | Secrets, tokens-as-business-db, server lists |
+| Design-system atoms | `components/ui/**` | Feature business rules |
+
+## Dependency direction inside an app
+
+```text
+routes/pages/controllers → application/feature services → tech lib/common → external I/O
+```
+
+- **Never** upward imports (lib must not import features).
+- **Never** add a layer (repository, use-case, manager, facade) without a concrete pain the current structure cannot absorb.
+- Prefer a function call over a new architectural tier.
+
+## Constants and magic values
+
+- Literal used in **2+** modules → named constant in the owning package’s constants (or `@elynd/shared` if cross-app).
+- One-off literal → local to the file; do not pre-create unused constants.
+- Prefer `as const` objects over TypeScript `enum`.
+
+## Anti-patterns (layering)
+
+- Catch-all `utils/` / `helpers/` that mix unrelated domains
+- “Shared” module created for a single consumer
+- Copying the same Zod schema into web and API instead of `@elynd/shared`
+- Putting workflow orchestration into DB schema files or UI primitives
+- Storing server-derived lists in client UI stores
+- Cross-importing feature modules when the shared bit is actually a tech capability → move to tech lib instead

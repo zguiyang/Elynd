@@ -1,0 +1,131 @@
+---
+description: Create/delete/move/split and cross-layer propagation decisions (framework-agnostic)
+alwaysApply: true
+---
+
+# Decision Rules
+
+Use **Condition → Action → Verification** whenever creating, deleting, moving, or splitting code. Framework-agnostic; paths below use Elynd layout.
+
+## 1) Add code
+
+| Condition | Action | Verification |
+| --------- | ------ | ------------ |
+| Same type/role already in file | Merge into existing file | No duplicate definitions |
+| No same type + **2+** consumers | New file OK | All consumers import it |
+| No same type + **1** consumer | Inline in the consumer | No new file on disk |
+
+Partial overlap with an existing type → extend the existing one; do not create a parallel type.
+
+## 2) Add file
+
+| Condition | Action | Verification |
+| --------- | ------ | ------------ |
+| Same role already in target directory | Merge into that file | One file per role in the directory |
+| No same role + 2+ consumers | Create file | Consumers import the new path |
+| No same role + 1 consumer | Do **not** create | Logic stays inline |
+
+A file with one consumer is usually indirection, not architecture.
+
+## 3) Delete code / file
+
+- Before delete: `grep` the symbol/path. **Tests count as references.**
+- Has references → update callers first, then delete.
+- No references → delete; clean barrel `index.ts` re-exports.
+- Verify: build/typecheck; grep shows no dangling imports.
+
+## 4) Split file
+
+| Condition | Action |
+| --------- | ------ |
+| Mixed unrelated concerns | Split by concern |
+| Long but one cohesive concern | Do **not** split |
+
+Never split only because of line count.
+
+## 5) Move / promote shared
+
+| Condition | Action |
+| --------- | ------ |
+| Used by **2+** modules/packages | Move to a shared location those consumers can import |
+| Used by **1** module | Keep colocated |
+
+Never promote to `packages/*` or a shared `lib/` for a hypothetical second consumer.
+
+## 6) Cross-layer propagation (HARD)
+
+Downstream only. Each layer must typecheck before the next.
+
+Order of truth:
+
+`packages/db` → `packages/shared` → `apps/api` → `apps/web`
+
+| Trigger | Propagation |
+| ------- | ----------- |
+| DB schema change | schema → shared types/validators → API services/DTOs/tests → web client/forms/UI |
+| Shared validator/type change | shared → API + web consumers |
+| API response shape change | API (+ tests) → shared if public contract → web client → UI |
+| New shared constant | define once in `@elynd/shared` (or the owning package); import everywhere — no duplicates |
+
+**Never** update only one layer and assume the rest are fine.
+
+## 7) Create directory (layering antidote)
+
+**Flat is default.** A directory must answer *what domain/concern*, not *what file type*.
+
+### Minimum threshold (HARD)
+
+| Files that would live there | Action |
+| --------------------------- | ------ |
+| 1–2 | Do **not** create; keep flat at parent |
+| 3+ | Create only with a **business/domain** name |
+
+Exception: framework-required trees (e.g. Next `app/`, Nest module folders the framework expects).
+
+### Existing directory audit
+
+| Files | Action |
+| ----- | ------ |
+| 1 | Flatten to parent; delete directory |
+| 2 | Flatten unless framework requires nesting |
+| 3+ | Keep; barrel `index.ts` optional when ≥5 public exports |
+
+### Flat ceiling (SOFT)
+
+| Files in one flat dir | Action |
+| --------------------- | ------ |
+| ≤ 10 | Keep flat |
+| 11–15 | Nest only if a clear domain subgroup exists |
+| 16+ | Nest by business subdomain |
+
+### Group by consumer/domain — not by artifact type
+
+| Correct | Incorrect |
+| ------- | --------- |
+| `features/auth/`, `lib/http/` | `components/cards/`, `hooks/forms/` as type buckets |
+| `common/guards/` (cross-cutting transport) | `utils/` catch-all for unrelated helpers |
+
+Directory names: `kebab-case`. Names like `utils/`, `helpers/`, `misc/`, `types/` as catch-alls are a smell — prefer domain names or flatten.
+
+## 8) Ask first (confirmation)
+
+Confirm with the user before:
+
+1. Editing design-system / base UI primitives (`components/ui/**` and equivalents)
+2. Editing root or package config (`package.json`, `tsconfig*`, eslint/prettier configs, workspace files)
+3. Deleting files or directories
+4. Adding new dependencies or major version bumps
+5. Auth method / provider changes
+6. Large schema changes that affect existing data
+
+Format:
+
+```text
+I plan to [action] [path].
+Reason: …
+Impact: …
+Alternative: …
+Should I proceed?
+```
+
+Exceptions: explicit user instruction for that path; obvious one-line bugfix; running lint/test/typecheck.

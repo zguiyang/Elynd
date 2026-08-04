@@ -29,7 +29,7 @@
   },
   "dependencies": {
     "@elynd/db": "workspace:*",
-    "zod": "^3.25.67"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@elynd/eslint-config": "workspace:*",

@@ -27,7 +27,7 @@
     "drizzle-orm": "^0.44.4",
     "drizzle-zod": "^0.8.3",
     "pg": "^8.16.3",
-    "zod": "^3.25.67"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@elynd/eslint-config": "workspace:*",

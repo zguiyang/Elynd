@@ -1,7 +1,7 @@
 import { createId } from '@paralleldrive/cuid2'
 import { pgTable, text, timestamp, varchar } from 'drizzle-orm/pg-core'
 import { createInsertSchema, createSelectSchema, createUpdateSchema } from 'drizzle-zod'
-import { z } from 'zod/v4'
+import { z } from 'zod'
 
 import { users } from './auth.js'
 

@@ -30,8 +30,14 @@ Layering detail: `layering.mdc`. Cross-layer edits: `decisions.mdc` §6.
 - No feature workflows, Nest providers, or React components inside these packages
 - Do not add a symbol to `@elynd/shared` for a single consumer — keep it in the app until a second consumer appears
 
+## Zod
+
+- Monorepo uses **Zod v4** (`zod: ^4.4.3`) in `apps/api`, `apps/web`, `packages/shared`, and `packages/db`
+- First-party code imports from `'zod'` only — do **not** use `'zod/v4'`
+
 ## Do not
 
 - Put app aliases (`@/*`) into `@elynd/tsconfig`
 - Publish secrets or environment-specific compose overrides into these packages
 - Duplicate the same Zod schema in `apps/*` when it belongs in `@elynd/shared`
+- Add `zod@3` or import from `'zod/v4'` in first-party code

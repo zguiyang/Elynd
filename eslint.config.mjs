@@ -11,6 +11,7 @@ import tseslint from 'typescript-eslint';
 
 const nodePackageFiles = [
   'apps/api/**/*.{js,mjs,ts}',
+  'packages/auth/**/*.{js,mjs,ts}',
   'packages/db/**/*.{js,mjs,ts}',
   'packages/shared/**/*.{js,mjs,ts}',
 ];
@@ -93,6 +94,7 @@ export default defineConfig([
         { type: 'api', pattern: 'apps/api/**' },
         { type: 'shared', pattern: 'packages/shared/**' },
         { type: 'db', pattern: 'packages/db/**' },
+        { type: 'auth', pattern: 'packages/auth/**' },
         { type: 'api-feature', pattern: 'apps/api/src/api/*' },
         { type: 'api-common', pattern: 'apps/api/src/common/**' },
       ],
@@ -125,10 +127,14 @@ export default defineConfig([
             },
             {
               from: { element: { type: 'shared' } },
-              disallow: { to: { element: { types: { anyOf: ['web', 'api', 'db'] } } } },
+              disallow: { to: { element: { types: { anyOf: ['web', 'api', 'db', 'auth'] } } } },
             },
             {
               from: { element: { type: 'db' } },
+              disallow: { to: { element: { types: { anyOf: ['web', 'api', 'shared', 'auth'] } } } },
+            },
+            {
+              from: { element: { type: 'auth' } },
               disallow: { to: { element: { types: { anyOf: ['web', 'api', 'shared'] } } } },
             },
             {
@@ -197,6 +203,18 @@ export default defineConfig([
           types: ['boolean'],
           format: ['camelCase', 'PascalCase'],
           prefix: ['is', 'has', 'can', 'should', 'enable'],
+        },
+      ],
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@elynd/auth/server',
+              message: 'Web must use @elynd/auth/client. Type-only imports from server are allowed.',
+              allowTypeImports: true,
+            },
+          ],
         },
       ],
     },

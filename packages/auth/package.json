@@ -1,0 +1,43 @@
+{
+  "name": "@elynd/auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "GPL-3.0-or-later OR Commercial",
+  "exports": {
+    "./server": {
+      "types": "./src/server.ts",
+      "import": "./dist/server.js",
+      "default": "./dist/server.js"
+    },
+    "./client": {
+      "types": "./src/client.ts",
+      "import": "./dist/client.js",
+      "default": "./dist/client.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "pnpm -w exec eslint packages/auth",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@elynd/db": "workspace:*",
+    "better-auth": "^1.6.25",
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "eslint": "^9",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

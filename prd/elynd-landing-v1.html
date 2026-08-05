@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-    <title>Elynd — 在真实内容里，慢慢长出英语能力</title>
+    <title>Elynd — 读自己想读的英语</title>
     <meta
       name="description"
-      content="Elynd 相信语言是读懂、听懂之后自然长出来的。用你想读的内容，低阻力地建立长期英语能力。"
+      content="我一个人做的英语阅读工具。因为自己总学不下去，想用真正想读的内容，每天读一会儿。"
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -166,20 +166,18 @@
   - Attitude + time with language + compelling content matter most
   - Tools (lookup/AI) are valid if they help you consume more real content
 
-  Section intent:
-  1 Hero     → User Q1: what problem / what value
-  2 Pain     → Lived failed paths → same ending; method fights human nature
-  3 Why      → User Q2: why this product exists
-  4 Belief   → Learning philosophy in plain language; scholars as footnotes
-  5 Embody   → Belief → product mechanisms (not feature list)
-  6 Proof    → Room / Practice / Review / Progress as evidence of beliefs
-  7 CTA      → Start reading, not start a class; 5–20 min
+  Voice: first-person indie builder (我). Lived problem → personal product.
+  Not "our team / we believe / learning space platform" corporate tone.
+  Plain Chinese; no marketing AI-speak; tools mentioned as lookup/help, not AI theater.
 
-  30s takeaway:
-  - Solves: cannot persist / wrong materials / learning cost too high
-  - Value: read what you care about; clear friction to keep input flowing
-  - Exists because: language is acquired through understanding interesting messages
-  - Product shape is a consequence of that belief
+  Section intent:
+  1 Hero     → I know this stuck feeling; what I'm building for
+  2 Pain     → Things I (and people like me) actually did and quit
+  3 Why      → Why I started Elynd alone; what it is not
+  4 Belief   → What I came to believe after failing the usual way
+  5 Embody   → How I shaped the product because of that
+  6 Proof    → Library / Room / Practice / Review / Progress (still rough)
+  7 Habit+CTA → Small daily reading; try if it resonates
 -->
   </head>
 
@@ -212,10 +210,10 @@
         </a>
 
         <div class="hidden md:flex items-center gap-9 text-[15px] text-stone-600">
-          <a href="#pain" class="nav-link" data-i18n="nav.pain">你的问题</a>
-          <a href="#why" class="nav-link" data-i18n="nav.why">为何存在</a>
-          <a href="#belief" class="nav-link" data-i18n="nav.belief">学习理念</a>
-          <a href="#proof" class="nav-link" data-i18n="nav.proof">如何做到</a>
+          <a href="#pain" class="nav-link" data-i18n="nav.pain">我也经历过</a>
+          <a href="#why" class="nav-link" data-i18n="nav.why">为什么做</a>
+          <a href="#belief" class="nav-link" data-i18n="nav.belief">我怎么想</a>
+          <a href="#proof" class="nav-link" data-i18n="nav.proof">做成什么样</a>
         </div>
 
         <a
@@ -223,7 +221,7 @@
           class="inline-flex items-center gap-2 bg-brand text-white text-sm font-medium px-5 py-2.5 rounded-full transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-brand-muted active:scale-[0.98]"
           data-i18n="nav.cta"
         >
-          开始阅读
+          先读一篇
           <span class="w-6 h-6 rounded-full bg-white/15 flex items-center justify-center">
             <svg
               width="12"
@@ -247,19 +245,21 @@
       <div class="grid lg:grid-cols-2 gap-14 lg:gap-20 items-center">
         <div class="reveal">
           <p class="text-brand text-sm font-medium tracking-[0.18em] uppercase mb-7" data-i18n="hero.eyebrow">
-            英语学习空间
+            一个人做的英语阅读工具
           </p>
 
           <h1
             class="serif text-[2.25rem] sm:text-5xl lg:text-[3.2rem] font-bold leading-[1.18] tracking-tight"
             data-i18n="hero.title"
           >
-            你不是不努力。<br class="hidden sm:block" />是学法在跟习惯作对。
+            学英语，不该总是跟自己较劲。
           </h1>
 
           <p class="mt-8 text-lg md:text-xl text-stone-600 leading-relaxed max-w-lg" data-i18n="hero.subtitle">
-            Elynd 帮你用<strong class="font-medium text-ink">真正想读的内容</strong>，在每天 5–20
-            分钟的低阻力输入里，慢慢建立长期英语能力——而不是再开一场意志力比赛。
+            我也报过课、下过 App、收藏过一堆英文，最后还是停了。Elynd 是我为自己做的：用<strong
+              class="font-medium text-ink"
+              >真正想读的东西</strong
+            >，每天读一会儿——不是再开一场意志力比赛。
           </p>
 
           <div class="mt-11 flex flex-wrap gap-4">
@@ -268,7 +268,7 @@
               class="group inline-flex items-center gap-3 bg-brand text-white px-7 py-3.5 rounded-full font-medium transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-brand-muted active:scale-[0.98]"
               data-i18n="hero.cta"
             >
-              开始你的英语旅程
+              先读一篇
               <span
                 class="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center transition-transform duration-500 group-hover:translate-x-0.5"
               >
@@ -291,7 +291,7 @@
               class="inline-flex items-center px-7 py-3.5 rounded-full bg-white/70 ring-1 ring-stone-200/80 text-stone-700 font-medium transition-all duration-500 hover:bg-white"
               data-i18n="hero.secondary"
             >
-              我们相信什么
+              我怎么想的
             </a>
           </div>
         </div>
@@ -356,7 +356,7 @@
                 </div>
 
                 <div class="bg-paper/60 px-6 py-8">
-                  <p class="text-[11px] text-stone-500 tracking-wide mb-3">卡住时再打开</p>
+                  <p class="text-[11px] text-stone-500 tracking-wide mb-3">卡住再看</p>
                   <div class="bg-white rounded-2xl p-4 ring-1 ring-stone-900/5">
                     <p class="text-xs text-brand mb-2">currents</p>
                     <p class="text-sm text-stone-600 leading-relaxed">
@@ -364,8 +364,8 @@
                     </p>
                   </div>
                   <div class="mt-4 bg-white/70 rounded-2xl p-4 ring-1 ring-stone-900/5">
-                    <p class="text-xs text-stone-400 mb-2">今日节奏</p>
-                    <p class="text-sm text-stone-700">阅读 8 分钟 · 不必硬撑一小时</p>
+                    <p class="text-xs text-stone-400 mb-2">今天就读这么多也行</p>
+                    <p class="text-sm text-stone-700">读了 8 分钟 · 不必硬撑一小时</p>
                     <div class="mt-3 h-1 rounded-full bg-stone-100 overflow-hidden">
                       <div class="h-full w-2/3 rounded-full bg-brand/80"></div>
                     </div>
@@ -383,33 +383,33 @@
       <div class="max-w-content mx-auto px-6 md:px-10 py-28 md:py-36">
         <div class="reveal max-w-2xl">
           <p class="text-brand text-sm font-medium tracking-[0.16em] uppercase mb-5" data-i18n="pain.eyebrow">
-            你可能经历过
+            我也这样过
           </p>
           <h2 class="serif text-3xl md:text-5xl font-bold leading-tight" data-i18n="pain.title">
-            买过课、下过 App、收藏过无数资料。<br class="hidden md:block" />最后还是停了。
+            课也报了，App 也下了，资料也存了。<br class="hidden md:block" />最后还是停了。
           </h2>
           <p class="mt-6 text-lg text-stone-600 leading-relaxed" data-i18n="pain.lead">
-            这不是因为你懒。是常见的学法在对抗人的本性：材料不感兴趣、难度不对、计划太大、输入被拆成单词和刷题。
+            不是懒。是那套学法太难坚持：材料没意思、太难或太碎、计划又大——读不下去，就只能怪自己。
           </p>
         </div>
 
         <div class="reveal mt-16 md:mt-20 grid sm:grid-cols-2 gap-x-12 gap-y-0 max-w-3xl">
           <ul class="divide-y divide-stone-200/80">
-            <li class="py-5 text-lg text-stone-700" data-i18n="pain.p1">报了课，跟了两周就断</li>
+            <li class="py-5 text-lg text-stone-700" data-i18n="pain.p1">报了课，跟两周就断</li>
             <li class="py-5 text-lg text-stone-700" data-i18n="pain.p2">App 打卡几天，然后卸载</li>
           </ul>
           <ul class="divide-y divide-stone-200/80">
-            <li class="py-5 text-lg text-stone-700" data-i18n="pain.p3">收藏夹满了，真正读完的很少</li>
-            <li class="py-5 text-lg text-stone-700" data-i18n="pain.p4">硬啃原著三页，挫败后放弃</li>
+            <li class="py-5 text-lg text-stone-700" data-i18n="pain.p3">收藏夹很满，真正读完的很少</li>
+            <li class="py-5 text-lg text-stone-700" data-i18n="pain.p4">硬啃原著几页，挫败后放弃</li>
           </ul>
         </div>
 
         <div class="reveal mt-16 md:mt-20 max-w-2xl border-t border-stone-200/80 pt-12">
           <p class="serif text-2xl md:text-3xl font-semibold leading-snug text-ink" data-i18n="pain.punch">
-            同一结局，不是因为你不够努力——<br class="hidden sm:block" />而是方法把「懂」和「想读」拆没了。
+            我后来想通一件事：<br class="hidden sm:block" />不是不够努力，是方法把「想读」和「能懂」弄没了。
           </p>
           <p class="mt-6 text-stone-600 leading-relaxed" data-i18n="pain.value">
-            Elynd 要解决的，正是这件事：把英语变回「读你想读的东西」，并扫清卡点，让输入能每天发生。
+            所以我想做一个东西：回到「读自己想读的」，卡住了能查一下，每天还能接着读。
           </p>
         </div>
       </div>
@@ -420,21 +420,28 @@
       <div class="max-w-content mx-auto px-6 md:px-10 py-28 md:py-36">
         <div class="reveal max-w-2xl">
           <p class="text-brand text-sm font-medium tracking-[0.16em] uppercase mb-5" data-i18n="why.eyebrow">
-            为何存在
+            为什么做
           </p>
           <h2 class="serif text-3xl md:text-5xl font-bold leading-tight" data-i18n="why.title">
-            市面上多在制造学习压力。<br class="hidden md:block" />很少有人把「可持续的输入」做成完整空间。
+            市面上多在加压力。<br class="hidden md:block" />我想给自己一个还能读下去的地方。
           </h2>
         </div>
 
         <div class="reveal mt-14 md:mt-18 max-w-2xl space-y-8 text-lg text-stone-600 leading-relaxed">
-          <p data-i18n="why.p1">课程卖计划，App 卖打卡，工具卖功能。它们默认：你需要更多纪律、更多题、更多意志力。</p>
+          <p data-i18n="why.p1">
+            课程卖计划，App 卖打卡，工具卖功能。潜台词差不多：你再狠一点、再纪律一点就行了。我试过，撑不住。
+          </p>
+          <p data-i18n="why.not">
+            Elynd
+            <strong class="font-medium text-ink">不是</strong>课程平台，也不是背词
+            App，更不是聊天机器人。它就是一个让我能读英文的地方——目前还是我一个人在做。
+          </p>
           <p data-i18n="why.p2">
-            我们看到另一条路：语言主要在<strong class="font-medium text-ink">理解有意义的信息</strong
-            >时生长。材料要有趣、难度刚好能懂大半、量要够——兴趣把输入撑起来，而不是用意志力硬撑。
+            我逐渐相信：语言是在<strong class="font-medium text-ink">读懂、听懂有意思的内容</strong
+            >时慢慢长出来的。材料要有趣，难度大半能懂，量不用大——每天能发生，比一周猛攻有用。
           </p>
           <p class="serif text-xl md:text-2xl text-ink font-semibold leading-snug" data-i18n="why.p3">
-            Elynd 因此出现：做一个让真实内容、理解辅助、温和练习与再遇见连在一起的英语学习空间。
+            所以我开始做 Elynd：选内容、读、查不懂的、读完轻轻练一下、过几天再遇见——先给自己用。
           </p>
         </div>
       </div>
@@ -445,13 +452,13 @@
       <div class="max-w-content mx-auto px-6 md:px-10 py-28 md:py-36">
         <div class="reveal max-w-2xl">
           <p class="text-brand text-sm font-medium tracking-[0.16em] uppercase mb-5" data-i18n="belief.eyebrow">
-            我们相信
+            我现在怎么想
           </p>
           <h2 class="serif text-3xl md:text-5xl font-bold leading-tight" data-i18n="belief.title">
-            语言是读懂、听懂之后，自然长出来的。
+            英语是读懂、听懂之后，慢慢会的。
           </h2>
           <p class="mt-6 text-lg text-stone-600 leading-relaxed" data-i18n="belief.lead">
-            不是先练会，再去读。是先读懂，才会。
+            不是先练会再去读。是先读懂，才会。
           </p>
         </div>
 
@@ -459,9 +466,9 @@
           <li class="border-t border-stone-200/80 py-10 md:py-12 grid md:grid-cols-12 gap-4 md:gap-8">
             <span class="md:col-span-1 serif text-3xl text-brand/30 font-bold">01</span>
             <div class="md:col-span-11">
-              <h3 class="serif text-2xl font-semibold" data-i18n="belief.1.title">理解信息，语言才会生长</h3>
+              <h3 class="serif text-2xl font-semibold" data-i18n="belief.1.title">能懂，才会长</h3>
               <p class="mt-3 text-stone-600 leading-relaxed max-w-xl" data-i18n="belief.1.body">
-                当你能大体看懂、听懂一段内容时，词汇和结构会在背景里悄悄成型。刷题和背规则可以辅助，但不是主路。
+                大体看懂、听懂一段东西时，词和句子结构会跟着进来。刷题和背规则可以帮忙，但我不想再把它们当主业。
               </p>
             </div>
           </li>
@@ -469,9 +476,9 @@
           <li class="border-t border-stone-200/80 py-10 md:py-12 grid md:grid-cols-12 gap-4 md:gap-8">
             <span class="md:col-span-1 serif text-3xl text-brand/30 font-bold">02</span>
             <div class="md:col-span-11">
-              <h3 class="serif text-2xl font-semibold" data-i18n="belief.2.title">有趣，比勤奋更重要</h3>
+              <h3 class="serif text-2xl font-semibold" data-i18n="belief.2.title">有意思，大半能懂</h3>
               <p class="mt-3 text-stone-600 leading-relaxed max-w-xl" data-i18n="belief.2.body">
-                读你真正想了解的东西。兴趣降低压力，压力一降，输入才进得去。无聊的材料再「正确」，也撑不久。
+                读自己真想看的；难度大半能懂、偶尔卡住。无聊或太难，我都坚持不了——兴趣和难度对了，才读得下去。
               </p>
             </div>
           </li>
@@ -479,37 +486,27 @@
           <li class="border-t border-stone-200/80 py-10 md:py-12 grid md:grid-cols-12 gap-4 md:gap-8">
             <span class="md:col-span-1 serif text-3xl text-brand/30 font-bold">03</span>
             <div class="md:col-span-11">
-              <h3 class="serif text-2xl font-semibold" data-i18n="belief.3.title">刚好能懂大半，略难一点</h3>
+              <h3 class="serif text-2xl font-semibold" data-i18n="belief.3.title">先多读，再开口写</h3>
               <p class="mt-3 text-stone-600 leading-relaxed max-w-xl" data-i18n="belief.3.body">
-                太简单长不了，太难会挫败。合适的内容是：大部分能懂，偶尔卡住——卡住处可以点开，不必中断整段阅读。
-              </p>
-            </div>
-          </li>
-
-          <li class="border-t border-stone-200/80 py-10 md:py-12 grid md:grid-cols-12 gap-4 md:gap-8">
-            <span class="md:col-span-1 serif text-3xl text-brand/30 font-bold">04</span>
-            <div class="md:col-span-11">
-              <h3 class="serif text-2xl font-semibold" data-i18n="belief.4.title">输入在前，输出在后</h3>
-              <p class="mt-3 text-stone-600 leading-relaxed max-w-xl" data-i18n="belief.4.body">
-                先大量听读，再温和地表达。过早逼口语，容易把错误练死。Elynd 的练习出现在你已经理解内容之后。
+                我自己还没攒够输入时，硬练说写，容易把错的练死。所以练习放在读懂之后，量也不用大。
               </p>
             </div>
           </li>
 
           <li class="border-t border-b border-stone-200/80 py-10 md:py-12 grid md:grid-cols-12 gap-4 md:gap-8">
-            <span class="md:col-span-1 serif text-3xl text-brand/30 font-bold">05</span>
+            <span class="md:col-span-1 serif text-3xl text-brand/30 font-bold">04</span>
             <div class="md:col-span-11">
-              <h3 class="serif text-2xl font-semibold" data-i18n="belief.5.title">长期小剂量，胜过短期猛攻</h3>
-              <p class="mt-3 text-stone-600 leading-relaxed max-w-xl" data-i18n="belief.5.body">
-                每天 5、10、20 分钟，能持续发生，就胜过一份坚持不了的一小时计划。能力来自积累，不是来自某一周的爆发。
+              <h3 class="serif text-2xl font-semibold" data-i18n="belief.4.title">卡住了，查一下就行</h3>
+              <p class="mt-3 text-stone-600 leading-relaxed max-w-xl" data-i18n="belief.4.body">
+                查词、看解释，是为了接着读下去。不是让工具替我学，也不是把聊天当成主界面。
               </p>
             </div>
           </li>
         </ol>
 
         <p class="reveal mt-10 text-sm text-stone-400 max-w-2xl leading-relaxed" data-i18n="belief.footnote">
-          这些想法站在可理解输入与大量真实内容的传统上——包括语言习得研究中的 comprehensible
-          input，以及多语学习者长期强调的「内容为王」。我们关心的是：你能不能每天继续读下去。
+          这些想法受过可理解输入、大量真实阅读一类观点的影响（comprehensible
+          input、「内容为王」）。我真正在意的只有一件事：明天还能不能继续读。
         </p>
       </div>
     </section>
@@ -519,45 +516,39 @@
       <div class="max-w-content mx-auto px-6 md:px-10 py-28 md:py-36">
         <div class="reveal max-w-2xl">
           <p class="text-brand text-sm font-medium tracking-[0.16em] uppercase mb-5" data-i18n="embody.eyebrow">
-            理念如何变成产品
+            所以我做成了这样
           </p>
           <h2 class="serif text-3xl md:text-5xl font-bold leading-tight" data-i18n="embody.title">
-            产品形态，是信仰的结果。
+            功能不多，都是为了让我读得下去。
           </h2>
           <p class="mt-6 text-lg text-stone-600 leading-relaxed" data-i18n="embody.lead">
-            我们不堆功能。每一块设计，都对应上面的一条相信。
+            不堆花活。下面几块，对应上面那些想法。
           </p>
         </div>
 
         <div class="reveal mt-16 md:mt-20 max-w-3xl space-y-0">
           <div class="border-t border-stone-200/70 py-8 md:py-10 grid md:grid-cols-2 gap-3 md:gap-10">
-            <p class="text-stone-500" data-i18n="embody.a1">相信有趣真实内容</p>
+            <p class="text-stone-500" data-i18n="embody.a1">有意思 · 大半能懂</p>
             <p class="text-ink font-medium leading-relaxed" data-i18n="embody.b1">
-              从故事与文章开始，而不是从词表开始。
+              Library：先找愿意读完、难度差不多的文章——从故事和文章开始，不是从词表开始。
             </p>
           </div>
           <div class="border-t border-stone-200/70 py-8 md:py-10 grid md:grid-cols-2 gap-3 md:gap-10">
-            <p class="text-stone-500" data-i18n="embody.a2">相信刚好能懂大半</p>
+            <p class="text-stone-500" data-i18n="embody.a2">卡住了能查</p>
             <p class="text-ink font-medium leading-relaxed" data-i18n="embody.b2">
-              选择略高于当前水平的材料，让你既不飘也不崩。
+              Learning Room：点一下看懂，继续读或听。工具是帮手，不是主角。
             </p>
           </div>
           <div class="border-t border-stone-200/70 py-8 md:py-10 grid md:grid-cols-2 gap-3 md:gap-10">
-            <p class="text-stone-500" data-i18n="embody.a3">相信卡住不该打断沉浸</p>
+            <p class="text-stone-500" data-i18n="embody.a3">读懂再练</p>
             <p class="text-ink font-medium leading-relaxed" data-i18n="embody.b3">
-              点开陌生表达即可理解——工具只为让你吃下更多内容，不是替你学。
-            </p>
-          </div>
-          <div class="border-t border-stone-200/70 py-8 md:py-10 grid md:grid-cols-2 gap-3 md:gap-10">
-            <p class="text-stone-500" data-i18n="embody.a4">相信一份内容可以走完循环</p>
-            <p class="text-ink font-medium leading-relaxed" data-i18n="embody.b4">
-              同一篇：阅读 → 听力 → 理解确认 → 温和表达。加深连接，而不是每天刷新题。
+              Practice：还是同一篇。几道确认题、一点点表达，不是另开一套题库。
             </p>
           </div>
           <div class="border-t border-b border-stone-200/70 py-8 md:py-10 grid md:grid-cols-2 gap-3 md:gap-10">
-            <p class="text-stone-500" data-i18n="embody.a5">相信重要表达会再遇见</p>
-            <p class="text-ink font-medium leading-relaxed" data-i18n="embody.b5">
-              Review 让内容在合适的时间回来——为了留下，不是为了打卡。
+            <p class="text-stone-500" data-i18n="embody.a4">以后还能再遇见</p>
+            <p class="text-ink font-medium leading-relaxed" data-i18n="embody.b4">
+              Review 把读过的表达带回来；Progress 只记读了多久——不为了羞辱自己打卡。
             </p>
           </div>
         </div>
@@ -569,13 +560,13 @@
       <div class="max-w-content mx-auto px-6 md:px-10 py-28 md:py-36">
         <div class="reveal max-w-2xl">
           <p class="text-brand text-sm font-medium tracking-[0.16em] uppercase mb-5" data-i18n="proof.eyebrow">
-            如何做到
+            做成什么样
           </p>
           <h2 class="serif text-3xl md:text-5xl font-bold leading-tight" data-i18n="proof.title">
-            四个空间，都在服务同一件事：<br class="hidden md:block" />让你持续理解真实英语。
+            几块界面，都是为了同一件事：<br class="hidden md:block" />让我能一直读下去。
           </h2>
           <p class="mt-6 text-lg text-stone-600 leading-relaxed" data-i18n="proof.lead">
-            不是功能清单。每一块只回答：它服务哪条理念。
+            选一篇 → 读 → 读完练几下 → 以后再碰到 → 看看读了多久。还在打磨，先这样用。
           </p>
         </div>
 
@@ -584,8 +575,17 @@
             type="button"
             role="tab"
             aria-selected="true"
-            data-tab="room"
+            data-tab="library"
             class="tab-btn is-active px-5 py-2.5 rounded-full text-sm font-medium bg-stone-100 text-stone-700 transition-all duration-400"
+          >
+            Library
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected="false"
+            data-tab="room"
+            class="tab-btn px-5 py-2.5 rounded-full text-sm font-medium bg-stone-100 text-stone-700 transition-all duration-400"
           >
             Learning Room
           </button>
@@ -619,13 +619,53 @@
         </div>
 
         <div class="reveal mt-10">
-          <div id="panel-room" class="product-panel is-active" role="tabpanel">
+          <div id="panel-library" class="product-panel is-active" role="tabpanel">
             <div class="grid lg:grid-cols-5 gap-10 items-center">
               <div class="lg:col-span-2">
-                <p class="text-sm text-brand mb-3" data-i18n="proof.room.belief">服务：有趣内容 · 可理解输入</p>
+                <p class="text-sm text-brand mb-3" data-i18n="proof.library.belief">为了：有意思 · 大半能懂</p>
+                <h3 class="serif text-2xl md:text-3xl font-semibold" data-i18n="proof.library.title">Library</h3>
+                <p class="mt-4 text-stone-600 leading-relaxed" data-i18n="proof.library.body">
+                  找一篇愿意读完、难度差不多的。入口是「选一篇能继续的」，不是「今日任务」。
+                </p>
+              </div>
+              <div class="lg:col-span-3 p-2 rounded-[1.75rem] bg-stone-900/[0.03] ring-1 ring-stone-900/5">
+                <div class="bg-white rounded-[calc(1.75rem-0.5rem)] p-8 md:p-10 min-h-[260px]">
+                  <p class="text-[11px] text-brand tracking-[0.14em] uppercase mb-6">想读的 · 难度还行</p>
+                  <div class="space-y-4">
+                    <div class="flex items-start justify-between gap-4 pb-4 border-b border-stone-100">
+                      <div>
+                        <p class="serif text-lg font-semibold">The Hidden World of Oceans</p>
+                        <p class="mt-1 text-sm text-stone-500">科学 · 约 8 分钟</p>
+                      </div>
+                      <span class="text-xs text-brand shrink-0 mt-1">还行</span>
+                    </div>
+                    <div class="flex items-start justify-between gap-4 pb-4 border-b border-stone-100">
+                      <div>
+                        <p class="serif text-lg font-semibold">A Quiet Morning in Kyoto</p>
+                        <p class="mt-1 text-sm text-stone-500">旅行 · 约 6 分钟</p>
+                      </div>
+                      <span class="text-xs text-stone-400 shrink-0 mt-1">稍易</span>
+                    </div>
+                    <div class="flex items-start justify-between gap-4">
+                      <div>
+                        <p class="serif text-lg font-semibold">How Cities Remember</p>
+                        <p class="mt-1 text-sm text-stone-500">文化 · 约 12 分钟</p>
+                      </div>
+                      <span class="text-xs text-stone-400 shrink-0 mt-1">稍难</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="panel-room" class="product-panel" role="tabpanel" hidden>
+            <div class="grid lg:grid-cols-5 gap-10 items-center">
+              <div class="lg:col-span-2">
+                <p class="text-sm text-brand mb-3" data-i18n="proof.room.belief">为了：卡住能查，继续读</p>
                 <h3 class="serif text-2xl md:text-3xl font-semibold" data-i18n="proof.room.title">Learning Room</h3>
                 <p class="mt-4 text-stone-600 leading-relaxed" data-i18n="proof.room.body">
-                  安静地读。点选陌生表达，即时弄懂，不打断沉浸。同一篇也可听——输入为主，工具只负责降低阻力。
+                  安静地读。不懂的点一下就行。同一篇也可以听——主要是读和听，查词只是顺手。
                 </p>
               </div>
               <div class="lg:col-span-3 p-2 rounded-[1.75rem] bg-stone-900/[0.03] ring-1 ring-stone-900/5">
@@ -648,16 +688,16 @@
           <div id="panel-practice" class="product-panel" role="tabpanel" hidden>
             <div class="grid lg:grid-cols-5 gap-10 items-center">
               <div class="lg:col-span-2">
-                <p class="text-sm text-brand mb-3" data-i18n="proof.practice.belief">服务：输入在前，输出在后</p>
+                <p class="text-sm text-brand mb-3" data-i18n="proof.practice.belief">为了：读懂再练</p>
                 <h3 class="serif text-2xl md:text-3xl font-semibold" data-i18n="proof.practice.title">Practice</h3>
                 <p class="mt-4 text-stone-600 leading-relaxed" data-i18n="proof.practice.body">
-                  读懂之后，再用温和练习确认理解。不是刷题竞赛——是把已经进入的内容，变成你自己的表达。
+                  读完之后，用几道小题确认自己看懂了。不是刷题比赛——还是这篇，练一下就行。
                 </p>
               </div>
               <div class="lg:col-span-3 p-2 rounded-[1.75rem] bg-stone-900/[0.03] ring-1 ring-stone-900/5">
                 <div class="bg-white rounded-[calc(1.75rem-0.5rem)] p-8 md:p-10 min-h-[260px]">
                   <div class="flex items-center justify-between mb-6">
-                    <p class="text-sm text-brand">理解之后 · 轻量确认</p>
+                    <p class="text-sm text-brand">读完之后 · 几道小题</p>
                     <p class="text-sm text-stone-400">1 / 3</p>
                   </div>
                   <h4 class="serif text-xl font-semibold leading-snug">What is the main idea of this article?</h4>
@@ -680,10 +720,10 @@
           <div id="panel-review" class="product-panel" role="tabpanel" hidden>
             <div class="grid lg:grid-cols-5 gap-10 items-center">
               <div class="lg:col-span-2">
-                <p class="text-sm text-brand mb-3" data-i18n="proof.review.belief">服务：重要表达会再遇见</p>
+                <p class="text-sm text-brand mb-3" data-i18n="proof.review.belief">为了：过几天再碰到</p>
                 <h3 class="serif text-2xl md:text-3xl font-semibold" data-i18n="proof.review.title">Review</h3>
                 <p class="mt-4 text-stone-600 leading-relaxed" data-i18n="proof.review.body">
-                  不是机械背词。是在合适的时间，重新遇见你读过的表达——让它们留下来。
+                  不是机械背单词。是过几天再看到自己读过的句子和表达——更容易留下来。
                 </p>
               </div>
               <div class="lg:col-span-3 p-2 rounded-[1.75rem] bg-stone-900/[0.03] ring-1 ring-stone-900/5">
@@ -712,23 +752,23 @@
           <div id="panel-progress" class="product-panel" role="tabpanel" hidden>
             <div class="grid lg:grid-cols-5 gap-10 items-center">
               <div class="lg:col-span-2">
-                <p class="text-sm text-brand mb-3" data-i18n="proof.progress.belief">服务：长期小剂量</p>
+                <p class="text-sm text-brand mb-3" data-i18n="proof.progress.belief">为了：知道自己读了多久</p>
                 <h3 class="serif text-2xl md:text-3xl font-semibold" data-i18n="proof.progress.title">Progress</h3>
                 <p class="mt-4 text-stone-600 leading-relaxed" data-i18n="proof.progress.body">
-                  看见习惯如何形成。不是分数竞赛——是你与真实英语相处的时间。
+                  看看跟英语相处了多久。不是分数榜——只是时间。
                 </p>
               </div>
               <div class="lg:col-span-3 p-2 rounded-[1.75rem] bg-stone-900/[0.03] ring-1 ring-stone-900/5">
                 <div class="bg-white rounded-[calc(1.75rem-0.5rem)] p-8 md:p-10 min-h-[260px]">
                   <div class="bg-paper rounded-2xl p-6">
-                    <p class="text-sm text-brand">持续发生</p>
-                    <p class="serif text-2xl font-semibold mt-3 leading-snug">坚持 13 天，正在形成英语习惯</p>
-                    <p class="mt-3 text-sm text-stone-500">通过真实内容接触英语 6 小时 24 分钟</p>
+                    <p class="text-sm text-brand">读了多久</p>
+                    <p class="serif text-2xl font-semibold mt-3 leading-snug">这 13 天，断断续续都在读</p>
+                    <p class="mt-3 text-sm text-stone-500">大概读了 6 小时 24 分钟</p>
                   </div>
                   <div class="mt-6 grid grid-cols-3 gap-4">
                     <div>
                       <p class="text-2xl font-semibold">42</p>
-                      <p class="text-xs text-stone-400 mt-1">篇内容</p>
+                      <p class="text-xs text-stone-400 mt-1">篇</p>
                     </div>
                     <div>
                       <p class="text-2xl font-semibold">186</p>
@@ -736,7 +776,7 @@
                     </div>
                     <div>
                       <p class="text-2xl font-semibold">13</p>
-                      <p class="text-xs text-stone-400 mt-1">连续天数</p>
+                      <p class="text-xs text-stone-400 mt-1">天</p>
                     </div>
                   </div>
                 </div>
@@ -752,7 +792,7 @@
       <div class="max-w-content mx-auto px-6 md:px-10 py-24 md:py-32">
         <div class="reveal max-w-3xl mx-auto text-center">
           <h2 class="serif text-3xl md:text-5xl font-bold leading-tight" data-i18n="habit.title">
-            最好的学习方式，<br class="hidden sm:block" />是能够持续发生的学习方式。
+            对我来说，能坚持下来的，<br class="hidden sm:block" />才算好办法。
           </h2>
         </div>
 
@@ -777,7 +817,7 @@
           class="reveal mt-14 text-center text-lg text-stone-600 max-w-lg mx-auto leading-relaxed"
           data-i18n="habit.body"
         >
-          开始读，而不是开始上课。长期积累，最终形成能力。
+          开始读就行，不必先报课。每天一点点，慢慢就会。
         </p>
       </div>
     </section>
@@ -798,17 +838,17 @@
           ></div>
           <div class="relative">
             <h2 class="serif text-3xl md:text-4xl font-bold leading-tight" data-i18n="cta.title">
-              用你想读的内容，开始一段能持续的英语旅程
+              如果你也总是学不下去，可以试试
             </h2>
             <p class="mt-5 text-white/80 text-lg max-w-md mx-auto" data-i18n="cta.body">
-              每天 5–20 分钟。先读懂，再慢慢会。
+              每天 5–20 分钟。先读懂，再慢慢会。我一个人做的，还很粗糙——但方向是认真的。
             </p>
             <a
               href="#"
               class="group mt-10 inline-flex items-center gap-3 bg-white text-brand px-8 py-3.5 rounded-full font-medium transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-brand-soft active:scale-[0.98]"
               data-i18n="cta.button"
             >
-              开始阅读
+              先读一篇
               <span
                 class="w-7 h-7 rounded-full bg-brand/10 flex items-center justify-center transition-transform duration-500 group-hover:translate-x-0.5"
               >
@@ -853,7 +893,7 @@
           </span>
           <span class="text-ink font-medium">Elynd</span>
         </div>
-        <p data-i18n="footer.tagline">语言从理解中生长 · 英语学习空间</p>
+        <p data-i18n="footer.tagline">独立开发 · 读自己想读的英语</p>
         <p class="text-stone-400">© 2026 Elynd</p>
       </div>
     </footer>
@@ -880,6 +920,7 @@
 
         const tabs = document.querySelectorAll('.tab-btn');
         const panels = {
+          library: document.getElementById('panel-library'),
           room: document.getElementById('panel-room'),
           practice: document.getElementById('panel-practice'),
           review: document.getElementById('panel-review'),

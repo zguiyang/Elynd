@@ -81,3 +81,6 @@ apifox-reports/
 .gitattributes
 
 .pnpm-store/
+
+prd/
+docs/

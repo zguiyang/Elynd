@@ -12,6 +12,7 @@ Canonical product docs (English): [`docs/product/`](docs/product/).
 | [`docs/product/product-vision.md`](docs/product/product-vision.md)                 | What Elynd is / is not       |
 | [`docs/product/learning-philosophy.md`](docs/product/learning-philosophy.md)       | Learning science stance      |
 | [`docs/product/mvp-scope.md`](docs/product/mvp-scope.md)                           | MVP, non-goals, module map   |
+| [`docs/product/content-strategy.md`](docs/product/content-strategy.md)             | Curated library, admin flow  |
 | [`docs/product/success-metrics.md`](docs/product/success-metrics.md)               | North star and drift metrics |
 | [`docs/product/feature-decision-guide.md`](docs/product/feature-decision-guide.md) | Should we build this?        |
 | [`docs/product/design-guardrails.md`](docs/product/design-guardrails.md)           | Anti-drift review            |

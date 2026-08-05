@@ -8,6 +8,7 @@ Related docs:
 - Feature decisions: [`feature-decision-guide.md`](./feature-decision-guide.md)
 - Anti-drift guardrails: [`design-guardrails.md`](./design-guardrails.md)
 - MVP / modules / metrics: [`mvp-scope.md`](./mvp-scope.md), [`success-metrics.md`](./success-metrics.md)
+- Content supply (curated library): [`content-strategy.md`](./content-strategy.md)
 - Index: [`README.md`](./README.md)
 
 ---

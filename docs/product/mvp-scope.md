@@ -88,15 +88,19 @@ Prototypes are **intent and UX direction**, not pixel-perfect specs. Implementat
 
 ## 5. Content strategy (MVP-level)
 
-| Topic       | MVP stance                                                                                    |
-| ----------- | --------------------------------------------------------------------------------------------- |
-| Source      | Curated team-owned or clearly licensed texts; start tiny                                      |
-| Leveling    | Coarse levels (e.g. three bands) or “comfort” labels; refine with Nation-style coverage later |
-| Interest    | Prefer topics adults might actually want to finish                                            |
-| Volume      | Enough for ~2 weeks of daily short sessions before expansion                                  |
-| User import | Defer until curated loop works                                                                |
+**Full SSOT:** [`content-strategy.md`](./content-strategy.md) (scope, processing, admin/learner flows, first validation titles).
 
-Without a content plan, Learning Room is an empty room—treat content as part of P1, not an afterthought.
+| Topic       | MVP stance                                                                                          |
+| ----------- | --------------------------------------------------------------------------------------------------- |
+| Source      | Fixed curated library; team-owned or clearly licensed; **no** scrape pipeline                       |
+| Genres      | Short narrative / modernized fable + light situational-in-story; **no** meme/joke pack in first set |
+| Unit        | One short article ≈ one session; no chapter syllabus                                                |
+| Volume      | Lean validation set (~5 polished pieces) first; expand only after the loop proves itself            |
+| Leveling    | Coarse bands (e.g. easy / mid / stretch); refine with coverage metrics later                        |
+| Ops         | Admin-only CMS (draft → publish); learners never edit the catalog                                   |
+| User import | Defer until curated loop works                                                                      |
+
+Without content, Learning Room is an empty room—treat seeding the validation set as part of P1, not an afterthought. Do **not** bulk-write articles before that module is in active development.
 
 ---
 

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Elynd Review V2</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+body{background:#FAF9F6;color:#1C1917;font-family:Inter,"Noto Sans SC",sans-serif}
+.serif{font-family:"Noto Serif SC",serif}
+.card{transition:.3s}
+.card:hover{transform:translateY(-4px)}
+.fade{animation:fade .6s ease}
+@keyframes fade{from{opacity:0;transform:translateY(12px)}to{opacity:1}}
+</style>
+</head>
+
+<body>
+<div class="min-h-screen p-10 fade">
+
+<header class="max-w-5xl mx-auto flex justify-between items-center">
+<div>
+<div class="text-sm text-orange-700 mb-2">Review</div>
+<h1 class="serif text-4xl font-bold">你的英语记忆旅程</h1>
+<p class="mt-3 text-stone-500">重新遇见过去学习过的内容，让表达真正留下来。</p>
+</div>
+
+<div class="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center">
+<i data-lucide="bookmark" class="text-orange-700"></i>
+</div>
+</header>
+
+
+<main class="max-w-5xl mx-auto mt-10">
+
+<section class="bg-[#F3EEE2] rounded-[36px] p-8 flex justify-between items-center">
+
+<div>
+<div class="text-sm text-orange-700">昨天学习内容</div>
+<h2 class="serif text-3xl font-bold mt-3">The Hidden World of Oceans</h2>
+<p class="mt-4 text-stone-600">
+12 个表达等待再次遇见。
+</p>
+</div>
+
+<div class="bg-white rounded-3xl p-6 text-center">
+<div class="text-3xl font-bold">12</div>
+<div class="text-sm text-stone-500">今日复习内容</div>
+</div>
+
+</section>
+
+
+<section class="mt-8 grid grid-cols-3 gap-8">
+
+<div class="col-span-2 space-y-6">
+
+<div class="card bg-white border border-stone-100 rounded-[32px] p-8">
+
+<div class="text-sm text-orange-700">词汇回顾</div>
+
+<h2 class="serif text-3xl font-bold mt-5">mystery</h2>
+
+<p class="mt-3 text-stone-500">
+来自文章：
+"The ocean is full of mysteries."
+</p>
+
+<div class="mt-6 flex gap-4">
+<button class="flex-1 rounded-xl bg-orange-700 text-white py-3">我记得</button>
+<button class="flex-1 rounded-xl bg-stone-50 py-3">再看看</button>
+</div>
+
+</div>
+
+
+<div class="card bg-white border border-stone-100 rounded-[32px] p-8">
+
+<div class="text-sm text-orange-700">句子回顾</div>
+
+<p class="serif text-2xl font-bold mt-5">
+Ocean covers more than 70 percent of Earth's surface.
+</p>
+
+<p class="mt-4 text-stone-500">
+重新理解这句话，并回忆它在文章中的含义。
+</p>
+
+<button class="mt-6 px-5 py-3 rounded-xl bg-[#F3EEE2]">
+查看 AI 解释
+</button>
+
+</div>
+
+
+<div class="card bg-white border border-stone-100 rounded-[32px] p-8">
+
+<div class="text-sm text-orange-700">AI 对话复习</div>
+
+<h2 class="serif text-2xl font-bold mt-5">
+用昨天学过的表达描述海洋
+</h2>
+
+<p class="mt-3 text-stone-500">
+Elynd 会根据你的回答提供反馈。
+</p>
+
+<button class="mt-6 bg-orange-700 text-white px-6 py-3 rounded-xl">
+开始交流
+</button>
+
+</div>
+
+</div>
+
+
+<aside>
+
+<div class="bg-white border border-stone-100 rounded-[32px] p-7">
+
+<div class="flex gap-3 items-center mb-7">
+<i data-lucide="sparkles" class="text-orange-700"></i>
+<h3 class="font-semibold">Elynd Guide</h3>
+</div>
+
+<p class="text-stone-600 leading-relaxed">
+欢迎回来 Joey。今天我们只需要花 5 分钟，让昨天的内容重新变得熟悉。
+</p>
+
+
+<div class="mt-8 space-y-5 text-sm">
+
+<div class="flex justify-between">
+<span>阅读</span>
+<span>✓</span>
+</div>
+
+<div class="flex justify-between">
+<span>听力</span>
+<span>✓</span>
+</div>
+
+<div class="flex justify-between">
+<span>表达</span>
+<span>进行中</span>
+</div>
+
+</div>
+
+
+<div class="mt-8 bg-[#F3EEE2] rounded-2xl p-5">
+<div class="text-sm text-stone-500">连续学习</div>
+<div class="text-3xl font-bold mt-2">13 天</div>
+</div>
+
+
+</div>
+
+</aside>
+
+</section>
+
+</main>
+
+</div>
+
+<script>lucide.createIcons()</script>
+</body>
+</html>

@@ -23,10 +23,9 @@ Auth executable contracts: [`.trellis/spec/api/backend/auth-monorepo.md`](../../
 
 | Folder | Role |
 | ------ | ---- |
-| `src/api/<feature>/` | Feature modules — business workflows |
-| `src/common/` | Transport cross-cutting: pipes, filters, decorators — **no** domain workflows |
-| `src/global/` | Global providers |
-| `src/config/` | Env/config schemas |
+| `src/modules/<domain>/` | Feature modules — business workflows. Create this directory when the first domain lands; do **not** pre-create an empty `modules/` folder |
+| `src/common/` | Transport cross-cutting: pipes, filters, decorators — **no** domain workflows (flat; no artifact-type subfolders) |
+| `src/global/` | Global DI assembly (`global.module.ts`) and colocated global providers |
 
 - Thin controllers: validate + map HTTP; business rules in injectable services
 - Auth instance lives in `@elynd/auth/server`; wire via `AuthModule.forRoot` in `AppModule`. Load env before importing auth (`load-env.ts`)

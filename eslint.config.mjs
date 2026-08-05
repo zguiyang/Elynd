@@ -95,7 +95,7 @@ export default defineConfig([
         { type: 'shared', pattern: 'packages/shared/**' },
         { type: 'db', pattern: 'packages/db/**' },
         { type: 'auth', pattern: 'packages/auth/**' },
-        { type: 'api-feature', pattern: 'apps/api/src/api/*' },
+        { type: 'api-feature', pattern: 'apps/api/src/modules/*' },
         { type: 'api-common', pattern: 'apps/api/src/common/**' },
       ],
     },

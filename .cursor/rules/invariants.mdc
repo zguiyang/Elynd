@@ -14,20 +14,37 @@ Framework-agnostic. Apply to every non-trivial change in this repo.
 | KISS | Prefer the simplest readable solution. Early returns over deep nesting. |
 | YAGNI | No speculative features, abstractions, or "for later" helpers. |
 | DRY | Extract only after **three** real uses with a stabilized pattern. Fewer → keep local. |
+| SSOT | One authoritative source per fact. Consumers import or derive — never maintain a parallel copy that can drift. |
 | SRP | One cohesive concern per module/file. |
 | Fail Fast | NEVER catch and swallow errors. Re-throw, map to a typed error, or return an explicit error result. |
 | Determinism | Tests must be deterministic. Prefer file-scoped checks after edits. |
 | Reversibility | Small changes with clear blast radius. |
+
+### Single Source of Truth (vs DRY)
+
+- **DRY** answers: when to extract a *shared helper* (after **three** stabilized uses).
+- **SSOT** answers: when two definitions claim to be the *same fact* (schema, env key set, password policy, allowlist, DTO shape) — even the **second** copy is forbidden.
+
+| Allowed | Forbidden |
+| --- | --- |
+| Import from the owning package (`@elynd/auth/env`, `@elynd/db`, `@elynd/shared`, …) | Local “temporary” duplicate of the same Zod / env / policy “until we clean it up” |
+| Derive (map, compose, narrow) from the source | Two independent definitions kept in sync by convention or comment |
+| App-local view types that are *not* the shared contract | The same HTTP/auth contract redefined in web and API |
+
+**Side-effect escape hatch:** If importing the owner pulls unwanted runtime side effects, fix the owner (side-effect-free export / factory) — do **not** copy the truth to dodge the import.
+
+Cross-layer ownership and propagation mechanics: `layering.mdc`, `decisions.mdc` §6.
 
 ## Pre-change checklist
 
 1. Is the problem well-defined? If unclear → ask.
 2. What is the simplest solution that works today?
 3. Is this solving a current need (not a hypothetical)?
-4. Does duplication already exist three times? If not → do not extract.
-5. What is the blast radius / rollback?
-6. Are invalid states explicit errors?
-7. Can the change be tested in isolation? If not → redesign.
+4. Does duplication already exist three times? If not → do not extract (DRY).
+5. Would this add a second authoritative copy of an existing fact? If yes → import/derive or fix the owner (SSOT).
+6. What is the blast radius / rollback?
+7. Are invalid states explicit errors?
+8. Can the change be tested in isolation? If not → redesign.
 
 ## Cleanup (authoritative)
 

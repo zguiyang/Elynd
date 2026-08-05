@@ -67,6 +67,8 @@ Order of truth:
 | API response shape change | API (+ tests) → shared if public contract → web client → UI |
 | New shared constant | define once in `@elynd/shared` (or the owning package); import everywhere — no duplicates |
 
+Same-fact second definitions (schema / env / policy / contract): see **SSOT** in `invariants.mdc` — fix the owner or import; do not copy.
+
 **Never** update only one layer and assume the rest are fine.
 
 ## 7) Create directory (layering antidote)

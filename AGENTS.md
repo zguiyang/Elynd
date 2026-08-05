@@ -19,7 +19,7 @@ Guidance for AI coding assistants working in the Elynd repository (Cursor).
 
 | Rule                                                       | When                                                   |
 | ---------------------------------------------------------- | ------------------------------------------------------ |
-| [invariants.mdc](.cursor/rules/invariants.mdc)             | Always — principles, cleanup, DoD                      |
+| [invariants.mdc](.cursor/rules/invariants.mdc)             | Always — principles (incl. SSOT), cleanup, DoD         |
 | [layering.mdc](.cursor/rules/layering.mdc)                 | Always — package/module placement                      |
 | [decisions.mdc](.cursor/rules/decisions.mdc)               | Always — create/delete/split/cross-layer               |
 | [project-overview.mdc](.cursor/rules/project-overview.mdc) | Always — product, stack, boundaries                    |

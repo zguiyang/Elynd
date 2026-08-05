@@ -161,21 +161,19 @@ Auth alone without this loop is **infra**, not learning MVP.
 
 ## 7. Known prototype drift (product audit 2026-08-05)
 
-These are **not** flow decisions; they are philosophy / guardrail mismatches in older `prd/` screens. Fix when those HTML files are refreshed or when porting to `apps/web`.
+Copy / CTA pass applied on the same day for high and medium items. Visual unification with Landing/Auth remains later work.
 
-| Severity | Where                    | Issue                                                                                 | Pull back                                                      |
-| -------- | ------------------------ | ------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| High     | `elynd-practice-v1.html` | Sidebar CTA **“开始 AI 对话”**; “今日目标” checklist; “完成今日学习”                  | Practice = short text-bound checks; AI not the climax          |
-| High     | `learning-room-v1.html`  | Persistent **Elynd Guide** panel + sparkles; “完成学习” completion wall feel          | Assist on demand; reading is the product                       |
-| Medium   | `dashboard.html`         | **连续学习 / flame streak** copy                                                      | Soft “相处天数 / 读了多久”; no streak shame                    |
-| Medium   | `elynd-review-v2.html`   | **AI 对话复习** framing; streak language                                              | Re-meet in context; mild copy                                  |
-| Medium   | `elynd-library-v1.html`  | **AI 推荐** as headline                                                               | Prefer interest + level fit; AI optional helper                |
-| Medium   | Cross-prototype          | Visual / tone split: Landing+Auth (indie, plain) vs app shells (older SaaS-education) | Unify voice when redesigning app surfaces                      |
-| Low      | Landing ↔ auth           | CTA / submit edges Confirmed but **Not wired** in HTML                                | Wire when next touching those files                            |
-| Low      | App space HTML           | Almost **no cross-links** between Dashboard ↔ Library ↔ Room …                        | Wire to §3 when refreshing prototypes                          |
-| Process  | Docs vs Landing voice    | `docs/product` one-liner is still “learning space”; Landing is first-person indie     | Keep both: docs = product identity; Landing = builder voice OK |
+| Severity | Where           | Original issue                        | Status after pass                                        |
+| -------- | --------------- | ------------------------------------- | -------------------------------------------------------- |
+| High     | Practice        | AI chat CTA, daily goals, finish wall | Softened: text-bound checks, skip OK, back to Today      |
+| High     | Learning Room   | Guide-as-hero, “完成学习”             | Assist = “卡住时再看”; soft exit; optional practice link |
+| Medium   | Dashboard       | Flame streak                          | Soft “有读过”; nav + Start reading wired                 |
+| Medium   | Review          | AI dialogue review, streak            | Re-meet / open source; soft days copy                    |
+| Medium   | Library         | “AI 推荐” headline                    | Interest + level framing                                 |
+| Medium   | Cross-prototype | Visual split vs Landing/Auth          | Still open (visual only)                                 |
+| Low      | Landing ↔ auth  | CTA Not wired                         | Wired to Sign in                                         |
 
-**North-star check:** MVP success is weekly minutes of engaged reading—not completing “今日目标,” not starting AI chat, not protecting a streak.
+**North-star check:** MVP success is weekly minutes of engaged reading—not completing daily goals, not starting AI chat, not protecting a streak.
 
 ---
 
@@ -185,3 +183,4 @@ These are **not** flow decisions; they are philosophy / guardrail mismatches in 
 | ---------- | --------------------------------------------------------------------- |
 | 2026-08-05 | Initial SSOT from docs + `prd` auth wiring                            |
 | 2026-08-05 | Locked §6 decisions; marked Confirmed edges; added §7 prototype drift |
+| 2026-08-05 | Prototype copy pass for §7; Dashboard/Room/Landing links              |

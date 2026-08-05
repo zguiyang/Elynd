@@ -118,19 +118,13 @@
           </div>
         </section>
 
-        <!-- AI -->
+        <!-- Assist: on demand, not the hero -->
 
         <aside class="w-[360px] border-l border-stone-200 bg-[#FCFBF8] p-8">
           <div class="sticky top-8">
-            <div class="flex items-center gap-3 mb-8">
-              <div class="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
-                <i data-lucide="sparkles" class="text-orange-700"></i>
-              </div>
-
-              <div>
-                <div class="font-semibold">Elynd Guide</div>
-                <div class="text-xs text-stone-500">你的学习助手</div>
-              </div>
+            <div class="mb-6">
+              <div class="font-semibold">卡住时再看</div>
+              <div class="text-xs text-stone-500 mt-1">查词、看解释，然后继续读</div>
             </div>
 
             <div class="bg-white rounded-3xl p-6 border border-stone-100">
@@ -139,44 +133,41 @@
               <p class="leading-relaxed">The ocean covers more than 70 percent of Earth's surface.</p>
 
               <div class="mt-6 space-y-3">
-                <button class="w-full text-left px-4 py-3 rounded-xl bg-stone-50">解释这句话</button>
+                <button class="w-full text-left px-4 py-3 rounded-xl bg-stone-50">这句话什么意思</button>
 
-                <button class="w-full text-left px-4 py-3 rounded-xl bg-stone-50">简单英语解释</button>
+                <button class="w-full text-left px-4 py-3 rounded-xl bg-stone-50">用更简单的英语说</button>
 
-                <button class="w-full text-left px-4 py-3 rounded-xl bg-stone-50">分析语法</button>
-
-                <button class="w-full text-left px-4 py-3 rounded-xl bg-stone-50">生成例句</button>
+                <button class="w-full text-left px-4 py-3 rounded-xl bg-stone-50">这个词在文中指什么</button>
               </div>
             </div>
 
             <div class="mt-8">
-              <div class="text-sm text-stone-500 mb-3">学习进度</div>
+              <div class="text-sm text-stone-500 mb-3">读到这里也行</div>
 
               <div class="h-2 bg-stone-200 rounded-full">
                 <div class="h-2 bg-orange-600 rounded-full w-[45%]"></div>
               </div>
 
-              <div class="text-xs text-stone-500 mt-2">45% 完成</div>
+              <div class="text-xs text-stone-500 mt-2">大约一半 · 不必一次读完</div>
             </div>
           </div>
         </aside>
       </main>
 
-      <footer class="h-20 border-t border-stone-200 bg-[#fcfbf8] flex items-center justify-center gap-8">
+      <footer class="h-20 border-t border-stone-200 bg-[#fcfbf8] flex items-center justify-center gap-6">
         <button class="flex items-center gap-2 px-5 py-3 rounded-xl bg-white border">
           <i data-lucide="headphones"></i>
-          听力模式
+          听一听
         </button>
 
-        <button class="flex items-center gap-2 px-5 py-3 rounded-xl bg-white border">
-          <i data-lucide="captions"></i>
-          逐句模式
-        </button>
-
-        <button class="flex items-center gap-2 px-6 py-3 rounded-xl bg-orange-700 text-white">
+        <a href="./elynd-practice-v1.html" class="flex items-center gap-2 px-5 py-3 rounded-xl bg-white border">
           <i data-lucide="check"></i>
-          完成学习
-        </button>
+          练几道小题
+        </a>
+
+        <a href="./dashboard.html" class="flex items-center gap-2 px-6 py-3 rounded-xl bg-orange-700 text-white">
+          先这样，回今日
+        </a>
       </footer>
     </div>
 

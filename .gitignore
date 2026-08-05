@@ -62,6 +62,12 @@ __screenshots__/
 # Zod OpenAPI component cache (apps/api)
 .cache/
 
+# Generated OpenAPI artifact (regenerate: pnpm --filter @elynd/api openapi:gen)
+apps/api/openapi/
+
+# Apifox CLI local test reports
+apifox-reports/
+
 # Vite
 *.timestamp-*-*.mjs
 

@@ -6,20 +6,23 @@
 
 ## Product
 
-**Elynd** is an AI-assisted English reading learning tool that combines reading, listen-and-read (TTS), instant dictionary lookup, and article-based AI Q&A.
+**Elynd** is an English **learning space** for adults who struggle to stick with learning. It centers interesting, mostly understandable real content (reading + listening). Tools—including AI—**lower friction**. It is not a course platform, vocab pack, or chatbot.
 
-Target users: adults with weaker English who need it for work.
+Target users: adults with mid/weak English who need it for work or life, and who repeatedly abandon courses and apps.
 
-### Product direction
+Product vision and decision docs (English SSOT): [`docs/product/`](./docs/product/).
 
-| Capability         | Description                               |
-| ------------------ | ----------------------------------------- |
-| Graded reading     | Articles at L1/L2/L3 difficulty           |
-| Listen-and-read    | TTS while reading                         |
-| Instant dictionary | Tap a word for definitions                |
-| AI Q&A             | Questions grounded in the current article |
+### Product direction (main loop)
 
-> The `refactor/v2` branch uses a Nest + Next scaffold. Business features are still migrating from the legacy stack. The first working loop is **sign-up / sign-in (cookie session) / dashboard**.
+| Space         | Role                                                |
+| ------------- | --------------------------------------------------- |
+| Library       | Discover level-fit content worth finishing          |
+| Learning Room | Read / listen + on-demand comprehension help        |
+| Practice      | Light checks and expression **after** understanding |
+| Review        | Re-meet important expressions in context            |
+| Progress      | Time-with-language and habit (not exam ranks)       |
+
+> The `refactor/v2` branch uses a Nest + Next scaffold. Business features are still migrating. The first **engineering** loop is **sign-up / sign-in (cookie session) / dashboard**. Learning-loop targets: [`docs/product/mvp-scope.md`](./docs/product/mvp-scope.md).
 
 ## Stack
 

@@ -1,148 +1,133 @@
-# Elynd 产品愿景
+# Elynd Product Vision
 
-学习科学与理念依据见：[learning-philosophy.md](./learning-philosophy.md)。
+**Canonical one-liner:** Elynd is an English **learning space** for adults who struggle to stick with learning. It centers **interesting, mostly understandable real content** (reading + listening), with tools—including AI—that **lower friction**. It is not a course platform, vocab pack, or chatbot.
 
-## 1. 产品名称
+Related docs:
+
+- Learning science: [`learning-philosophy.md`](./learning-philosophy.md)
+- Feature decisions: [`feature-decision-guide.md`](./feature-decision-guide.md)
+- Anti-drift guardrails: [`design-guardrails.md`](./design-guardrails.md)
+- MVP / modules / metrics: [`mvp-scope.md`](./mvp-scope.md), [`success-metrics.md`](./success-metrics.md)
+- Index: [`README.md`](./README.md)
+
+---
+
+## 1. Name
 
 Elynd
 
-暂定定位：
+---
 
-AI-powered English Learning Companion
+## 2. Mission
 
-AI 驱动的英语学习伙伴。
+Help people who want better English but cannot persist—by making **low-pressure, meaningful input** a daily habit, not a willpower contest.
 
 ---
 
-# 2. 产品使命
+## 3. Who we serve
 
-帮助那些想提升英语，但长期无法坚持的人，通过低压力、沉浸式、个性化的 AI 学习体验，建立持续学习习惯。
+Adults who already know English matters, but:
 
----
+- Bought courses and quit
+- Installed apps and abandoned them
+- Tried native texts and felt crushed
+- Feel anxiety every time they “should study”
 
-# 3. 用户痛点
+**Core shortage is not resources.** It is:
 
-目标用户不是不知道英语重要，而是：
-
-- 买过课程，但无法坚持
-- 下载过学习 App，但几周后放弃
-- 尝试阅读英文材料，但因为太难产生挫败感
-- 知道应该学习，但每次开始都有心理压力
-
-核心问题：
-
-不是缺少学习资源。
-
-而是缺少：
-
-1. 合适难度的内容
-2. 持续动力
-3. 即时反馈
-4. 陪伴感
+1. Content at the right difficulty and interest
+2. Sustainable motivation (interest > grit)
+3. Immediate help when stuck
+4. Gentle return paths and companionship—not a teacher or exam proctor
 
 ---
 
-# 4. 产品核心理念
+## 4. Product principles
 
-## Learn Less, Continue Longer
+### Learn less, continue longer
 
-每天 5-20 分钟。
+Default sessions: **5–20 minutes**. Lower startup cost. Ability grows from accumulation.
 
-降低启动成本。
+### Meaningful input first
 
-通过长期积累产生能力提升。
+Learn through **real, interesting messages**—not drills as the main path.
 
----
+### One material, full loop
 
-## Meaningful Input
+One piece of content serves:
 
-不通过大量机械练习学习。
+Discover → Read / listen → Understand (with assist) → Light practice (optional) → Re-meet (Review) → Habit (Progress)
 
-而是：
+### AI lowers friction; it does not replace learning
 
-围绕真实、有意义的语言材料进行学习。
-
----
-
-## One Material, Multiple Skills
-
-一份学习材料：
-
-重复用于：
-
-- Reading
-- Listening
-- Vocabulary
-- Understanding
-- Conversation
-- Review
-
-让用户真正掌握。
+AI explains, adapts difficulty, asks about **this** text, and gives mild feedback.  
+It must not become the homepage identity or a path to skip reading.
 
 ---
 
-# 5. 产品定位
+## 5. Positioning
 
-Elynd 不是：
+**Elynd is not:**
 
-- 英语课程平台
-- 单词背诵工具
-- AI 聊天机器人
-- 电子书阅读器
+- An English course platform
+- A vocabulary memorization tool
+- An AI chatbot
+- A plain e-reader
 
-Elynd 是：
+**Elynd is:**
 
-一个 AI 英语学习伙伴。
+An **input-first English learning space**—closer to a guided reading room than to a classroom or chat app.
 
-它帮助用户：
+Loop in product language:
 
-发现内容 →
-理解内容 →
-练习表达 →
-形成习惯。
+```text
+Find content → Understand (read/listen + assist) → Practice gently → Re-meet → Form a habit
+```
 
----
+Product spaces (prototypes under `prd/`):
 
-# 6. 产品人格
-
-Elynd 像：
-
-一个聪明、有趣、温暖的英语伙伴。
-
-不是：
-
-老师。
-
-不是：
-
-考试监督者。
-
-用户打开 Elynd 的感觉：
-
-“我回来继续学习。”
-
-而不是：
-
-“我要开始上课了。”
+| Space               | Role                                                 |
+| ------------------- | ---------------------------------------------------- |
+| Library / discovery | Find interesting, level-fit content                  |
+| Learning Room       | Quiet read + listen + on-demand assist               |
+| Practice            | Confirm understanding / light output **after** input |
+| Review              | Re-meet important expressions in context             |
+| Progress            | See time-with-language and habit—not exam scores     |
 
 ---
 
-# 7. 核心体验目标
+## 6. Personality
 
-第一次打开：
+Elynd feels like a **smart, warm reading companion**.
 
-用户应该感觉：
+Not a teacher. Not an exam supervisor.
 
-“这是一个真实产品，不像 Demo。”
+Opening the app should feel like:
 
-第一次学习：
+> “I’m back to continue.”
 
-用户应该感觉：
+Not:
 
-“原来英语学习可以这么轻松。”
+> “I have to start class.”
 
-持续使用：
+---
 
-用户应该感觉：
+## 7. Experience goals
 
-“我每天都在进步。”
+| Moment        | Feeling                                              |
+| ------------- | ---------------------------------------------------- |
+| First open    | Real product, not a demo                             |
+| First session | “English learning can feel this light.”              |
+| Ongoing use   | “I’m building a habit / spending time with English.” |
+
+---
+
+## 8. Decision rule
+
+When unsure, ask:
+
+> Does this help the user spend more time **understanding interesting English**, with less anxiety—or does it create another study task?
+
+Prefer the former. Cut or redesign the latter.
+
+See [`feature-decision-guide.md`](./feature-decision-guide.md) and [`design-guardrails.md`](./design-guardrails.md).

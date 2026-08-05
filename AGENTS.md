@@ -2,6 +2,24 @@
 
 Guidance for AI coding assistants in the Elynd repository.
 
+## Product intent (read before feature work)
+
+Canonical product docs (English): [`docs/product/`](docs/product/).
+
+| Doc                                                                                | Use                          |
+| ---------------------------------------------------------------------------------- | ---------------------------- |
+| [`docs/product/README.md`](docs/product/README.md)                                 | Index / read order           |
+| [`docs/product/product-vision.md`](docs/product/product-vision.md)                 | What Elynd is / is not       |
+| [`docs/product/learning-philosophy.md`](docs/product/learning-philosophy.md)       | Learning science stance      |
+| [`docs/product/mvp-scope.md`](docs/product/mvp-scope.md)                           | MVP, non-goals, module map   |
+| [`docs/product/success-metrics.md`](docs/product/success-metrics.md)               | North star and drift metrics |
+| [`docs/product/feature-decision-guide.md`](docs/product/feature-decision-guide.md) | Should we build this?        |
+| [`docs/product/design-guardrails.md`](docs/product/design-guardrails.md)           | Anti-drift review            |
+
+HTML prototypes: [`prd/`](prd/) (references only).
+
+**One-liner:** Elynd is an English learning space for adults who struggle to persist—interesting, mostly understandable real content (read + listen), with tools (including AI) that lower friction. Not a course, vocab pack, or chatbot.
+
 ## Rules source of truth
 
 [`.cursor/rules/`](.cursor/rules/). Project rules win over Cursor User Rules on conflict.
@@ -13,7 +31,8 @@ Guidance for AI coding assistants in the Elynd repository.
 3. Glob: `backend` / `frontend` / `packages`
 4. Project skills (e.g. `create-api-feature`) + MCP
 5. Current Trellis task + **filled** `.trellis/spec` contracts
-6. User Rules
+6. **Filled** [`docs/product/`](docs/product/) for product-scope decisions
+7. User Rules
 
 ### Index
 
@@ -29,8 +48,9 @@ Guidance for AI coding assistants in the Elynd repository.
 
 ## Language
 
-- Conversation: Chinese (中文)
-- Documentation / comments / commits / code identifiers: English
+- Conversation with the user: Chinese (中文) when the user writes Chinese
+- **Documentation** (including `docs/`, README product sections, comments): **English**
+- Commits / code identifiers: English
 
 ## Common commands
 

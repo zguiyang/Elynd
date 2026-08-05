@@ -5,9 +5,11 @@ alwaysApply: true
 
 # Core
 
-Elynd: AI-assisted English reading for adults (graded reading, TTS, dictionary, article Q&A). Monorepo: `apps/api` (Nest **3336**), `apps/web` (Next **3000**), `packages/{db,auth,shared}`.
+Elynd: English **learning space** for adults who struggle to persist—interesting, mostly understandable real content (read + listen); AI/tools lower friction. Not a course, vocab pack, or chatbot. Monorepo: `apps/api` (Nest **3336**), `apps/web` (Next **3000**), `packages/{db,auth,shared}`.
 
-Language: talk to the user in **Chinese**; code, docs, comments, commits in **English**.
+Product SSOT: `docs/product/` (vision, philosophy, MVP scope, metrics, decision guide, guardrails). Prototypes: `prd/`.
+
+Language: talk to the user in **Chinese** when they write Chinese; **code, docs, comments, commits in English**.
 
 ## Principles
 
@@ -70,5 +72,6 @@ English imperative; one logical change; prefer subject-only. Format via commitli
 | Package / schema ownership | `packages` + `layering` |
 | Add/delete/split/move files or dirs | `structure` |
 | Where does X belong? | `layering` |
+| Product scope / should we build X / drift risk | `docs/product/` (decision guide + guardrails + MVP scope) |
 
-Rule SoT: `.cursor/rules/`. Tooling (ESLint, Prettier, typecheck, tests) wins on conflict. Filled `.trellis/spec` next; User Rules last.
+Rule SoT: `.cursor/rules/`. Tooling (ESLint, Prettier, typecheck, tests) wins on conflict. Filled `.trellis/spec` next; filled `docs/product/` for product intent; User Rules last.

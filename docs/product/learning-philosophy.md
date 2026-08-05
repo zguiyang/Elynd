@@ -4,7 +4,19 @@ Canonical reference for **why Elynd is designed the way it is**: learning belief
 
 Companion to [`product-vision.md`](./product-vision.md) (user problem / product stance). This document is the **theory and evidence** layer for product, marketing, and engineering decisions.
 
-**Language note:** Scholarly names and citations stay in English. Product copy for users may paraphrase in Chinese without inventing parallel theory.
+Day-to-day feature decisions and anti-drift reviews:
+
+- [`feature-decision-guide.md`](./feature-decision-guide.md)
+- [`design-guardrails.md`](./design-guardrails.md)
+
+Delivery scope and metrics:
+
+- [`mvp-scope.md`](./mvp-scope.md)
+- [`success-metrics.md`](./success-metrics.md)
+
+Index: [`README.md`](./README.md)
+
+**Language:** Product and engineering docs in this repo are **English** (SSOT). User-facing UI copy may be Chinese.
 
 ---
 

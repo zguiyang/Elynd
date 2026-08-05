@@ -35,6 +35,9 @@ export const auth = betterAuth({
   secret: authEnv.AUTH_SECRET,
   emailAndPassword: {
     enabled: true,
+    // Explicit — matches Better Auth defaults and apps/web form Zod (min 8 / max 128).
+    minPasswordLength: 8,
+    maxPasswordLength: 128,
   },
   user: {
     modelName: 'users',

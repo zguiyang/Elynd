@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Elynd — 在真实内容里，慢慢长出英语能力</title>
+<meta name="description" content="Elynd 相信语言是读懂、听懂之后自然长出来的。用你想读的内容，低阻力地建立长期英语能力。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        canvas: '#FAF9F6',
+        paper: '#F3EEE2',
+        ink: '#1C1917',
+        brand: {
+          DEFAULT: '#C2410C',
+          soft: '#FFF7ED',
+          muted: '#9A3412',
+        },
+      },
+      fontFamily: {
+        sans: ['"Source Sans 3"', '"Noto Sans SC"', 'sans-serif'],
+        serif: ['"Noto Serif SC"', 'serif'],
+      },
+      maxWidth: {
+        content: '72rem',
+      },
+    },
+  },
+};
+</script>
+<style>
+  :root {
+    --canvas: #FAF9F6;
+    --paper: #F3EEE2;
+    --ink: #1C1917;
+    --brand: #C2410C;
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: "Source Sans 3", "Noto Sans SC", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .serif { font-family: "Noto Serif SC", serif; }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 60;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.85s var(--ease-out), transform 0.85s var(--ease-out);
+  }
+  .reveal.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+  .reveal-delay-1 { transition-delay: 0.08s; }
+  .reveal-delay-2 { transition-delay: 0.16s; }
+
+  .float-soft {
+    animation: floatSoft 7s var(--ease-out) infinite;
+  }
+  @keyframes floatSoft {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  .product-panel { display: none; }
+  .product-panel.is-active {
+    display: block;
+    animation: panelIn 0.5s var(--ease-out);
+  }
+  @keyframes panelIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .tab-btn.is-active {
+    background: #C2410C;
+    color: white;
+  }
+
+  .nav-link { position: relative; }
+  .nav-link::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -2px;
+    width: 0;
+    height: 1px;
+    background: currentColor;
+    transition: width 0.4s var(--ease-out);
+  }
+  .nav-link:hover::after { width: 100%; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal, .float-soft, .product-panel.is-active {
+      animation: none !important;
+      transition: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  }
+</style>
+<!--
+  Philosophy → copy map (for future apps/web port)
+
+  Belief (Shawney / Kaufmann / Krashen lineage):
+  - Fluency grows from massive comprehensible input, not grammar drills first
+  - Content must be interesting + i+1 + sufficient volume
+  - Free voluntary reading is the longest path; do not force early speaking
+  - Attitude + time with language + compelling content matter most
+  - Tools (lookup/AI) are valid if they help you consume more real content
+
+  Section intent:
+  1 Hero     → User Q1: what problem / what value
+  2 Pain     → Lived failed paths → same ending; method fights human nature
+  3 Why      → User Q2: why this product exists
+  4 Belief   → Learning philosophy in plain language; scholars as footnotes
+  5 Embody   → Belief → product mechanisms (not feature list)
+  6 Proof    → Room / Practice / Review / Progress as evidence of beliefs
+  7 CTA      → Start reading, not start a class; 5–20 min
+
+  30s takeaway:
+  - Solves: cannot persist / wrong materials / learning cost too high
+  - Value: read what you care about; clear friction to keep input flowing
+  - Exists because: language is acquired through understanding interesting messages
+  - Product shape is a consequence of that belief
+-->
+</head>
+
+<body class="overflow-x-hidden">
+
+<!-- ========== Nav ========== -->
+<header class="relative z-40">
+  <nav class="max-w-content mx-auto px-6 md:px-10 pt-7 flex items-center justify-between" aria-label="Primary" data-i18n-ns="nav">
+    <a href="#" class="flex items-center gap-3" aria-label="Elynd home">
+      <span class="w-9 h-9 rounded-xl bg-brand-soft flex items-center justify-center ring-1 ring-brand/10">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+      </span>
+      <span class="font-semibold text-lg tracking-tight">Elynd</span>
+    </a>
+
+    <div class="hidden md:flex items-center gap-9 text-[15px] text-stone-600">
+      <a href="#pain" class="nav-link" data-i18n="nav.pain">你的问题</a>
+      <a href="#why" class="nav-link" data-i18n="nav.why">为何存在</a>
+      <a href="#belief" class="nav-link" data-i18n="nav.belief">学习理念</a>
+      <a href="#proof" class="nav-link" data-i18n="nav.proof">如何做到</a>
+    </div>
+
+    <a href="#cta" class="inline-flex items-center gap-2 bg-brand text-white text-sm font-medium px-5 py-2.5 rounded-full transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-brand-muted active:scale-[0.98]" data-i18n="nav.cta">
+      开始阅读
+      <span class="w-6 h-6 rounded-full bg-white/15 flex items-center justify-center">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </span>
+    </a>
+  </nav>
+</header>
+
+
+<!-- ========== 1. Hero: problem + promise ========== -->
+<section class="relative max-w-content mx-auto px-6 md:px-10 pt-16 md:pt-24 pb-24 md:pb-32" data-i18n-ns="hero">
+  <div class="grid lg:grid-cols-2 gap-14 lg:gap-20 items-center">
+
+    <div class="reveal">
+      <p class="text-brand text-sm font-medium tracking-[0.18em] uppercase mb-7" data-i18n="hero.eyebrow">
+        英语学习空间
+      </p>
+
+      <h1 class="serif text-[2.25rem] sm:text-5xl lg:text-[3.2rem] font-bold leading-[1.18] tracking-tight" data-i18n="hero.title">
+        你不是不努力。<br class="hidden sm:block">是学法在跟习惯作对。
+      </h1>
+
+      <p class="mt-8 text-lg md:text-xl text-stone-600 leading-relaxed max-w-lg" data-i18n="hero.subtitle">
+        Elynd 帮你用<strong class="font-medium text-ink">真正想读的内容</strong>，在每天 5–20 分钟的低阻力输入里，慢慢建立长期英语能力——而不是再开一场意志力比赛。
+      </p>
+
+      <div class="mt-11 flex flex-wrap gap-4">
+        <a href="#cta" class="group inline-flex items-center gap-3 bg-brand text-white px-7 py-3.5 rounded-full font-medium transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-brand-muted active:scale-[0.98]" data-i18n="hero.cta">
+          开始你的英语旅程
+          <span class="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center transition-transform duration-500 group-hover:translate-x-0.5">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </span>
+        </a>
+        <a href="#belief" class="inline-flex items-center px-7 py-3.5 rounded-full bg-white/70 ring-1 ring-stone-200/80 text-stone-700 font-medium transition-all duration-500 hover:bg-white" data-i18n="hero.secondary">
+          我们相信什么
+        </a>
+      </div>
+    </div>
+
+    <!-- Reading product mock — evidence of "real content", not AI theater -->
+    <div class="reveal reveal-delay-2 float-soft">
+      <div class="relative p-2 rounded-[2rem] bg-stone-900/[0.03] ring-1 ring-stone-900/5">
+        <div class="bg-white rounded-[calc(2rem-0.5rem)] shadow-[0_20px_50px_-28px_rgba(28,25,23,0.35)] overflow-hidden">
+
+          <div class="flex items-center justify-between px-6 py-4 border-b border-stone-100">
+            <div class="flex items-center gap-3">
+              <div class="w-2 h-2 rounded-full bg-stone-300"></div>
+              <span class="text-xs text-stone-400 tracking-wide">Learning Room</span>
+            </div>
+            <div class="flex items-center gap-3 text-stone-400">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+            </div>
+          </div>
+
+          <div class="grid sm:grid-cols-[1.15fr_0.85fr]">
+            <div class="px-7 py-8 border-r border-stone-100/80">
+              <p class="text-[11px] text-brand tracking-[0.14em] uppercase mb-4">Reading · 刚好能懂大半</p>
+              <h3 class="serif text-2xl font-semibold leading-snug">
+                The Hidden World<br>of Oceans
+              </h3>
+              <div class="mt-6 space-y-4 text-[15px] leading-[1.85] text-stone-600">
+                <p>
+                  The ocean covers more than seventy percent of the Earth’s surface, yet we know less about its depths than about the surface of the Moon.
+                </p>
+                <p class="text-stone-500">
+                  Beneath the waves lies a world of <span class="border-b border-dotted border-brand/60 text-ink">currents</span>, creatures, and quiet mysteries waiting to be understood.
+                </p>
+              </div>
+            </div>
+
+            <div class="bg-paper/60 px-6 py-8">
+              <p class="text-[11px] text-stone-500 tracking-wide mb-3">卡住时再打开</p>
+              <div class="bg-white rounded-2xl p-4 ring-1 ring-stone-900/5">
+                <p class="text-xs text-brand mb-2">currents</p>
+                <p class="text-sm text-stone-600 leading-relaxed">
+                  洋流——海洋中持续流动的水体，影响气候与生物栖息。
+                </p>
+              </div>
+              <div class="mt-4 bg-white/70 rounded-2xl p-4 ring-1 ring-stone-900/5">
+                <p class="text-xs text-stone-400 mb-2">今日节奏</p>
+                <p class="text-sm text-stone-700">阅读 8 分钟 · 不必硬撑一小时</p>
+                <div class="mt-3 h-1 rounded-full bg-stone-100 overflow-hidden">
+                  <div class="h-full w-2/3 rounded-full bg-brand/80"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ========== 2. Pain: lived failed paths ========== -->
+<section id="pain" class="border-t border-stone-200/60" data-i18n-ns="pain">
+  <div class="max-w-content mx-auto px-6 md:px-10 py-28 md:py-36">
+
+    <div class="reveal max-w-2xl">
+      <p class="text-brand text-sm font-medium tracking-[0.16em] uppercase mb-5" data-i18n="pain.eyebrow">你可能经历过</p>
+      <h2 class="serif text-3xl md:text-5xl font-bold leading-tight" data-i18n="pain.title">
+        买过课、下过 App、收藏过无数资料。<br class="hidden md:block">最后还是停了。
+      </h2>
+      <p class="mt-6 text-lg text-stone-600 leading-relaxed" data-i18n="pain.lead">
+        这不是因为你懒。是常见的学法在对抗人的本性：材料不感兴趣、难度不对、计划太大、输入被拆成单词和刷题。
+      </p>
+    </div>
+
+    <div class="reveal mt-16 md:mt-20 grid sm:grid-cols-2 gap-x-12 gap-y-0 max-w-3xl">
+      <ul class="divide-y divide-stone-200/80">
+        <li class="py-5 text-lg text-stone-700" data-i18n="pain.p1">报了课，跟了两周就断</li>
+        <li class="py-5 text-lg text-stone-700" data-i18n="pain.p2">App 打卡几天，然后卸载</li>
+      </ul>
+      <ul class="divide-y divide-stone-200/80">
+        <li class="py-5 text-lg text-stone-700" data-i18n="pain.p3">收藏夹满了，真正读完的很少</li>
+        <li class="py-5 text-lg text-stone-700" data-i18n="pain.p4">硬啃原著三页，挫败后放弃</li>
+      </ul>
+    </div>
+
+    <div class="reveal mt-16 md:mt-20 max-w-2xl border-t border-stone-200/80 pt-12">
+      <p class="serif text-2xl md:text-3xl font-semibold leading-snug text-ink" data-i18n="pain.punch">
+        同一结局，不是因为你不够努力——<br class="hidden sm:block">而是方法把「懂」和「想读」拆没了。
+      </p>
+      <p class="mt-6 text-stone-600 leading-relaxed" data-i18n="pain.value">
+        Elynd 要解决的，正是这件事：把英语变回「读你想读的东西」，并扫清卡点，让输入能每天发生。
+      </p>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ========== 3. Why this product exists ========== -->
+<section id="why" class="bg-paper/50" data-i18n-ns="why">
+  <div class="max-w-content mx-auto px-6 md:px-10 py-28 md:py-36">
+
+    <div class="reveal max-w-2xl">
+      <p class="text-brand text-sm font-medium tracking-[0.16em] uppercase mb-5" data-i18n="why.eyebrow">为何存在</p>
+      <h2 class="serif text-3xl md:text-5xl font-bold leading-tight" data-i18n="why.title">
+        市面上多在制造学习压力。<br class="hidden md:block">很少有人把「可持续的输入」做成完整空间。
+      </h2>
+    </div>
+
+    <div class="reveal mt-14 md:mt-18 max-w-2xl space-y-8 text-lg text-stone-600 leading-relaxed">
+      <p data-i18n="why.p1">
+        课程卖计划，App 卖打卡，工具卖功能。它们默认：你需要更多纪律、更多题、更多意志力。
+      </p>
+      <p data-i18n="why.p2">
+        我们看到另一条路：语言主要在<strong class="font-medium text-ink">理解有意义的信息</strong>时生长。材料要有趣、难度刚好能懂大半、量要够——兴趣把输入撑起来，而不是用意志力硬撑。
+      </p>
+      <p class="serif text-xl md:text-2xl text-ink font-semibold leading-snug" data-i18n="why.p3">
+        Elynd 因此出现：做一个让真实内容、理解辅助、温和练习与再遇见连在一起的英语学习空间。
+      </p>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ========== 4. Learning belief (plain language) ========== -->
+<section id="belief" data-i18n-ns="belief">
+  <div class="max-w-content mx-auto px-6 md:px-10 py-28 md:py-36">
+
+    <div class="reveal max-w-2xl">
+      <p class="text-brand text-sm font-medium tracking-[0.16em] uppercase mb-5" data-i18n="belief.eyebrow">我们相信</p>
+      <h2 class="serif text-3xl md:text-5xl font-bold leading-tight" data-i18n="belief.title">
+        语言是读懂、听懂之后，自然长出来的。
+      </h2>
+      <p class="mt-6 text-lg text-stone-600 leading-relaxed" data-i18n="belief.lead">
+        不是先练会，再去读。是先读懂，才会。
+      </p>
+    </div>
+
+    <ol class="reveal mt-16 md:mt-20 max-w-3xl space-y-0">
+
+      <li class="border-t border-stone-200/80 py-10 md:py-12 grid md:grid-cols-12 gap-4 md:gap-8">
+        <span class="md:col-span-1 serif text-3xl text-brand/30 font-bold">01</span>
+        <div class="md:col-span-11">
+          <h3 class="serif text-2xl font-semibold" data-i18n="belief.1.title">理解信息，语言才会生长</h3>
+          <p class="mt-3 text-stone-600 leading-relaxed max-w-xl" data-i18n="belief.1.body">
+            当你能大体看懂、听懂一段内容时，词汇和结构会在背景里悄悄成型。刷题和背规则可以辅助，但不是主路。
+          </p>
+        </div>
+      </li>
+
+      <li class="border-t border-stone-200/80 py-10 md:py-12 grid md:grid-cols-12 gap-4 md:gap-8">
+        <span class="md:col-span-1 serif text-3xl text-brand/30 font-bold">02</span>
+        <div class="md:col-span-11">
+          <h3 class="serif text-2xl font-semibold" data-i18n="belief.2.title">有趣，比勤奋更重要</h3>
+          <p class="mt-3 text-stone-600 leading-relaxed max-w-xl" data-i18n="belief.2.body">
+            读你真正想了解的东西。兴趣降低压力，压力一降，输入才进得去。无聊的材料再「正确」，也撑不久。
+          </p>
+        </div>
+      </li>
+
+      <li class="border-t border-stone-200/80 py-10 md:py-12 grid md:grid-cols-12 gap-4 md:gap-8">
+        <span class="md:col-span-1 serif text-3xl text-brand/30 font-bold">03</span>
+        <div class="md:col-span-11">
+          <h3 class="serif text-2xl font-semibold" data-i18n="belief.3.title">刚好能懂大半，略难一点</h3>
+          <p class="mt-3 text-stone-600 leading-relaxed max-w-xl" data-i18n="belief.3.body">
+            太简单长不了，太难会挫败。合适的内容是：大部分能懂，偶尔卡住——卡住处可以点开，不必中断整段阅读。
+          </p>
+        </div>
+      </li>
+
+      <li class="border-t border-stone-200/80 py-10 md:py-12 grid md:grid-cols-12 gap-4 md:gap-8">
+        <span class="md:col-span-1 serif text-3xl text-brand/30 font-bold">04</span>
+        <div class="md:col-span-11">
+          <h3 class="serif text-2xl font-semibold" data-i18n="belief.4.title">输入在前，输出在后</h3>
+          <p class="mt-3 text-stone-600 leading-relaxed max-w-xl" data-i18n="belief.4.body">
+            先大量听读，再温和地表达。过早逼口语，容易把错误练死。Elynd 的练习出现在你已经理解内容之后。
+          </p>
+        </div>
+      </li>
+
+      <li class="border-t border-b border-stone-200/80 py-10 md:py-12 grid md:grid-cols-12 gap-4 md:gap-8">
+        <span class="md:col-span-1 serif text-3xl text-brand/30 font-bold">05</span>
+        <div class="md:col-span-11">
+          <h3 class="serif text-2xl font-semibold" data-i18n="belief.5.title">长期小剂量，胜过短期猛攻</h3>
+          <p class="mt-3 text-stone-600 leading-relaxed max-w-xl" data-i18n="belief.5.body">
+            每天 5、10、20 分钟，能持续发生，就胜过一份坚持不了的一小时计划。能力来自积累，不是来自某一周的爆发。
+          </p>
+        </div>
+      </li>
+
+    </ol>
+
+    <p class="reveal mt-10 text-sm text-stone-400 max-w-2xl leading-relaxed" data-i18n="belief.footnote">
+      这些想法站在可理解输入与大量真实内容的传统上——包括语言习得研究中的 comprehensible input，以及多语学习者长期强调的「内容为王」。我们关心的是：你能不能每天继续读下去。
+    </p>
+
+  </div>
+</section>
+
+
+<!-- ========== 5. How Elynd embodies the belief ========== -->
+<section id="embody" class="bg-paper/50" data-i18n-ns="embody">
+  <div class="max-w-content mx-auto px-6 md:px-10 py-28 md:py-36">
+
+    <div class="reveal max-w-2xl">
+      <p class="text-brand text-sm font-medium tracking-[0.16em] uppercase mb-5" data-i18n="embody.eyebrow">理念如何变成产品</p>
+      <h2 class="serif text-3xl md:text-5xl font-bold leading-tight" data-i18n="embody.title">
+        产品形态，是信仰的结果。
+      </h2>
+      <p class="mt-6 text-lg text-stone-600 leading-relaxed" data-i18n="embody.lead">
+        我们不堆功能。每一块设计，都对应上面的一条相信。
+      </p>
+    </div>
+
+    <div class="reveal mt-16 md:mt-20 max-w-3xl space-y-0">
+
+      <div class="border-t border-stone-200/70 py-8 md:py-10 grid md:grid-cols-2 gap-3 md:gap-10">
+        <p class="text-stone-500" data-i18n="embody.a1">相信有趣真实内容</p>
+        <p class="text-ink font-medium leading-relaxed" data-i18n="embody.b1">从故事与文章开始，而不是从词表开始。</p>
+      </div>
+      <div class="border-t border-stone-200/70 py-8 md:py-10 grid md:grid-cols-2 gap-3 md:gap-10">
+        <p class="text-stone-500" data-i18n="embody.a2">相信刚好能懂大半</p>
+        <p class="text-ink font-medium leading-relaxed" data-i18n="embody.b2">选择略高于当前水平的材料，让你既不飘也不崩。</p>
+      </div>
+      <div class="border-t border-stone-200/70 py-8 md:py-10 grid md:grid-cols-2 gap-3 md:gap-10">
+        <p class="text-stone-500" data-i18n="embody.a3">相信卡住不该打断沉浸</p>
+        <p class="text-ink font-medium leading-relaxed" data-i18n="embody.b3">点开陌生表达即可理解——工具只为让你吃下更多内容，不是替你学。</p>
+      </div>
+      <div class="border-t border-stone-200/70 py-8 md:py-10 grid md:grid-cols-2 gap-3 md:gap-10">
+        <p class="text-stone-500" data-i18n="embody.a4">相信一份内容可以走完循环</p>
+        <p class="text-ink font-medium leading-relaxed" data-i18n="embody.b4">同一篇：阅读 → 听力 → 理解确认 → 温和表达。加深连接，而不是每天刷新题。</p>
+      </div>
+      <div class="border-t border-b border-stone-200/70 py-8 md:py-10 grid md:grid-cols-2 gap-3 md:gap-10">
+        <p class="text-stone-500" data-i18n="embody.a5">相信重要表达会再遇见</p>
+        <p class="text-ink font-medium leading-relaxed" data-i18n="embody.b5">Review 让内容在合适的时间回来——为了留下，不是为了打卡。</p>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ========== 6. Product spaces as evidence ========== -->
+<section id="proof" class="border-t border-stone-200/60" data-i18n-ns="proof">
+  <div class="max-w-content mx-auto px-6 md:px-10 py-28 md:py-36">
+
+    <div class="reveal max-w-2xl">
+      <p class="text-brand text-sm font-medium tracking-[0.16em] uppercase mb-5" data-i18n="proof.eyebrow">如何做到</p>
+      <h2 class="serif text-3xl md:text-5xl font-bold leading-tight" data-i18n="proof.title">
+        四个空间，都在服务同一件事：<br class="hidden md:block">让你持续理解真实英语。
+      </h2>
+      <p class="mt-6 text-lg text-stone-600 leading-relaxed" data-i18n="proof.lead">
+        不是功能清单。每一块只回答：它服务哪条理念。
+      </p>
+    </div>
+
+    <div class="reveal mt-14 flex flex-wrap gap-2" role="tablist" aria-label="Product spaces as evidence">
+      <button type="button" role="tab" aria-selected="true" data-tab="room" class="tab-btn is-active px-5 py-2.5 rounded-full text-sm font-medium bg-stone-100 text-stone-700 transition-all duration-400">Learning Room</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="practice" class="tab-btn px-5 py-2.5 rounded-full text-sm font-medium bg-stone-100 text-stone-700 transition-all duration-400">Practice</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="review" class="tab-btn px-5 py-2.5 rounded-full text-sm font-medium bg-stone-100 text-stone-700 transition-all duration-400">Review</button>
+      <button type="button" role="tab" aria-selected="false" data-tab="progress" class="tab-btn px-5 py-2.5 rounded-full text-sm font-medium bg-stone-100 text-stone-700 transition-all duration-400">Progress</button>
+    </div>
+
+    <div class="reveal mt-10">
+
+      <div id="panel-room" class="product-panel is-active" role="tabpanel">
+        <div class="grid lg:grid-cols-5 gap-10 items-center">
+          <div class="lg:col-span-2">
+            <p class="text-sm text-brand mb-3" data-i18n="proof.room.belief">服务：有趣内容 · 可理解输入</p>
+            <h3 class="serif text-2xl md:text-3xl font-semibold" data-i18n="proof.room.title">Learning Room</h3>
+            <p class="mt-4 text-stone-600 leading-relaxed" data-i18n="proof.room.body">
+              安静地读。点选陌生表达，即时弄懂，不打断沉浸。同一篇也可听——输入为主，工具只负责降低阻力。
+            </p>
+          </div>
+          <div class="lg:col-span-3 p-2 rounded-[1.75rem] bg-stone-900/[0.03] ring-1 ring-stone-900/5">
+            <div class="bg-white rounded-[calc(1.75rem-0.5rem)] p-8 md:p-10 min-h-[260px]">
+              <p class="text-[11px] text-brand tracking-[0.14em] uppercase mb-3">Chapter 3 · 刚好能懂</p>
+              <h4 class="serif text-2xl font-semibold">The Hidden World of Oceans</h4>
+              <p class="mt-6 text-stone-600 leading-[1.9] max-w-xl">
+                Most of the ocean remains unexplored. Scientists estimate that more than eighty percent of it has never been mapped or seen by human eyes.
+              </p>
+              <div class="mt-8 flex gap-3">
+                <span class="px-4 py-2 rounded-xl bg-paper text-sm text-stone-600">阅读</span>
+                <span class="px-4 py-2 rounded-xl bg-stone-50 text-sm text-stone-500">听力</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="panel-practice" class="product-panel" role="tabpanel" hidden>
+        <div class="grid lg:grid-cols-5 gap-10 items-center">
+          <div class="lg:col-span-2">
+            <p class="text-sm text-brand mb-3" data-i18n="proof.practice.belief">服务：输入在前，输出在后</p>
+            <h3 class="serif text-2xl md:text-3xl font-semibold" data-i18n="proof.practice.title">Practice</h3>
+            <p class="mt-4 text-stone-600 leading-relaxed" data-i18n="proof.practice.body">
+              读懂之后，再用温和练习确认理解。不是刷题竞赛——是把已经进入的内容，变成你自己的表达。
+            </p>
+          </div>
+          <div class="lg:col-span-3 p-2 rounded-[1.75rem] bg-stone-900/[0.03] ring-1 ring-stone-900/5">
+            <div class="bg-white rounded-[calc(1.75rem-0.5rem)] p-8 md:p-10 min-h-[260px]">
+              <div class="flex items-center justify-between mb-6">
+                <p class="text-sm text-brand">理解之后 · 轻量确认</p>
+                <p class="text-sm text-stone-400">1 / 3</p>
+              </div>
+              <h4 class="serif text-xl font-semibold leading-snug">What is the main idea of this article?</h4>
+              <div class="mt-6 space-y-3">
+                <div class="px-4 py-3.5 rounded-xl bg-paper ring-1 ring-brand/20 text-sm text-ink">Oceans remain largely unexplored</div>
+                <div class="px-4 py-3.5 rounded-xl bg-stone-50 text-sm text-stone-500">Ocean animals are dangerous</div>
+                <div class="px-4 py-3.5 rounded-xl bg-stone-50 text-sm text-stone-500">The Moon is better studied than Earth</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="panel-review" class="product-panel" role="tabpanel" hidden>
+        <div class="grid lg:grid-cols-5 gap-10 items-center">
+          <div class="lg:col-span-2">
+            <p class="text-sm text-brand mb-3" data-i18n="proof.review.belief">服务：重要表达会再遇见</p>
+            <h3 class="serif text-2xl md:text-3xl font-semibold" data-i18n="proof.review.title">Review</h3>
+            <p class="mt-4 text-stone-600 leading-relaxed" data-i18n="proof.review.body">
+              不是机械背词。是在合适的时间，重新遇见你读过的表达——让它们留下来。
+            </p>
+          </div>
+          <div class="lg:col-span-3 p-2 rounded-[1.75rem] bg-stone-900/[0.03] ring-1 ring-stone-900/5">
+            <div class="bg-white rounded-[calc(1.75rem-0.5rem)] p-8 md:p-10 min-h-[260px]">
+              <div class="bg-paper rounded-2xl p-6 flex items-center justify-between gap-6">
+                <div>
+                  <p class="text-sm text-brand">再次遇见</p>
+                  <p class="serif text-xl font-semibold mt-2">The Hidden World of Oceans</p>
+                  <p class="mt-2 text-sm text-stone-500">12 个表达等待回来</p>
+                </div>
+                <div class="bg-white rounded-2xl px-5 py-4 text-center shrink-0">
+                  <p class="text-3xl font-semibold">12</p>
+                  <p class="text-xs text-stone-400 mt-1">今日</p>
+                </div>
+              </div>
+              <div class="mt-6">
+                <p class="text-sm text-brand mb-2">来自你读过的句子</p>
+                <p class="serif text-2xl font-semibold">mystery</p>
+                <p class="mt-2 text-sm text-stone-500">“The ocean is full of mysteries.”</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="panel-progress" class="product-panel" role="tabpanel" hidden>
+        <div class="grid lg:grid-cols-5 gap-10 items-center">
+          <div class="lg:col-span-2">
+            <p class="text-sm text-brand mb-3" data-i18n="proof.progress.belief">服务：长期小剂量</p>
+            <h3 class="serif text-2xl md:text-3xl font-semibold" data-i18n="proof.progress.title">Progress</h3>
+            <p class="mt-4 text-stone-600 leading-relaxed" data-i18n="proof.progress.body">
+              看见习惯如何形成。不是分数竞赛——是你与真实英语相处的时间。
+            </p>
+          </div>
+          <div class="lg:col-span-3 p-2 rounded-[1.75rem] bg-stone-900/[0.03] ring-1 ring-stone-900/5">
+            <div class="bg-white rounded-[calc(1.75rem-0.5rem)] p-8 md:p-10 min-h-[260px]">
+              <div class="bg-paper rounded-2xl p-6">
+                <p class="text-sm text-brand">持续发生</p>
+                <p class="serif text-2xl font-semibold mt-3 leading-snug">坚持 13 天，正在形成英语习惯</p>
+                <p class="mt-3 text-sm text-stone-500">通过真实内容接触英语 6 小时 24 分钟</p>
+              </div>
+              <div class="mt-6 grid grid-cols-3 gap-4">
+                <div>
+                  <p class="text-2xl font-semibold">42</p>
+                  <p class="text-xs text-stone-400 mt-1">篇内容</p>
+                </div>
+                <div>
+                  <p class="text-2xl font-semibold">186</p>
+                  <p class="text-xs text-stone-400 mt-1">个表达</p>
+                </div>
+                <div>
+                  <p class="text-2xl font-semibold">13</p>
+                  <p class="text-xs text-stone-400 mt-1">连续天数</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+
+<!-- ========== 7. Long-term + CTA ========== -->
+<section id="habit" data-i18n-ns="habit">
+  <div class="max-w-content mx-auto px-6 md:px-10 py-24 md:py-32">
+    <div class="reveal max-w-3xl mx-auto text-center">
+      <h2 class="serif text-3xl md:text-5xl font-bold leading-tight" data-i18n="habit.title">
+        最好的学习方式，<br class="hidden sm:block">是能够持续发生的学习方式。
+      </h2>
+    </div>
+
+    <div class="reveal mt-16 md:mt-20 flex flex-col md:flex-row items-center justify-center gap-10 md:gap-16">
+      <div class="text-center">
+        <p class="serif text-6xl md:text-7xl font-bold text-brand/90 tracking-tight">5</p>
+        <p class="mt-3 text-stone-500">分钟</p>
+      </div>
+      <div class="hidden md:block w-px h-16 bg-stone-200" aria-hidden="true"></div>
+      <div class="text-center">
+        <p class="serif text-6xl md:text-7xl font-bold text-brand/70 tracking-tight">10</p>
+        <p class="mt-3 text-stone-500">分钟</p>
+      </div>
+      <div class="hidden md:block w-px h-16 bg-stone-200" aria-hidden="true"></div>
+      <div class="text-center">
+        <p class="serif text-6xl md:text-7xl font-bold text-brand/50 tracking-tight">20</p>
+        <p class="mt-3 text-stone-500">分钟</p>
+      </div>
+    </div>
+
+    <p class="reveal mt-14 text-center text-lg text-stone-600 max-w-lg mx-auto leading-relaxed" data-i18n="habit.body">
+      开始读，而不是开始上课。长期积累，最终形成能力。
+    </p>
+  </div>
+</section>
+
+
+<section id="cta" class="pb-28 md:pb-36" data-i18n-ns="cta">
+  <div class="max-w-content mx-auto px-6 md:px-10">
+    <div class="reveal relative overflow-hidden rounded-[2rem] md:rounded-[2.5rem] bg-brand px-8 py-16 md:px-16 md:py-20 text-center text-white">
+      <div class="absolute inset-0 opacity-[0.07]" style="background-image:radial-gradient(circle at 20% 20%,#fff 0%,transparent 45%),radial-gradient(circle at 80% 80%,#fff 0%,transparent 40%)" aria-hidden="true"></div>
+      <div class="relative">
+        <h2 class="serif text-3xl md:text-4xl font-bold leading-tight" data-i18n="cta.title">
+          用你想读的内容，开始一段能持续的英语旅程
+        </h2>
+        <p class="mt-5 text-white/80 text-lg max-w-md mx-auto" data-i18n="cta.body">
+          每天 5–20 分钟。先读懂，再慢慢会。
+        </p>
+        <a href="#" class="group mt-10 inline-flex items-center gap-3 bg-white text-brand px-8 py-3.5 rounded-full font-medium transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-brand-soft active:scale-[0.98]" data-i18n="cta.button">
+          开始阅读
+          <span class="w-7 h-7 rounded-full bg-brand/10 flex items-center justify-center transition-transform duration-500 group-hover:translate-x-0.5">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </span>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<footer class="border-t border-stone-200/60">
+  <div class="max-w-content mx-auto px-6 md:px-10 py-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 text-sm text-stone-500">
+    <div class="flex items-center gap-3">
+      <span class="w-7 h-7 rounded-lg bg-brand-soft flex items-center justify-center">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+      </span>
+      <span class="text-ink font-medium">Elynd</span>
+    </div>
+    <p data-i18n="footer.tagline">语言从理解中生长 · 英语学习空间</p>
+    <p class="text-stone-400">© 2026 Elynd</p>
+  </div>
+</footer>
+
+
+<script>
+(function () {
+  const reveals = document.querySelectorAll('.reveal');
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add('is-visible');
+            io.unobserve(e.target);
+          }
+        });
+      },
+      { rootMargin: '0px 0px -8% 0px', threshold: 0.12 }
+    );
+    reveals.forEach((el) => io.observe(el));
+  } else {
+    reveals.forEach((el) => el.classList.add('is-visible'));
+  }
+
+  const tabs = document.querySelectorAll('.tab-btn');
+  const panels = {
+    room: document.getElementById('panel-room'),
+    practice: document.getElementById('panel-practice'),
+    review: document.getElementById('panel-review'),
+    progress: document.getElementById('panel-progress'),
+  };
+
+  tabs.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-tab');
+      tabs.forEach((t) => {
+        t.classList.remove('is-active');
+        t.setAttribute('aria-selected', 'false');
+      });
+      btn.classList.add('is-active');
+      btn.setAttribute('aria-selected', 'true');
+
+      Object.keys(panels).forEach((key) => {
+        const panel = panels[key];
+        if (!panel) return;
+        if (key === id) {
+          panel.hidden = false;
+          panel.classList.add('is-active');
+        } else {
+          panel.hidden = true;
+          panel.classList.remove('is-active');
+        }
+      });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

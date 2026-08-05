@@ -65,7 +65,7 @@ English imperative; one logical change; prefer subject-only. Format via commitli
 
 | Intent | Follow |
 | --- | --- |
-| New API feature / Nest module / table+endpoint | Playbook `create-api-feature` + `backend` + `packages` (apply even if globs not attached) |
+| New API feature / Nest module / table+endpoint | Skill `create-api-feature` + `backend` + `packages` (apply even if globs not attached) |
 | Web UI / `features/**` | `frontend` |
 | Package / schema ownership | `packages` + `layering` |
 | Add/delete/split/move files or dirs | `structure` |

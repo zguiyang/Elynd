@@ -8,7 +8,7 @@ alwaysApply: false
 
 NestJS, Better Auth (`@elynd/auth` + `@thallesp/nestjs-better-auth`), Drizzle (`@elynd/db`), Zod (`@elynd/shared`), Vitest.
 
-Placement: **`layering`** + **`structure`**. Auth contracts: `.trellis/spec/api/backend/auth-monorepo.md` when touching auth. New domain feature: playbook **`create-api-feature`**.
+Placement: **`layering`** + **`structure`**. Auth contracts: `.trellis/spec/api/backend/auth-monorepo.md` when touching auth. New domain feature: skill **`create-api-feature`**.
 
 ## Naming
 

@@ -19,6 +19,11 @@
       "types": "./src/env.ts",
       "import": "./dist/env.js",
       "default": "./dist/env.js"
+    },
+    "./policy": {
+      "types": "./src/policy.ts",
+      "import": "./dist/policy.js",
+      "default": "./dist/policy.js"
     }
   },
   "scripts": {

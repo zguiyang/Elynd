@@ -5,6 +5,7 @@ import { openAPI, username } from 'better-auth/plugins';
 import { accounts, sessions, setupDb, users, verifications } from '@elynd/db';
 
 import { authEnvSchema, parseTrustedOrigins } from './env.js';
+import { AUTH_PASSWORD_POLICY, AUTH_USERNAME_POLICY, isValidUsername } from './policy.js';
 import { AUTH_SESSION_CONFIG } from './session.config.js';
 
 /**
@@ -20,7 +21,9 @@ const db = setupDb(authEnv.DATABASE_URI);
 export const auth = betterAuth({
   plugins: [
     username({
-      maxUsernameLength: 50,
+      minUsernameLength: AUTH_USERNAME_POLICY.minLength,
+      maxUsernameLength: AUTH_USERNAME_POLICY.maxLength,
+      usernameValidator: isValidUsername,
     }),
     // Schema only for Apifox / openapi:gen — disable Scalar UI (docs live in Apifox).
     openAPI({
@@ -39,9 +42,8 @@ export const auth = betterAuth({
   secret: authEnv.AUTH_SECRET,
   emailAndPassword: {
     enabled: true,
-    // Explicit — matches Better Auth defaults and apps/web form Zod (min 8 / max 128).
-    minPasswordLength: 8,
-    maxPasswordLength: 128,
+    minPasswordLength: AUTH_PASSWORD_POLICY.minLength,
+    maxPasswordLength: AUTH_PASSWORD_POLICY.maxLength,
   },
   user: {
     modelName: 'users',
@@ -72,4 +74,5 @@ export type AuthUser = AuthSession['user'];
 
 export type { AuthEnvConfig } from './env.js';
 export { authEnvSchema, parseTrustedOrigins } from './env.js';
+export { AUTH_PASSWORD_POLICY, AUTH_USERNAME_POLICY, isValidUsername } from './policy.js';
 export { AUTH_SESSION_CONFIG } from './session.config.js';

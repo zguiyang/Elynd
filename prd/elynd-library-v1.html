@@ -1,203 +1,161 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Elynd Library</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://unpkg.com/lucide@latest"></script>
-<style>
-body{background:#FAF9F6;color:#1C1917;font-family:Inter,"Noto Sans SC",sans-serif}
-.serif{font-family:"Noto Serif SC",serif}
-.card{transition:.3s}
-.card:hover{transform:translateY(-4px)}
-.fade{animation:fade .6s ease}
-@keyframes fade{from{opacity:0;transform:translateY(12px)}to{opacity:1}}
-</style>
-</head>
-
-<body>
-<div class="min-h-screen p-10 fade">
-
-<header class="max-w-6xl mx-auto">
-
-<div class="flex justify-between items-center">
-<div>
-<div class="text-sm text-orange-700 mb-2">Library</div>
-<h1 class="serif text-4xl font-bold">探索英语内容</h1>
-<p class="mt-3 text-stone-500">选择你感兴趣的真实内容，开始一次新的英语旅程。</p>
-</div>
-
-<div class="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center">
-<i data-lucide="library" class="text-orange-700"></i>
-</div>
-</div>
-
-
-<div class="mt-8 bg-white border rounded-2xl px-6 py-4 flex items-center gap-3">
-<i data-lucide="search" class="text-stone-400"></i>
-<span class="text-stone-400">搜索文章、主题、书籍...</span>
-</div>
-
-</header>
-
-
-<main class="max-w-6xl mx-auto mt-10">
-
-
-<div class="flex gap-3">
-<button class="px-5 py-2 rounded-full bg-orange-700 text-white">推荐</button>
-<button class="px-5 py-2 rounded-full bg-white border">故事</button>
-<button class="px-5 py-2 rounded-full bg-white border">科学</button>
-<button class="px-5 py-2 rounded-full bg-white border">历史</button>
-<button class="px-5 py-2 rounded-full bg-white border">考试</button>
-</div>
-
-
-
-<section class="mt-10">
-
-<h2 class="serif text-2xl font-bold">继续学习</h2>
-
-
-<div class="mt-5 grid grid-cols-3 gap-6">
-
-<div class="card bg-white border rounded-[32px] p-6">
-
-<div class="h-36 rounded-2xl bg-[#F3EEE2] flex items-center justify-center">
-<i data-lucide="waves" class="w-12 h-12 text-orange-700"></i>
-</div>
-
-<h3 class="font-bold text-xl mt-5">The Hidden World of Oceans</h3>
-
-<div class="flex justify-between text-sm text-stone-500 mt-3">
-<span>B1 · Science</span>
-<span>45%</span>
-</div>
-
-<div class="mt-4 h-2 bg-stone-100 rounded">
-<div class="h-2 bg-orange-700 rounded w-[45%]"></div>
-</div>
-
-</div>
-
-</div>
-
-</section>
-
-
-
-
-<section class="mt-12">
-
-<h2 class="serif text-2xl font-bold">为你推荐</h2>
-
-<div class="grid grid-cols-3 gap-6 mt-5">
-
-
-<div class="card bg-white border rounded-[32px] p-6">
-
-<div class="h-40 rounded-2xl bg-[#EEE8DC] flex items-center justify-center">
-<i data-lucide="brain" class="w-12 h-12 text-orange-700"></i>
-</div>
-
-<h3 class="font-bold text-xl mt-5">
-The Psychology of Habits
-</h3>
-
-<p class="text-stone-500 text-sm mt-3">
-了解习惯形成背后的科学。
-</p>
-
-
-<div class="mt-5 flex gap-2">
-<span class="px-3 py-1 bg-stone-50 rounded-full text-xs">B1</span>
-<span class="px-3 py-1 bg-stone-50 rounded-full text-xs">10分钟</span>
-</div>
-
-
-<button class="mt-6 w-full py-3 rounded-xl bg-orange-700 text-white">
-开始学习
-</button>
-
-</div>
-
-
-
-<div class="card bg-white border rounded-[32px] p-6">
-
-<div class="h-40 rounded-2xl bg-[#F3EEE2] flex items-center justify-center">
-<i data-lucide="globe" class="w-12 h-12 text-orange-700"></i>
-</div>
-
-<h3 class="font-bold text-xl mt-5">
-Stories Around The World
-</h3>
-
-<p class="text-stone-500 text-sm mt-3">
-探索不同文化中的英语故事。
-</p>
-
-<div class="mt-5 flex gap-2">
-<span class="px-3 py-1 bg-stone-50 rounded-full text-xs">A2</span>
-<span class="px-3 py-1 bg-stone-50 rounded-full text-xs">8分钟</span>
-</div>
-
-</div>
-
-
-
-<div class="card bg-white border rounded-[32px] p-6">
-
-<div class="h-40 rounded-2xl bg-[#EEE8DC] flex items-center justify-center">
-<i data-lucide="rocket" class="w-12 h-12 text-orange-700"></i>
-</div>
-
-<h3 class="font-bold text-xl mt-5">
-Future Technology
-</h3>
-
-<p class="text-stone-500 text-sm mt-3">
-人工智能与未来生活。
-</p>
-
-<div class="mt-5 flex gap-2">
-<span class="px-3 py-1 bg-stone-50 rounded-full text-xs">B2</span>
-<span class="px-3 py-1 bg-stone-50 rounded-full text-xs">15分钟</span>
-</div>
-
-</div>
-
-
-</div>
-
-</section>
-
-
-
-<section class="mt-12 bg-[#F3EEE2] rounded-[36px] p-8 flex justify-between items-center">
-
-<div>
-<div class="text-sm text-orange-700">AI 推荐</div>
-<h2 class="serif text-2xl font-bold mt-3">
-根据你的学习历史，为你挑选下一篇内容
-</h2>
-<p class="mt-3 text-stone-600">
-你的阅读偏好：科学、故事、中级英语。
-</p>
-</div>
-
-<button class="bg-orange-700 text-white px-6 py-3 rounded-xl">
-查看推荐
-</button>
-
-</section>
-
-
-</main>
-
-</div>
-
-<script>lucide.createIcons()</script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Elynd Library</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+      body {
+        background: #faf9f6;
+        color: #1c1917;
+        font-family: Inter, 'Noto Sans SC', sans-serif;
+      }
+      .serif {
+        font-family: 'Noto Serif SC', serif;
+      }
+      .card {
+        transition: 0.3s;
+      }
+      .card:hover {
+        transform: translateY(-4px);
+      }
+      .fade {
+        animation: fade 0.6s ease;
+      }
+      @keyframes fade {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="min-h-screen p-10 fade">
+      <header class="max-w-6xl mx-auto">
+        <div class="flex justify-between items-center">
+          <div>
+            <div class="text-sm text-orange-700 mb-2">Library</div>
+            <h1 class="serif text-4xl font-bold">探索英语内容</h1>
+            <p class="mt-3 text-stone-500">选择你感兴趣的真实内容，开始一次新的英语旅程。</p>
+          </div>
+
+          <div class="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center">
+            <i data-lucide="library" class="text-orange-700"></i>
+          </div>
+        </div>
+
+        <div class="mt-8 bg-white border rounded-2xl px-6 py-4 flex items-center gap-3">
+          <i data-lucide="search" class="text-stone-400"></i>
+          <span class="text-stone-400">搜索文章、主题、书籍...</span>
+        </div>
+      </header>
+
+      <main class="max-w-6xl mx-auto mt-10">
+        <div class="flex gap-3">
+          <button class="px-5 py-2 rounded-full bg-orange-700 text-white">推荐</button>
+          <button class="px-5 py-2 rounded-full bg-white border">故事</button>
+          <button class="px-5 py-2 rounded-full bg-white border">科学</button>
+          <button class="px-5 py-2 rounded-full bg-white border">历史</button>
+          <button class="px-5 py-2 rounded-full bg-white border">考试</button>
+        </div>
+
+        <section class="mt-10">
+          <h2 class="serif text-2xl font-bold">继续学习</h2>
+
+          <div class="mt-5 grid grid-cols-3 gap-6">
+            <div class="card bg-white border rounded-[32px] p-6">
+              <div class="h-36 rounded-2xl bg-[#F3EEE2] flex items-center justify-center">
+                <i data-lucide="waves" class="w-12 h-12 text-orange-700"></i>
+              </div>
+
+              <h3 class="font-bold text-xl mt-5">The Hidden World of Oceans</h3>
+
+              <div class="flex justify-between text-sm text-stone-500 mt-3">
+                <span>B1 · Science</span>
+                <span>45%</span>
+              </div>
+
+              <div class="mt-4 h-2 bg-stone-100 rounded">
+                <div class="h-2 bg-orange-700 rounded w-[45%]"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="mt-12">
+          <h2 class="serif text-2xl font-bold">为你推荐</h2>
+
+          <div class="grid grid-cols-3 gap-6 mt-5">
+            <div class="card bg-white border rounded-[32px] p-6">
+              <div class="h-40 rounded-2xl bg-[#EEE8DC] flex items-center justify-center">
+                <i data-lucide="brain" class="w-12 h-12 text-orange-700"></i>
+              </div>
+
+              <h3 class="font-bold text-xl mt-5">The Psychology of Habits</h3>
+
+              <p class="text-stone-500 text-sm mt-3">了解习惯形成背后的科学。</p>
+
+              <div class="mt-5 flex gap-2">
+                <span class="px-3 py-1 bg-stone-50 rounded-full text-xs">B1</span>
+                <span class="px-3 py-1 bg-stone-50 rounded-full text-xs">10分钟</span>
+              </div>
+
+              <button class="mt-6 w-full py-3 rounded-xl bg-orange-700 text-white">开始学习</button>
+            </div>
+
+            <div class="card bg-white border rounded-[32px] p-6">
+              <div class="h-40 rounded-2xl bg-[#F3EEE2] flex items-center justify-center">
+                <i data-lucide="globe" class="w-12 h-12 text-orange-700"></i>
+              </div>
+
+              <h3 class="font-bold text-xl mt-5">Stories Around The World</h3>
+
+              <p class="text-stone-500 text-sm mt-3">探索不同文化中的英语故事。</p>
+
+              <div class="mt-5 flex gap-2">
+                <span class="px-3 py-1 bg-stone-50 rounded-full text-xs">A2</span>
+                <span class="px-3 py-1 bg-stone-50 rounded-full text-xs">8分钟</span>
+              </div>
+            </div>
+
+            <div class="card bg-white border rounded-[32px] p-6">
+              <div class="h-40 rounded-2xl bg-[#EEE8DC] flex items-center justify-center">
+                <i data-lucide="rocket" class="w-12 h-12 text-orange-700"></i>
+              </div>
+
+              <h3 class="font-bold text-xl mt-5">Future Technology</h3>
+
+              <p class="text-stone-500 text-sm mt-3">人工智能与未来生活。</p>
+
+              <div class="mt-5 flex gap-2">
+                <span class="px-3 py-1 bg-stone-50 rounded-full text-xs">B2</span>
+                <span class="px-3 py-1 bg-stone-50 rounded-full text-xs">15分钟</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="mt-12 bg-[#F3EEE2] rounded-[36px] p-8 flex justify-between items-center">
+          <div>
+            <div class="text-sm text-orange-700">AI 推荐</div>
+            <h2 class="serif text-2xl font-bold mt-3">根据你的学习历史，为你挑选下一篇内容</h2>
+            <p class="mt-3 text-stone-600">你的阅读偏好：科学、故事、中级英语。</p>
+          </div>
+
+          <button class="bg-orange-700 text-white px-6 py-3 rounded-xl">查看推荐</button>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      lucide.createIcons();
+    </script>
+  </body>
 </html>

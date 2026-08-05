@@ -26,10 +26,11 @@ Filled Trellis notes (directory/state only): [`.trellis/spec/web/frontend/`](../
 | Design system | `components/ui/` | shadcn atoms only |
 | Shared non-feature UI | `components/` | providers/shell — not domain workflows |
 | Auth client | `lib/auth/` | thin wrapper around `@elynd/auth/client` |
-| Server state | `lib/query/` | TanStack Query (when needed) |
-| Client UI state | `stores/` | Zustand — UI only (add when a real UI-state need appears) |
-| Validation | `lib/validations/` | form-local Zod; **shared** contracts → `@elynd/shared` |
+| Server state | `lib/query/` | TanStack Query (provider may exist before first `useQuery`) |
+| Client UI state | `stores/` | Zustand — UI only (**create when a real UI-state need appears**) |
+| Validation | `lib/validations/` | form-local Zod; auth limits from `@elynd/auth/policy`; cross-app contracts → `@elynd/shared` |
 | Constants | `constants/` | app-wide literals used 2+ times |
+| Static assets | `public/` | optional; empty dir kept with `.gitkeep` |
 
 - Prefer existing `components/ui/`; add via shadcn CLI; custom only when the system cannot meet the need
 - Ask before editing `components/ui/**` source (see `decisions.mdc` §8)
@@ -45,6 +46,7 @@ Filled Trellis notes (directory/state only): [`.trellis/spec/web/frontend/`](../
 
 - Cookie session via same-origin `/api` rewrite to Nest (see `next.config.ts`)
 - Prefer `@elynd/auth` inferred types (`AuthUser` / session shapes); do not reintroduce Bearer/`localStorage` token helpers unless a task explicitly changes auth mode
+- Auth form password/username bounds: import `@elynd/auth/policy` — do not re-declare min/max/regex literals in web Zod
 
 ## Lint
 

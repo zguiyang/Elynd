@@ -26,6 +26,7 @@ Auth executable contracts: [`.trellis/spec/api/backend/auth-monorepo.md`](../../
 | `src/modules/<domain>/` | Feature modules — business workflows. Create this directory when the first domain lands; do **not** pre-create an empty `modules/` folder |
 | `src/common/` | Transport cross-cutting: pipes, filters, decorators — **no** domain workflows (flat; no artifact-type subfolders) |
 | `src/global/` | Global DI assembly (`global.module.ts`) and colocated global providers |
+| `scripts/` | Offline TypeScript tooling (e.g. OpenAPI gen) — not HTTP runtime; run with `pnpm exec tsx` (see `openapi:gen`). Included in `tsconfig.json` for IDE/typecheck; excluded from Nest `tsconfig.build.json` emit |
 
 - Thin controllers: validate + map HTTP; business rules in injectable services
 - Auth instance lives in `@elynd/auth/server`; wire via `AuthModule.forRoot` in `AppModule`. Load env before importing auth (`load-env.ts`)
@@ -37,7 +38,8 @@ Auth executable contracts: [`.trellis/spec/api/backend/auth-monorepo.md`](../../
 
 - Prefer shared Zod helpers from `@elynd/shared/schemas` (pagination, common shapes)
 - Compose feature HTTP DTOs from `@elynd/db` drizzle-zod in the feature module
-- Use project Zod validation pipe in `src/common`; generate OpenAPI via `openapi:gen` (`createOpenApiDocument`) for Apifox — do not mount Swagger UI
+- Use project Zod validation pipe in `src/common`; generate OpenAPI via `openapi:gen` → `scripts/generate-openapi.ts` with `pnpm exec tsx` (`createOpenApiDocument`) for Apifox — do not mount Swagger UI
+- Swagger DTO `@ApiProperty` must set explicit `type` when scripts run under tsx (no `emitDecoratorMetadata`)
 - Do not duplicate the same request/response schema in the web app — put cross-app contracts in `@elynd/shared`
 
 ## Env

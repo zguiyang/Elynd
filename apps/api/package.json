@@ -13,7 +13,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "pnpm -w exec eslint apps/api",
-    "openapi:gen": "pnpm --filter @elynd/db build && pnpm --filter @elynd/auth build && pnpm --filter @elynd/shared build && nest build && node dist/generate-openapi.js"
+    "openapi:gen": "pnpm --filter @elynd/db build && pnpm --filter @elynd/auth build && pnpm --filter @elynd/shared build && pnpm exec tsx scripts/generate-openapi.ts"
   },
   "dependencies": {
     "@elynd/auth": "workspace:*",
@@ -38,6 +38,7 @@
     "@types/express": "^5.0.0",
     "@types/node": "^22.19.7",
     "eslint": "^9",
+    "tsx": "^4.23.6",
     "typescript": "^5.8.3",
     "unplugin-swc": "^1.5.7",
     "vite-tsconfig-paths": "^5.1.4",

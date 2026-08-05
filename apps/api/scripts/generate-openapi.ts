@@ -1,8 +1,10 @@
 /**
- * Offline OpenAPI generator for Apifox import.
+ * Offline OpenAPI generator for Apifox import (not part of the Nest HTTP runtime).
  * Env must load before AppModule pulls in `@elynd/auth/server`.
+ *
+ * Run via: pnpm --filter @elynd/api openapi:gen (tsx)
  */
-import './load-env.js';
+import '../src/load-env.js';
 
 import { writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -11,8 +13,8 @@ import { fileURLToPath } from 'node:url';
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 
-import { AppModule } from './app.module.js';
-import { applyApiGlobalPrefix, createOpenApiDocument } from './openapi-document.js';
+import { AppModule } from '../src/app.module.js';
+import { applyApiGlobalPrefix, createOpenApiDocument } from '../src/openapi-document.js';
 
 async function generateOpenApi() {
   const logger = new Logger('OpenApiGen');

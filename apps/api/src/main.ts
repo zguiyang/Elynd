@@ -10,7 +10,7 @@ import { NestFactory } from '@nestjs/core';
 import { parseTrustedOrigins } from '@elynd/auth/env';
 
 import { AppModule } from './app.module.js';
-import { resolveCorsOrigin } from './config/cors-origin.js';
+import { resolveCorsOrigin } from './cors-origin.js';
 import { applyApiGlobalPrefix } from './openapi-document.js';
 
 async function bootstrap() {

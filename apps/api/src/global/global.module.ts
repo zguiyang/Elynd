@@ -2,8 +2,8 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER } from '@nestjs/core';
 
-import { GlobalExceptionFilter } from '../common/filters/global-exception.filter.js';
-import { DB, DbProvider } from './providers/db.provider.js';
+import { GlobalExceptionFilter } from '../common/global-exception.filter.js';
+import { DB, DbProvider } from './db.provider.js';
 
 @Global()
 @Module({

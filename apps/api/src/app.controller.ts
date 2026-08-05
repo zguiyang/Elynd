@@ -3,7 +3,8 @@ import { ApiOkResponse, ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagg
 import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
 
 class HealthResponseDto {
-  @ApiProperty({ example: 'ok', description: 'Service health indicator' })
+  // Explicit `type` — required when generating OpenAPI via tsx (no emitDecoratorMetadata).
+  @ApiProperty({ type: String, example: 'ok', description: 'Service health indicator' })
   status!: string;
 }
 

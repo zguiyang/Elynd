@@ -17,7 +17,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc",
     "typecheck": "tsc --noEmit",
     "lint": "pnpm -w exec eslint packages/db",
     "db:push": "drizzle-kit push"

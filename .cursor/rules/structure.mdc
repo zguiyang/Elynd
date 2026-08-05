@@ -1,0 +1,57 @@
+---
+description: When to create, delete, split, move files or directories (always-on)
+alwaysApply: true
+---
+
+# Structure
+
+Use **Condition → Action → Verification** for create/delete/move/split. Ask-first list: `core`.
+
+## Add code
+
+| Condition | Action | Verify |
+| --- | --- | --- |
+| Same type/role already in file | Merge | No duplicate defs |
+| No same type + **2+** consumers | New file OK | All import it |
+| No same type + **1** consumer | Inline | No new file |
+
+Partial overlap → extend existing type; no parallel type.
+
+## Add file
+
+| Condition | Action | Verify |
+| --- | --- | --- |
+| Same role in target dir | Merge into that file | One file per role |
+| No same role + 2+ consumers | Create | Consumers import path |
+| No same role + 1 consumer | Do **not** create | Stay inline |
+
+## Delete
+
+`grep` symbol/path first (**tests count**). Has refs → update callers, then delete. No refs → delete; clean barrels. Verify typecheck; no dangling imports.
+
+## Split
+
+Mixed unrelated concerns → split. Long but cohesive → **do not** split (not for line count).
+
+## Move / promote shared
+
+**2+** modules → shared location those consumers can import. **1** module → keep colocated. Never promote to `packages/*` for a hypothetical second consumer.
+
+## Directories
+
+**Flat is default.** Name by domain/concern (`kebab-case`), not artifact type (`components/cards/`, catch-all `utils/`).
+
+| Would-be files | Action |
+| --- | --- |
+| 1–2 | Do not create dir; keep flat |
+| 3+ | Create only with business/domain name |
+
+Exception: framework trees (Next `app/`, Nest module folders).
+
+| Existing dir files | Action |
+| --- | --- |
+| 1 | Flatten; delete dir |
+| 2 | Flatten unless framework requires |
+| 3+ | Keep; barrel optional if ≥5 public exports |
+
+Soft ceiling: ≤10 flat OK; 11–15 nest only with clear subdomain; 16+ nest by subdomain.

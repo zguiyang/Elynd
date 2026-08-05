@@ -4,48 +4,44 @@ globs: apps/api/**
 alwaysApply: false
 ---
 
-# Backend Rules (`apps/api`)
+# Backend (`apps/api`)
 
-Stack: NestJS, Better Auth (cookie session via `@elynd/auth` + `@thallesp/nestjs-better-auth`), Drizzle (`@elynd/db`), Zod (`@elynd/shared`), Vitest.
+NestJS, Better Auth (`@elynd/auth` + `@thallesp/nestjs-better-auth`), Drizzle (`@elynd/db`), Zod (`@elynd/shared`), Vitest.
 
-Placement and package boundaries: **`layering.mdc`** + **`decisions.mdc`** (framework-agnostic; follow those first).
+Placement: **`layering`** + **`structure`**. Auth contracts: `.trellis/spec/api/backend/auth-monorepo.md` when touching auth. New domain feature: playbook **`create-api-feature`**.
 
-Auth executable contracts: [`.trellis/spec/api/backend/auth-monorepo.md`](../../.trellis/spec/api/backend/auth-monorepo.md) when touching auth.
+## Naming
+
+Nest **dot.role**: `auth.controller.ts`, `auth.service.ts`, `auth.module.ts` — not bare `route.ts` / `service.ts`.
 
 ## TypeScript
 
-- Extend `../../tsconfig.base.json`; keep Nest-only flags (`experimentalDecorators`, `emitDecoratorMetadata`, …) in this app's `tsconfig.json`
-- Keep `outDir` / `rootDir` / `include` / `types` local
-- **Imports (N1):** relative NodeNext imports with `.js` suffixes inside the API. Do **not** enable `@/` path aliases in emitted code until a Nest emit rewrite (e.g. `tsc-alias`) is added
-- **Nest DI + `import type`:** constructor-injected classes/tokens must remain **value** imports. Prefer `@Inject(Token)` so `consistent-type-imports` does not erase runtime tokens. Pure type-only imports are fine for interfaces and for params already tagged with `@Inject(…)`
+- Extend `../../tsconfig.base.json`; Nest-only flags stay in this app's `tsconfig.json`
+- **Imports:** relative NodeNext with `.js` suffixes. No `@/` aliases until emit rewrite exists
+- **DI:** constructor-injected classes/tokens = **value** imports; prefer `@Inject(Token)`. `import type` OK for pure types
 
-## Layout (Nest mapping of layering)
+## Layout
 
 | Folder | Role |
-| ------ | ---- |
-| `src/modules/<domain>/` | Feature modules — business workflows. Create this directory when the first domain lands; do **not** pre-create an empty `modules/` folder |
-| `src/common/` | Transport cross-cutting: pipes, filters, decorators — **no** domain workflows (flat; no artifact-type subfolders) |
-| `src/global/` | Global DI assembly (`global.module.ts`) and colocated global providers |
-| `scripts/` | Offline TypeScript tooling (e.g. OpenAPI gen) — not HTTP runtime; run with `pnpm exec tsx` (see `openapi:gen`). Included in `tsconfig.json` for IDE/typecheck; excluded from Nest `tsconfig.build.json` emit |
+| --- | --- |
+| `src/modules/<domain>/` | Feature modules — create when first domain lands; do not pre-create empty `modules/` |
+| `src/common/` | Pipes, filters, decorators — no domain workflows (flat) |
+| `src/global/` | `global.module.ts` + global providers |
+| `scripts/` | Offline TS (e.g. OpenAPI gen) via `pnpm exec tsx`; in `tsconfig.json`, excluded from `tsconfig.build.json` |
 
-- Thin controllers: validate + map HTTP; business rules in injectable services
-- Auth instance lives in `@elynd/auth/server`; wire via `AuthModule.forRoot` in `AppModule`. Load env before importing auth (`load-env.ts`)
-- Prefer `@elynd/auth` inferred types (`AuthUser` / `AuthSession`); do not reinvent session user shapes in apps
-- Tech helpers with zero domain knowledge may live under `common/` or small dedicated folders — never import feature modules from tech helpers
-- Do not use Adonis-style Access Token auth on the Nest path
+- Thin controllers: validate + map HTTP; rules in injectable services
+- Auth in `@elynd/auth/server`; `AuthModule.forRoot` in `AppModule`; `load-env.ts` before auth import
+- Prefer `@elynd/auth` types (`AuthUser` / `AuthSession`); no Adonis Access Token on Nest path
+- Tech helpers never import feature modules
 
 ## Validation & OpenAPI
 
-- Prefer shared Zod helpers from `@elynd/shared/schemas` (pagination, common shapes)
-- Compose feature HTTP DTOs from `@elynd/db` drizzle-zod in the feature module
-- Use project Zod validation pipe in `src/common`; generate OpenAPI via `openapi:gen` → `scripts/generate-openapi.ts` with `pnpm exec tsx` (`createOpenApiDocument`) for Apifox — do not mount Swagger UI
-- Swagger DTO `@ApiProperty` must set explicit `type` when scripts run under tsx (no `emitDecoratorMetadata`)
-- Do not duplicate the same request/response schema in the web app — put cross-app contracts in `@elynd/shared`
+- Shared Zod helpers from `@elynd/shared/schemas` when applicable
+- Feature HTTP DTOs from `@elynd/db` drizzle-zod in the feature module
+- Project Zod pipe in `src/common`; OpenAPI via `openapi:gen` → `scripts/generate-openapi.ts` (`createOpenApiDocument`) for Apifox — no Swagger UI
+- `@ApiProperty` needs explicit `type` under tsx (no `emitDecoratorMetadata`)
+- Cross-app contracts → `@elynd/shared`, not duplicated in web
 
 ## Env
 
-Required auth-related keys: `DATABASE_URI`, `AUTH_SECRET`, `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS` (validated by `@elynd/auth/env`).
-
-## Lint
-
-Root `eslint.config.mjs` (run via `pnpm lint` / `pnpm -w exec eslint apps/api`).
+`DATABASE_URI`, `AUTH_SECRET`, `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS` via `@elynd/auth/env`.

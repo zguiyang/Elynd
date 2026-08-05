@@ -1,0 +1,37 @@
+---
+description: Playbook — scaffold a new Nest API domain feature (module, schema, DTO, tests). Use when creating an API module, Nest feature, domain endpoint, or drizzle table plus controller.
+alwaysApply: false
+---
+
+# Playbook: create API feature
+
+Apply **`backend`** + **`packages`** + **`layering`** even if those globs are not attached yet.
+
+**Template reality:** no `apps/api/src/modules/<domain>/` exists yet. First domain **creates** `src/modules/`. Mirror Nest layout in `backend.mdc`. Schema style: `packages/db/src/tables/auth.ts`.
+
+## Steps
+
+1. **Schema** — add/update table in `packages/db` (only persistence SoT). Export via package index as existing tables do.
+2. **Push schema** — `pnpm db:push` (or project migration flow) when the DB must match; ask first if it affects existing data.
+3. **HTTP DTOs** — compose feature request/response Zod from drizzle-zod in `apps/api` feature module. Cross-app contract → `@elynd/shared` only if **2+** apps need it.
+4. **Module files** under `apps/api/src/modules/<domain>/`:
+   - `<domain>.module.ts`
+   - `<domain>.controller.ts` (thin: validate + map HTTP)
+   - `<domain>.service.ts` (business rules)
+5. **Register** module in `AppModule` (and global providers only if truly global).
+6. **OpenAPI** — if the HTTP contract is exposed, regenerate via `openapi:gen` / project script; `@ApiProperty` needs explicit `type`.
+7. **Tests (TDD)** — failing test first for behavior; Vitest under api. Isolation rules in `core`.
+8. **Stop** — do not scaffold web unless the user asked. Downstream web is a separate change after API typechecks.
+
+## Verify
+
+```bash
+pnpm --filter api test
+pnpm typecheck
+```
+
+## Guardrails
+
+- No `shared → db`. No `apps/web` imports from api.
+- Do not pre-create empty `modules/` without a domain.
+- Do not duplicate env/policy/DTO facts — SSOT in `core`.

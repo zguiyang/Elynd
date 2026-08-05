@@ -1,0 +1,74 @@
+---
+description: Elynd constitution — principles, boundaries, DoD, router (always-on)
+alwaysApply: true
+---
+
+# Core
+
+Elynd: AI-assisted English reading for adults (graded reading, TTS, dictionary, article Q&A). Monorepo: `apps/api` (Nest **3336**), `apps/web` (Next **3000**), `packages/{db,auth,shared}`.
+
+Language: talk to the user in **Chinese**; code, docs, comments, commits in **English**.
+
+## Principles
+
+| | |
+| --- | --- |
+| KISS | Simplest readable solution; early returns |
+| YAGNI | No speculative abstractions |
+| DRY | Extract only after **three** stabilized uses |
+| SSOT | One authority per fact — import/derive, never a parallel copy |
+| SRP | One cohesive concern per module/file |
+| Fail Fast | Never swallow errors |
+| Determinism | Tests deterministic; prefer file-scoped checks |
+| Reversibility | Small blast radius |
+
+**SSOT vs DRY:** DRY = when to share a helper (after 3 uses). SSOT = same fact (schema/env/policy/DTO) must not have a second definition — fix the owner or import. Side-effectful owner → fix the export; do not copy.
+
+## Must / Ask / Never
+
+**Must:** follow `layering` + `structure` before adding files/dirs; schema in `@elynd/db` / contracts in `@elynd/shared` before inventing layout; DB schema before consumers; drizzle-zod HTTP DTOs in `apps/api` (never `shared → db`); extend root `tsconfig.base.json` via relative paths.
+
+**Ask first** (format: plan → reason → impact → alternative → proceed?):
+
+1. `components/ui/**` (design-system)
+2. Root/package config (`package.json`, `tsconfig*`, eslint/prettier, workspace)
+3. Deleting files or directories
+4. New deps or major bumps
+5. Auth method/provider changes
+6. Large schema changes affecting existing data
+
+Exceptions: explicit user instruction for that path; obvious one-line bugfix; lint/test/typecheck runs.
+
+**Never:** commit secrets/`.env`; commit local `docker-compose.yaml`; touch `node_modules/`; operate on production data; disable security middleware; start `dev:*`/`start`/`preview` without approval; `apps/web` ↔ `apps/api` imports; push without approval.
+
+## Security
+
+No hardcoded secrets; no server secrets in client bundles; validate at boundaries (Zod); parameterized DB only (Drizzle); no production stack traces to clients.
+
+## TDD
+
+Default for behavior-changing API/web logic: failing test → minimal impl → green → refactor. If skipped in-scope, state why.
+
+**Exceptions:** docs/format/rename, minor style UI, tooling config, generated/scaffold, one-off migrations.
+
+**Test data:** never truncate whole tables; delete only IDs this test created; no broad `like`/date-range cleanup; namespace external state.
+
+## Definition of Done
+
+Relevant tests pass; `pnpm lint` / `format:check` / `typecheck` for touched scope; no dead code/dangling imports; explicit errors; no new TODO unless deferred by user.
+
+## Commit (agent)
+
+English imperative; one logical change; prefer subject-only. Format via commitlint — do not restate types here. Review staged diff before commit.
+
+## Intent router
+
+| Intent | Follow |
+| --- | --- |
+| New API feature / Nest module / table+endpoint | Playbook `create-api-feature` + `backend` + `packages` (apply even if globs not attached) |
+| Web UI / `features/**` | `frontend` |
+| Package / schema ownership | `packages` + `layering` |
+| Add/delete/split/move files or dirs | `structure` |
+| Where does X belong? | `layering` |
+
+Rule SoT: `.cursor/rules/`. Tooling (ESLint, Prettier, typecheck, tests) wins on conflict. Filled `.trellis/spec` next; User Rules last.

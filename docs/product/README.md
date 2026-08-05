@@ -9,13 +9,14 @@ English is the **single language** for product and engineering documentation in 
 | 1     | [`product-vision.md`](./product-vision.md)                 | Who we serve, what Elynd is / is not, personality   |
 | 2     | [`learning-philosophy.md`](./learning-philosophy.md)       | Why (research lineage, beliefs → product map)       |
 | 3     | [`mvp-scope.md`](./mvp-scope.md)                           | What to build first, non-goals, module ↔ `prd/` map |
-| 4     | [`success-metrics.md`](./success-metrics.md)               | North star, product metrics, drift metrics          |
-| 5     | [`feature-decision-guide.md`](./feature-decision-guide.md) | Before building a feature                           |
-| 6     | [`design-guardrails.md`](./design-guardrails.md)           | Reviews, walkthroughs, retros                       |
+| 4     | [`prototype-flows.md`](./prototype-flows.md)               | Screen-to-screen navigation SSOT (prd + product)    |
+| 5     | [`success-metrics.md`](./success-metrics.md)               | North star, product metrics, drift metrics          |
+| 6     | [`feature-decision-guide.md`](./feature-decision-guide.md) | Before building a feature                           |
+| 7     | [`design-guardrails.md`](./design-guardrails.md)           | Reviews, walkthroughs, retros                       |
 
 ## Prototypes
 
-HTML prototypes live in [`../../prd/`](../../prd/). They are **design references**, not production UI. Map to product spaces in [`mvp-scope.md`](./mvp-scope.md).
+HTML prototypes live in [`../../prd/`](../../prd/). They are **design references**, not production UI. Map to product spaces in [`mvp-scope.md`](./mvp-scope.md). **Navigation / entry points:** [`prototype-flows.md`](./prototype-flows.md) (wins over ad-hoc HTML links).
 
 ## One-liner (SSOT)
 

@@ -2,7 +2,7 @@
 
 Defines **what we build first**, what we explicitly defer, and how product spaces map to prototypes and likely app surfaces.
 
-Related: [`product-vision.md`](./product-vision.md) · [`success-metrics.md`](./success-metrics.md) · [`feature-decision-guide.md`](./feature-decision-guide.md)
+Related: [`product-vision.md`](./product-vision.md) · [`success-metrics.md`](./success-metrics.md) · [`feature-decision-guide.md`](./feature-decision-guide.md) · [`prototype-flows.md`](./prototype-flows.md)
 
 ---
 

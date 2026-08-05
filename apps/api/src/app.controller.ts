@@ -1,18 +1,22 @@
 import { Controller, Get } from '@nestjs/common';
-import { ApiOkResponse, ApiProperty, ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { AllowAnonymous } from '@thallesp/nestjs-better-auth';
 
 class HealthResponseDto {
-  @ApiProperty({ example: 'ok' })
+  @ApiProperty({ example: 'ok', description: 'Service health indicator' })
   status!: string;
 }
 
-@ApiTags('App')
+@ApiTags('System')
 @Controller()
 export class AppController {
   @Get('health')
   @AllowAnonymous()
-  @ApiOkResponse({ type: HealthResponseDto })
+  @ApiOperation({
+    summary: 'Health check',
+    description: 'Anonymous liveness probe. Returns `{ status: "ok" }` when the Nest process is up.',
+  })
+  @ApiOkResponse({ type: HealthResponseDto, description: 'API process is healthy' })
   health() {
     return { status: 'ok' };
   }

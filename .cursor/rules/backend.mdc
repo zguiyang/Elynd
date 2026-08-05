@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Backend Rules (`apps/api`)
 
-Stack: NestJS, Better Auth (cookie session via `@elynd/auth` + `@thallesp/nestjs-better-auth`), Drizzle (`@elynd/db`), Zod (`@elynd/shared` / nestjs-zod), Vitest.
+Stack: NestJS, Better Auth (cookie session via `@elynd/auth` + `@thallesp/nestjs-better-auth`), Drizzle (`@elynd/db`), Zod (`@elynd/shared`), Vitest.
 
 Placement and package boundaries: **`layering.mdc`** + **`decisions.mdc`** (framework-agnostic; follow those first).
 
@@ -38,7 +38,7 @@ Auth executable contracts: [`.trellis/spec/api/backend/auth-monorepo.md`](../../
 
 - Prefer shared Zod helpers from `@elynd/shared/schemas` (pagination, common shapes)
 - Compose feature HTTP DTOs from `@elynd/db` drizzle-zod in the feature module
-- Use project Zod validation pipe / Swagger helpers already in `src/common`
+- Use project Zod validation pipe in `src/common`; generate OpenAPI via `openapi:gen` (`createOpenApiDocument`) for Apifox — do not mount Swagger UI
 - Do not duplicate the same request/response schema in the web app — put cross-app contracts in `@elynd/shared`
 
 ## Env

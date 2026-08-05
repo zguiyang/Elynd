@@ -63,7 +63,7 @@ __screenshots__/
 .cache/
 
 # Generated OpenAPI artifact (regenerate: pnpm --filter @elynd/api openapi:gen)
-apps/api/openapi/
+apps/api/openapi.json
 
 # Apifox CLI local test reports
 apifox-reports/

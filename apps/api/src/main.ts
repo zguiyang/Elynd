@@ -11,7 +11,7 @@ import { parseTrustedOrigins } from '@elynd/auth/env';
 
 import { AppModule } from './app.module.js';
 import { resolveCorsOrigin } from './config/cors-origin.js';
-import { applyApiGlobalPrefix } from './swagger/openapi-document.js';
+import { applyApiGlobalPrefix } from './openapi-document.js';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');

@@ -43,7 +43,7 @@ Auth executable contracts: [`.trellis/spec/api/backend/auth-monorepo.md`](../../
 
 ## Env
 
-Required auth-related keys: `DATABASE_URI`, `AUTH_SECRET`, `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS` (see `auth-env.schema.ts`).
+Required auth-related keys: `DATABASE_URI`, `AUTH_SECRET`, `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS` (validated by `@elynd/auth/env`).
 
 ## Lint
 

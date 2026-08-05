@@ -9,7 +9,7 @@ alwaysApply: false
 | Package | Role |
 | --------|------|
 | `@elynd/db` | Drizzle schemas + `setupDb()` — **only** persistence schema source of truth |
-| `@elynd/auth` | Better Auth server/client factory, env/session config — depends on `@elynd/db` |
+| `@elynd/auth` | Better Auth server/client factory, env/session config (`./server`, `./client`, `./env`) — depends on `@elynd/db` |
 | `@elynd/shared` | Shared Zod schemas / types / constants used by **2+** apps — **no** `@elynd/db` |
 
 Tooling: root `tsconfig.base.json`, `prettier.config.js`, `eslint.config.mjs` — not workspace packages. Nest/Next TS options stay in each app.

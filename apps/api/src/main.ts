@@ -9,8 +9,9 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { cleanupOpenApiDoc } from 'nestjs-zod';
 
+import { parseTrustedOrigins } from '@elynd/auth/env';
+
 import { AppModule } from './app.module.js';
-import { parseTrustedOrigins } from './config/auth-env.schema.js';
 import { resolveCorsOrigin } from './config/cors-origin.js';
 import { createComponents } from './swagger/zod-schema-registry.js';
 

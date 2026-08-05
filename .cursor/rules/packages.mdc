@@ -9,7 +9,7 @@ alwaysApply: false
 | Package | Role |
 | --------|------|
 | `@elynd/db` | Drizzle schemas + `setupDb()` — **only** persistence schema source of truth |
-| `@elynd/auth` | Better Auth server/client factory, env/session config (`./server`, `./client`, `./env`) — depends on `@elynd/db` |
+| `@elynd/auth` | Better Auth server/client factory, env/session config, side-effect-free `./policy` (`./server`, `./client`, `./env`, `./policy`) — depends on `@elynd/db` |
 | `@elynd/shared` | Shared Zod schemas / types / constants used by **2+** apps — **no** `@elynd/db` |
 
 Tooling: root `tsconfig.base.json`, `prettier.config.js`, `eslint.config.mjs` — not workspace packages. Nest/Next TS options stay in each app.
@@ -27,6 +27,7 @@ Layering detail: `layering.mdc`. Cross-layer edits: `decisions.mdc` §6.
 
 - Schema tables/columns/relations → `@elynd/db` only
 - Auth server/client wiring shared by api + web → `@elynd/auth`
+- Password/username length and username pattern SSOT → `@elynd/auth/policy` (not duplicated in web Zod or `server.ts` literals)
 - Cross-app validators/DTO shapes → `@elynd/shared`
 - drizzle-zod / ORM Zod composition → `apps/api` or inside `@elynd/db` — never `@elynd/shared`
 - No feature workflows, Nest providers, or React components inside these packages

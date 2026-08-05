@@ -55,14 +55,14 @@ flowchart TD
 
 | From            | Entry / control     | To               | Status                                                         |
 | --------------- | ------------------- | ---------------- | -------------------------------------------------------------- |
-| Landing         | Primary CTA         | Sign in          | **Confirmed** (Not wired — HTML still `#`)                     |
+| Landing         | Primary CTA         | Sign in          | **Confirmed** · Wired                                          |
 | Landing         | Secondary           | In-page belief   | Wired (`#belief`)                                              |
 | Landing         | Logo                | Landing top      | Wired / self                                                   |
 | Sign in         | Register link       | Sign up          | Wired                                                          |
 | Sign in         | Forgot password     | Forgot password  | Wired                                                          |
-| Sign in         | Submit success      | Dashboard        | **Confirmed** (Not wired in HTML)                              |
+| Sign in         | Submit success      | Dashboard        | **Confirmed** (Not wired in HTML prototype)                    |
 | Sign up         | Sign in link        | Sign in          | Wired                                                          |
-| Sign up         | Submit success      | Dashboard        | **Confirmed** (create session)                                 |
+| Sign up         | Submit success      | Dashboard        | **Confirmed** (create session; Not wired in HTML prototype)    |
 | Forgot password | Submit email        | Same page “sent” | Wired (panel)                                                  |
 | Forgot password | Demo / real mail    | Reset `?token=`  | Wired (demo link)                                              |
 | Reset password  | Submit new password | Dashboard        | Wired in prototype (auto sign-in, **no** success interstitial) |
@@ -96,19 +96,19 @@ flowchart TD
 
 ### 3.2 Edges
 
-| From          | Entry / control            | To                        | Status                                                    |
-| ------------- | -------------------------- | ------------------------- | --------------------------------------------------------- |
-| Dashboard     | “开始阅读” / continue card | Learning Room             | **Confirmed** (current/resume article; Not wired in HTML) |
-| Dashboard     | Nav 今日                   | Dashboard                 | Self / home                                               |
-| Dashboard     | Nav 图书馆                 | Library                   | **Confirmed** (Not wired)                                 |
-| Dashboard     | Nav 复习                   | Review                    | **Confirmed** (Not wired)                                 |
-| Dashboard     | Nav 成长                   | Progress                  | **Confirmed** (Not wired)                                 |
-| Library       | Pick article               | Learning Room             | **Confirmed** (+ `articleId`)                             |
-| Learning Room | Lookup / TTS               | Stay in Room              | In-place                                                  |
-| Learning Room | Optional “练一下”          | Practice                  | **Confirmed** (same `articleId`; optional)                |
-| Practice      | Finish                     | Dashboard                 | **Confirmed**                                             |
-| Review        | Open item                  | Learning Room at sentence | **Confirmed**                                             |
-| Progress      | Soft CTA                   | Library or Dashboard      | Soft preference; do not force                             |
+| From          | Entry / control            | To                        | Status                                         |
+| ------------- | -------------------------- | ------------------------- | ---------------------------------------------- |
+| Dashboard     | “开始阅读” / continue card | Learning Room             | **Confirmed** · Wired (current/resume article) |
+| Dashboard     | Nav 今日                   | Dashboard                 | Self / home · Wired                            |
+| Dashboard     | Nav 图书馆                 | Library                   | **Confirmed** · Wired                          |
+| Dashboard     | Nav 复习                   | Review                    | **Confirmed** · Wired                          |
+| Dashboard     | Nav 成长                   | Progress                  | **Confirmed** · Wired                          |
+| Library       | Pick article               | Learning Room             | **Confirmed** (+ `articleId`)                  |
+| Learning Room | Lookup / TTS               | Stay in Room              | In-place                                       |
+| Learning Room | Optional “练一下”          | Practice                  | **Confirmed** (same `articleId`; optional)     |
+| Practice      | Finish                     | Dashboard                 | **Confirmed**                                  |
+| Review        | Open item                  | Learning Room at sentence | **Confirmed**                                  |
+| Progress      | Soft CTA                   | Library or Dashboard      | Soft preference; do not force                  |
 
 **Shell (Confirmed):** Nav = 今日 / 图书馆 / 复习 / 成长 only. No top-level Practice or Learning Room. Practice is post-reading; Room is reached via content.
 

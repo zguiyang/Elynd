@@ -32,6 +32,15 @@ describe('signInSchema', () => {
 
     expect(result.success).toBe(false);
   });
+
+  it('rejects a password longer than 128 characters', () => {
+    const result = signInSchema.safeParse({
+      email: 'reader@example.com',
+      password: 'p'.repeat(129),
+    });
+
+    expect(result.success).toBe(false);
+  });
 });
 
 describe('signUpSchema', () => {
@@ -68,6 +77,11 @@ describe('signUpSchema', () => {
 
   it('rejects a password shorter than 8 characters', () => {
     const result = signUpSchema.safeParse({ ...valid, password: '1234567' });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects a password longer than 128 characters', () => {
+    const result = signUpSchema.safeParse({ ...valid, password: 'p'.repeat(129) });
     expect(result.success).toBe(false);
   });
 });

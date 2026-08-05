@@ -1,6 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { username } from 'better-auth/plugins';
+import { openAPI, username } from 'better-auth/plugins';
 
 import { accounts, sessions, setupDb, users, verifications } from '@elynd/db';
 
@@ -21,6 +21,10 @@ export const auth = betterAuth({
   plugins: [
     username({
       maxUsernameLength: 50,
+    }),
+    // Schema only for Apifox / openapi:gen — disable Scalar UI (docs live in Apifox).
+    openAPI({
+      disableDefaultReference: true,
     }),
   ],
   database: drizzleAdapter(db, {

@@ -16,7 +16,8 @@ import { AUTH_COOKIE_PREFIX, AUTH_SESSION_CONFIG } from './session.config.js';
  * Pass options inline to `betterAuth(...)` (do not widen to BetterAuthOptions)
  * so plugin fields (e.g. username) remain on `$Infer`.
  *
- * Password-reset mail goes through `@elynd/email` (community composition pattern).
+ * Password-reset and email-verification mail go through `@elynd/email`
+ * (community composition pattern).
  */
 const authEnv = authEnvSchema.parse(process.env);
 const db = setupDb(authEnv.DATABASE_URI);
@@ -43,11 +44,35 @@ export const auth = betterAuth({
     },
   }),
   secret: authEnv.AUTH_SECRET,
+  emailVerification: {
+    sendOnSignUp: true,
+    sendOnSignIn: true,
+    autoSignInAfterVerification: true,
+    sendVerificationEmail: async ({ user, url }) => {
+      void sendMail({
+        template: 'emailVerification',
+        to: user.email,
+        vars: {
+          url,
+          ...(user.name.trim() ? { userName: user.name } : {}),
+        },
+      });
+    },
+  },
   emailAndPassword: {
     enabled: true,
     minPasswordLength: AUTH_PASSWORD_POLICY.minLength,
     maxPasswordLength: AUTH_PASSWORD_POLICY.maxLength,
+    requireEmailVerification: true,
     revokeSessionsOnPasswordReset: true,
+    // Username plugin fields must appear on synthetic sign-up responses.
+    customSyntheticUser: ({ coreFields, additionalFields, id }) => ({
+      ...coreFields,
+      username: null,
+      displayUsername: null,
+      ...additionalFields,
+      id,
+    }),
     sendResetPassword: async ({ user, url }) => {
       void sendMail({
         template: 'passwordReset',

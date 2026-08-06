@@ -1,7 +1,6 @@
 'use client';
 
 import { useForm } from '@tanstack/react-form';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -12,9 +11,15 @@ import { AuthFooterLink, AuthIntro, AuthPanel } from '@/features/auth/auth-layou
 import { authClient } from '@/lib/auth';
 import { signUpSchema } from '@/lib/validations';
 
+function dashboardCallbackUrl(): string {
+  return new URL(AUTH_ROUTES.dashboard, window.location.origin).toString();
+}
+
 export function SignUpForm() {
-  const router = useRouter();
+  const [isSent, setIsSent] = useState(false);
+  const [submittedEmail, setSubmittedEmail] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [isResending, setIsResending] = useState(false);
 
   const form = useForm({
     defaultValues: {
@@ -31,11 +36,12 @@ export function SignUpForm() {
         return;
       }
 
-      const { data, error } = await authClient.signUp.email({
+      const { error } = await authClient.signUp.email({
         email: parsed.data.email,
         password: parsed.data.password,
         name: parsed.data.name,
         username: parsed.data.username,
+        callbackURL: dashboardCallbackUrl(),
       });
 
       if (error) {
@@ -45,24 +51,61 @@ export function SignUpForm() {
         return;
       }
 
-      if (!data) {
-        toast.success('账号已创建，请登录');
-        router.replace(AUTH_ROUTES.signIn);
-        return;
-      }
-
-      const { data: session, error: sessionError } = await authClient.getSession();
-      if (sessionError || !session?.user) {
-        toast.success('账号已创建，请登录');
-        router.replace(AUTH_ROUTES.signIn);
-        return;
-      }
-
-      toast.success('账号已创建');
-      router.replace(AUTH_ROUTES.dashboard);
-      router.refresh();
+      setSubmittedEmail(parsed.data.email);
+      setIsSent(true);
     },
   });
+
+  async function handleResend() {
+    if (!submittedEmail || isResending) {
+      return;
+    }
+
+    setFormError(null);
+    setIsResending(true);
+    const { error } = await authClient.sendVerificationEmail({
+      email: submittedEmail,
+      callbackURL: dashboardCallbackUrl(),
+    });
+    setIsResending(false);
+
+    if (error) {
+      const message = error.message || '发送失败，请稍后重试';
+      setFormError(message);
+      toast.error(message);
+      return;
+    }
+
+    toast.success('验证邮件已重新发送');
+  }
+
+  if (isSent) {
+    return (
+      <>
+        <AuthIntro
+          eyebrow="邮件已发出"
+          title="去邮箱点开链接"
+          description={`我们已向 ${submittedEmail} 发送确认链接（约 1 小时内有效）。点开后会自动登录。没收到就看垃圾箱，或再发一次。`}
+        />
+
+        <AuthPanel>
+          {formError ? <p className="mb-4 text-sm text-destructive">{formError}</p> : null}
+          <Button
+            type="button"
+            className={authPrimaryButtonClassName}
+            disabled={isResending}
+            onClick={() => {
+              void handleResend();
+            }}
+          >
+            {isResending ? '发送中…' : '再发一次'}
+          </Button>
+        </AuthPanel>
+
+        <AuthFooterLink href={AUTH_ROUTES.signIn} label="去登录" />
+      </>
+    );
+  }
 
   return (
     <>

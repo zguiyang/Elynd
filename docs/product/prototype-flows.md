@@ -46,30 +46,36 @@ flowchart TD
   Mail -->|Open link| RP[Reset password ?token=]
   RP -->|Submit: session → Dashboard| D[Dashboard]
   SI -->|Submit Confirmed| D
-  SU -->|Submit Confirmed| D
+  SU -->|Submit: check email Confirmed| SU
+  SU -->|Verify link in mailbox| Verify[Email verification]
+  Verify -->|Auto sign-in → Dashboard| D
   FP -->|Stay: check email UI Wired| FP
   RP -->|Missing/invalid token Wired| FP
 ```
 
 ### 2.2 Edges
 
-| From            | Entry / control     | To               | Status                                                         |
-| --------------- | ------------------- | ---------------- | -------------------------------------------------------------- |
-| Landing         | Primary CTA         | Sign in          | **Confirmed** · Wired                                          |
-| Landing         | Secondary           | In-page belief   | Wired (`#belief`)                                              |
-| Landing         | Logo                | Landing top      | Wired / self                                                   |
-| Sign in         | Register link       | Sign up          | Wired                                                          |
-| Sign in         | Forgot password     | Forgot password  | Wired                                                          |
-| Sign in         | Submit success      | Dashboard        | **Confirmed** (Not wired in HTML prototype)                    |
-| Sign up         | Sign in link        | Sign in          | Wired                                                          |
-| Sign up         | Submit success      | Dashboard        | **Confirmed** (create session; Not wired in HTML prototype)    |
-| Forgot password | Submit email        | Same page “sent” | Wired (panel)                                                  |
-| Forgot password | Demo / real mail    | Reset `?token=`  | Wired (demo link)                                              |
-| Reset password  | Submit new password | Dashboard        | Wired in prototype (auto sign-in, **no** success interstitial) |
-| Reset password  | No / bad token      | Forgot password  | Wired                                                          |
-| Any auth page   | Elynd logo          | Landing          | Wired                                                          |
+| From            | Entry / control     | To                      | Status                                                         |
+| --------------- | ------------------- | ----------------------- | -------------------------------------------------------------- |
+| Landing         | Primary CTA         | Sign in                 | **Confirmed** · Wired                                          |
+| Landing         | Secondary           | In-page belief          | Wired (`#belief`)                                              |
+| Landing         | Logo                | Landing top             | Wired / self                                                   |
+| Sign in         | Register link       | Sign up                 | Wired                                                          |
+| Sign in         | Forgot password     | Forgot password         | Wired                                                          |
+| Sign in         | Submit success      | Dashboard               | **Confirmed** (Not wired in HTML prototype)                    |
+| Sign up         | Sign in link        | Sign in                 | Wired                                                          |
+| Sign up         | Submit success      | Same page “check email” | **Confirmed** (hard email verification; no session yet)        |
+| Sign up         | Verify email link   | Dashboard               | **Confirmed** (auto sign-in after verification)                |
+| Sign in         | Unverified account  | Stay + resend mail      | **Confirmed**                                                  |
+| Forgot password | Submit email        | Same page “sent”        | Wired (panel)                                                  |
+| Forgot password | Demo / real mail    | Reset `?token=`         | Wired (demo link)                                              |
+| Reset password  | Submit new password | Dashboard               | Wired in prototype (auto sign-in, **no** success interstitial) |
+| Reset password  | No / bad token      | Forgot password         | Wired                                                          |
+| Any auth page   | Elynd logo          | Landing                 | Wired                                                          |
 
 **Reset product rule (Confirmed):** set password → auto sign-in → Dashboard. No success page.
+
+**Sign-up verification rule (Confirmed):** create account → same-page check email → verify link → auto sign-in → Dashboard. No session until verified.
 
 ---
 
@@ -148,14 +154,14 @@ Auth alone without this loop is **infra**, not learning MVP.
 
 ## 6. Confirmed decisions (2026-08-05)
 
-| #   | Decision                                                                  |
-| --- | ------------------------------------------------------------------------- |
-| 1   | Landing primary CTA → **Sign in**                                         |
-| 2   | Sign-up success → **Dashboard** (session created)                         |
-| 3   | Dashboard “开始阅读” → **Learning Room** (current article)                |
-| 4   | Practice → **mainly from Room** after reading                             |
-| 5   | After Practice → **Dashboard**                                            |
-| 6   | Dashboard nav → **今日 / 图书馆 / 复习 / 成长** only (no Practice / Room) |
+| #   | Decision                                                                      |
+| --- | ----------------------------------------------------------------------------- |
+| 1   | Landing primary CTA → **Sign in**                                             |
+| 2   | Sign-up → check email → verify link → **Dashboard** (hard email verification) |
+| 3   | Dashboard “开始阅读” → **Learning Room** (current article)                    |
+| 4   | Practice → **mainly from Room** after reading                                 |
+| 5   | After Practice → **Dashboard**                                                |
+| 6   | Dashboard nav → **今日 / 图书馆 / 复习 / 成长** only (no Practice / Room)     |
 
 ---
 

@@ -13,9 +13,26 @@ import { AuthFooterLink, AuthIntro, AuthPanel } from '@/features/auth/auth-layou
 import { authClient } from '@/lib/auth';
 import { signInSchema } from '@/lib/validations';
 
+function dashboardCallbackUrl(): string {
+  return new URL(AUTH_ROUTES.dashboard, window.location.origin).toString();
+}
+
+function isEmailVerificationRequired(error: { status?: number; code?: string | number } | null): boolean {
+  if (!error) {
+    return false;
+  }
+  if (error.status === 403) {
+    return true;
+  }
+  const code = typeof error.code === 'string' ? error.code.toUpperCase() : '';
+  return code.includes('EMAIL') && code.includes('VERIF');
+}
+
 export function SignInForm() {
   const router = useRouter();
   const [formError, setFormError] = useState<string | null>(null);
+  const [isVerificationRequired, setIsVerificationRequired] = useState(false);
+  const [isResending, setIsResending] = useState(false);
 
   const form = useForm({
     defaultValues: {
@@ -24,6 +41,7 @@ export function SignInForm() {
     },
     onSubmit: async ({ value }) => {
       setFormError(null);
+      setIsVerificationRequired(false);
       const parsed = signInSchema.safeParse(value);
       if (!parsed.success) {
         setFormError(parsed.error.issues[0]?.message ?? '输入有误');
@@ -36,6 +54,11 @@ export function SignInForm() {
       });
 
       if (error) {
+        if (isEmailVerificationRequired(error)) {
+          setIsVerificationRequired(true);
+          setFormError('请先打开邮箱里的验证链接，确认后再登录。');
+          return;
+        }
         const message = error.message || '登录失败';
         setFormError(message);
         toast.error(message);
@@ -55,6 +78,29 @@ export function SignInForm() {
       router.refresh();
     },
   });
+
+  async function handleResendVerification() {
+    const email = form.state.values.email.trim();
+    if (!email || isResending) {
+      return;
+    }
+
+    setIsResending(true);
+    const { error } = await authClient.sendVerificationEmail({
+      email,
+      callbackURL: dashboardCallbackUrl(),
+    });
+    setIsResending(false);
+
+    if (error) {
+      const message = error.message || '发送失败，请稍后重试';
+      setFormError(message);
+      toast.error(message);
+      return;
+    }
+
+    toast.success('验证邮件已发送');
+  }
 
   return (
     <>
@@ -114,6 +160,20 @@ export function SignInForm() {
           </form.Field>
 
           {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
+
+          {isVerificationRequired ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={isResending}
+              onClick={() => {
+                void handleResendVerification();
+              }}
+            >
+              {isResending ? '发送中…' : '重新发送验证邮件'}
+            </Button>
+          ) : null}
 
           <form.Subscribe selector={(state) => state.isSubmitting}>
             {(isSubmitting) => (

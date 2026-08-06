@@ -20,6 +20,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
+      '@elynd/auth/policy': resolve(__dirname, '../../packages/auth/src/policy.ts'),
       '@elynd/db': resolve(__dirname, '../../packages/db/src/index.ts'),
       '@elynd/shared/schemas': resolve(__dirname, '../../packages/shared/src/schemas/index.ts'),
       '@elynd/shared/types': resolve(__dirname, '../../packages/shared/src/types/index.ts'),

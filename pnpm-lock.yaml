@@ -104,6 +104,9 @@ importers:
       '@thallesp/nestjs-better-auth':
         specifier: ^2.7.0
         version: 2.7.0(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28)(better-auth@1.6.25(drizzle-kit@0.31.10)(drizzle-orm@0.44.7(@types/pg@8.20.3)(knex@3.1.0(pg@8.18.0))(kysely@0.29.4)(pg@8.18.0))(mongodb@7.0.0(socks@2.8.7))(next@16.2.12(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(pg@8.18.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@2.0.1))(lightningcss@1.32.0)(stylus@0.57.0)(terser@5.46.0)(tsx@4.23.6)(yaml@2.9.0))(vue@3.5.29(typescript@5.9.3)))(express@5.2.1)(qs@6.15.0)(typescript@5.9.3)
+      better-auth:
+        specifier: ^1.6.25
+        version: 1.6.25(drizzle-kit@0.31.10)(drizzle-orm@0.44.7(@types/pg@8.20.3)(knex@3.1.0(pg@8.18.0))(kysely@0.29.4)(pg@8.18.0))(mongodb@7.0.0(socks@2.8.7))(next@16.2.12(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(pg@8.18.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@2.0.1))(lightningcss@1.32.0)(stylus@0.57.0)(terser@5.46.0)(tsx@4.23.6)(yaml@2.9.0))(vue@3.5.29(typescript@5.9.3))
       drizzle-orm:
         specifier: ^0.44.4
         version: 0.44.7(@types/pg@8.20.3)(knex@3.1.0(pg@8.18.0))(kysely@0.29.4)(pg@8.18.0)

@@ -21,6 +21,15 @@ HTML prototypes: [`prd/`](prd/) (references only).
 
 **One-liner:** Elynd is an English learning space for adults who struggle to persist—interesting, mostly understandable real content (read + listen), with tools (including AI) that lower friction. Not a course, vocab pack, or chatbot.
 
+## Visual design (UI)
+
+Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root).
+
+- **Before** generating or restyling UI in `apps/web`, read `DESIGN.md` and follow its tokens, usage rules, and Do's / Don'ts.
+- Implement appearance via CSS variables / semantic utilities in `apps/web/app/globals.css` — do not hardcode theme colors in feature code.
+- `prd/` shows screen intent and elements; **`DESIGN.md` wins** for color, type, shape, and elevation.
+- Product philosophy / anti-drift (non-visual): [`docs/product/`](docs/product/) — especially [`design-guardrails.md`](docs/product/design-guardrails.md).
+
 ## Rules source of truth
 
 [`.cursor/rules/`](.cursor/rules/). Project rules win over Cursor User Rules on conflict.
@@ -30,10 +39,11 @@ HTML prototypes: [`prd/`](prd/) (references only).
 1. Tooling (ESLint, Prettier, typecheck, tests)
 2. Always-on: `core`, `layering`, `structure`
 3. Glob: `backend` / `frontend` / `packages`
-4. Project skills (e.g. `create-api-feature`) + MCP
-5. Current Trellis task + **filled** `.trellis/spec` contracts
-6. **Filled** [`docs/product/`](docs/product/) for product-scope decisions
-7. User Rules
+4. **[`DESIGN.md`](DESIGN.md)** for visual / UI appearance (when touching `apps/web` UI)
+5. Project skills (e.g. `create-api-feature`) + MCP
+6. Current Trellis task + **filled** `.trellis/spec` contracts
+7. **Filled** [`docs/product/`](docs/product/) for product-scope decisions
+8. User Rules
 
 ### Index
 

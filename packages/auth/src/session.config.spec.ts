@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  AUTH_COOKIE_PREFIX,
   AUTH_SESSION_CONFIG,
   AUTH_SESSION_EXPIRES_IN_SECONDS,
   AUTH_SESSION_UPDATE_AGE_SECONDS,
 } from './session.config.js';
+
+describe('AUTH_COOKIE_PREFIX', () => {
+  it('matches Better Auth cookiePrefix used by Nest and web middleware', () => {
+    expect(AUTH_COOKIE_PREFIX).toBe('elynd-auth');
+  });
+});
 
 describe('AUTH-SESSION-004 short session lifetime', () => {
   it('expiresIn is 7 days in seconds', () => {

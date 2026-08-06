@@ -6,7 +6,7 @@ import { accounts, sessions, setupDb, users, verifications } from '@elynd/db';
 
 import { authEnvSchema, parseTrustedOrigins } from './env.js';
 import { AUTH_PASSWORD_POLICY, AUTH_USERNAME_POLICY, isValidUsername } from './policy.js';
-import { AUTH_SESSION_CONFIG } from './session.config.js';
+import { AUTH_COOKIE_PREFIX, AUTH_SESSION_CONFIG } from './session.config.js';
 
 /**
  * Eager Better Auth instance. Callers (apps/api) MUST load process.env
@@ -64,7 +64,7 @@ export const auth = betterAuth({
   basePath: '/api/auth',
   trustedOrigins: parseTrustedOrigins(authEnv.BETTER_AUTH_TRUSTED_ORIGINS),
   advanced: {
-    cookiePrefix: 'elynd-auth',
+    cookiePrefix: AUTH_COOKIE_PREFIX,
   },
 });
 
@@ -75,4 +75,4 @@ export type AuthUser = AuthSession['user'];
 export type { AuthEnvConfig } from './env.js';
 export { authEnvSchema, parseTrustedOrigins } from './env.js';
 export { AUTH_PASSWORD_POLICY, AUTH_USERNAME_POLICY, isValidUsername } from './policy.js';
-export { AUTH_SESSION_CONFIG } from './session.config.js';
+export { AUTH_COOKIE_PREFIX, AUTH_SESSION_CONFIG } from './session.config.js';

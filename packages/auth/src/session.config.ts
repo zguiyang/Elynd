@@ -1,4 +1,9 @@
 /**
+ * Better Auth `advanced.cookiePrefix` — must match middleware `getSessionCookie` config.
+ */
+export const AUTH_COOKIE_PREFIX = 'elynd-auth' as const;
+
+/**
  * Short session lifetime — better-auth `session.expiresIn` (seconds).
  */
 export const AUTH_SESSION_EXPIRES_IN_SECONDS = 60 * 60 * 24 * 7;

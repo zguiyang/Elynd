@@ -24,6 +24,16 @@
       "types": "./src/policy.ts",
       "import": "./dist/policy.js",
       "default": "./dist/policy.js"
+    },
+    "./cookies": {
+      "types": "./src/cookies.ts",
+      "import": "./dist/cookies.js",
+      "default": "./dist/cookies.js"
+    },
+    "./session": {
+      "types": "./src/session.config.ts",
+      "import": "./dist/session.config.js",
+      "default": "./dist/session.config.js"
     }
   },
   "scripts": {

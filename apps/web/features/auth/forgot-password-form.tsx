@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { AUTH_ROUTES } from '@/constants';
 import { authInputClassName, authPrimaryButtonClassName, Field } from '@/features/auth/auth-field';
 import { AuthFooterLink, AuthIntro, AuthPanel } from '@/features/auth/auth-layout';
-import { authClient } from '@/lib/auth';
+import { authClient, resolveMailCooldownErrorMessage } from '@/lib/auth';
 import { forgotPasswordSchema } from '@/lib/validations';
 
 export function ForgotPasswordForm() {
@@ -34,7 +34,8 @@ export function ForgotPasswordForm() {
       });
 
       if (error) {
-        const message = error.message || '发送失败，请稍后重试';
+        const cooldownMessage = resolveMailCooldownErrorMessage(error);
+        const message = cooldownMessage || error.message || '发送失败，请稍后重试';
         setFormError(message);
         toast.error(message);
         return;

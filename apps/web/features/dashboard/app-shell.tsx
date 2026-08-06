@@ -39,16 +39,51 @@ type UserIdentityProps = {
   username: string;
   email: string;
   initial: string;
+  image: string | null;
   onSignOut: () => void;
 };
 
-function AccountMenuContent({ username, email, initial, onSignOut }: UserIdentityProps) {
+function UserAvatar({
+  image,
+  initial,
+  sizeClass,
+  textClass,
+}: {
+  image: string | null;
+  initial: string;
+  sizeClass: string;
+  textClass: string;
+}) {
+  if (image) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- remote DiceBear SVG URL; no Next Image optimizer needed
+      <img
+        src={image}
+        alt=""
+        className={cn(sizeClass, 'shrink-0 rounded-full bg-muted object-cover')}
+        referrerPolicy="no-referrer"
+      />
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        sizeClass,
+        'flex shrink-0 items-center justify-center rounded-full bg-accent font-medium text-accent-foreground',
+        textClass,
+      )}
+    >
+      {initial}
+    </div>
+  );
+}
+
+function AccountMenuContent({ username, email, initial, image, onSignOut }: UserIdentityProps) {
   return (
     <>
       <div className="flex items-center gap-3 px-2.5 py-2.5">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-medium text-accent-foreground">
-          {initial}
-        </div>
+        <UserAvatar image={image} initial={initial} sizeClass="size-10" textClass="text-sm" />
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium text-foreground">{username}</div>
           <div className="truncate text-xs text-muted-foreground">{email}</div>
@@ -70,7 +105,7 @@ function AccountMenuContent({ username, email, initial, onSignOut }: UserIdentit
   );
 }
 
-function SidebarUserFooter({ username, email, initial, onSignOut }: UserIdentityProps) {
+function SidebarUserFooter({ username, email, initial, image, onSignOut }: UserIdentityProps) {
   return (
     <div className="shrink-0 border-t border-sidebar-border pt-3">
       <Menu.Root modal={false}>
@@ -86,9 +121,7 @@ function SidebarUserFooter({ username, email, initial, onSignOut }: UserIdentity
           )}
           aria-label="账户菜单"
         >
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-medium text-accent-foreground">
-            {initial}
-          </div>
+          <UserAvatar image={image} initial={initial} sizeClass="size-8" textClass="text-xs" />
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-medium text-foreground">{username}</div>
             <div className="truncate text-xs text-muted-foreground">{email}</div>
@@ -118,7 +151,13 @@ function SidebarUserFooter({ username, email, initial, onSignOut }: UserIdentity
                 'data-starting-style:opacity-0 data-ending-style:opacity-0',
               )}
             >
-              <AccountMenuContent username={username} email={email} initial={initial} onSignOut={onSignOut} />
+              <AccountMenuContent
+                username={username}
+                email={email}
+                initial={initial}
+                image={image}
+                onSignOut={onSignOut}
+              />
             </Menu.Popup>
           </Menu.Positioner>
         </Menu.Portal>
@@ -127,18 +166,18 @@ function SidebarUserFooter({ username, email, initial, onSignOut }: UserIdentity
   );
 }
 
-function MobileAccountMenu({ username, email, initial, onSignOut }: UserIdentityProps) {
+function MobileAccountMenu({ username, email, initial, image, onSignOut }: UserIdentityProps) {
   return (
     <Menu.Root>
       <Menu.Trigger
         className={cn(
-          'flex size-9 items-center justify-center rounded-full bg-accent text-sm font-medium text-accent-foreground',
+          'flex size-9 items-center justify-center overflow-hidden rounded-full bg-accent text-sm font-medium text-accent-foreground',
           'outline-none transition-opacity duration-300 ease-out-soft hover:opacity-90',
           'focus-visible:ring-3 focus-visible:ring-ring/50',
         )}
         aria-label={`${username}，${email}，账户菜单`}
       >
-        {initial}
+        <UserAvatar image={image} initial={initial} sizeClass="size-9" textClass="text-sm" />
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Positioner className="z-50 outline-none" sideOffset={8} align="end">
@@ -149,7 +188,13 @@ function MobileAccountMenu({ username, email, initial, onSignOut }: UserIdentity
               'data-starting-style:opacity-0 data-ending-style:opacity-0',
             )}
           >
-            <AccountMenuContent username={username} email={email} initial={initial} onSignOut={onSignOut} />
+            <AccountMenuContent
+              username={username}
+              email={email}
+              initial={initial}
+              image={image}
+              onSignOut={onSignOut}
+            />
           </Menu.Popup>
         </Menu.Positioner>
       </Menu.Portal>
@@ -193,8 +238,9 @@ export function AppShell({ children }: AppShellProps) {
   const username = user.username?.trim() || user.name?.trim() || '读者';
   const email = user.email?.trim() || '—';
   const initial = username.slice(0, 1).toUpperCase();
+  const image = user.image?.trim() || null;
   const onSignOut = () => void handleSignOut();
-  const identity = { username, email, initial, onSignOut };
+  const identity = { username, email, initial, image, onSignOut };
 
   return (
     <AppUserContext.Provider value={user}>

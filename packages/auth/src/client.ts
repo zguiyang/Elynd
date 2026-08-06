@@ -1,4 +1,4 @@
-import { usernameClient } from 'better-auth/client/plugins';
+import { adminClient, usernameClient } from 'better-auth/client/plugins';
 import { createAuthClient } from 'better-auth/react';
 
 /**
@@ -11,7 +11,7 @@ import { createAuthClient } from 'better-auth/react';
 export function createElyndAuthClient(options?: { baseURL?: string }) {
   return createAuthClient({
     baseURL: options?.baseURL ?? '',
-    plugins: [usernameClient()],
+    plugins: [usernameClient(), adminClient()],
     fetchOptions: {
       credentials: 'include',
     },

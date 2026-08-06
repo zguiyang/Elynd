@@ -1,6 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { openAPI, username } from 'better-auth/plugins';
+import { admin, openAPI, username } from 'better-auth/plugins';
 
 import { accounts, sessions, setupDb, users, verifications } from '@elynd/db';
 import { sendMail } from '@elynd/email';
@@ -8,6 +8,7 @@ import { sendMail } from '@elynd/email';
 import { authEnvSchema, parseTrustedOrigins } from './env.js';
 import { AUTH_PASSWORD_POLICY, AUTH_USERNAME_POLICY, isValidUsername } from './policy.js';
 import { AUTH_COOKIE_PREFIX, AUTH_SESSION_CONFIG } from './session.config.js';
+import { applyUserCreateDefaults } from './user-create-defaults.js';
 
 /**
  * Eager Better Auth instance. Callers (apps/api) MUST load process.env
@@ -33,6 +34,7 @@ export const auth = betterAuth({
       maxUsernameLength: AUTH_USERNAME_POLICY.maxLength,
       usernameValidator: isValidUsername,
     }),
+    admin(),
     // Schema only for Apifox / openapi:gen — disable Scalar UI (docs live in Apifox).
     openAPI({
       disableDefaultReference: true,
@@ -47,13 +49,31 @@ export const auth = betterAuth({
       verifications,
     },
   }),
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user, ctx) => {
+          if (!ctx) {
+            throw new Error('Missing auth context for user create hook');
+          }
+          // Logical model name is `user` (table `users` via modelName).
+          const existingUserCount = await ctx.context.adapter.count({ model: 'user' });
+          return {
+            data: applyUserCreateDefaults(user, existingUserCount),
+          };
+        },
+      },
+    },
+  },
   secret: authEnv.AUTH_SECRET,
   emailVerification: {
     sendOnSignUp: true,
     sendOnSignIn: true,
     autoSignInAfterVerification: true,
     sendVerificationEmail: async ({ user, url }) => {
-      void sendMail({
+      // Await so a transport failure fails the auth request and Nest after-hooks
+      // do not mark Redis cooldown for a mail that never left.
+      await sendMail({
         template: 'emailVerification',
         to: user.email,
         vars: {
@@ -69,16 +89,20 @@ export const auth = betterAuth({
     maxPasswordLength: AUTH_PASSWORD_POLICY.maxLength,
     requireEmailVerification: true,
     revokeSessionsOnPasswordReset: true,
-    // Username plugin fields must appear on synthetic sign-up responses.
+    // Username + admin plugin fields must appear on synthetic sign-up responses.
     customSyntheticUser: ({ coreFields, additionalFields, id }) => ({
       ...coreFields,
       username: null,
       displayUsername: null,
+      role: 'user',
+      banned: false,
+      banReason: null,
+      banExpires: null,
       ...additionalFields,
       id,
     }),
     sendResetPassword: async ({ user, url }) => {
-      void sendMail({
+      await sendMail({
         template: 'passwordReset',
         to: user.email,
         vars: {

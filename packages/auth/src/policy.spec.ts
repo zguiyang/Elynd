@@ -1,12 +1,31 @@
 import { describe, expect, it } from 'vitest';
 
-import { AUTH_PASSWORD_POLICY, AUTH_USERNAME_POLICY, isValidUsername } from './policy.js';
+import {
+  AUTH_MAIL_SEND_COOLDOWN_SECONDS,
+  AUTH_PASSWORD_POLICY,
+  AUTH_USERNAME_POLICY,
+  isValidUsername,
+  mailCooldownUserMessage,
+} from './policy.js';
 
 describe('AUTH_PASSWORD_POLICY', () => {
   it('matches Better Auth email/password length bounds', () => {
     expect(AUTH_PASSWORD_POLICY.minLength).toBe(8);
     expect(AUTH_PASSWORD_POLICY.maxLength).toBe(128);
     expect(AUTH_PASSWORD_POLICY.minLength).toBeLessThan(AUTH_PASSWORD_POLICY.maxLength);
+  });
+});
+
+describe('AUTH_MAIL_SEND_COOLDOWN_SECONDS', () => {
+  it('is a positive 30-minute window', () => {
+    expect(AUTH_MAIL_SEND_COOLDOWN_SECONDS).toBe(30 * 60);
+  });
+});
+
+describe('mailCooldownUserMessage', () => {
+  it('includes minutes derived from the SSOT constant', () => {
+    expect(mailCooldownUserMessage()).toContain('30');
+    expect(mailCooldownUserMessage(90)).toContain('2');
   });
 });
 

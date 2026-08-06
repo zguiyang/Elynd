@@ -18,11 +18,15 @@ import { AUTH_COOKIE_PREFIX, AUTH_SESSION_CONFIG } from './session.config.js';
  *
  * Password-reset and email-verification mail go through `@elynd/email`
  * (community composition pattern).
+ *
+ * `hooks: {}` enables Nest DI hooks from `@thallesp/nestjs-better-auth`
+ * (e.g. mail send cooldown via RedisService in apps/api).
  */
 const authEnv = authEnvSchema.parse(process.env);
 const db = setupDb(authEnv.DATABASE_URI);
 
 export const auth = betterAuth({
+  hooks: {},
   plugins: [
     username({
       minUsernameLength: AUTH_USERNAME_POLICY.minLength,
@@ -113,5 +117,12 @@ export type AuthUser = AuthSession['user'];
 
 export type { AuthEnvConfig } from './env.js';
 export { authEnvSchema, parseTrustedOrigins } from './env.js';
-export { AUTH_PASSWORD_POLICY, AUTH_USERNAME_POLICY, isValidUsername } from './policy.js';
+export {
+  AUTH_MAIL_COOLDOWN_ERROR_CODE,
+  AUTH_MAIL_SEND_COOLDOWN_SECONDS,
+  AUTH_PASSWORD_POLICY,
+  AUTH_USERNAME_POLICY,
+  isValidUsername,
+  mailCooldownUserMessage,
+} from './policy.js';
 export { AUTH_COOKIE_PREFIX, AUTH_SESSION_CONFIG } from './session.config.js';

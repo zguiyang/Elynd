@@ -13,9 +13,11 @@ describe('resolveOptimisticAuthRedirect', () => {
     expect(resolveOptimisticAuthRedirect(AUTH_ROUTES.signUp, true)).toBe(AUTH_ROUTES.dashboard);
   });
 
-  it('does not redirect forgot-password or public paths on cookie alone', () => {
+  it('does not redirect forgot/reset password or public paths on cookie alone', () => {
     expect(resolveOptimisticAuthRedirect(AUTH_ROUTES.forgotPassword, true)).toBeNull();
     expect(resolveOptimisticAuthRedirect(AUTH_ROUTES.forgotPassword, false)).toBeNull();
+    expect(resolveOptimisticAuthRedirect(AUTH_ROUTES.resetPassword, true)).toBeNull();
+    expect(resolveOptimisticAuthRedirect(AUTH_ROUTES.resetPassword, false)).toBeNull();
     expect(resolveOptimisticAuthRedirect('/', false)).toBeNull();
   });
 

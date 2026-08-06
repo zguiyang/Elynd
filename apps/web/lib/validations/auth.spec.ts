@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { signInSchema, signUpSchema } from './auth';
+import { forgotPasswordSchema, resetPasswordSchema, signInSchema, signUpSchema } from './auth';
 
 describe('signInSchema', () => {
   it('accepts a valid email and password', () => {
@@ -83,5 +83,40 @@ describe('signUpSchema', () => {
   it('rejects a password longer than 128 characters', () => {
     const result = signUpSchema.safeParse({ ...valid, password: 'p'.repeat(129) });
     expect(result.success).toBe(false);
+  });
+});
+
+describe('forgotPasswordSchema', () => {
+  it('accepts a valid email', () => {
+    expect(forgotPasswordSchema.parse({ email: 'reader@example.com' })).toEqual({
+      email: 'reader@example.com',
+    });
+  });
+
+  it('rejects an invalid email', () => {
+    expect(forgotPasswordSchema.safeParse({ email: 'nope' }).success).toBe(false);
+  });
+});
+
+describe('resetPasswordSchema', () => {
+  it('accepts matching passwords', () => {
+    expect(
+      resetPasswordSchema.parse({
+        password: 'password1',
+        passwordConfirm: 'password1',
+      }),
+    ).toEqual({
+      password: 'password1',
+      passwordConfirm: 'password1',
+    });
+  });
+
+  it('rejects mismatched passwords', () => {
+    expect(
+      resetPasswordSchema.safeParse({
+        password: 'password1',
+        passwordConfirm: 'password2',
+      }).success,
+    ).toBe(false);
   });
 });

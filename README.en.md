@@ -26,19 +26,19 @@ Product vision and decision docs (English SSOT): [`docs/product/`](./docs/produc
 
 ## Stack
 
-| Layer    | Tech                                                                                                |
-| -------- | --------------------------------------------------------------------------------------------------- |
-| API      | NestJS, Better Auth (cookie session), Drizzle, PostgreSQL, optional Redis (reserved, port **3336**) |
-| Web      | Next.js App Router, React, TanStack Query/Form, Tailwind CSS v4 (port **3000**)                     |
-| Packages | pnpm workspace (`apps/*`, `packages/*`)                                                             |
+| Layer    | Tech                                                                                      |
+| -------- | ----------------------------------------------------------------------------------------- |
+| API      | NestJS, Better Auth (cookie session), Drizzle, PostgreSQL, Redis (ioredis, port **6380**) |
+| Web      | Next.js App Router, React, TanStack Query/Form, Tailwind CSS v4 (port **3000**)           |
+| Packages | pnpm workspace (`apps/*`, `packages/*`)                                                   |
 
 ## Requirements
 
-| Tool    | Version                                                                            |
-| ------- | ---------------------------------------------------------------------------------- |
-| Node.js | ≥ 24.0.0                                                                           |
-| pnpm    | ≥ 10.0.0                                                                           |
-| Docker  | optional, for local Postgres; Redis service reserved (app does not require it yet) |
+| Tool    | Version                              |
+| ------- | ------------------------------------ |
+| Node.js | ≥ 24.0.0                             |
+| pnpm    | ≥ 10.0.0                             |
+| Docker  | optional, for local Postgres + Redis |
 
 ## Local development
 
@@ -48,7 +48,7 @@ cd elynd
 pnpm install
 ```
 
-### 1. Start Postgres (Redis optional / reserved)
+### 1. Start Postgres and Redis
 
 ```bash
 pnpm compose:init
@@ -58,7 +58,7 @@ docker compose up -d
 Defaults (from the compose example):
 
 - Postgres: `postgresql://root:root@127.0.0.1:5433/app`
-- Redis: `127.0.0.1:6380` (reserved in compose; cookie auth does not use a Redis client / secondaryStorage yet)
+- Redis: `127.0.0.1:6380` (`REDIS_HOST` / `REDIS_PORT`; API via `RedisService` / ioredis)
 
 ### 2. Environment files
 

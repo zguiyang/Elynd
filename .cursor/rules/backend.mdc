@@ -44,4 +44,5 @@ Nest **dot.role**: `auth.controller.ts`, `auth.service.ts`, `auth.module.ts` —
 
 ## Env
 
-`DATABASE_URI`, `AUTH_SECRET`, `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS` via `@elynd/auth/env`.
+`DATABASE_URI`, `AUTH_SECRET`, `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS` via `@elynd/auth/env`.  
+`REDIS_HOST` / `REDIS_PORT` via API `RedisService` (ioredis; Compose host port `6380`).

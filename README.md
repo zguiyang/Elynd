@@ -26,19 +26,19 @@
 
 ## 技术栈
 
-| 层     | 技术                                                                                          |
-| ------ | --------------------------------------------------------------------------------------------- |
-| API    | NestJS、Better Auth（cookie session）、Drizzle、PostgreSQL、可选 Redis（预留，端口 **3336**） |
-| Web    | Next.js App Router、React、TanStack Query/Form、Tailwind CSS v4（端口 **3000**）              |
-| 包管理 | pnpm workspace（`apps/*`、`packages/*`）                                                      |
+| 层     | 技术                                                                                        |
+| ------ | ------------------------------------------------------------------------------------------- |
+| API    | NestJS、Better Auth（cookie session）、Drizzle、PostgreSQL、Redis（ioredis，端口 **6380**） |
+| Web    | Next.js App Router、React、TanStack Query/Form、Tailwind CSS v4（端口 **3000**）            |
+| 包管理 | pnpm workspace（`apps/*`、`packages/*`）                                                    |
 
 ## 环境要求
 
-| 工具    | 版本                                                    |
-| ------- | ------------------------------------------------------- |
-| Node.js | ≥ 24.0.0                                                |
-| pnpm    | ≥ 10.0.0                                                |
-| Docker  | 用于本地 Postgres（可选）；Redis 服务预留，应用暂不依赖 |
+| 工具    | 版本                      |
+| ------- | ------------------------- |
+| Node.js | ≥ 24.0.0                  |
+| pnpm    | ≥ 10.0.0                  |
+| Docker  | 用于本地 Postgres + Redis |
 
 ## 本地开发
 
@@ -48,7 +48,7 @@ cd elynd
 pnpm install
 ```
 
-### 1. 启动数据库（Redis 可选 / 预留）
+### 1. 启动数据库与 Redis
 
 ```bash
 pnpm compose:init
@@ -58,7 +58,7 @@ docker compose up -d
 默认连接（与 compose 示例一致）：
 
 - Postgres: `postgresql://root:root@127.0.0.1:5433/app`
-- Redis: `127.0.0.1:6380`（compose 中预留；当前 cookie auth 不需要 Redis client / secondaryStorage）
+- Redis: `127.0.0.1:6380`（`REDIS_HOST` / `REDIS_PORT`；API 经 `RedisService` / ioredis 接入）
 
 ### 2. 配置环境变量
 

@@ -1,1 +1,2 @@
-export { DashboardPanel } from './dashboard-panel';
+export { AppShell, useAppUser } from './app-shell';
+export { DashboardHome } from './dashboard-home';

@@ -48,4 +48,34 @@ describe('sendMail flow (mock transport)', () => {
     expect(payload.text).toContain(resetUrl);
     expect(payload.text).toContain('Flow Tester');
   });
+
+  it('sends an email-verification message through the full package path', async () => {
+    const transport = new MockMailTransport();
+    const verifyUrl = 'https://elynd.local/api/auth/verify-email?token=flow-verify-token';
+
+    const result = await sendMail(
+      {
+        template: 'emailVerification',
+        to: 'verify-flow@example.com',
+        vars: {
+          url: verifyUrl,
+          userName: 'Verify Tester',
+        },
+      },
+      {
+        transport,
+        from: 'Elynd <noreply@example.com>',
+      },
+    );
+
+    expect(result.id).toBe('mock_1');
+    expect(transport.sent).toHaveLength(1);
+
+    const payload = transport.sent[0]!;
+    expect(payload.to).toBe('verify-flow@example.com');
+    expect(payload.subject).toContain('邮箱');
+    expect(payload.html).toContain(verifyUrl);
+    expect(payload.html).toContain('Verify Tester');
+    expect(payload.text).toContain(verifyUrl);
+  });
 });

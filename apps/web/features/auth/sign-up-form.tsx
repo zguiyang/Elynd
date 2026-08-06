@@ -51,8 +51,16 @@ export function SignUpForm() {
         return;
       }
 
+      const { data: session, error: sessionError } = await authClient.getSession();
+      if (sessionError || !session?.user) {
+        toast.success('账号已创建，请登录');
+        router.replace(AUTH_ROUTES.signIn);
+        return;
+      }
+
       toast.success('账号已创建');
       router.replace(AUTH_ROUTES.dashboard);
+      router.refresh();
     },
   });
 

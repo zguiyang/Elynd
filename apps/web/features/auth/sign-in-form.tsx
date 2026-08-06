@@ -42,8 +42,17 @@ export function SignInForm() {
         return;
       }
 
+      const { data: session, error: sessionError } = await authClient.getSession();
+      if (sessionError || !session?.user) {
+        const message = sessionError?.message || '登录成功但未能读取会话，请刷新后重试';
+        setFormError(message);
+        toast.error(message);
+        return;
+      }
+
       toast.success('登录成功');
       router.replace(AUTH_ROUTES.dashboard);
+      router.refresh();
     },
   });
 

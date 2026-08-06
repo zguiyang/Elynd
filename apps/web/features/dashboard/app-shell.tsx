@@ -4,7 +4,7 @@ import { Menu } from '@base-ui/react/menu';
 import { EllipsisVertical, Library, LogOut, RotateCcw, Sun, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { createContext, type ReactNode, useContext, useEffect, useState } from 'react';
+import { createContext, type ReactNode, useContext, useEffect } from 'react';
 import { toast } from 'sonner';
 
 import type { AuthUser } from '@elynd/auth/server';
@@ -14,6 +14,10 @@ import { AUTH_ROUTES } from '@/constants';
 import { authClient } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 
+/**
+ * Thin adapter over Better Auth `useSession` for shell children.
+ * Session SoT remains the auth client cache (refetch on full reload / auth mutations).
+ */
 const AppUserContext = createContext<AuthUser | null>(null);
 
 export function useAppUser() {
@@ -155,44 +159,30 @@ function MobileAccountMenu({ username, email, initial, onSignOut }: UserIdentity
 
 export function AppShell({ children }: AppShellProps) {
   const router = useRouter();
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data, error, isPending } = authClient.useSession();
+  const user = (data?.user as AuthUser | undefined) ?? null;
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function loadSession() {
-      const { data, error } = await authClient.getSession();
-      if (cancelled) {
-        return;
-      }
-
-      if (error || !data?.user) {
-        router.replace(AUTH_ROUTES.signIn);
-        return;
-      }
-
-      setUser(data.user as AuthUser);
-      setIsLoading(false);
+    if (isPending) {
+      return;
     }
-
-    void loadSession();
-    return () => {
-      cancelled = true;
-    };
-  }, [router]);
+    if (error || !user) {
+      router.replace(AUTH_ROUTES.signIn);
+    }
+  }, [error, isPending, router, user]);
 
   async function handleSignOut() {
-    try {
-      await authClient.signOut();
-    } catch {
-      // Still redirect if the API call fails; cookie may already be cleared client-side.
+    const { error: signOutError } = await authClient.signOut();
+    if (signOutError) {
+      toast.error(signOutError.message || '退出登录失败，请重试');
+      return;
     }
     toast.success('已退出登录');
     router.replace(AUTH_ROUTES.signIn);
+    router.refresh();
   }
 
-  if (isLoading) {
+  if (isPending || !user) {
     return (
       <div className="flex h-dvh flex-1 items-center justify-center px-6">
         <p className="text-sm text-muted-foreground">加载中…</p>
@@ -200,8 +190,8 @@ export function AppShell({ children }: AppShellProps) {
     );
   }
 
-  const username = user?.username?.trim() || user?.name?.trim() || '读者';
-  const email = user?.email?.trim() || '—';
+  const username = user.username?.trim() || user.name?.trim() || '读者';
+  const email = user.email?.trim() || '—';
   const initial = username.slice(0, 1).toUpperCase();
   const onSignOut = () => void handleSignOut();
   const identity = { username, email, initial, onSignOut };

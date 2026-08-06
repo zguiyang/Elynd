@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 
-import { AUTH_MAIL_SEND_COOLDOWN_SECONDS } from '@elynd/auth/policy';
+import { mailCooldownSeconds } from '@elynd/auth/policy';
 
 import { RedisService } from '../global/redis.service.js';
 import { mailCooldownKey, type MailCooldownPurpose, normalizeMailCooldownEmail } from './mail-cooldown.keys.js';
@@ -23,7 +23,7 @@ export class MailCooldownService {
     if (!normalized) {
       return;
     }
-    await this.redis.getClient().set(mailCooldownKey(purpose, normalized), '1', 'EX', AUTH_MAIL_SEND_COOLDOWN_SECONDS);
+    await this.redis.getClient().set(mailCooldownKey(purpose, normalized), '1', 'EX', mailCooldownSeconds(purpose));
   }
 
   async clear(purpose: MailCooldownPurpose, email: string): Promise<void> {

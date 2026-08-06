@@ -1,4 +1,6 @@
-export type MailCooldownPurpose = 'emailVerification' | 'passwordReset';
+import type { AuthMailCooldownPurpose } from '@elynd/auth/policy';
+
+export type MailCooldownPurpose = AuthMailCooldownPurpose;
 
 export function normalizeMailCooldownEmail(email: string): string {
   return email.trim().toLowerCase();

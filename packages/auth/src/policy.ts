@@ -14,18 +14,34 @@ export const AUTH_USERNAME_POLICY = {
   pattern: /^[a-zA-Z0-9._]+$/,
 } as const;
 
+/** Independent Redis cooldown buckets for auth transactional mail. */
+export type AuthMailCooldownPurpose = 'emailVerification' | 'passwordReset';
+
 /**
- * Seconds to wait before re-sending the same auth mail purpose
- * (email verification or password reset). SSOT for Redis EX and UX copy.
+ * Per-purpose resend cooldown (seconds). SSOT for Redis EX and UX copy.
+ * Buckets are independent — verification cooldown must not block password reset.
  */
-export const AUTH_MAIL_SEND_COOLDOWN_SECONDS = 30 * 60;
+export const AUTH_MAIL_COOLDOWN_SECONDS_BY_PURPOSE = {
+  emailVerification: 30 * 60,
+  passwordReset: 10 * 60,
+} as const satisfies Record<AuthMailCooldownPurpose, number>;
+
+/** @deprecated Prefer `AUTH_MAIL_COOLDOWN_SECONDS_BY_PURPOSE.emailVerification`. */
+export const AUTH_MAIL_SEND_COOLDOWN_SECONDS = AUTH_MAIL_COOLDOWN_SECONDS_BY_PURPOSE.emailVerification;
 
 /** Stable error code when a resend is blocked by cooldown. */
 export const AUTH_MAIL_COOLDOWN_ERROR_CODE = 'MAIL_SEND_COOLDOWN' as const;
 
-export function mailCooldownUserMessage(cooldownSeconds: number = AUTH_MAIL_SEND_COOLDOWN_SECONDS): string {
-  const minutes = Math.max(1, Math.round(cooldownSeconds / 60));
-  return `请使用已发送的邮件，${minutes} 分钟内无需重复发送`;
+export function mailCooldownSeconds(purpose: AuthMailCooldownPurpose): number {
+  return AUTH_MAIL_COOLDOWN_SECONDS_BY_PURPOSE[purpose];
+}
+
+export function mailCooldownUserMessage(purpose: AuthMailCooldownPurpose = 'emailVerification'): string {
+  const minutes = Math.max(1, Math.round(mailCooldownSeconds(purpose) / 60));
+  if (purpose === 'passwordReset') {
+    return `重置密码邮件已发送，请 ${minutes} 分钟后再试重发`;
+  }
+  return `验证邮件已发送，请 ${minutes} 分钟后再试重发`;
 }
 
 export function isValidUsername(username: string): boolean {

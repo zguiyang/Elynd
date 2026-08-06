@@ -9,9 +9,9 @@ describe('resolveMailCooldownErrorMessage', () => {
     expect(
       resolveMailCooldownErrorMessage({
         code: AUTH_MAIL_COOLDOWN_ERROR_CODE,
-        message: '请使用已发送的邮件，30 分钟内无需重复发送',
+        message: '重置密码邮件已发送，请 10 分钟后再试重发',
       }),
-    ).toContain('30');
+    ).toContain('10');
   });
 
   it('returns null for unrelated errors', () => {

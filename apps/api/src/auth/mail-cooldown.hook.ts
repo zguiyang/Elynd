@@ -63,7 +63,7 @@ export class MailCooldownHook {
     }
     if (await this.mailCooldown.isActive(purpose, email)) {
       throw new APIError('BAD_REQUEST', {
-        message: mailCooldownUserMessage(),
+        message: mailCooldownUserMessage(purpose),
         code: AUTH_MAIL_COOLDOWN_ERROR_CODE,
       });
     }

@@ -141,12 +141,15 @@ export type AuthUser = AuthSession['user'];
 
 export type { AuthEnvConfig } from './env.js';
 export { authEnvSchema, parseTrustedOrigins } from './env.js';
+export type { AuthMailCooldownPurpose } from './policy.js';
 export {
   AUTH_MAIL_COOLDOWN_ERROR_CODE,
+  AUTH_MAIL_COOLDOWN_SECONDS_BY_PURPOSE,
   AUTH_MAIL_SEND_COOLDOWN_SECONDS,
   AUTH_PASSWORD_POLICY,
   AUTH_USERNAME_POLICY,
   isValidUsername,
+  mailCooldownSeconds,
   mailCooldownUserMessage,
 } from './policy.js';
 export { AUTH_COOKIE_PREFIX, AUTH_SESSION_CONFIG } from './session.config.js';

@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  AUTH_MAIL_COOLDOWN_SECONDS_BY_PURPOSE,
   AUTH_MAIL_SEND_COOLDOWN_SECONDS,
   AUTH_PASSWORD_POLICY,
   AUTH_USERNAME_POLICY,
   isValidUsername,
+  mailCooldownSeconds,
   mailCooldownUserMessage,
 } from './policy.js';
 
@@ -16,16 +18,22 @@ describe('AUTH_PASSWORD_POLICY', () => {
   });
 });
 
-describe('AUTH_MAIL_SEND_COOLDOWN_SECONDS', () => {
-  it('is a positive 30-minute window', () => {
-    expect(AUTH_MAIL_SEND_COOLDOWN_SECONDS).toBe(30 * 60);
+describe('AUTH_MAIL_COOLDOWN_SECONDS_BY_PURPOSE', () => {
+  it('keeps independent windows per mail purpose', () => {
+    expect(AUTH_MAIL_COOLDOWN_SECONDS_BY_PURPOSE.emailVerification).toBe(30 * 60);
+    expect(AUTH_MAIL_COOLDOWN_SECONDS_BY_PURPOSE.passwordReset).toBe(10 * 60);
+    expect(AUTH_MAIL_SEND_COOLDOWN_SECONDS).toBe(AUTH_MAIL_COOLDOWN_SECONDS_BY_PURPOSE.emailVerification);
+    expect(mailCooldownSeconds('emailVerification')).toBe(30 * 60);
+    expect(mailCooldownSeconds('passwordReset')).toBe(10 * 60);
   });
 });
 
 describe('mailCooldownUserMessage', () => {
-  it('includes minutes derived from the SSOT constant', () => {
-    expect(mailCooldownUserMessage()).toContain('30');
-    expect(mailCooldownUserMessage(90)).toContain('2');
+  it('names the purpose and uses its own minutes', () => {
+    expect(mailCooldownUserMessage('emailVerification')).toContain('验证邮件');
+    expect(mailCooldownUserMessage('emailVerification')).toContain('30');
+    expect(mailCooldownUserMessage('passwordReset')).toContain('重置密码');
+    expect(mailCooldownUserMessage('passwordReset')).toContain('10');
   });
 });
 

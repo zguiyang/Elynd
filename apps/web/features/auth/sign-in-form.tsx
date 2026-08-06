@@ -8,7 +8,8 @@ import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { AUTH_ROUTES } from '@/constants';
-import { AuthShell, Field, inputClassName } from '@/features/auth/auth-shell';
+import { authInputClassName, authPrimaryButtonClassName, Field } from '@/features/auth/auth-field';
+import { AuthFooterLink, AuthIntro, AuthPanel } from '@/features/auth/auth-layout';
 import { authClient } from '@/lib/auth';
 import { signInSchema } from '@/lib/validations';
 
@@ -25,7 +26,7 @@ export function SignInForm() {
       setFormError(null);
       const parsed = signInSchema.safeParse(value);
       if (!parsed.success) {
-        setFormError(parsed.error.issues[0]?.message ?? 'Invalid input');
+        setFormError(parsed.error.issues[0]?.message ?? '输入有误');
         return;
       }
 
@@ -35,79 +36,87 @@ export function SignInForm() {
       });
 
       if (error) {
-        const message = error.message || 'Sign in failed';
+        const message = error.message || '登录失败';
         setFormError(message);
         toast.error(message);
         return;
       }
 
-      toast.success('Signed in');
+      toast.success('登录成功');
       router.replace(AUTH_ROUTES.dashboard);
     },
   });
 
   return (
-    <AuthShell
-      title="Sign in"
-      subtitle="Use your email and password"
-      footer={
-        <>
-          No account?{' '}
-          <Link href={AUTH_ROUTES.signUp} className="font-medium text-foreground underline-offset-4 hover:underline">
-            Sign up
-          </Link>
-        </>
-      }
-    >
-      <form
-        className="space-y-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void form.handleSubmit();
-        }}
-      >
-        <form.Field name="email">
-          {(field) => (
-            <Field label="Email" htmlFor="sign-in-email">
-              <input
-                id="sign-in-email"
-                type="email"
-                autoComplete="email"
-                className={inputClassName}
-                value={field.state.value}
-                onBlur={field.handleBlur}
-                onChange={(event) => field.handleChange(event.target.value)}
-              />
-            </Field>
-          )}
-        </form.Field>
+    <>
+      <AuthIntro eyebrow="登录" title="回来继续读" description="用邮箱登录。没有账号的话，先注册一个。" />
 
-        <form.Field name="password">
-          {(field) => (
-            <Field label="Password" htmlFor="sign-in-password">
-              <input
-                id="sign-in-password"
-                type="password"
-                autoComplete="current-password"
-                className={inputClassName}
-                value={field.state.value}
-                onBlur={field.handleBlur}
-                onChange={(event) => field.handleChange(event.target.value)}
-              />
-            </Field>
-          )}
-        </form.Field>
+      <AuthPanel>
+        <form
+          className="space-y-5"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void form.handleSubmit();
+          }}
+        >
+          <form.Field name="email">
+            {(field) => (
+              <Field label="邮箱" htmlFor="sign-in-email">
+                <input
+                  id="sign-in-email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  className={authInputClassName}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                />
+              </Field>
+            )}
+          </form.Field>
 
-        {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
+          <form.Field name="password">
+            {(field) => (
+              <Field
+                label="密码"
+                htmlFor="sign-in-password"
+                labelAside={
+                  <Link
+                    href={AUTH_ROUTES.forgotPassword}
+                    className="text-sm text-muted-foreground transition-colors duration-300 ease-out-soft hover:text-primary"
+                  >
+                    忘记密码？
+                  </Link>
+                }
+              >
+                <input
+                  id="sign-in-password"
+                  type="password"
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  className={authInputClassName}
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                />
+              </Field>
+            )}
+          </form.Field>
 
-        <form.Subscribe selector={(state) => state.isSubmitting}>
-          {(isSubmitting) => (
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? 'Signing in…' : 'Sign in'}
-            </Button>
-          )}
-        </form.Subscribe>
-      </form>
-    </AuthShell>
+          {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
+
+          <form.Subscribe selector={(state) => state.isSubmitting}>
+            {(isSubmitting) => (
+              <Button type="submit" className={authPrimaryButtonClassName} disabled={isSubmitting}>
+                {isSubmitting ? '登录中…' : '登录'}
+              </Button>
+            )}
+          </form.Subscribe>
+        </form>
+      </AuthPanel>
+
+      <AuthFooterLink prompt="还没有账号？" href={AUTH_ROUTES.signUp} label="注册" />
+    </>
   );
 }

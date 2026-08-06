@@ -46,7 +46,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="zh-CN"
       className={`${sourceSans.variable} ${notoSansSc.variable} ${sourceSerif.variable} ${notoSerifSc.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">

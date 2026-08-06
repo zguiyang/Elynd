@@ -8,10 +8,10 @@ Next rewrites same-origin `/api/:path*` to the Nest API (`API_INTERNAL_URL`, def
 
 ## Gates
 
-| Layer                                 | What it checks                                                       | Trust                                                          |
-| ------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------- |
-| Optimistic (`middleware.ts` / cookie) | Session cookie exists (`getElyndSessionCookie`, prefix `elynd-auth`) | UX only — can be stale or forged-looking; never authorize data |
-| Real validation                       | `authClient.useSession()` / `getSession()` (or Nest AuthGuard)       | Authoritative — required before protected UI/API work          |
+| Layer                            | What it checks                                                       | Trust                                                          |
+| -------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Optimistic (`proxy.ts` / cookie) | Session cookie exists (`getElyndSessionCookie`, prefix `elynd-auth`) | UX only — can be stale or forged-looking; never authorize data |
+| Real validation                  | `authClient.useSession()` / `getSession()` (or Nest AuthGuard)       | Authoritative — required before protected UI/API work          |
 
 Protected pages (e.g. dashboard) must validate the session with the API, not cookie presence alone.
 

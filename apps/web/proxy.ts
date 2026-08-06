@@ -4,7 +4,7 @@ import { getElyndSessionCookie } from '@elynd/auth/cookies';
 
 import { resolveOptimisticAuthRedirect } from '@/lib/auth/session-gate';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const hasSessionCookie = Boolean(getElyndSessionCookie(request));
   const redirectTo = resolveOptimisticAuthRedirect(request.nextUrl.pathname, hasSessionCookie);
 

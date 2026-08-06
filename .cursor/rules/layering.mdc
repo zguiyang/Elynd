@@ -13,13 +13,17 @@ Stack folders: `backend` / `frontend` / `packages`. **This file wins on "where d
 apps/web ──► packages/shared     # Zod/types; no @elynd/db
 apps/api ──► packages/shared
 apps/api ──► packages/db         # tables + drizzle-zod
+apps/api ──► packages/email      # sendMail for non-auth mail (optional)
+@elynd/auth ──► packages/db
+@elynd/auth ──► packages/email   # sendResetPassword → sendMail
 @elynd/shared                    # NO @elynd/db
 @elynd/db                        # NO @elynd/shared (unless concrete need)
+@elynd/email                     # NO Nest / apps / db / auth
 ```
 
 | Forbidden |
 | --- |
-| `apps/web` ↔ `apps/api` imports; **`shared → db`** |
+| `apps/web` ↔ `apps/api` imports; **`shared → db`**; **`web → email`** |
 | Business workflows inside `@elynd/db` / `@elynd/shared` |
 | Tables/columns outside `packages/db` |
 | One file mixing HTTP-server and UI-render |

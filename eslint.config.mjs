@@ -13,6 +13,7 @@ const nodePackageFiles = [
   'apps/api/**/*.{js,mjs,ts}',
   'packages/auth/**/*.{js,mjs,ts}',
   'packages/db/**/*.{js,mjs,ts}',
+  'packages/email/**/*.{js,mjs,ts}',
   'packages/shared/**/*.{js,mjs,ts}',
 ];
 
@@ -95,6 +96,7 @@ export default defineConfig([
         { type: 'shared', pattern: 'packages/shared/**' },
         { type: 'db', pattern: 'packages/db/**' },
         { type: 'auth', pattern: 'packages/auth/**' },
+        { type: 'email', pattern: 'packages/email/**' },
         { type: 'api-feature', pattern: 'apps/api/src/modules/*' },
         { type: 'api-common', pattern: 'apps/api/src/common/**' },
       ],
@@ -119,7 +121,7 @@ export default defineConfig([
           policies: [
             {
               from: { element: { type: 'web' } },
-              disallow: { to: { element: { types: { anyOf: ['api', 'db'] } } } },
+              disallow: { to: { element: { types: { anyOf: ['api', 'db', 'email'] } } } },
             },
             {
               from: { element: { type: 'api' } },
@@ -127,15 +129,19 @@ export default defineConfig([
             },
             {
               from: { element: { type: 'shared' } },
-              disallow: { to: { element: { types: { anyOf: ['web', 'api', 'db', 'auth'] } } } },
+              disallow: { to: { element: { types: { anyOf: ['web', 'api', 'db', 'auth', 'email'] } } } },
             },
             {
               from: { element: { type: 'db' } },
-              disallow: { to: { element: { types: { anyOf: ['web', 'api', 'shared', 'auth'] } } } },
+              disallow: { to: { element: { types: { anyOf: ['web', 'api', 'shared', 'auth', 'email'] } } } },
             },
             {
               from: { element: { type: 'auth' } },
               disallow: { to: { element: { types: { anyOf: ['web', 'api', 'shared'] } } } },
+            },
+            {
+              from: { element: { type: 'email' } },
+              disallow: { to: { element: { types: { anyOf: ['web', 'api', 'db', 'auth', 'shared'] } } } },
             },
             {
               from: { element: { type: 'api-common' } },
@@ -213,6 +219,10 @@ export default defineConfig([
               name: '@elynd/auth/server',
               message: 'Web must use @elynd/auth/client. Type-only imports from server are allowed.',
               allowTypeImports: true,
+            },
+            {
+              name: '@elynd/email',
+              message: 'Transactional mail is server-only. Do not import @elynd/email from apps/web.',
             },
           ],
         },

@@ -9,7 +9,8 @@ alwaysApply: false
 | Package | Role |
 | --- | --- |
 | `@elynd/db` | Drizzle schemas + `setupDb()` — only persistence SoT |
-| `@elynd/auth` | Better Auth factory, env/session, `./policy` — depends on `@elynd/db` |
+| `@elynd/auth` | Better Auth instance, env/session, `./policy` — depends on `@elynd/db` + `@elynd/email` |
+| `@elynd/email` | Transactional `sendMail` + templates (Resend) — Nest-free; server-only |
 | `@elynd/shared` | Zod/types/constants for **2+** apps — **no** `@elynd/db` |
 
 Layering: `layering`. Cross-layer edits: `layering` propagation section.
@@ -23,6 +24,7 @@ Layering: `layering`. Cross-layer edits: `layering` propagation section.
 
 - Tables/columns/relations → `@elynd/db` only
 - Auth shared by api+web → `@elynd/auth`
+- Transactional mail / templates → `@elynd/email` (server-only)
 - Password/username policy SSOT → `@elynd/auth/policy`
 - Cross-app validators → `@elynd/shared`
 - drizzle-zod composition → `apps/api` or `@elynd/db` — never `@elynd/shared`

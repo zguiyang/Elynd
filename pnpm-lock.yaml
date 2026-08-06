@@ -23,6 +23,9 @@ importers:
       '@elynd/db':
         specifier: workspace:*
         version: link:packages/db
+      '@elynd/email':
+        specifier: workspace:*
+        version: link:packages/email
       '@elynd/shared':
         specifier: workspace:*
         version: link:packages/shared
@@ -77,6 +80,9 @@ importers:
       '@elynd/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@elynd/email':
+        specifier: workspace:*
+        version: link:../../packages/email
       '@elynd/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -104,9 +110,6 @@ importers:
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
-      resend:
-        specifier: ^6.18.1
-        version: 6.18.1
       rxjs:
         specifier: ^7.8.1
         version: 7.8.2
@@ -235,6 +238,9 @@ importers:
       '@elynd/db':
         specifier: workspace:*
         version: link:../db
+      '@elynd/email':
+        specifier: workspace:*
+        version: link:../email
       better-auth:
         specifier: ^1.6.25
         version: 1.6.25(drizzle-kit@0.31.10)(mongodb@7.0.0(socks@2.8.7))(next@16.2.12(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(pg@8.18.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vitest@3.2.4(@types/node@24.10.13)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@2.0.1))(lightningcss@1.32.0)(stylus@0.57.0)(terser@5.46.0)(tsx@4.23.6)(yaml@2.9.0))(vue@3.5.29(typescript@5.9.3))
@@ -285,6 +291,22 @@ importers:
       typescript:
         specifier: ^5.8.3
         version: 5.9.3
+
+  packages/email:
+    dependencies:
+      resend:
+        specifier: ^6.18.1
+        version: 6.18.1
+    devDependencies:
+      eslint:
+        specifier: ^9
+        version: 9.39.3(jiti@2.7.0)
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/node@24.10.13)(jiti@2.7.0)(jsdom@27.4.0(@noble/hashes@2.0.1))(lightningcss@1.32.0)(stylus@0.57.0)(terser@5.46.0)(tsx@4.23.6)(yaml@2.9.0)
 
   packages/shared:
     dependencies:

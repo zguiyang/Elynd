@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Core
 
-Elynd: English **learning space** for adults who struggle to persist—interesting, mostly understandable real content (read + listen); AI/tools lower friction. Not a course, vocab pack, or chatbot. Monorepo: `apps/api` (Nest **3336**), `apps/web` (Next **3000**), `packages/{db,auth,shared}`.
+Elynd: English **learning space** for adults who struggle to persist—interesting, mostly understandable real content (read + listen); AI/tools lower friction. Not a course, vocab pack, or chatbot. Monorepo: `apps/api` (Nest **3336**), `apps/web` (Next **3000**), `packages/{db,auth,email,shared}`.
 
 Product SSOT: `docs/product/` (vision, philosophy, MVP scope, metrics, decision guide, guardrails). Prototypes: `prd/`.
 

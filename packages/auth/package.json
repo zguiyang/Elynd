@@ -44,6 +44,7 @@
   },
   "dependencies": {
     "@elynd/db": "workspace:*",
+    "@elynd/email": "workspace:*",
     "better-auth": "^1.6.25",
     "zod": "^4.4.3"
   },

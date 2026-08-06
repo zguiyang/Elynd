@@ -5,7 +5,6 @@ import { auth } from '@elynd/auth/server';
 
 import { AppController } from './app.controller.js';
 import { GlobalModule } from './global/global.module.js';
-import { MailModule } from './mail/mail.module.js';
 
 @Module({
   imports: [
@@ -15,7 +14,6 @@ import { MailModule } from './mail/mail.module.js';
       disableTrustedOriginsCors: true,
     }),
     GlobalModule,
-    MailModule,
   ],
   controllers: [AppController],
 })

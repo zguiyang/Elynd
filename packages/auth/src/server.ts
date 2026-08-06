@@ -3,6 +3,7 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { openAPI, username } from 'better-auth/plugins';
 
 import { accounts, sessions, setupDb, users, verifications } from '@elynd/db';
+import { sendMail } from '@elynd/email';
 
 import { authEnvSchema, parseTrustedOrigins } from './env.js';
 import { AUTH_PASSWORD_POLICY, AUTH_USERNAME_POLICY, isValidUsername } from './policy.js';
@@ -14,6 +15,8 @@ import { AUTH_COOKIE_PREFIX, AUTH_SESSION_CONFIG } from './session.config.js';
  *
  * Pass options inline to `betterAuth(...)` (do not widen to BetterAuthOptions)
  * so plugin fields (e.g. username) remain on `$Infer`.
+ *
+ * Password-reset mail goes through `@elynd/email` (community composition pattern).
  */
 const authEnv = authEnvSchema.parse(process.env);
 const db = setupDb(authEnv.DATABASE_URI);
@@ -44,6 +47,17 @@ export const auth = betterAuth({
     enabled: true,
     minPasswordLength: AUTH_PASSWORD_POLICY.minLength,
     maxPasswordLength: AUTH_PASSWORD_POLICY.maxLength,
+    revokeSessionsOnPasswordReset: true,
+    sendResetPassword: async ({ user, url }) => {
+      void sendMail({
+        template: 'passwordReset',
+        to: user.email,
+        vars: {
+          url,
+          ...(user.name.trim() ? { userName: user.name } : {}),
+        },
+      });
+    },
   },
   user: {
     modelName: 'users',

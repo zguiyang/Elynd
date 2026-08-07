@@ -113,9 +113,12 @@
   --elynd-shadow-card: 0 12px 40px -24px rgb(28 25 23 / 0.12);
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 
-  /* Fonts — families injected from layout via --font-elynd-* */
-  --elynd-font-sans: var(--font-elynd-sans), var(--font-elynd-sans-sc), ui-sans-serif, system-ui, sans-serif;
-  --elynd-font-heading: var(--font-elynd-heading), var(--font-elynd-heading-sc), ui-serif, Georgia, serif;
+  /* Fonts — DESIGN.md stacks via Fontsource variable packages + OS fallbacks */
+  --elynd-font-sans:
+    'Source Sans 3 Variable', 'Noto Sans SC Variable', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+    ui-sans-serif, system-ui, sans-serif;
+  --elynd-font-heading:
+    'Source Serif 4 Variable', 'Noto Serif SC Variable', 'Songti SC', 'STSong', Georgia, ui-serif, serif;
   --elynd-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 

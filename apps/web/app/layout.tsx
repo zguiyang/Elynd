@@ -1,38 +1,18 @@
+import '@fontsource-variable/source-sans-3/wght.css';
+import '@fontsource-variable/source-serif-4/wght.css';
+import '@fontsource-variable/noto-sans-sc/wght.css';
+import '@fontsource-variable/noto-serif-sc/wght.css';
 import './globals.css';
 
 import type { Metadata } from 'next';
-import { Noto_Sans_SC, Noto_Serif_SC, Source_Sans_3, Source_Serif_4 } from 'next/font/google';
 
 import { Providers } from '@/components/providers';
 import { APP_NAME } from '@/constants';
 
-const sourceSans = Source_Sans_3({
-  variable: '--font-elynd-sans',
-  subsets: ['latin', 'latin-ext'],
-  display: 'swap',
-});
-
-const notoSansSc = Noto_Sans_SC({
-  variable: '--font-elynd-sans-sc',
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  display: 'swap',
-  preload: false,
-});
-
-const sourceSerif = Source_Serif_4({
-  variable: '--font-elynd-heading',
-  subsets: ['latin', 'latin-ext'],
-  display: 'swap',
-});
-
-const notoSerifSc = Noto_Serif_SC({
-  variable: '--font-elynd-heading-sc',
-  subsets: ['latin'],
-  weight: ['500', '600', '700'],
-  display: 'swap',
-  preload: false,
-});
+/**
+ * Fonts: Fontsource variable packages (self-hosted woff2 via npm).
+ * Avoid `next/font/google` — compile-time gstatic fetches hang behind fake-IP proxies.
+ */
 
 export const metadata: Metadata = {
   title: APP_NAME,
@@ -45,10 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="zh-CN"
-      className={`${sourceSans.variable} ${notoSansSc.variable} ${sourceSerif.variable} ${notoSerifSc.variable} h-full antialiased`}
-    >
+    <html lang="zh-CN" className="h-full antialiased">
       <body className="flex min-h-full flex-col">
         <Providers>{children}</Providers>
       </body>

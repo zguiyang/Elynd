@@ -14,7 +14,8 @@ Layering: `layering`. Cross-layer edits: `layering` propagation section.
 
 ## TypeScript
 
-- Extend `../../tsconfig.base.json`; local `outDir`/`rootDir`/`include`
+- Extend `../../tsconfig.base.json`; local `rootDir`/`include` as needed
+- Source-first package: `exports` → `src/*.ts`, `tsc --noEmit` only (no `dist` / `build`)
 - Cross-package: `@elynd/*` names, not relative across packages
 
 ## Ownership

@@ -6,6 +6,7 @@ import type { NextConfig } from 'next';
  */
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  transpilePackages: ['@elynd/shared'],
 };
 
 export default nextConfig;

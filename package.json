@@ -9,8 +9,8 @@
   "scripts": {
     "dev:backend": "pnpm --filter @elynd/backend dev",
     "dev:web": "pnpm --filter @elynd/web dev",
-    "build": "pnpm --filter @elynd/shared build && pnpm --filter @elynd/backend build && pnpm --filter @elynd/web build",
-    "build:backend": "pnpm --filter @elynd/shared build && pnpm --filter @elynd/backend build",
+    "build": "pnpm --filter @elynd/backend build && pnpm --filter @elynd/web build",
+    "build:backend": "pnpm --filter @elynd/backend build",
     "lint": "pnpm --filter @elynd/backend lint && eslint apps/web packages/shared",
     "lint:backend": "pnpm --filter @elynd/backend lint",
     "lint:web": "eslint apps/web",

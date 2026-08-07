@@ -27,6 +27,9 @@ test.group('Auth HTTP', (group) => {
   }) => {
     using fake = mail.fake()
 
+    const prior = await User.query().count('* as total')
+    const priorTotal = Number(prior[0]!.$extras.total)
+
     const register = await client.post('/api/auth/register').json({
       email: 'alice@example.com',
       username: 'alice',
@@ -37,7 +40,7 @@ test.group('Auth HTTP', (group) => {
     register.assertStatus(200)
     assert.equal(register.body().data.email, 'alice@example.com')
     assert.equal(register.body().data.username, 'alice')
-    assert.equal(register.body().data.role, 'admin')
+    assert.equal(register.body().data.role, priorTotal === 0 ? 'admin' : 'user')
     assert.isFalse(register.body().data.emailVerified)
     assert.isString(register.body().data.image)
     assert.match(register.body().data.image!, /dicebear/)
@@ -63,15 +66,23 @@ test.group('Auth HTTP', (group) => {
       password: 'password123',
     })
     login.assertStatus(200)
-    assert.equal(login.body().data.type, 'bearer')
-    assert.isString(login.body().data.value)
+    assert.equal(login.body().data.username, 'alice')
+    assert.isUndefined((login.body().data as { value?: string }).value)
+    assert.isUndefined((login.body().data as { type?: string }).type)
+    login.assertCookie('adonis-session')
 
-    const me = await client.get('/api/auth/me').bearerToken(login.body().data.value)
+    const me = await client.get('/api/auth/me').loginAs(user)
     me.assertStatus(200)
     assert.equal(me.body().data.username, 'alice')
 
-    const logout = await client.delete('/api/auth/logout').bearerToken(login.body().data.value)
+    const logout = await client.delete('/api/auth/logout').loginAs(user)
     logout.assertStatus(200)
+
+    const meAfterLogout = await client.get('/api/auth/me')
+    meAfterLogout.assertStatus(401)
+
+    const logoutAgain = await client.delete('/api/auth/logout')
+    logoutAgain.assertStatus(200)
   })
 
   test('resend verification respects redis cooldown', async ({ client, assert }) => {
@@ -100,10 +111,10 @@ test.group('Auth HTTP', (group) => {
     fake.mails.assertSentCount(VerifyEmailNotification, 2)
   })
 
-  test('password reset revokes access tokens', async ({ client, assert }) => {
+  test('password reset accepts new password', async ({ client, assert }) => {
     using fake = mail.fake()
 
-    const user = await User.create({
+    await User.create({
       email: 'carol@example.com',
       username: 'carol',
       password: 'password123',
@@ -112,16 +123,15 @@ test.group('Auth HTTP', (group) => {
       emailVerifiedAt: DateTime.utc(),
     })
 
-    const token = await User.accessTokens.create(user)
-    const bearer = token.value!.release()
-
     const forgot = await client.post('/api/auth/password/forgot').json({
       email: 'carol@example.com',
     })
     forgot.assertStatus(200)
     fake.mails.assertSent(PasswordResetNotification)
 
-    const resetToken = createPasswordResetToken({ userId: user.id })
+    const resetToken = createPasswordResetToken({
+      userId: (await User.findByOrFail('email', 'carol@example.com')).id,
+    })
 
     const reset = await client.post('/api/auth/password/reset').json({
       token: resetToken,
@@ -129,14 +139,17 @@ test.group('Auth HTTP', (group) => {
     })
     reset.assertStatus(200)
 
-    const me = await client.get('/api/auth/me').bearerToken(bearer)
-    me.assertStatus(401)
-
     const login = await client.post('/api/auth/login').json({
       login: 'carol',
       password: 'newpassword123',
     })
     login.assertStatus(200)
-    assert.equal(login.body().data.type, 'bearer')
+    assert.equal(login.body().data.username, 'carol')
+    login.assertCookie('adonis-session')
+
+    const user = await User.findByOrFail('email', 'carol@example.com')
+    const me = await client.get('/api/auth/me').loginAs(user)
+    me.assertStatus(200)
+    assert.equal(me.body().data.username, 'carol')
   })
 })

@@ -20,8 +20,8 @@ router
   .group(() => {
     router.post('register', [AuthController, 'register'])
     router.post('login', [AuthController, 'login'])
-    router.delete('logout', [AuthController, 'logout']).use(middleware.auth())
-    router.get('me', [AuthController, 'me']).use(middleware.auth())
+    router.delete('logout', [AuthController, 'logout'])
+    router.get('me', [AuthController, 'me']).use(middleware.auth({ guards: ['web'] }))
 
     router.get('email/verify', [AuthController, 'verifyEmail']).as('auth.email_verify_get')
     router.post('email/verify', [AuthController, 'verifyEmail']).as('auth.email_verify_post')

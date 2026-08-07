@@ -68,7 +68,7 @@ export default class AuthController {
   }
 
   /**
-   * POST /api/auth/login
+   * POST /api/auth/login — establishes `web` session cookie.
    */
   async login({ request, auth, serialize }: HttpContext) {
     const { login, password } = await request.validateUsing(loginValidator)
@@ -81,20 +81,18 @@ export default class AuthController {
       })
     }
 
-    const token = await auth.use('api').createToken(user)
-    return serialize({
-      type: 'bearer',
-      value: token.value!.release(),
-      expiresAt: token.expiresAt,
-      user: UserTransformer.transform(user),
-    })
+    await auth.use('web').login(user)
+    return serialize(UserTransformer.transform(user))
   }
 
   /**
-   * DELETE /api/auth/logout
+   * DELETE /api/auth/logout — idempotent; clears session even when already anonymous.
    */
   async logout({ auth }: HttpContext) {
-    await auth.use('api').invalidateToken()
+    const guard = auth.use('web')
+    if (await guard.check()) {
+      await guard.logout()
+    }
     return { ok: true }
   }
 
@@ -184,9 +182,6 @@ export default class AuthController {
 
     user.password = password
     await user.save()
-
-    // Revoke all access tokens (parity with revokeSessionsOnPasswordReset)
-    await User.accessTokens.deleteAll(user)
 
     await new MailCooldownService().clear('passwordReset', user.email)
     return serialize(UserTransformer.transform(user))

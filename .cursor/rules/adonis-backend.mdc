@@ -20,8 +20,8 @@ apps/backend/
 │   ├── mails/
 │   ├── middleware/
 │   ├── models/
-│   ├── services/        # create when needed
-│   ├── transformers/
+│   ├── services/        # business logic (inject into controllers)
+│   ├── transformers/    # public JSON shape
 │   └── validators/
 ├── bin/                 # server / console / test entrypoints
 ├── config/              # app + package config
@@ -45,7 +45,9 @@ Use **`node ace make:*`** so names stay consistent with the framework.
 
 | Artifact | File | Class / export | Notes |
 | --- | --- | --- | --- |
-| Controller | `posts_controller.ts` (plural + `_controller`) | `PostsController` | `make:controller posts` |
+| Controller | `posts_controller.ts` (plural + `_controller`) | `PostsController` | `make:controller posts`; thin — no business body |
+| Service | `post_service.ts` (singular + `_service`) | `PostService` | `make:service post`; business logic + `@inject` |
+| Transformer | `post_transformer.ts` | `PostTransformer` | `make:transformer post`; JSON shape only |
 | Middleware | `body_parser_middleware.ts` (singular + `_middleware`) | `BodyParserMiddleware` | `make:middleware` |
 | Model | `user.ts` / `post.ts` (singular) | `User` / `Post` | `make:model Post`; table `posts` via Lucid |
 | Validator | `user.ts` / `post.ts` (singular, by resource) | exported Vine schemas | `make:validator`; one file may hold create/update |
@@ -55,7 +57,7 @@ Use **`node ace make:*`** so names stay consistent with the framework.
 
 **Do not** rename to Nest `auth.controller.ts` / kebab `mail-cooldown.service.ts` inside this app.
 
-Subpath imports use package `#` aliases (`#controllers/*`, `#models/*`, …) as defined in `package.json` `imports` — not `@/`.
+Subpath imports use package `#` aliases (`#controllers/*`, `#services/*`, `#transformers/*`, `#models/*`, …) as defined in `package.json` `imports` — not `@/`.
 
 ## Stack (this app)
 
@@ -80,16 +82,33 @@ Validate in `start/env.ts`. Typical local Compose mapping:
 - Postgres host port **5433** → `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_DATABASE` (e.g. `elynd_backend`)
 - Redis host port **6380** → `REDIS_HOST` / `REDIS_PORT`
 
+## Layering (Controller / Service / Transformer)
+
+Practical Adonis structure only — **no** Repository / UseCase / DTO towers.
+
+Aligned with official docs: [Controllers DI](https://docs.adonisjs.com/guides/basics/controllers), [Dependency injection](https://docs.adonisjs.com/guides/concepts/dependency-injection), [`make:service`](https://docs.adonisjs.com/reference/commands) (services encapsulate business logic), [Transformers](https://docs.adonisjs.com/guides/frontend/transformers).
+
+| Layer | Owns | Must not |
+| --- | --- | --- |
+| **Controller** | `validateUsing`; read `auth` / `params` / `request`; call **injected** services; Bouncer `authorize` when needed; return `serialize(Transformer)` / redirect | Lucid query/write; mail / token / cooldown; role defaults; frontend URL building; `new XxxService()` |
+| **Service** (`app/services`) | Use-case / business rules; orchestrate Lucid, Redis, mail, encryption; throw `Exception`s | Parse raw HTTP; Vine schemas; response envelope details |
+| **Transformer** | Model → public JSON (`pick`, nest, `allows` → `can.*`) | Side effects; business decisions |
+
+- App services: `@inject()` constructor (preferred) or method injection. Framework singletons (`mail`, `redis`, …) may use `@adonisjs/.../services/...` **inside** services.
+- Create a service when there is business orchestration — **even for a single controller** (do not wait for “2+ call sites”).
+- Validators stay Vine modules; validation runs in the controller, then trust the payload.
+
 ## Routes & HTTP
 
 - Register routes in `start/routes.ts`; middleware stacks in `start/kernel.ts`.
-- Prefer thin controllers; put non-trivial rules in `app/services` (create via Ace when 2+ call sites or clear SRP need).
 - API JSON shaping: keep starter `providers/api_provider.ts` serialize wrap unless product changes the contract.
 
 ## Scaffolding
 
 ```bash
 node ace make:controller posts
+node ace make:service post
+node ace make:transformer post
 node ace make:model Post -m
 node ace make:validator user
 node ace make:middleware guest

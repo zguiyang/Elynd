@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "adonisjs": {
+      "source": "zguiyang/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/adonisjs/SKILL.md",
+      "computedHash": "663cbae9749a391f64e4f8a71b814b365b25224e391d381919236d7a18c7f5cb"
+    },
     "apifox-branch": {
       "source": "apifox.com",
       "sourceType": "well-known",
@@ -95,6 +101,12 @@
       "skillPath": "skills/brutalist-skill/SKILL.md",
       "computedHash": "8fc355c4aadb7d29c53ca28bc41be3cd6eea765d121e3737c4dc2d0f90a8effa"
     },
+    "lucid": {
+      "source": "zguiyang/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/lucid/SKILL.md",
+      "computedHash": "ecd5163662bd9440448c8b267d4aa6da6722049cdc53d621fee49f04fda7cc04"
+    },
     "minimalist-ui": {
       "source": "Leonxlnx/taste-skill",
       "sourceType": "github",
@@ -112,6 +124,12 @@
       "sourceType": "github",
       "skillPath": "skills/redesign-skill/SKILL.md",
       "computedHash": "b405eee0e0e80fc243f731d9aa368bca307e356db7e6157d27101d369dac6726"
+    },
+    "shadcn": {
+      "source": "shadcn/ui",
+      "sourceType": "github",
+      "skillPath": "skills/shadcn/SKILL.md",
+      "computedHash": "c1a68ee06a668aced9ab2b5fbdea5f989864123794eb2e056b339a072dbb7f10"
     },
     "stitch-design-taste": {
       "source": "Leonxlnx/taste-skill",

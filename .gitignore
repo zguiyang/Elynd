@@ -59,12 +59,6 @@ openspec/
 __screenshots__/
 **/coverage/
 
-# Zod OpenAPI component cache (apps/api)
-.cache/
-
-# Generated OpenAPI artifact (regenerate: pnpm --filter @elynd/api openapi:gen)
-apps/api/openapi.json
-
 # Apifox CLI local test reports
 apifox-reports/
 

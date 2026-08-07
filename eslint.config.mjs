@@ -9,13 +9,7 @@ import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-const nodePackageFiles = [
-  'apps/api/**/*.{js,mjs,ts}',
-  'packages/auth/**/*.{js,mjs,ts}',
-  'packages/db/**/*.{js,mjs,ts}',
-  'packages/email/**/*.{js,mjs,ts}',
-  'packages/shared/**/*.{js,mjs,ts}',
-];
+const nodePackageFiles = ['packages/shared/**/*.{js,mjs,ts}'];
 
 const nextFiles = ['apps/web/**/*.{js,jsx,mjs,ts,tsx}'];
 
@@ -74,10 +68,10 @@ export default defineConfig([
     '**/build/**',
     '**/*.tsbuildinfo',
     'apps/web/next-env.d.ts',
+    'apps/backend/**',
     '.trellis/**',
     '.pnpm-store/**',
     '**/vitest.config.ts',
-    '**/drizzle.config.ts',
     '**/postcss.config.mjs',
   ]),
 
@@ -92,13 +86,8 @@ export default defineConfig([
     settings: {
       'boundaries/elements': [
         { type: 'web', pattern: 'apps/web/**' },
-        { type: 'api', pattern: 'apps/api/**' },
+        { type: 'backend', pattern: 'apps/backend/**' },
         { type: 'shared', pattern: 'packages/shared/**' },
-        { type: 'db', pattern: 'packages/db/**' },
-        { type: 'auth', pattern: 'packages/auth/**' },
-        { type: 'email', pattern: 'packages/email/**' },
-        { type: 'api-feature', pattern: 'apps/api/src/modules/*' },
-        { type: 'api-common', pattern: 'apps/api/src/common/**' },
       ],
     },
     rules: {
@@ -121,31 +110,15 @@ export default defineConfig([
           policies: [
             {
               from: { element: { type: 'web' } },
-              disallow: { to: { element: { types: { anyOf: ['api', 'db', 'email'] } } } },
+              disallow: { to: { element: { type: 'backend' } } },
             },
             {
-              from: { element: { type: 'api' } },
+              from: { element: { type: 'backend' } },
               disallow: { to: { element: { type: 'web' } } },
             },
             {
               from: { element: { type: 'shared' } },
-              disallow: { to: { element: { types: { anyOf: ['web', 'api', 'db', 'auth', 'email'] } } } },
-            },
-            {
-              from: { element: { type: 'db' } },
-              disallow: { to: { element: { types: { anyOf: ['web', 'api', 'shared', 'auth', 'email'] } } } },
-            },
-            {
-              from: { element: { type: 'auth' } },
-              disallow: { to: { element: { types: { anyOf: ['web', 'api', 'shared'] } } } },
-            },
-            {
-              from: { element: { type: 'email' } },
-              disallow: { to: { element: { types: { anyOf: ['web', 'api', 'db', 'auth', 'shared'] } } } },
-            },
-            {
-              from: { element: { type: 'api-common' } },
-              disallow: { to: { element: { type: 'api-feature' } } },
+              disallow: { to: { element: { types: { anyOf: ['web', 'backend'] } } } },
             },
           ],
         },
@@ -209,22 +182,6 @@ export default defineConfig([
           types: ['boolean'],
           format: ['camelCase', 'PascalCase'],
           prefix: ['is', 'has', 'can', 'should', 'enable'],
-        },
-      ],
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            {
-              name: '@elynd/auth/server',
-              message: 'Web must use @elynd/auth/client. Type-only imports from server are allowed.',
-              allowTypeImports: true,
-            },
-            {
-              name: '@elynd/email',
-              message: 'Transactional mail is server-only. Do not import @elynd/email from apps/web.',
-            },
-          ],
         },
       ],
     },

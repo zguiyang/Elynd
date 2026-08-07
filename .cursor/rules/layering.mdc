@@ -10,10 +10,11 @@ Stack folders: `backend` / `frontend` / `packages`. **This file wins on "where d
 ## Package graph
 
 ```text
-apps/web ──► packages/shared     # Zod/types; no @elynd/db
-apps/api ──► packages/shared
-apps/api ──► packages/db         # tables + drizzle-zod
-apps/api ──► packages/email      # sendMail for non-auth mail (optional)
+apps/web      ──► packages/shared     # Zod/types; no @elynd/db
+apps/backend  ──► (Lucid in-app under database/)   # preferred API — Adonis
+apps/api      ──► packages/shared                  # Nest legacy
+apps/api      ──► packages/db
+apps/api      ──► packages/email
 @elynd/auth ──► packages/db
 @elynd/auth ──► packages/email   # sendResetPassword → sendMail
 @elynd/shared                    # NO @elynd/db
@@ -23,23 +24,24 @@ apps/api ──► packages/email      # sendMail for non-auth mail (optional)
 
 | Forbidden |
 | --- |
-| `apps/web` ↔ `apps/api` imports; **`shared → db`**; **`web → email`** |
+| `apps/web` ↔ `apps/api` / `apps/backend` app-source imports; **`shared → db`**; **`web → email`** |
 | Business workflows inside `@elynd/db` / `@elynd/shared` |
-| Tables/columns outside `packages/db` |
+| Nest-path tables/columns outside `packages/db`; **Adonis tables belong in `apps/backend/database` (Lucid)** |
 | One file mixing HTTP-server and UI-render |
 
-`db` and `shared` are siblings; apps compose them. drizzle-zod HTTP DTOs in `apps/api` (or inside `@elynd/db`). Root tooling (`tsconfig.base.json`, prettier, eslint) is not a package; Nest/Next TS options stay per app.
+`db` and `shared` are siblings for the Nest era. Adonis persistence is Lucid inside `apps/backend` (see `adonis-backend.mdc`). Root tooling (`tsconfig.base.json`, prettier, eslint) is not a package; Nest/Next/Adonis TS options stay per app.
 
 ## Concern → layer
 
 | Concern | Lives in | Must not |
 | --- | --- | --- |
-| Domain workflow | `apps/api` features, `apps/web/features/**` | Generic `lib/`, shared config pkgs |
-| Tech capability (no domain) | `lib/` / `common/` | Import features |
-| Transport cross-cutting | API `common/` / web guards | Domain workflows |
+| Domain workflow | `apps/backend` (preferred), legacy `apps/api`, `apps/web/features/**` | Generic `lib/`, shared config pkgs |
+| Tech capability (no domain) | `lib/` / `common/` / Adonis `app/middleware` | Import features |
+| Transport cross-cutting | API middleware / web guards | Domain workflows |
 | Cross-app Zod/DTO (2+ apps) | `@elynd/shared` | Dup schemas; ORM imports |
-| API-only drizzle-zod DTOs | `apps/api` feature | `@elynd/shared` |
-| Persistence schema | `@elynd/db` only | Ad-hoc tables in apps |
+| API-only drizzle-zod DTOs | `apps/api` feature (legacy) | `@elynd/shared` |
+| Persistence schema (Nest) | `@elynd/db` only | Ad-hoc tables in Nest apps |
+| Persistence schema (Adonis) | `apps/backend/database` (Lucid) | `@elynd/db` / Drizzle |
 | Server/remote state | Query/data layer | Zustand as API SoT |
 | Client UI state | UI store | Secrets; server lists as SoT |
 | Design-system atoms | `components/ui/**` | Feature rules |
@@ -50,11 +52,13 @@ In-app: `routes/pages/controllers → feature services → tech lib → I/O`. No
 
 Downstream only; typecheck each layer before the next:
 
-`packages/db` + `packages/shared` → `apps/api` → `apps/web`
+- **Adonis path:** `apps/backend` (Lucid + Vine) → `apps/web` (when wired)
+- **Nest path (legacy):** `packages/db` + `packages/shared` → `apps/api` → `apps/web`
 
 | Trigger | Order |
 | --- | --- |
-| DB schema | schema → API DTOs (drizzle-zod) → tests → web |
+| DB schema (Adonis) | Lucid migration / `database/` → controllers+Vine → tests → web |
+| DB schema (Nest legacy) | `@elynd/db` → API DTOs (drizzle-zod) → tests → web |
 | Shared validator/type | shared → API + web |
 | API response shape | API (+tests) → shared if public → web → UI |
 | Shared constant | define once in owner / `@elynd/shared`; import |

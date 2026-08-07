@@ -1,10 +1,12 @@
 ---
-description: NestJS API conventions for Elynd
+description: NestJS API conventions for Elynd (legacy apps/api — prefer apps/backend)
 globs: apps/api/**
 alwaysApply: false
 ---
 
-# Backend (`apps/api`)
+# Backend (`apps/api`) — Nest legacy
+
+> **New API work belongs in `apps/backend` (Adonis).** Follow [`adonis-backend.mdc`](./adonis-backend.mdc). This file remains only for the Nest app until it is removed.
 
 NestJS, Better Auth (`@elynd/auth` + `@thallesp/nestjs-better-auth`), Drizzle (`@elynd/db`), Zod (`@elynd/shared`), Vitest.
 

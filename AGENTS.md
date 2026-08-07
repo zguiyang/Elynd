@@ -52,10 +52,11 @@ Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root).
 | [core.mdc](.cursor/rules/core.mdc)                               | Always — principles, Must/Ask/Never, TDD, DoD, router        |
 | [layering.mdc](.cursor/rules/layering.mdc)                       | Always — package graph, concern placement, cross-layer order |
 | [structure.mdc](.cursor/rules/structure.mdc)                     | Always — create/delete/split/move files & dirs               |
-| [backend.mdc](.cursor/rules/backend.mdc)                         | `apps/api/**`                                                |
+| [adonis-backend.mdc](.cursor/rules/adonis-backend.mdc)           | `apps/backend/**` (Adonis — preferred API)                   |
+| [backend.mdc](.cursor/rules/backend.mdc)                         | `apps/api/**` (Nest — legacy until removed)                  |
 | [frontend.mdc](.cursor/rules/frontend.mdc)                       | `apps/web/**`                                                |
 | [packages.mdc](.cursor/rules/packages.mdc)                       | `packages/**`                                                |
-| [create-api-feature](.cursor/skills/create-api-feature/SKILL.md) | Skill — new API domain feature / Nest module                 |
+| [create-api-feature](.cursor/skills/create-api-feature/SKILL.md) | Skill — legacy Nest API feature / module                     |
 
 ## Language
 
@@ -69,7 +70,8 @@ Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root).
 
 ```bash
 pnpm compose:init   # docker-compose.yaml.example → docker-compose.yaml
-pnpm run dev:api    # API :3336
+pnpm run dev:api    # Nest API :3336 (legacy)
+# Adonis: cd apps/backend && pnpm dev   # :3333
 pnpm run dev:web    # Web :3000
 pnpm run lint
 pnpm run format:check
@@ -81,4 +83,4 @@ pnpm run db:push
 
 ## External docs
 
-- [NestJS](https://docs.nestjs.com) · [Better Auth](https://www.better-auth.com/docs) · [Next.js](https://nextjs.org/docs) · [Drizzle](https://orm.drizzle.team/docs/overview) · [TanStack Query](https://tanstack.com/query/latest) · [Tailwind CSS](https://tailwindcss.com/docs)
+- [AdonisJS](https://docs.adonisjs.com) · [Adonis folder structure](https://docs.adonisjs.com/guides/getting-started/folder-structure) · [NestJS](https://docs.nestjs.com) (legacy API) · [Next.js](https://nextjs.org/docs) · [TanStack Query](https://tanstack.com/query/latest) · [Tailwind CSS](https://tailwindcss.com/docs)

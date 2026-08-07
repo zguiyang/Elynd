@@ -13,3 +13,5 @@ pnpm-lock.yaml
 .cursor/commands
 .cursor/hooks
 apps/web/next-env.d.ts
+apps/backend/.adonisjs
+

@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Core
 
-Elynd: English **learning space** for adults who struggle to persist—interesting, mostly understandable real content (read + listen); AI/tools lower friction. Not a course, vocab pack, or chatbot. Monorepo: `apps/api` (Nest **3336**), `apps/web` (Next **3000**), `packages/{db,auth,email,shared}`.
+Elynd: English **learning space** for adults who struggle to persist—interesting, mostly understandable real content (read + listen); AI/tools lower friction. Not a course, vocab pack, or chatbot. Monorepo: `apps/backend` (Adonis **3333**, target API), `apps/api` (Nest **3336**, legacy), `apps/web` (Next **3000**), `packages/{db,auth,email,shared}` (Nest-era; Adonis uses Lucid in-app).
 
 Product SSOT: `docs/product/` (vision, philosophy, MVP scope, metrics, decision guide, guardrails). Prototypes: `prd/`.
 
@@ -67,7 +67,8 @@ English imperative; one logical change; prefer subject-only. Format via commitli
 
 | Intent | Follow |
 | --- | --- |
-| New API feature / Nest module / table+endpoint | Skill `create-api-feature` + `backend` + `packages` (apply even if globs not attached) |
+| New API feature on Adonis (`apps/backend`) | `adonis-backend` + `structure` + `layering` (Lucid in-app; Ace `make:*`) |
+| Legacy Nest module / table+endpoint (`apps/api`) | Skill `create-api-feature` + `backend` + `packages` (apply even if globs not attached) |
 | Web UI / `features/**` | `frontend` |
 | Package / schema ownership | `packages` + `layering` |
 | Add/delete/split/move files or dirs | `structure` |

@@ -1,9 +1,19 @@
-import { createElyndAuthClient } from '@elynd/auth/client';
+import * as api from './api';
+import { signOut, useSession } from './session';
 
 /**
- * Cookie-session Better Auth client.
- * Same-origin baseURL so requests hit Next `/api/auth` (rewritten to Nest).
+ * Auth façade used by forms and shell.
+ * Same-origin `/api/auth/*` (Next rewrite → Adonis).
  */
-export const authClient = createElyndAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_APP_URL ?? '',
-});
+export const authClient = {
+  register: api.register,
+  login: api.login,
+  logout: api.logout,
+  me: api.me,
+  resendVerificationEmail: api.resendVerificationEmail,
+  verifyEmail: api.verifyEmail,
+  forgotPassword: api.forgotPassword,
+  resetPassword: api.resetPassword,
+  useSession,
+  signOut,
+};

@@ -9,18 +9,18 @@ function matchesPrefix(pathname: string, prefix: string): boolean {
 }
 
 /**
- * Optimistic auth redirect from cookie presence only.
+ * Optimistic auth redirect from an auth-hint cookie (not the bearer token).
  * Returns a path to redirect to, or null to continue.
  */
-export function resolveOptimisticAuthRedirect(pathname: string, hasSessionCookie: boolean): string | null {
+export function resolveOptimisticAuthRedirect(pathname: string, hasAuthHint: boolean): string | null {
   const isAppRoute = APP_ROUTE_PREFIXES.some((prefix) => matchesPrefix(pathname, prefix));
   const isAuthOnlyRoute = (AUTH_ONLY_ROUTES as readonly string[]).includes(pathname);
 
-  if (isAppRoute && !hasSessionCookie) {
+  if (isAppRoute && !hasAuthHint) {
     return AUTH_ROUTES.signIn;
   }
 
-  if (isAuthOnlyRoute && hasSessionCookie) {
+  if (isAuthOnlyRoute && hasAuthHint) {
     return AUTH_ROUTES.dashboard;
   }
 

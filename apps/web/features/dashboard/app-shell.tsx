@@ -7,16 +7,14 @@ import { useRouter } from 'next/navigation';
 import { createContext, type ReactNode, useContext, useEffect } from 'react';
 import { toast } from 'sonner';
 
-import type { AuthUser } from '@elynd/auth/server';
-
 import { BrandMark } from '@/components/brand-mark';
 import { AUTH_ROUTES } from '@/constants';
-import { authClient } from '@/lib/auth';
+import { authClient, type AuthUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 
 /**
- * Thin adapter over Better Auth `useSession` for shell children.
- * Session SoT remains the auth client cache (refetch on full reload / auth mutations).
+ * Thin adapter over Bearer session for shell children.
+ * Session SoT remains the access token + /me response.
  */
 const AppUserContext = createContext<AuthUser | null>(null);
 
@@ -205,7 +203,7 @@ function MobileAccountMenu({ username, email, initial, image, onSignOut }: UserI
 export function AppShell({ children }: AppShellProps) {
   const router = useRouter();
   const { data, error, isPending } = authClient.useSession();
-  const user = (data?.user as AuthUser | undefined) ?? null;
+  const user = data?.user ?? null;
 
   useEffect(() => {
     if (isPending) {
@@ -235,7 +233,7 @@ export function AppShell({ children }: AppShellProps) {
     );
   }
 
-  const username = user.username?.trim() || user.name?.trim() || '读者';
+  const username = user.username?.trim() || user.fullName?.trim() || '读者';
   const email = user.email?.trim() || '—';
   const initial = username.slice(0, 1).toUpperCase();
   const image = user.image?.trim() || null;

@@ -13,7 +13,7 @@ describe('resolveOptimisticAuthRedirect', () => {
     expect(resolveOptimisticAuthRedirect(AUTH_ROUTES.signUp, true)).toBe(AUTH_ROUTES.dashboard);
   });
 
-  it('does not redirect forgot/reset password or public paths on cookie alone', () => {
+  it('does not redirect forgot/reset password or public paths on hint alone', () => {
     expect(resolveOptimisticAuthRedirect(AUTH_ROUTES.forgotPassword, true)).toBeNull();
     expect(resolveOptimisticAuthRedirect(AUTH_ROUTES.forgotPassword, false)).toBeNull();
     expect(resolveOptimisticAuthRedirect(AUTH_ROUTES.resetPassword, true)).toBeNull();
@@ -21,7 +21,7 @@ describe('resolveOptimisticAuthRedirect', () => {
     expect(resolveOptimisticAuthRedirect('/', false)).toBeNull();
   });
 
-  it('allows app routes when a session cookie is present', () => {
+  it('allows app routes when an auth hint is present', () => {
     expect(resolveOptimisticAuthRedirect(AUTH_ROUTES.dashboard, true)).toBeNull();
   });
 });

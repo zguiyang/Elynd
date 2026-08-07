@@ -11,10 +11,6 @@ import { AuthFooterLink, AuthIntro, AuthPanel } from '@/features/auth/auth-layou
 import { authClient, resolveMailCooldownErrorMessage } from '@/lib/auth';
 import { signUpSchema } from '@/lib/validations';
 
-function dashboardCallbackUrl(): string {
-  return new URL(AUTH_ROUTES.dashboard, window.location.origin).toString();
-}
-
 export function SignUpForm() {
   const [isSent, setIsSent] = useState(false);
   const [submittedEmail, setSubmittedEmail] = useState('');
@@ -36,12 +32,11 @@ export function SignUpForm() {
         return;
       }
 
-      const { error } = await authClient.signUp.email({
+      const { error } = await authClient.register({
         email: parsed.data.email,
         password: parsed.data.password,
-        name: parsed.data.name,
         username: parsed.data.username,
-        callbackURL: dashboardCallbackUrl(),
+        fullName: parsed.data.name,
       });
 
       if (error) {
@@ -63,10 +58,7 @@ export function SignUpForm() {
 
     setFormError(null);
     setIsResending(true);
-    const { error } = await authClient.sendVerificationEmail({
-      email: submittedEmail,
-      callbackURL: dashboardCallbackUrl(),
-    });
+    const { error } = await authClient.resendVerificationEmail(submittedEmail);
     setIsResending(false);
 
     if (error) {
@@ -86,7 +78,7 @@ export function SignUpForm() {
         <AuthIntro
           eyebrow="邮件已发出"
           title="去邮箱点开链接"
-          description={`我们已向 ${submittedEmail} 发送确认链接（约 1 小时内有效）。点开后会自动登录。没收到就看垃圾箱，或再发一次。`}
+          description={`我们已向 ${submittedEmail} 发送确认链接（约 1 小时内有效）。确认后再回来登录。没收到就看垃圾箱，或再发一次。`}
         />
 
         <AuthPanel>

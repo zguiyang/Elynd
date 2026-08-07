@@ -1,6 +1,6 @@
 import type { NextConfig } from 'next';
 
-const apiInternalUrl = process.env.API_INTERNAL_URL ?? 'http://localhost:3336';
+const apiInternalUrl = process.env.API_INTERNAL_URL ?? 'http://localhost:3333';
 
 const nextConfig: NextConfig = {
   reactCompiler: true,

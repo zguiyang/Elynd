@@ -13,13 +13,12 @@ import { AuthFooterLink, AuthIntro, AuthPanel } from '@/features/auth/auth-layou
 import { authClient, resolveMailCooldownErrorMessage } from '@/lib/auth';
 import { signInSchema } from '@/lib/validations';
 
-function dashboardCallbackUrl(): string {
-  return new URL(AUTH_ROUTES.dashboard, window.location.origin).toString();
-}
-
 function isEmailVerificationRequired(error: { status?: number; code?: string | number } | null): boolean {
   if (!error) {
     return false;
+  }
+  if (error.code === 'E_EMAIL_NOT_VERIFIED') {
+    return true;
   }
   if (error.status === 403) {
     return true;
@@ -48,8 +47,8 @@ export function SignInForm() {
         return;
       }
 
-      const { error } = await authClient.signIn.email({
-        email: parsed.data.email,
+      const { error } = await authClient.login({
+        login: parsed.data.email,
         password: parsed.data.password,
       });
 
@@ -60,14 +59,6 @@ export function SignInForm() {
           return;
         }
         const message = error.message || '登录失败';
-        setFormError(message);
-        toast.error(message);
-        return;
-      }
-
-      const { data: session, error: sessionError } = await authClient.getSession();
-      if (sessionError || !session?.user) {
-        const message = sessionError?.message || '登录成功但未能读取会话，请刷新后重试';
         setFormError(message);
         toast.error(message);
         return;
@@ -86,10 +77,7 @@ export function SignInForm() {
     }
 
     setIsResending(true);
-    const { error } = await authClient.sendVerificationEmail({
-      email,
-      callbackURL: dashboardCallbackUrl(),
-    });
+    const { error } = await authClient.resendVerificationEmail(email);
     setIsResending(false);
 
     if (error) {

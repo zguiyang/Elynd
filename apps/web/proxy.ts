@@ -1,12 +1,10 @@
 import { type NextRequest, NextResponse } from 'next/server';
 
-import { getElyndSessionCookie } from '@elynd/auth/cookies';
-
-import { resolveOptimisticAuthRedirect } from '@/lib/auth/session-gate';
+import { AUTH_HINT_COOKIE, resolveOptimisticAuthRedirect } from '@/lib/auth';
 
 export function proxy(request: NextRequest) {
-  const hasSessionCookie = Boolean(getElyndSessionCookie(request));
-  const redirectTo = resolveOptimisticAuthRedirect(request.nextUrl.pathname, hasSessionCookie);
+  const hasAuthHint = Boolean(request.cookies.get(AUTH_HINT_COOKIE)?.value);
+  const redirectTo = resolveOptimisticAuthRedirect(request.nextUrl.pathname, hasAuthHint);
 
   if (!redirectTo) {
     return NextResponse.next();

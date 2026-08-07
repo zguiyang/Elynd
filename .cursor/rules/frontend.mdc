@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Frontend (`apps/web`)
 
-Next.js App Router, React, TanStack Form + Query, Better Auth client (`@elynd/auth`), Tailwind CSS **v4**, shadcn/base-nova under `components/ui/`.
+Next.js App Router, React, TanStack Form + Query, Adonis access-token auth client (`lib/auth`), Tailwind CSS **v4**, shadcn/base-nova under `components/ui/`.
 
 Placement: **`layering`** + **`structure`**. Filled notes: `.trellis/spec/web/frontend/` (ignore **To fill**).
 
@@ -26,7 +26,7 @@ Feature/component files: `kebab-case` (`sign-in-form.tsx`); PascalCase exports. 
 | Features | `features/**` | domain UI, forms, feature hooks |
 | Design system | `components/ui/` | shadcn atoms only |
 | Shared non-feature UI | `components/` | providers/shell |
-| Auth client | `lib/auth/` | thin `@elynd/auth/client` wrapper |
+| Auth client | `lib/auth/` | Bearer client → Adonis `/api/auth/*` |
 | Server state | `lib/query/` | TanStack Query |
 | Client UI state | `stores/` | Zustand UI-only (create when needed) |
 | Validation | `lib/validations/` | form Zod; auth bounds from `@elynd/auth/policy`; cross-app → `@elynd/shared` |
@@ -42,4 +42,6 @@ Tailwind v4 (`@import "tailwindcss"`); semantic tokens over raw colors.
 
 ## Auth
 
-Cookie session via same-origin `/api` rewrite to Nest. Prefer `@elynd/auth` types; no Bearer/`localStorage` helpers unless task changes auth mode. Password/username bounds from `@elynd/auth/policy` — do not re-declare in web Zod.
+Opaque **access tokens** via same-origin `/api` rewrite to Adonis (`API_INTERNAL_URL`, default `:3333`).
+Token lives in `sessionStorage`; a non-secret hint cookie supports proxy optimistic redirects.
+Password/username bounds from `@elynd/auth/policy` until that package is retired — do not re-declare in web Zod.

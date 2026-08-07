@@ -27,11 +27,7 @@ export function ForgotPasswordForm() {
         return;
       }
 
-      const redirectTo = new URL(AUTH_ROUTES.resetPassword, window.location.origin).toString();
-      const { error } = await authClient.requestPasswordReset({
-        email: parsed.data.email,
-        redirectTo,
-      });
+      const { error } = await authClient.forgotPassword(parsed.data.email);
 
       if (error) {
         const cooldownMessage = resolveMailCooldownErrorMessage(error);
@@ -51,7 +47,7 @@ export function ForgotPasswordForm() {
         <AuthIntro
           eyebrow="邮件已发出"
           title="去邮箱点开链接"
-          description="点开后设新密码，保存就会登录进系统。没收到就看垃圾箱，或再发一次。"
+          description="点开后设新密码，保存后再登录。没收到就看垃圾箱，或再发一次。"
         />
 
         <AuthPanel>
@@ -77,7 +73,7 @@ export function ForgotPasswordForm() {
       <AuthIntro
         eyebrow="找回密码"
         title="忘了也没关系"
-        description="留下邮箱，我会发一封带链接的邮件。点开设新密码，提交后直接进系统。"
+        description="留下邮箱，我会发一封带链接的邮件。点开设新密码，保存后再登录。"
       />
 
       <AuthPanel>

@@ -45,7 +45,7 @@ export function ResetPasswordForm() {
       }
 
       const { error } = await authClient.resetPassword({
-        newPassword: parsed.data.password,
+        password: parsed.data.password,
         token,
       });
 
@@ -53,14 +53,6 @@ export function ResetPasswordForm() {
         const message = error.message || '重置失败，请重新申请链接';
         setFormError(message);
         toast.error(message);
-        return;
-      }
-
-      const { data: session, error: sessionError } = await authClient.getSession();
-      if (!sessionError && session?.user) {
-        toast.success('密码已更新');
-        router.replace(AUTH_ROUTES.dashboard);
-        router.refresh();
         return;
       }
 
@@ -76,7 +68,7 @@ export function ResetPasswordForm() {
 
   return (
     <>
-      <AuthIntro eyebrow="设置新密码" title="换一套口令" description="设好后会直接进入系统，不用再单独登录。" />
+      <AuthIntro eyebrow="设置新密码" title="换一套口令" description="设好后请用新密码登录。" />
 
       <AuthPanel>
         <form
@@ -127,7 +119,7 @@ export function ResetPasswordForm() {
           <form.Subscribe selector={(state) => state.isSubmitting}>
             {(isSubmitting) => (
               <Button type="submit" className={authPrimaryButtonClassName} disabled={isSubmitting}>
-                {isSubmitting ? '保存中…' : '保存并进入'}
+                {isSubmitting ? '保存中…' : '保存新密码'}
               </Button>
             )}
           </form.Subscribe>

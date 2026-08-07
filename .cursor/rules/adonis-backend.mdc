@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Backend (`apps/backend`)
 
-AdonisJS 7 API app. **Follow [AdonisJS official folder structure](https://docs.adonisjs.com/guides/getting-started/folder-structure) and Ace naming generators** — do not apply Nest `dot.role` from `backend.mdc` (`apps/api`).
+AdonisJS 7 API app. **Follow [AdonisJS official folder structure](https://docs.adonisjs.com/guides/getting-started/folder-structure) and Ace naming generators**.
 
 SSOT for layout/names: Adonis docs + `node ace make:*`. Placement vs monorepo packages: `layering` + `structure` (Adonis `app/**` is a **framework tree** exception to flat-by-default).
 
@@ -55,7 +55,7 @@ Use **`node ace make:*`** so names stay consistent with the framework.
 
 **Do not** rename to Nest `auth.controller.ts` / kebab `mail-cooldown.service.ts` inside this app.
 
-Subpath imports use package `#` aliases (`#controllers/*`, `#models/*`, …) as defined in `package.json` `imports` — not `@/` and not Nest relative `.js` style from `apps/api`.
+Subpath imports use package `#` aliases (`#controllers/*`, `#models/*`, …) as defined in `package.json` `imports` — not `@/`.
 
 ## Stack (this app)
 
@@ -67,19 +67,18 @@ Subpath imports use package `#` aliases (`#controllers/*`, `#models/*`, …) as 
 | Mail | `@adonisjs/mail` (Resend) + Edge/`BaseMail` |
 | Validation | VineJS |
 | Redis | `@adonisjs/redis` |
+| Cross-app policy | `@elynd/shared/auth/policy` (re-exported from `#auth/policy`) |
 | Tests | Japa |
 | Env | `start/env.ts` (`Env.create`) |
 
-Persistence for **this** app is Lucid — do not import `@elynd/db` / Drizzle into `apps/backend` unless an explicit dual-read decision is documented.
+Persistence for **this** app is Lucid — do not introduce a second ORM package for Adonis tables.
 
 ## Env (Compose-aligned)
 
 Validate in `start/env.ts`. Typical local Compose mapping:
 
-- Postgres host port **5433** → `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_DATABASE`
+- Postgres host port **5433** → `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_DATABASE` (e.g. `elynd_backend`)
 - Redis host port **6380** → `REDIS_HOST` / `REDIS_PORT`
-
-Prefer dedicated DB name for Adonis while Nest still shares Compose (avoid clobbering Better Auth tables).
 
 ## Routes & HTTP
 
@@ -101,6 +100,5 @@ Prefer Ace over hand-creating differently named files.
 
 ## Out of scope here
 
-- Nest `apps/api` → see `backend.mdc`
 - Next `apps/web` → see `frontend.mdc`
 - OpenAPI / Apifox — deferred until product asks

@@ -29,7 +29,7 @@ Feature/component files: `kebab-case` (`sign-in-form.tsx`); PascalCase exports. 
 | Auth client | `lib/auth/` | Adonis session cookie via `/api/auth/*` proxy |
 | Server state | `lib/query/` | TanStack Query |
 | Client UI state | `stores/` | Zustand UI-only (create when needed) |
-| Validation | `lib/validations/` | form Zod; auth bounds from `@elynd/auth/policy`; cross-app → `@elynd/shared` |
+| Validation | `lib/validations/` | form Zod; auth bounds from `@elynd/shared/auth/policy` |
 | Constants | `constants/` | literals used 2+ times |
 | Assets | `public/` | optional (`.gitkeep` OK) |
 
@@ -45,4 +45,4 @@ Tailwind v4 (`@import "tailwindcss"`); semantic tokens over raw colors.
 Soft UX only: cookie presence in `proxy.ts`, `/me` + **401 → sign-in** in the client.
 **Real auth** is Adonis `web` session middleware (and later rate limits / IP rules on the API).
 `DELETE /api/auth/logout` is a Next handler so HttpOnly `adonis-session` clears on this origin.
-Password/username bounds from `@elynd/auth/policy` until that package is retired — do not re-declare in web Zod.
+Password/username bounds from `@elynd/shared/auth/policy` — do not re-declare in web Zod.

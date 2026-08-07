@@ -8,7 +8,7 @@ Related: [`product-vision.md`](./product-vision.md) · [`success-metrics.md`](./
 
 ## 1. Current engineering reality
 
-On `refactor/v2`, the stack is Nest + Next. The first **working** product loop today is roughly:
+The stack is Adonis (`apps/backend`) + Next (`apps/web`). The first **working** product loop today is roughly:
 
 **Sign-up / sign-in (cookie session) / Dashboard**
 

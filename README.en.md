@@ -22,15 +22,15 @@ Product vision and decision docs (English SSOT): [`docs/product/`](./docs/produc
 | Review        | Re-meet important expressions in context            |
 | Progress      | Time-with-language and habit (not exam ranks)       |
 
-> The `refactor/v2` branch uses a Nest + Next scaffold. Business features are still migrating. The first **engineering** loop is **sign-up / sign-in (cookie session) / dashboard**. Learning-loop targets: [`docs/product/mvp-scope.md`](./docs/product/mvp-scope.md).
+> The first **engineering** loop is **sign-up / sign-in (Adonis session cookie) / dashboard**. Learning-loop targets: [`docs/product/mvp-scope.md`](./docs/product/mvp-scope.md).
 
 ## Stack
 
-| Layer    | Tech                                                                                      |
-| -------- | ----------------------------------------------------------------------------------------- |
-| API      | NestJS, Better Auth (cookie session), Drizzle, PostgreSQL, Redis (ioredis, port **6380**) |
-| Web      | Next.js App Router, React, TanStack Query/Form, Tailwind CSS v4 (port **3000**)           |
-| Packages | pnpm workspace (`apps/*`, `packages/*`)                                                   |
+| Layer    | Tech                                                                                 |
+| -------- | ------------------------------------------------------------------------------------ |
+| API      | AdonisJS 7, Lucid, PostgreSQL, Redis (port **6380**), session cookie (port **3333**) |
+| Web      | Next.js App Router, React, TanStack Query/Form, Tailwind CSS v4 (port **3000**)      |
+| Packages | pnpm workspace (`apps/*`, `packages/*`); shared package `@elynd/shared`              |
 
 ## Requirements
 
@@ -57,29 +57,33 @@ docker compose up -d
 
 Defaults (from the compose example):
 
-- Postgres: `postgresql://root:root@127.0.0.1:5433/app`
-- Redis: `127.0.0.1:6380` (`REDIS_HOST` / `REDIS_PORT`; API via `RedisService` / ioredis)
+- Postgres: `127.0.0.1:5433` (Adonis DB name in `apps/backend/.env.example` → `DB_DATABASE`)
+- Redis: `127.0.0.1:6380` (`REDIS_HOST` / `REDIS_PORT`)
 
 ### 2. Environment files
 
 ```bash
-cp apps/api/.env.example apps/api/.env
+cp apps/backend/.env.example apps/backend/.env
 cp apps/web/.env.example apps/web/.env
 ```
 
-Edit `apps/api/.env` as needed (`DATABASE_URI`, `AUTH_SECRET`, `BETTER_AUTH_URL`, `BETTER_AUTH_TRUSTED_ORIGINS`, …).
-
-### 3. Push DB schema
+Edit `apps/backend/.env` as needed (`APP_KEY`, `DB_*`, `REDIS_*`, `RESEND_API_KEY`, …). Generate `APP_KEY`:
 
 ```bash
-pnpm run db:push
+cd apps/backend && node ace generate:key
+```
+
+### 3. Run DB migrations
+
+```bash
+cd apps/backend && node ace migration:run
 ```
 
 ### 4. Run apps
 
 ```bash
-# Terminal 1: API http://localhost:3336
-pnpm run dev:api
+# Terminal 1: API http://localhost:3333
+pnpm run dev:backend
 
 # Terminal 2: Web http://localhost:3000
 pnpm run dev:web
@@ -96,23 +100,11 @@ pnpm run format:check
 pnpm run typecheck
 pnpm run test
 pnpm run build
-pnpm run db:push
 ```
 
 ## Production deploy
 
-A Nest / Next production deploy pipeline is not in this repository yet. Do not use the removed Adonis deploy scripts.
-
-## Legacy framework code
-
-Root AdonisJS `backend/` and Vue `web/` were removed from this branch. To inspect or migrate legacy features, use branch comparison:
-
-```bash
-git diff backup/pre-v2 -- backend web
-git show backup/pre-v2:backend/app/controllers/books_controller.ts
-```
-
-Reference branches: `backup/pre-v2`, `main`.
+An Adonis / Next production deploy pipeline is not in this repository yet.
 
 ## License
 

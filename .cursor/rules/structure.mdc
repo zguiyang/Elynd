@@ -46,7 +46,7 @@ Mixed unrelated concerns → split. Long but cohesive → **do not** split (not 
 | 1–2 | Do not create dir; keep flat |
 | 3+ | Create only with business/domain name |
 
-Exception: framework trees (Next `app/`, Nest module folders, **Adonis `app/{controllers,models,…}` / `config` / `start` / `database`** — see `adonis-backend.mdc`).
+Exception: framework trees (Next `app/`, **Adonis `app/{controllers,models,…}` / `config` / `start` / `database`** — see `adonis-backend.mdc`).
 
 | Existing dir files | Action |
 | --- | --- |

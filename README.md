@@ -22,15 +22,15 @@
 | Review        | 在语境中再次遇见重要表达                 |
 | Progress      | 看见与英语相处的时间与习惯（非考试排行） |
 
-> 当前 `refactor/v2` 分支为 Nest + Next 脚手架；业务功能仍在迁移中。工程上首个可用闭环是 **注册 / 登录（cookie session）/ Dashboard**。学习闭环目标见 [`docs/product/mvp-scope.md`](./docs/product/mvp-scope.md)。
+> 当前工程首个可用闭环是 **注册 / 登录（Adonis session cookie）/ Dashboard**。学习闭环目标见 [`docs/product/mvp-scope.md`](./docs/product/mvp-scope.md)。
 
 ## 技术栈
 
-| 层     | 技术                                                                                        |
-| ------ | ------------------------------------------------------------------------------------------- |
-| API    | NestJS、Better Auth（cookie session）、Drizzle、PostgreSQL、Redis（ioredis，端口 **6380**） |
-| Web    | Next.js App Router、React、TanStack Query/Form、Tailwind CSS v4（端口 **3000**）            |
-| 包管理 | pnpm workspace（`apps/*`、`packages/*`）                                                    |
+| 层     | 技术                                                                                   |
+| ------ | -------------------------------------------------------------------------------------- |
+| API    | AdonisJS 7、Lucid、PostgreSQL、Redis（端口 **6380**）、session cookie（端口 **3333**） |
+| Web    | Next.js App Router、React、TanStack Query/Form、Tailwind CSS v4（端口 **3000**）       |
+| 包管理 | pnpm workspace（`apps/*`、`packages/*`）；共享包 `@elynd/shared`                       |
 
 ## 环境要求
 
@@ -57,29 +57,33 @@ docker compose up -d
 
 默认连接（与 compose 示例一致）：
 
-- Postgres: `postgresql://root:root@127.0.0.1:5433/app`
-- Redis: `127.0.0.1:6380`（`REDIS_HOST` / `REDIS_PORT`；API 经 `RedisService` / ioredis 接入）
+- Postgres: `127.0.0.1:5433`（Adonis 默认库名见 `apps/backend/.env.example` 的 `DB_DATABASE`）
+- Redis: `127.0.0.1:6380`（`REDIS_HOST` / `REDIS_PORT`）
 
 ### 2. 配置环境变量
 
 ```bash
-cp apps/api/.env.example apps/api/.env
+cp apps/backend/.env.example apps/backend/.env
 cp apps/web/.env.example apps/web/.env
 ```
 
-按需编辑 `apps/api/.env`（`DATABASE_URI`、`AUTH_SECRET`、`BETTER_AUTH_URL`、`BETTER_AUTH_TRUSTED_ORIGINS` 等）。
-
-### 3. 推送数据库 schema
+按需编辑 `apps/backend/.env`（`APP_KEY`、`DB_*`、`REDIS_*`、`RESEND_API_KEY` 等）。生成 `APP_KEY`：
 
 ```bash
-pnpm run db:push
+cd apps/backend && node ace generate:key
+```
+
+### 3. 运行数据库迁移
+
+```bash
+cd apps/backend && node ace migration:run
 ```
 
 ### 4. 启动服务
 
 ```bash
-# 终端 1：API http://localhost:3336
-pnpm run dev:api
+# 终端 1：API http://localhost:3333
+pnpm run dev:backend
 
 # 终端 2：Web http://localhost:3000
 pnpm run dev:web
@@ -96,23 +100,11 @@ pnpm run format:check
 pnpm run typecheck
 pnpm run test
 pnpm run build
-pnpm run db:push
 ```
 
 ## 生产部署
 
-Nest / Next 的生产部署流水线尚未纳入本仓库。请勿沿用已删除的 Adonis 部署脚本。
-
-## 旧框架代码
-
-根目录下的 AdonisJS `backend/` 与 Vue `web/` 已从此分支移除。需要对照或迁移旧业务时，请使用分支对比，例如：
-
-```bash
-git diff backup/pre-v2 -- backend web
-git show backup/pre-v2:backend/app/controllers/books_controller.ts
-```
-
-参考分支：`backup/pre-v2`、`main`。
+Adonis / Next 的生产部署流水线尚未纳入本仓库。
 
 ## License
 

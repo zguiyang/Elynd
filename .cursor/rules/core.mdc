@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Core
 
-Elynd: English **learning space** for adults who struggle to persist—interesting, mostly understandable real content (read + listen); AI/tools lower friction. Not a course, vocab pack, or chatbot. Monorepo: `apps/backend` (Adonis **3333**, target API), `apps/api` (Nest **3336**, legacy), `apps/web` (Next **3000**), `packages/{db,auth,email,shared}` (Nest-era; Adonis uses Lucid in-app).
+Elynd: English **learning space** for adults who struggle to persist—interesting, mostly understandable real content (read + listen); AI/tools lower friction. Not a course, vocab pack, or chatbot. Monorepo: `apps/backend` (Adonis **3333**), `apps/web` (Next **3000**), `packages/shared` (cross-app constants/types; Adonis persistence is Lucid in-app).
 
 Product SSOT: `docs/product/` (vision, philosophy, MVP scope, metrics, decision guide, guardrails). Prototypes: `prd/`.
 
@@ -28,7 +28,7 @@ Language: talk to the user in **Chinese** when they write Chinese; **code, docs,
 
 ## Must / Ask / Never
 
-**Must:** follow `layering` + `structure` before adding files/dirs; schema in `@elynd/db` / contracts in `@elynd/shared` before inventing layout; DB schema before consumers; drizzle-zod HTTP DTOs in `apps/api` (never `shared → db`); extend root `tsconfig.base.json` via relative paths.
+**Must:** follow `layering` + `structure` before adding files/dirs; Lucid schema in `apps/backend/database` / cross-app contracts in `@elynd/shared` before inventing layout; DB schema before consumers; extend root `tsconfig.base.json` via relative paths.
 
 **Ask first** (format: plan → reason → impact → alternative → proceed?):
 
@@ -39,13 +39,13 @@ Language: talk to the user in **Chinese** when they write Chinese; **code, docs,
 5. Auth method/provider changes
 6. Large schema changes affecting existing data
 
-Exceptions: explicit user instruction for that path; obvious one-line bugfix; lint/test/typecheck runs.
+Exceptions: explicit user instruction for that path; obvious one-line bug fix; lint/test/typecheck runs.
 
-**Never:** commit secrets/`.env`; commit local `docker-compose.yaml`; touch `node_modules/`; operate on production data; disable security middleware; start `dev:*`/`start`/`preview` without approval; `apps/web` ↔ `apps/api` imports; push without approval.
+**Never:** commit secrets/`.env`; commit local `docker-compose.yaml`; touch `node_modules/`; operate on production data; disable security middleware; start `dev:*`/`start`/`preview` without approval; `apps/web` ↔ `apps/backend` app-source imports; push without approval.
 
 ## Security
 
-No hardcoded secrets; no server secrets in client bundles; validate at boundaries (Zod); parameterized DB only (Drizzle); no production stack traces to clients.
+No hardcoded secrets; no server secrets in client bundles; validate at boundaries (Zod/Vine); parameterized DB only (Lucid); no production stack traces to clients.
 
 ## TDD
 
@@ -68,7 +68,6 @@ English imperative; one logical change; prefer subject-only. Format via commitli
 | Intent | Follow |
 | --- | --- |
 | New API feature on Adonis (`apps/backend`) | `adonis-backend` + `structure` + `layering` (Lucid in-app; Ace `make:*`) |
-| Legacy Nest module / table+endpoint (`apps/api`) | Skill `create-api-feature` + `backend` + `packages` (apply even if globs not attached) |
 | Web UI / `features/**` | `frontend` |
 | Package / schema ownership | `packages` + `layering` |
 | Add/delete/split/move files or dirs | `structure` |

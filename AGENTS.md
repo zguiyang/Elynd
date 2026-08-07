@@ -38,25 +38,23 @@ Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root).
 
 1. Tooling (ESLint, Prettier, typecheck, tests)
 2. Always-on: `core`, `layering`, `structure`
-3. Glob: `backend` / `frontend` / `packages`
+3. Glob: `adonis-backend` / `frontend` / `packages`
 4. **[`DESIGN.md`](DESIGN.md)** for visual / UI appearance (when touching `apps/web` UI)
-5. Project skills (e.g. `create-api-feature`) + MCP
+5. Project skills + MCP
 6. Current Trellis task + **filled** `.trellis/spec` contracts
 7. **Filled** [`docs/product/`](docs/product/) for product-scope decisions
 8. User Rules
 
 ### Index
 
-| Rule                                                             | When                                                         |
-| ---------------------------------------------------------------- | ------------------------------------------------------------ |
-| [core.mdc](.cursor/rules/core.mdc)                               | Always — principles, Must/Ask/Never, TDD, DoD, router        |
-| [layering.mdc](.cursor/rules/layering.mdc)                       | Always — package graph, concern placement, cross-layer order |
-| [structure.mdc](.cursor/rules/structure.mdc)                     | Always — create/delete/split/move files & dirs               |
-| [adonis-backend.mdc](.cursor/rules/adonis-backend.mdc)           | `apps/backend/**` (Adonis — preferred API)                   |
-| [backend.mdc](.cursor/rules/backend.mdc)                         | `apps/api/**` (Nest — legacy until removed)                  |
-| [frontend.mdc](.cursor/rules/frontend.mdc)                       | `apps/web/**`                                                |
-| [packages.mdc](.cursor/rules/packages.mdc)                       | `packages/**`                                                |
-| [create-api-feature](.cursor/skills/create-api-feature/SKILL.md) | Skill — legacy Nest API feature / module                     |
+| Rule                                                   | When                                                         |
+| ------------------------------------------------------ | ------------------------------------------------------------ |
+| [core.mdc](.cursor/rules/core.mdc)                     | Always — principles, Must/Ask/Never, TDD, DoD, router        |
+| [layering.mdc](.cursor/rules/layering.mdc)             | Always — package graph, concern placement, cross-layer order |
+| [structure.mdc](.cursor/rules/structure.mdc)           | Always — create/delete/split/move files & dirs               |
+| [adonis-backend.mdc](.cursor/rules/adonis-backend.mdc) | `apps/backend/**` (Adonis API)                               |
+| [frontend.mdc](.cursor/rules/frontend.mdc)             | `apps/web/**`                                                |
+| [packages.mdc](.cursor/rules/packages.mdc)             | `packages/**`                                                |
 
 ## Language
 
@@ -69,18 +67,17 @@ Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root).
 **Do not** run `pnpm run dev:*`, `start`, or `preview` unless the user explicitly asks.
 
 ```bash
-pnpm compose:init   # docker-compose.yaml.example → docker-compose.yaml
-pnpm run dev:api    # Nest API :3336 (legacy)
-# Adonis: cd apps/backend && pnpm dev   # :3333
-pnpm run dev:web    # Web :3000
+pnpm compose:init      # docker-compose.yaml.example → docker-compose.yaml
+pnpm run dev:backend   # Adonis API :3333
+pnpm run dev:web       # Web :3000
 pnpm run lint
 pnpm run format:check
 pnpm run typecheck
 pnpm run test
 pnpm run build
-pnpm run db:push
+# DB migrations: cd apps/backend && node ace migration:run
 ```
 
 ## External docs
 
-- [AdonisJS](https://docs.adonisjs.com) · [Adonis folder structure](https://docs.adonisjs.com/guides/getting-started/folder-structure) · [NestJS](https://docs.nestjs.com) (legacy API) · [Next.js](https://nextjs.org/docs) · [TanStack Query](https://tanstack.com/query/latest) · [Tailwind CSS](https://tailwindcss.com/docs)
+- [AdonisJS](https://docs.adonisjs.com) · [Adonis folder structure](https://docs.adonisjs.com/guides/getting-started/folder-structure) · [Next.js](https://nextjs.org/docs) · [TanStack Query](https://tanstack.com/query/latest) · [Tailwind CSS](https://tailwindcss.com/docs)

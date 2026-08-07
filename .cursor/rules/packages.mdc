@@ -8,10 +8,7 @@ alwaysApply: false
 
 | Package | Role |
 | --- | --- |
-| `@elynd/db` | Drizzle schemas + `setupDb()` — only persistence SoT |
-| `@elynd/auth` | Better Auth instance, env/session, `./policy` — depends on `@elynd/db` + `@elynd/email` |
-| `@elynd/email` | Transactional `sendMail` + templates (Resend) — Nest-free; server-only |
-| `@elynd/shared` | Zod/types/constants for **2+** apps — **no** `@elynd/db` |
+| `@elynd/shared` | Cross-app constants/types/policy for **2+** apps — no Lucid/ORM |
 
 Layering: `layering`. Cross-layer edits: `layering` propagation section.
 
@@ -22,22 +19,18 @@ Layering: `layering`. Cross-layer edits: `layering` propagation section.
 
 ## Ownership
 
-- Tables/columns/relations → `@elynd/db` only
-- Auth shared by api+web → `@elynd/auth`
-- Transactional mail / templates → `@elynd/email` (server-only)
-- Password/username policy SSOT → `@elynd/auth/policy`
-- Cross-app validators → `@elynd/shared`
-- drizzle-zod composition → `apps/api` or `@elynd/db` — never `@elynd/shared`
-- No Nest/React feature workflows in these packages
+- Password/username/mail-cooldown policy SSOT → `@elynd/shared/auth/policy`
+- Cross-app validators/types → `@elynd/shared`
+- Persistence → `apps/backend/database` (Lucid), not packages
+- No Nest/React feature workflows in packages
 - Do not add to `@elynd/shared` for a single consumer
 
 ## Zod
 
-Monorepo **Zod v4**; import from `'zod'` only — not `'zod/v4'`. No `zod@3`.
+When shared Zod is needed: monorepo **Zod v4**; import from `'zod'` only — not `'zod/v4'`. No `zod@3`.
 
 ## Do not
 
 - App aliases in root `tsconfig.base.json`
-- `@elynd/shared` → `@elynd/db`
 - Secrets / env-specific compose in packages
-- Duplicate cross-app Zod in `apps/*`
+- Duplicate cross-app policy/constants in `apps/*`

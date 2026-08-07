@@ -109,10 +109,13 @@ export default class AuthController {
    */
   async verifyEmail({ request, serialize }: HttpContext) {
     const queryToken = request.input('token')
-    const token =
-      typeof queryToken === 'string' && queryToken.length > 0
-        ? queryToken
-        : (await request.validateUsing(verifyEmailValidator)).token
+    let token: string
+    if (typeof queryToken === 'string' && queryToken.length > 0) {
+      token = queryToken
+    } else {
+      const body = await request.validateUsing(verifyEmailValidator)
+      token = body.token
+    }
 
     const payload = decryptEmailVerificationToken(token)
     const user = await User.findOrFail(payload.userId)

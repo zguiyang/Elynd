@@ -1,4 +1,4 @@
-import { AUTH_MAIL_COOLDOWN_ERROR_CODE, mailCooldownUserMessage } from '@elynd/auth/policy';
+import { AUTH_MAIL_COOLDOWN_ERROR_CODE, mailCooldownUserMessage } from '@elynd/shared/auth/policy';
 
 export function resolveMailCooldownErrorMessage(error: {
   code?: string | number;

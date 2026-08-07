@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { AUTH_MAIL_COOLDOWN_ERROR_CODE } from '@elynd/auth/policy';
+import { AUTH_MAIL_COOLDOWN_ERROR_CODE } from '@elynd/shared/auth/policy';
 
 import { resolveMailCooldownErrorMessage } from './mail-cooldown';
 

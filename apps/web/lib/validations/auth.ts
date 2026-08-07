@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { AUTH_PASSWORD_POLICY, AUTH_USERNAME_POLICY } from '@elynd/auth/policy';
+import { AUTH_PASSWORD_POLICY, AUTH_USERNAME_POLICY } from '@elynd/shared/auth/policy';
 
 const passwordSchema = z
   .string()

@@ -10,15 +10,10 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
-    "./types": {
-      "types": "./src/types/index.ts",
-      "import": "./dist/types/index.js",
-      "default": "./dist/types/index.js"
-    },
-    "./schemas": {
-      "types": "./src/schemas/index.ts",
-      "import": "./dist/schemas/index.js",
-      "default": "./dist/schemas/index.js"
+    "./auth/policy": {
+      "types": "./src/auth/policy.ts",
+      "import": "./dist/auth/policy.js",
+      "default": "./dist/auth/policy.js"
     }
   },
   "scripts": {
@@ -26,9 +21,6 @@
     "typecheck": "tsc --noEmit",
     "lint": "pnpm -w exec eslint packages/shared",
     "test": "vitest run"
-  },
-  "dependencies": {
-    "zod": "^4.4.3"
   },
   "devDependencies": {
     "eslint": "^9",

@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
-    "@elynd/auth": "workspace:*",
+    "@elynd/shared": "workspace:*",
     "@tanstack/react-form": "^1.33.3",
     "@tanstack/react-query": "^5.101.4",
     "class-variance-authority": "^0.7.1",

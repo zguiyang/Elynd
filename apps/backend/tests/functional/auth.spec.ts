@@ -129,8 +129,9 @@ test.group('Auth HTTP', (group) => {
     forgot.assertStatus(200)
     fake.mails.assertSent(PasswordResetNotification)
 
+    const carol = await User.findByOrFail('email', 'carol@example.com')
     const resetToken = createPasswordResetToken({
-      userId: (await User.findByOrFail('email', 'carol@example.com')).id,
+      userId: carol.id,
     })
 
     const reset = await client.post('/api/auth/password/reset').json({

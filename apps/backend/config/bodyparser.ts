@@ -1,4 +1,4 @@
-import { defineConfig } from '@adonisjs/core/bodyparser'
+import { defineConfig } from '@adonisjs/core/bodyparser';
 
 const bodyParserConfig = defineConfig({
   /**
@@ -35,12 +35,7 @@ const bodyParserConfig = defineConfig({
     /**
      * Content types handled by the JSON parser.
      */
-    types: [
-      'application/json',
-      'application/json-patch+json',
-      'application/vnd.api+json',
-      'application/csp-report',
-    ],
+    types: ['application/json', 'application/json-patch+json', 'application/vnd.api+json', 'application/csp-report'],
   },
 
   /**
@@ -73,6 +68,6 @@ const bodyParserConfig = defineConfig({
      */
     types: ['multipart/form-data'],
   },
-})
+});
 
-export default bodyParserConfig
+export default bodyParserConfig;

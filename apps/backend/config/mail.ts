@@ -1,6 +1,6 @@
-import env from '#start/env'
-import { defineConfig, transports } from '@adonisjs/mail'
-import type { InferMailers } from '@adonisjs/mail/types'
+import env from '#start/env';
+import { defineConfig, transports } from '@adonisjs/mail';
+import type { InferMailers } from '@adonisjs/mail/types';
 
 const mailConfig = defineConfig({
   default: 'resend',
@@ -20,9 +20,9 @@ const mailConfig = defineConfig({
       baseUrl: 'https://api.resend.com',
     }),
   },
-})
+});
 
-export default mailConfig
+export default mailConfig;
 
 declare module '@adonisjs/mail/types' {
   export interface MailersList extends InferMailers<typeof mailConfig> {}

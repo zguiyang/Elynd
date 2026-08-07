@@ -9,7 +9,7 @@
 |
 */
 
-import { Env } from '@adonisjs/core/env'
+import { Env } from '@adonisjs/core/env';
 
 export default await Env.create(new URL('../', import.meta.url), {
   // Node
@@ -42,4 +42,4 @@ export default await Env.create(new URL('../', import.meta.url), {
   RESEND_API_KEY: Env.schema.string.optional(),
   MAIL_FROM_ADDRESS: Env.schema.string(),
   MAIL_FROM_NAME: Env.schema.string(),
-})
+});

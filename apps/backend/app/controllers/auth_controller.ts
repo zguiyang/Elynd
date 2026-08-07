@@ -1,21 +1,21 @@
-import type { HttpContext } from '@adonisjs/core/http'
-import { Exception } from '@adonisjs/core/exceptions'
-import mail from '@adonisjs/mail/services/main'
-import env from '#start/env'
-import { DateTime } from 'luxon'
-import User from '#models/user'
-import UserTransformer from '#transformers/user_transformer'
-import VerifyEmailNotification from '#mails/verify_email_notification'
-import PasswordResetNotification from '#mails/password_reset_notification'
-import MailCooldownService from '#services/mail_cooldown_service'
+import type { HttpContext } from '@adonisjs/core/http';
+import { Exception } from '@adonisjs/core/exceptions';
+import mail from '@adonisjs/mail/services/main';
+import env from '#start/env';
+import { DateTime } from 'luxon';
+import User from '#models/user';
+import UserTransformer from '#transformers/user_transformer';
+import VerifyEmailNotification from '#mails/verify_email_notification';
+import PasswordResetNotification from '#mails/password_reset_notification';
+import MailCooldownService from '#services/mail_cooldown_service';
 import {
   createEmailVerificationToken,
   createPasswordResetToken,
   decryptEmailVerificationToken,
   decryptPasswordResetToken,
-} from '#services/auth_tokens'
-import { applyUserCreateDefaults } from '#auth/user_create_defaults'
-import { normalizeEmail } from '#auth/policy'
+} from '#services/auth_tokens';
+import { applyUserCreateDefaults } from '#auth/user_create_defaults';
+import { normalizeEmail } from '#auth/policy';
 import {
   forgotPasswordValidator,
   loginValidator,
@@ -23,33 +23,30 @@ import {
   resendVerificationValidator,
   resetPasswordValidator,
   verifyEmailValidator,
-} from '#validators/user'
+} from '#validators/user';
 
 export default class AuthController {
   /**
    * POST /api/auth/register
    */
   async register({ request, serialize }: HttpContext) {
-    const payload = await request.validateUsing(registerValidator)
-    const email = normalizeEmail(payload.email)
+    const payload = await request.validateUsing(registerValidator);
+    const email = normalizeEmail(payload.email);
 
-    const existing = await User.query()
-      .where('email', email)
-      .orWhere('username', payload.username)
-      .first()
+    const existing = await User.query().where('email', email).orWhere('username', payload.username).first();
     if (existing) {
       throw new Exception('Email or username is already taken', {
         status: 409,
         code: 'E_USER_EXISTS',
-      })
+      });
     }
 
-    const cooldown = new MailCooldownService()
-    await cooldown.assertAllowed('emailVerification', email)
+    const cooldown = new MailCooldownService();
+    await cooldown.assertAllowed('emailVerification', email);
 
-    const existingUserCount = await User.query().count('* as total')
-    const total = Number(existingUserCount[0]!.$extras.total)
-    const defaults = applyUserCreateDefaults(total)
+    const existingUserCount = await User.query().count('* as total');
+    const total = Number(existingUserCount[0]!.$extras.total);
+    const defaults = applyUserCreateDefaults(total);
 
     const user = await User.create({
       email,
@@ -59,143 +56,143 @@ export default class AuthController {
       role: defaults.role,
       image: defaults.image,
       emailVerifiedAt: null,
-    })
+    });
 
-    await this.#sendVerificationEmail(user)
-    await cooldown.mark('emailVerification', email)
+    await this.#sendVerificationEmail(user);
+    await cooldown.mark('emailVerification', email);
 
-    return serialize(UserTransformer.transform(user))
+    return serialize(UserTransformer.transform(user));
   }
 
   /**
    * POST /api/auth/login — establishes `web` session cookie.
    */
   async login({ request, auth, serialize }: HttpContext) {
-    const { login, password } = await request.validateUsing(loginValidator)
-    const user = await User.verifyCredentials(login, password)
+    const { login, password } = await request.validateUsing(loginValidator);
+    const user = await User.verifyCredentials(login, password);
 
     if (!user.isEmailVerified) {
       throw new Exception('Email address is not verified', {
         status: 403,
         code: 'E_EMAIL_NOT_VERIFIED',
-      })
+      });
     }
 
-    await auth.use('web').login(user)
-    return serialize(UserTransformer.transform(user))
+    await auth.use('web').login(user);
+    return serialize(UserTransformer.transform(user));
   }
 
   /**
    * DELETE /api/auth/logout — idempotent; clears session even when already anonymous.
    */
   async logout({ auth }: HttpContext) {
-    const guard = auth.use('web')
+    const guard = auth.use('web');
     if (await guard.check()) {
-      await guard.logout()
+      await guard.logout();
     }
-    return { ok: true }
+    return { ok: true };
   }
 
   /**
    * GET /api/auth/me
    */
   async me({ auth, serialize }: HttpContext) {
-    const user = auth.getUserOrFail()
-    return serialize(UserTransformer.transform(user as User))
+    const user = auth.getUserOrFail();
+    return serialize(UserTransformer.transform(user as User));
   }
 
   /**
    * GET|POST /api/auth/email/verify
    */
   async verifyEmail({ request, serialize }: HttpContext) {
-    const queryToken = request.input('token')
-    let token: string
+    const queryToken = request.input('token');
+    let token: string;
     if (typeof queryToken === 'string' && queryToken.length > 0) {
-      token = queryToken
+      token = queryToken;
     } else {
-      const body = await request.validateUsing(verifyEmailValidator)
-      token = body.token
+      const body = await request.validateUsing(verifyEmailValidator);
+      token = body.token;
     }
 
-    const payload = decryptEmailVerificationToken(token)
-    const user = await User.findOrFail(payload.userId)
+    const payload = decryptEmailVerificationToken(token);
+    const user = await User.findOrFail(payload.userId);
 
     if (normalizeEmail(user.email) !== normalizeEmail(payload.email)) {
       throw new Exception('Invalid or expired email verification token', {
         status: 400,
         code: 'E_INVALID_EMAIL_TOKEN',
-      })
+      });
     }
 
     if (!user.emailVerifiedAt) {
-      user.emailVerifiedAt = DateTime.utc()
-      await user.save()
+      user.emailVerifiedAt = DateTime.utc();
+      await user.save();
     }
 
-    await new MailCooldownService().clear('emailVerification', user.email)
-    return serialize(UserTransformer.transform(user))
+    await new MailCooldownService().clear('emailVerification', user.email);
+    return serialize(UserTransformer.transform(user));
   }
 
   /**
    * POST /api/auth/email/resend
    */
   async resendVerification({ request }: HttpContext) {
-    const { email: rawEmail } = await request.validateUsing(resendVerificationValidator)
-    const email = normalizeEmail(rawEmail)
-    const cooldown = new MailCooldownService()
-    await cooldown.assertAllowed('emailVerification', email)
+    const { email: rawEmail } = await request.validateUsing(resendVerificationValidator);
+    const email = normalizeEmail(rawEmail);
+    const cooldown = new MailCooldownService();
+    await cooldown.assertAllowed('emailVerification', email);
 
-    const user = await User.findBy('email', email)
+    const user = await User.findBy('email', email);
     if (user && !user.isEmailVerified) {
-      await this.#sendVerificationEmail(user)
-      await cooldown.mark('emailVerification', email)
+      await this.#sendVerificationEmail(user);
+      await cooldown.mark('emailVerification', email);
     }
 
     // Always OK to avoid email enumeration
-    return { ok: true }
+    return { ok: true };
   }
 
   /**
    * POST /api/auth/password/forgot
    */
   async forgotPassword({ request }: HttpContext) {
-    const { email: rawEmail } = await request.validateUsing(forgotPasswordValidator)
-    const email = normalizeEmail(rawEmail)
-    const cooldown = new MailCooldownService()
-    await cooldown.assertAllowed('passwordReset', email)
+    const { email: rawEmail } = await request.validateUsing(forgotPasswordValidator);
+    const email = normalizeEmail(rawEmail);
+    const cooldown = new MailCooldownService();
+    await cooldown.assertAllowed('passwordReset', email);
 
-    const user = await User.findBy('email', email)
+    const user = await User.findBy('email', email);
     if (user) {
-      const token = createPasswordResetToken({ userId: user.id })
-      const resetUrl = `${env.get('FRONTEND_URL')}/reset-password?token=${encodeURIComponent(token)}`
-      await mail.send(new PasswordResetNotification(user, resetUrl))
-      await cooldown.mark('passwordReset', email)
+      const token = createPasswordResetToken({ userId: user.id });
+      const resetUrl = `${env.get('FRONTEND_URL')}/reset-password?token=${encodeURIComponent(token)}`;
+      await mail.send(new PasswordResetNotification(user, resetUrl));
+      await cooldown.mark('passwordReset', email);
     }
 
-    return { ok: true }
+    return { ok: true };
   }
 
   /**
    * POST /api/auth/password/reset
    */
   async resetPassword({ request, serialize }: HttpContext) {
-    const { token, password } = await request.validateUsing(resetPasswordValidator)
-    const payload = decryptPasswordResetToken(token)
-    const user = await User.findOrFail(payload.userId)
+    const { token, password } = await request.validateUsing(resetPasswordValidator);
+    const payload = decryptPasswordResetToken(token);
+    const user = await User.findOrFail(payload.userId);
 
-    user.password = password
-    await user.save()
+    user.password = password;
+    await user.save();
 
-    await new MailCooldownService().clear('passwordReset', user.email)
-    return serialize(UserTransformer.transform(user))
+    await new MailCooldownService().clear('passwordReset', user.email);
+    return serialize(UserTransformer.transform(user));
   }
 
   async #sendVerificationEmail(user: User) {
     const token = createEmailVerificationToken({
       userId: user.id,
       email: user.email,
-    })
-    const verifyUrl = `${env.get('FRONTEND_URL')}/verify-email?token=${encodeURIComponent(token)}`
-    await mail.send(new VerifyEmailNotification(user, verifyUrl))
+    });
+    const verifyUrl = `${env.get('FRONTEND_URL')}/verify-email?token=${encodeURIComponent(token)}`;
+    await mail.send(new VerifyEmailNotification(user, verifyUrl));
   }
 }

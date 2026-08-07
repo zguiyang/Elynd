@@ -1,7 +1,7 @@
-import string from '@adonisjs/core/helpers/string'
-import logger from '@adonisjs/core/services/logger'
-import type { HttpContext } from '@adonisjs/core/http'
-import type { NextFn } from '@adonisjs/core/types/http'
+import string from '@adonisjs/core/helpers/string';
+import logger from '@adonisjs/core/services/logger';
+import type { HttpContext } from '@adonisjs/core/http';
+import type { NextFn } from '@adonisjs/core/types/http';
 
 /**
  * Logs method, URL, status, and duration for every HTTP request.
@@ -11,18 +11,18 @@ import type { NextFn } from '@adonisjs/core/types/http'
  */
 export default class LogRequestsMiddleware {
   async handle({ request, response }: HttpContext, next: NextFn) {
-    const startTime = process.hrtime()
+    const startTime = process.hrtime();
 
     try {
-      await next()
+      await next();
     } finally {
-      const status = response.getStatus()
-      const message = `${request.method()} ${request.url()}: ${status} (${string.prettyHrTime(process.hrtime(startTime))})`
+      const status = response.getStatus();
+      const message = `${request.method()} ${request.url()}: ${status} (${string.prettyHrTime(process.hrtime(startTime))})`;
 
       if (status >= 400) {
-        logger.error(message)
+        logger.error(message);
       } else {
-        logger.info(message)
+        logger.info(message);
       }
     }
   }

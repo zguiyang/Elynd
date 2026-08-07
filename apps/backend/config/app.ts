@@ -1,13 +1,13 @@
-import env from '#start/env'
-import app from '@adonisjs/core/services/app'
-import { defineConfig } from '@adonisjs/core/http'
+import env from '#start/env';
+import app from '@adonisjs/core/services/app';
+import { defineConfig } from '@adonisjs/core/http';
 
 /**
  * The app URL can be used in various places where you want to create absolute
  * URLs to your application. For example, when sending emails, images should
  * use absolute URLs.
  */
-export const appUrl = env.get('APP_URL')
+export const appUrl = env.get('APP_URL');
 
 /**
  * The configuration settings used by the HTTP server
@@ -81,4 +81,4 @@ export const http = defineConfig({
      */
     sameSite: 'lax',
   },
-})
+});

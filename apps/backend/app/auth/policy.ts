@@ -14,7 +14,7 @@ export {
   mailCooldownUserMessage,
   normalizeEmail,
   type AuthMailCooldownPurpose,
-} from '@elynd/shared/auth/policy'
+} from '@elynd/shared/auth/policy';
 
 /** Encrypted email-verify / password-reset token lifetime (Adonis encryption). */
-export const AUTH_TOKEN_EXPIRES_IN = '1 hour' as const
+export const AUTH_TOKEN_EXPIRES_IN = '1 hour' as const;

@@ -33,11 +33,12 @@
       "eslint --fix",
       "prettier --write"
     ],
-    "*.{json,css,md,yml,yaml}": [
+    "*.{json,css,md,yml,yaml,edge}": [
       "prettier --write"
     ]
   },
   "devDependencies": {
+    "@adonisjs/prettier-config": "^1.5.0",
     "@commitlint/cli": "^21.2.1",
     "@commitlint/config-conventional": "^21.2.0",
     "@elynd/backend": "workspace:*",
@@ -45,7 +46,7 @@
     "@elynd/web": "workspace:*",
     "@eslint/js": "^9.39.1",
     "@types/node": "^22.19.7",
-    "eslint": "^9",
+    "eslint": "^9.39.1",
     "eslint-config-next": "16.2.12",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-boundaries": "^7.1.0",
@@ -54,8 +55,9 @@
     "globals": "^16.4.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.3.0",
-    "prettier": "^3.6.2",
-    "typescript-eslint": "^8.46.2"
+    "prettier": "^3.8.3",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.58.0"
   },
   "engines": {
     "node": ">=24.0.0"

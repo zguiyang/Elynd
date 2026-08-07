@@ -1,4 +1,5 @@
 import vine from '@vinejs/vine';
+
 import { AUTH_PASSWORD_POLICY, AUTH_USERNAME_POLICY } from '#auth/policy';
 
 const usernameRule = vine

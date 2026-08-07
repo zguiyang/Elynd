@@ -1,5 +1,6 @@
-import encryption from '@adonisjs/core/services/encryption';
 import { Exception } from '@adonisjs/core/exceptions';
+import encryption from '@adonisjs/core/services/encryption';
+
 import { AUTH_TOKEN_EXPIRES_IN } from '#auth/policy';
 
 export type EmailVerificationTokenPayload = {

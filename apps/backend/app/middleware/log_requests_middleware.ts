@@ -1,6 +1,6 @@
 import string from '@adonisjs/core/helpers/string';
-import logger from '@adonisjs/core/services/logger';
 import type { HttpContext } from '@adonisjs/core/http';
+import logger from '@adonisjs/core/services/logger';
 import type { NextFn } from '@adonisjs/core/types/http';
 
 /**

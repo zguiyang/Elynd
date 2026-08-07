@@ -1,11 +1,12 @@
 import { Exception } from '@adonisjs/core/exceptions';
 import redis from '@adonisjs/redis/services/main';
+
 import {
   AUTH_MAIL_COOLDOWN_ERROR_CODE,
+  type AuthMailCooldownPurpose,
   mailCooldownSeconds,
   mailCooldownUserMessage,
   normalizeEmail,
-  type AuthMailCooldownPurpose,
 } from '#auth/policy';
 
 export function mailCooldownKey(purpose: AuthMailCooldownPurpose, email: string): string {

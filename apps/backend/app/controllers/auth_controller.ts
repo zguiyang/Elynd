@@ -1,21 +1,22 @@
-import type { HttpContext } from '@adonisjs/core/http';
 import { Exception } from '@adonisjs/core/exceptions';
+import type { HttpContext } from '@adonisjs/core/http';
 import mail from '@adonisjs/mail/services/main';
-import env from '#start/env';
 import { DateTime } from 'luxon';
-import User from '#models/user';
-import UserTransformer from '#transformers/user_transformer';
-import VerifyEmailNotification from '#mails/verify_email_notification';
+
+import { normalizeEmail } from '#auth/policy';
+import { applyUserCreateDefaults } from '#auth/user_create_defaults';
 import PasswordResetNotification from '#mails/password_reset_notification';
-import MailCooldownService from '#services/mail_cooldown_service';
+import VerifyEmailNotification from '#mails/verify_email_notification';
+import User from '#models/user';
 import {
   createEmailVerificationToken,
   createPasswordResetToken,
   decryptEmailVerificationToken,
   decryptPasswordResetToken,
 } from '#services/auth_tokens';
-import { applyUserCreateDefaults } from '#auth/user_create_defaults';
-import { normalizeEmail } from '#auth/policy';
+import MailCooldownService from '#services/mail_cooldown_service';
+import env from '#start/env';
+import UserTransformer from '#transformers/user_transformer';
 import {
   forgotPasswordValidator,
   loginValidator,

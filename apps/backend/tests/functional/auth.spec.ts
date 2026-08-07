@@ -1,13 +1,14 @@
-import { test } from '@japa/runner';
 import testUtils from '@adonisjs/core/services/test_utils';
 import mail from '@adonisjs/mail/services/main';
 import redis from '@adonisjs/redis/services/main';
+import { test } from '@japa/runner';
 import { DateTime } from 'luxon';
-import User from '#models/user';
-import VerifyEmailNotification from '#mails/verify_email_notification';
+
 import PasswordResetNotification from '#mails/password_reset_notification';
-import { mailCooldownKey } from '#services/mail_cooldown_service';
+import VerifyEmailNotification from '#mails/verify_email_notification';
+import User from '#models/user';
 import { createEmailVerificationToken, createPasswordResetToken } from '#services/auth_tokens';
+import { mailCooldownKey } from '#services/mail_cooldown_service';
 
 test.group('Auth HTTP', (group) => {
   group.each.setup(() => testUtils.db().withGlobalTransaction());

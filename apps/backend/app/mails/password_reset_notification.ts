@@ -1,5 +1,6 @@
-import type User from '#models/user';
 import { BaseMail } from '@adonisjs/mail';
+
+import type User from '#models/user';
 
 export default class PasswordResetNotification extends BaseMail {
   subject = '重置你的 Elynd 密码';

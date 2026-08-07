@@ -1,5 +1,6 @@
-import type User from '#models/user';
 import { BaseMail } from '@adonisjs/mail';
+
+import type User from '#models/user';
 
 export default class VerifyEmailNotification extends BaseMail {
   subject = '确认你的 Elynd 邮箱';

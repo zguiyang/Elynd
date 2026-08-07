@@ -1,6 +1,7 @@
-import env from '#start/env';
-import app from '@adonisjs/core/services/app';
 import { defineConfig } from '@adonisjs/core/http';
+import app from '@adonisjs/core/services/app';
+
+import env from '#start/env';
 
 /**
  * The app URL can be used in various places where you want to create absolute

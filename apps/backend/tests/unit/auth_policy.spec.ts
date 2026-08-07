@@ -1,13 +1,14 @@
 import { test } from '@japa/runner';
+
 import {
+  AUTH_MAIL_COOLDOWN_SECONDS_BY_PURPOSE,
   isValidUsername,
   mailCooldownSeconds,
   mailCooldownUserMessage,
   normalizeEmail,
-  AUTH_MAIL_COOLDOWN_SECONDS_BY_PURPOSE,
 } from '#auth/policy';
-import { mailCooldownKey } from '#services/mail_cooldown_service';
 import { applyUserCreateDefaults, resolveSignupRole } from '#auth/user_create_defaults';
+import { mailCooldownKey } from '#services/mail_cooldown_service';
 
 test.group('Auth policy', () => {
   test('normalizes email', ({ assert }) => {

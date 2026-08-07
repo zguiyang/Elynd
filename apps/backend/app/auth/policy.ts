@@ -9,11 +9,11 @@ export {
   AUTH_MAIL_COOLDOWN_SECONDS_BY_PURPOSE,
   AUTH_PASSWORD_POLICY,
   AUTH_USERNAME_POLICY,
+  type AuthMailCooldownPurpose,
   isValidUsername,
   mailCooldownSeconds,
   mailCooldownUserMessage,
   normalizeEmail,
-  type AuthMailCooldownPurpose,
 } from '@elynd/shared/auth/policy';
 
 /** Encrypted email-verify / password-reset token lifetime (Adonis encryption). */

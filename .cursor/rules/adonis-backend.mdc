@@ -63,7 +63,8 @@ Subpath imports use package `#` aliases (`#controllers/*`, `#models/*`, …) as 
 | --- | --- |
 | HTTP / DI / lifecycle | `@adonisjs/core` |
 | ORM | Lucid (`@adonisjs/lucid`) — schema lives under `database/` |
-| Auth | `@adonisjs/auth` (official guards) |
+| Auth | `@adonisjs/auth` access tokens (`api` guard) |
+| Mail | `@adonisjs/mail` (Resend) + Edge/`BaseMail` |
 | Validation | VineJS |
 | Redis | `@adonisjs/redis` |
 | Tests | Japa |

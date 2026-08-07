@@ -27,7 +27,7 @@ import {
 
 export default class AuthController {
   /**
-   * POST /api/v1/auth/register
+   * POST /api/auth/register
    */
   async register({ request, serialize }: HttpContext) {
     const payload = await request.validateUsing(registerValidator)
@@ -68,7 +68,7 @@ export default class AuthController {
   }
 
   /**
-   * POST /api/v1/auth/login
+   * POST /api/auth/login
    */
   async login({ request, auth, serialize }: HttpContext) {
     const { login, password } = await request.validateUsing(loginValidator)
@@ -91,7 +91,7 @@ export default class AuthController {
   }
 
   /**
-   * DELETE /api/v1/auth/logout
+   * DELETE /api/auth/logout
    */
   async logout({ auth }: HttpContext) {
     await auth.use('api').invalidateToken()
@@ -99,7 +99,7 @@ export default class AuthController {
   }
 
   /**
-   * GET /api/v1/auth/me
+   * GET /api/auth/me
    */
   async me({ auth, serialize }: HttpContext) {
     const user = auth.getUserOrFail()
@@ -107,7 +107,7 @@ export default class AuthController {
   }
 
   /**
-   * GET|POST /api/v1/auth/email/verify
+   * GET|POST /api/auth/email/verify
    */
   async verifyEmail({ request, serialize }: HttpContext) {
     const queryToken = request.input('token')
@@ -136,7 +136,7 @@ export default class AuthController {
   }
 
   /**
-   * POST /api/v1/auth/email/resend
+   * POST /api/auth/email/resend
    */
   async resendVerification({ request }: HttpContext) {
     const { email: rawEmail } = await request.validateUsing(resendVerificationValidator)
@@ -155,7 +155,7 @@ export default class AuthController {
   }
 
   /**
-   * POST /api/v1/auth/password/forgot
+   * POST /api/auth/password/forgot
    */
   async forgotPassword({ request }: HttpContext) {
     const { email: rawEmail } = await request.validateUsing(forgotPasswordValidator)
@@ -166,7 +166,7 @@ export default class AuthController {
     const user = await User.findBy('email', email)
     if (user) {
       const token = createPasswordResetToken({ userId: user.id })
-      const resetUrl = `${env.get('APP_URL')}/api/v1/auth/password/reset?token=${encodeURIComponent(token)}`
+      const resetUrl = `${env.get('FRONTEND_URL')}/reset-password?token=${encodeURIComponent(token)}`
       await mail.send(new PasswordResetNotification(user, resetUrl))
       await cooldown.mark('passwordReset', email)
     }
@@ -175,7 +175,7 @@ export default class AuthController {
   }
 
   /**
-   * POST /api/v1/auth/password/reset
+   * POST /api/auth/password/reset
    */
   async resetPassword({ request, serialize }: HttpContext) {
     const { token, password } = await request.validateUsing(resetPasswordValidator)
@@ -197,7 +197,7 @@ export default class AuthController {
       userId: user.id,
       email: user.email,
     })
-    const verifyUrl = `${env.get('APP_URL')}/api/v1/auth/email/verify?token=${encodeURIComponent(token)}`
+    const verifyUrl = `${env.get('FRONTEND_URL')}/verify-email?token=${encodeURIComponent(token)}`
     await mail.send(new VerifyEmailNotification(user, verifyUrl))
   }
 }

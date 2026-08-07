@@ -9,7 +9,7 @@ export type ParamValue = string | number | bigint | boolean
 export interface Registry {
   'auth.register': {
     methods: ["POST"]
-    pattern: '/api/v1/auth/register'
+    pattern: '/api/auth/register'
     types: {
       body: ExtractBody<InferInput<(typeof import('#validators/user').registerValidator)>>
       paramsTuple: []
@@ -21,7 +21,7 @@ export interface Registry {
   }
   'auth.login': {
     methods: ["POST"]
-    pattern: '/api/v1/auth/login'
+    pattern: '/api/auth/login'
     types: {
       body: ExtractBody<InferInput<(typeof import('#validators/user').loginValidator)>>
       paramsTuple: []
@@ -33,7 +33,7 @@ export interface Registry {
   }
   'auth.logout': {
     methods: ["DELETE"]
-    pattern: '/api/v1/auth/logout'
+    pattern: '/api/auth/logout'
     types: {
       body: {}
       paramsTuple: []
@@ -45,7 +45,7 @@ export interface Registry {
   }
   'auth.me': {
     methods: ["GET","HEAD"]
-    pattern: '/api/v1/auth/me'
+    pattern: '/api/auth/me'
     types: {
       body: {}
       paramsTuple: []
@@ -57,7 +57,7 @@ export interface Registry {
   }
   'auth.email_verify_get': {
     methods: ["GET","HEAD"]
-    pattern: '/api/v1/auth/email/verify'
+    pattern: '/api/auth/email/verify'
     types: {
       body: {}
       paramsTuple: []
@@ -69,7 +69,7 @@ export interface Registry {
   }
   'auth.email_verify_post': {
     methods: ["POST"]
-    pattern: '/api/v1/auth/email/verify'
+    pattern: '/api/auth/email/verify'
     types: {
       body: ExtractBody<InferInput<(typeof import('#validators/user').verifyEmailValidator)>>
       paramsTuple: []
@@ -81,7 +81,7 @@ export interface Registry {
   }
   'auth.resend_verification': {
     methods: ["POST"]
-    pattern: '/api/v1/auth/email/resend'
+    pattern: '/api/auth/email/resend'
     types: {
       body: ExtractBody<InferInput<(typeof import('#validators/user').resendVerificationValidator)>>
       paramsTuple: []
@@ -93,7 +93,7 @@ export interface Registry {
   }
   'auth.forgot_password': {
     methods: ["POST"]
-    pattern: '/api/v1/auth/password/forgot'
+    pattern: '/api/auth/password/forgot'
     types: {
       body: ExtractBody<InferInput<(typeof import('#validators/user').forgotPasswordValidator)>>
       paramsTuple: []
@@ -105,7 +105,7 @@ export interface Registry {
   }
   'auth.reset_password': {
     methods: ["POST"]
-    pattern: '/api/v1/auth/password/reset'
+    pattern: '/api/auth/password/reset'
     types: {
       body: ExtractBody<InferInput<(typeof import('#validators/user').resetPasswordValidator)>>
       paramsTuple: []

@@ -30,4 +30,4 @@ router
     router.post('password/forgot', [AuthController, 'forgotPassword'])
     router.post('password/reset', [AuthController, 'resetPassword'])
   })
-  .prefix('/api/v1/auth')
+  .prefix('/api/auth')

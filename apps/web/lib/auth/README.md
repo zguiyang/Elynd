@@ -1,22 +1,11 @@
-# Auth client (`apps/web/lib/auth`)
+# Auth (`apps/web/lib/auth`)
 
-## Model
+Frontend only does **soft UX**. Real auth is Adonis session middleware on `/api/*`.
 
-| Concern         | Mechanism                                                          |
-| --------------- | ------------------------------------------------------------------ |
-| Credential      | Opaque Adonis access token (Bearer)                                |
-| Storage         | `sessionStorage` (`elynd.access_token`)                            |
-| Optimistic gate | Non-secret cookie `elynd_auth_hint` for Next `proxy.ts`            |
-| Real validation | `GET /api/auth/me` via `authClient.useSession()`                   |
-| Transport       | Same-origin `/api/auth/*` rewritten to Adonis (`API_INTERNAL_URL`) |
+| Layer                     | Behavior                                                                  |
+| ------------------------- | ------------------------------------------------------------------------- |
+| `proxy.ts`                | Auth-page whitelist + cookie presence redirect; rewrite `/api/*` → Adonis |
+| `useSession` / forms      | Call `/api/auth/*` with cookies; **401 → logout → sign-in**               |
+| `DELETE /api/auth/logout` | Next clears `adonis-session` (HttpOnly), then calls Adonis                |
 
-## Do
-
-- Prefer `authClient.useSession()` in the app shell.
-- Optional `useAppUser()` Context is only a thin adapter for shell children — not a second source of truth.
-- Do **not** put session user in Zustand.
-
-## Don’t
-
-- Do not store the bearer token in `localStorage` (prefer tab-scoped `sessionStorage`).
-- Do not treat the hint cookie as authentication — always confirm with `/me`.
+Do not treat proxy or client checks as security controls.

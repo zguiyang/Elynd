@@ -1,17 +1,11 @@
 import type { NextConfig } from 'next';
 
-const apiInternalUrl = process.env.API_INTERNAL_URL ?? 'http://localhost:3333';
-
+/**
+ * `/api/*` is rewritten in `proxy.ts` to Adonis (`API_INTERNAL_URL`, default
+ * `http://localhost:3333`) so session cookies stay first-party on the web origin.
+ */
 const nextConfig: NextConfig = {
   reactCompiler: true,
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${apiInternalUrl}/api/:path*`,
-      },
-    ];
-  },
 };
 
 export default nextConfig;

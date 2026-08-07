@@ -1,5 +1,4 @@
-import { clearAccessToken, getAccessToken, setAccessToken } from './token';
-import type { AuthError, AuthResult, AuthUser, LoginResult } from './types';
+import type { AuthError, AuthResult, AuthUser } from './types';
 
 const AUTH_API_PREFIX = '/api/auth';
 
@@ -27,7 +26,7 @@ async function parseError(response: Response): Promise<AuthError> {
   };
 }
 
-async function request<T>(path: string, init: RequestInit & { auth?: boolean } = {}): Promise<AuthResult<T>> {
+async function request<T>(path: string, init: RequestInit = {}): Promise<AuthResult<T>> {
   const headers = new Headers(init.headers);
   if (!headers.has('Accept')) {
     headers.set('Accept', 'application/json');
@@ -35,16 +34,11 @@ async function request<T>(path: string, init: RequestInit & { auth?: boolean } =
   if (init.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
-  if (init.auth !== false) {
-    const token = getAccessToken();
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
-    }
-  }
 
   const response = await fetch(`${AUTH_API_PREFIX}${path}`, {
     ...init,
     headers,
+    credentials: 'same-origin',
   });
 
   if (!response.ok) {
@@ -68,26 +62,19 @@ export async function register(input: {
 }): Promise<AuthResult<AuthUser>> {
   return request<AuthUser>('/register', {
     method: 'POST',
-    auth: false,
     body: JSON.stringify(input),
   });
 }
 
-export async function login(input: { login: string; password: string }): Promise<AuthResult<LoginResult>> {
-  const result = await request<LoginResult>('/login', {
+export async function login(input: { login: string; password: string }): Promise<AuthResult<AuthUser>> {
+  return request<AuthUser>('/login', {
     method: 'POST',
-    auth: false,
     body: JSON.stringify(input),
   });
-  if (result.data?.value) {
-    setAccessToken(result.data.value);
-  }
-  return result;
 }
 
 export async function logout(): Promise<AuthResult<{ ok: boolean }>> {
   const result = await request<{ ok: boolean }>('/logout', { method: 'DELETE' });
-  clearAccessToken();
   return result.data ? result : { data: { ok: true }, error: null };
 }
 
@@ -98,7 +85,6 @@ export async function me(): Promise<AuthResult<AuthUser>> {
 export async function resendVerificationEmail(email: string): Promise<AuthResult<{ ok: boolean }>> {
   return request<{ ok: boolean }>('/email/resend', {
     method: 'POST',
-    auth: false,
     body: JSON.stringify({ email }),
   });
 }
@@ -107,14 +93,12 @@ export async function verifyEmail(token: string): Promise<AuthResult<AuthUser>> 
   const qs = new URLSearchParams({ token });
   return request<AuthUser>(`/email/verify?${qs.toString()}`, {
     method: 'GET',
-    auth: false,
   });
 }
 
 export async function forgotPassword(email: string): Promise<AuthResult<{ ok: boolean }>> {
   return request<{ ok: boolean }>('/password/forgot', {
     method: 'POST',
-    auth: false,
     body: JSON.stringify({ email }),
   });
 }
@@ -122,7 +106,6 @@ export async function forgotPassword(email: string): Promise<AuthResult<{ ok: bo
 export async function resetPassword(input: { token: string; password: string }): Promise<AuthResult<AuthUser>> {
   return request<AuthUser>('/password/reset', {
     method: 'POST',
-    auth: false,
     body: JSON.stringify(input),
   });
 }

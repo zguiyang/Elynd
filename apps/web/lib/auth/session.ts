@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { logout as apiLogout, me } from './api';
-import { clearAccessToken, getAccessToken } from './token';
 import type { AuthError, AuthUser } from './types';
 
 type SessionState = {
@@ -12,34 +11,21 @@ type SessionState = {
   isPending: boolean;
 };
 
-function initialSessionState(): SessionState {
-  if (typeof window === 'undefined') {
-    return { data: null, error: null, isPending: true };
-  }
-  if (!getAccessToken()) {
-    return { data: null, error: null, isPending: false };
-  }
-  return { data: null, error: null, isPending: true };
-}
-
-/**
- * Thin session hook backed by Bearer token + GET /api/auth/me.
- * Replaces Better Auth `useSession`.
- */
+/** Soft session UX via /me. Real auth is Adonis middleware. */
 export function useSession() {
-  const [state, setState] = useState<SessionState>(initialSessionState);
+  const [state, setState] = useState<SessionState>({
+    data: null,
+    error: null,
+    isPending: true,
+  });
 
   const refresh = useCallback(async () => {
-    const token = getAccessToken();
-    if (!token) {
-      setState({ data: null, error: null, isPending: false });
-      return;
-    }
-
     setState((prev) => ({ ...prev, isPending: true }));
     const result = await me();
     if (result.error) {
-      clearAccessToken();
+      if (result.error.status === 401) {
+        await apiLogout();
+      }
       setState({ data: null, error: result.error, isPending: false });
       return;
     }
@@ -48,10 +34,6 @@ export function useSession() {
 
   useEffect(() => {
     let cancelled = false;
-    const token = getAccessToken();
-    if (!token) {
-      return;
-    }
 
     void (async () => {
       const result = await me();
@@ -59,7 +41,12 @@ export function useSession() {
         return;
       }
       if (result.error) {
-        clearAccessToken();
+        if (result.error.status === 401) {
+          await apiLogout();
+        }
+        if (cancelled) {
+          return;
+        }
         setState({ data: null, error: result.error, isPending: false });
         return;
       }
@@ -75,6 +62,5 @@ export function useSession() {
 }
 
 export async function signOut(): Promise<{ error: AuthError | null }> {
-  const result = await apiLogout();
-  return { error: result.error };
+  return { error: (await apiLogout()).error };
 }

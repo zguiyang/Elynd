@@ -11,10 +11,10 @@ pnpm --filter @elynd/web typecheck
 pnpm --filter @elynd/web lint
 ```
 
-## Auth (Bearer + `/api` proxy)
+## Auth (session, soft UX)
 
 See [`lib/auth/README.md`](./lib/auth/README.md).
 
-- Session: Adonis opaque **access token** in `sessionStorage` (Bearer header).
-- Browser calls same-origin `/api/auth/*`; Next rewrites to Adonis (`API_INTERNAL_URL`, default `:3333`).
-- Hint cookie is optimistic UX only; use `GET /me` via `authClient.useSession()` for real auth gates.
+- Soft: cookie presence in `proxy.ts`; client `/me` + 401 → sign-in.
+- Hard: Adonis session middleware on the API (rate limits / IP later live there too).
+- Logout clears HttpOnly `adonis-session` via Next `DELETE /api/auth/logout`.

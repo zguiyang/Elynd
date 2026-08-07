@@ -3,7 +3,6 @@
 import { Menu } from '@base-ui/react/menu';
 import { EllipsisVertical, Library, LogOut, RotateCcw, Sun, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { createContext, type ReactNode, useContext, useEffect } from 'react';
 import { toast } from 'sonner';
 
@@ -13,8 +12,7 @@ import { authClient, type AuthUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 
 /**
- * Thin adapter over Bearer session for shell children.
- * Session SoT remains the access token + /me response.
+ * Thin adapter over Adonis session + /me for shell children.
  */
 const AppUserContext = createContext<AuthUser | null>(null);
 
@@ -201,7 +199,6 @@ function MobileAccountMenu({ username, email, initial, image, onSignOut }: UserI
 }
 
 export function AppShell({ children }: AppShellProps) {
-  const router = useRouter();
   const { data, error, isPending } = authClient.useSession();
   const user = data?.user ?? null;
 
@@ -210,25 +207,32 @@ export function AppShell({ children }: AppShellProps) {
       return;
     }
     if (error || !user) {
-      router.replace(AUTH_ROUTES.signIn);
+      window.location.replace(AUTH_ROUTES.signIn);
     }
-  }, [error, isPending, router, user]);
+  }, [error, isPending, user]);
 
   async function handleSignOut() {
     const { error: signOutError } = await authClient.signOut();
     if (signOutError) {
-      toast.error(signOutError.message || '退出登录失败，请重试');
+      toast.error(signOutError.message || '退出登录失败，请稍后重试');
       return;
     }
     toast.success('已退出登录');
-    router.replace(AUTH_ROUTES.signIn);
-    router.refresh();
+    window.location.assign(AUTH_ROUTES.signIn);
   }
 
-  if (isPending || !user) {
+  if (isPending) {
     return (
       <div className="flex h-dvh flex-1 items-center justify-center px-6">
         <p className="text-sm text-muted-foreground">加载中…</p>
+      </div>
+    );
+  }
+
+  if (error || !user) {
+    return (
+      <div className="flex h-dvh flex-1 items-center justify-center px-6">
+        <p className="text-sm text-muted-foreground">正在跳转登录…</p>
       </div>
     );
   }

@@ -2,8 +2,7 @@ import * as api from './api';
 import { signOut, useSession } from './session';
 
 /**
- * Auth façade used by forms and shell.
- * Same-origin `/api/auth/*` (Next rewrite → Adonis).
+ * Auth façade: Adonis session cookies via same-origin `/api/auth/*`.
  */
 export const authClient = {
   register: api.register,

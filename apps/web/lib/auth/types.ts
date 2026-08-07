@@ -17,10 +17,3 @@ export type AuthError = {
 };
 
 export type AuthResult<T> = { data: T; error: null } | { data: null; error: AuthError };
-
-export type LoginResult = {
-  type: 'bearer';
-  value: string;
-  expiresAt: string | null;
-  user: AuthUser;
-};

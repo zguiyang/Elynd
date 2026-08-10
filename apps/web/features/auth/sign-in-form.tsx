@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { z } from 'zod';
+
+import { AUTH_ERROR_EMAIL_NOT_VERIFIED } from '@elynd/shared/api/auth-errors';
 
 import { Button } from '@/components/ui/button';
 import { AUTH_ROUTES } from '@/constants';
@@ -17,14 +20,11 @@ function isEmailVerificationRequired(error: { status?: number; code?: string | n
   if (!error) {
     return false;
   }
-  if (error.code === 'E_EMAIL_NOT_VERIFIED') {
-    return true;
-  }
-  if (error.status === 403) {
-    return true;
-  }
-  const code = typeof error.code === 'string' ? error.code.toUpperCase() : '';
-  return code.includes('EMAIL') && code.includes('VERIF');
+  return error.code === AUTH_ERROR_EMAIL_NOT_VERIFIED;
+}
+
+function looksLikeEmail(value: string): boolean {
+  return z.email().safeParse(value).success;
 }
 
 export function SignInForm() {
@@ -70,6 +70,13 @@ export function SignInForm() {
   async function handleResendVerification() {
     const login = form.state.values.login.trim();
     if (!login || isResending) {
+      return;
+    }
+
+    if (!looksLikeEmail(login)) {
+      const message = '请用注册邮箱登录后再重发验证邮件，或到注册页使用邮箱账号。';
+      setFormError(message);
+      toast.error(message);
       return;
     }
 

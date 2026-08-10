@@ -2,12 +2,10 @@ import { NextResponse } from 'next/server';
 
 import { expiredSessionCookieOptions, SESSION_COOKIE } from '@/lib/auth/session-gate';
 
-const apiInternalUrl = () => process.env.API_INTERNAL_URL ?? 'http://localhost:3333';
-
 /** Clear HttpOnly session cookie on the web origin, then notify Adonis. */
 export async function DELETE(request: Request) {
   try {
-    await fetch(`${apiInternalUrl()}/api/auth/logout`, {
+    await fetch(`${process.env.API_INTERNAL_URL}/api/auth/logout`, {
       method: 'DELETE',
       headers: {
         Accept: 'application/json',

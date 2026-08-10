@@ -7,6 +7,8 @@ alwaysApply: true
 
 Use **Condition → Action → Verification** for create/delete/move/split. Ask-first list: `core`.
 
+**SRP ≠ one function per file.** Extract a module only when the tables below say so—not for “cleanliness.”
+
 ## Add code
 
 | Condition | Action | Verify |
@@ -24,6 +26,18 @@ Partial overlap → extend existing type; no parallel type.
 | Same role in target dir | Merge into that file | One file per role |
 | No same role + 2+ consumers | Create | Consumers import path |
 | No same role + 1 consumer | Do **not** create | Stay inline |
+
+Before creating a file, confirm: ≥2 real consumers **or** framework Ace/layout requires it. Hypothetical reuse does not count.
+
+### Env / config (anti-wrapper)
+
+Required env: validate at boot or config entry (fail fast). Call sites read `process.env` / app config **directly**.
+
+| ❌ BAD | ✅ GOOD |
+| --- | --- |
+| `lib/api-internal-url.ts` with one `env ?? default` getter | Require `API_INTERNAL_URL` in `next.config.ts` / env types; `proxy` reads `process.env.API_INTERNAL_URL` |
+| New file for a helper used once inside one service | Private method or inline in that service |
+| One env var → one dedicated getter module | One config module only when it groups **several** related settings for **2+** callers |
 
 ## Delete
 
@@ -48,7 +62,7 @@ Mixed unrelated concerns → split. Long but cohesive → **do not** split (not 
 
 Exception: framework trees (Next `app/`, **Adonis `app/{controllers,models,…}` / `config` / `start` / `database`** — see `adonis-backend.mdc`).
 
-**Adonis services:** `adonis-backend` wins over the “1 consumer → inline” row. Prefer `make:service` + `@inject()` for controller orchestration even when only one controller calls it.
+**Adonis services:** `adonis-backend` wins over the “1 consumer → inline” row **only** for use-case **orchestration** services (`make:service` + `@inject()` for a controller). It does **not** justify env getters, single-call Redis/session helpers, or one-liner utility modules.
 
 | Existing dir files | Action |
 | --- | --- |

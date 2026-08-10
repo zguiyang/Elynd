@@ -26,6 +26,19 @@ Language: talk to the user in **Chinese** when they write Chinese; **code, docs,
 
 **SSOT vs DRY:** DRY = when to share a helper (after 3 uses). SSOT = same fact (schema/env/policy/DTO) must not have a second definition — fix the owner or import. Side-effectful owner → fix the export; do not copy.
 
+**SRP:** one cohesive concern per module/file — **not** one function per file. Prefer inline until `structure` allows a new file.
+
+## Decision gate (no silent assumptions)
+
+Before a material plan or any behavior-changing implementation:
+
+1. Facts the repo/docs/tests can answer → inspect; do not ask the user.
+2. User-owned decisions still open (product intent, scope, design forks, risk, acceptance) → **stop**; ask one highest-value question (recommendation + trade-off); do not implement that path yet.
+3. Default: **do not assume** (~90%). If you cannot decide, the user decides.
+4. Trivial local details only (naming within existing convention, mechanical wiring with one clear in-repo pattern) → may proceed; **disclose briefly after** in the same reply or wrap-up.
+
+Never silently fill an open design fork. Locked choices in the active Trellis `prd.md` / `design.md` count as decided.
+
 ## Must / Ask / Never
 
 **Must:** follow `layering` + `structure` before adding files/dirs; Lucid schema in `apps/backend/database` / cross-app contracts in `@elynd/shared` before inventing layout; DB schema before consumers; extend root `tsconfig.base.json` via relative paths.
@@ -38,10 +51,15 @@ Language: talk to the user in **Chinese** when they write Chinese; **code, docs,
 4. New deps or major bumps
 5. Auth method/provider changes
 6. Large schema changes affecting existing data
+7. Design forks not already locked in the active task: storage / token / session / rate-limit mechanism; new file or abstraction when `structure` is debatable; security or auth semantics; cross-app public contracts; required env vs silent default
 
-Exceptions: explicit user instruction for that path; obvious one-line bug fix; lint/test/typecheck runs.
+Exceptions: explicit user instruction for that path; obvious one-line bug fix; lint/test/typecheck runs; decisions already recorded in the active task PRD/design.
 
 **Never:** commit secrets/`.env`; commit local `docker-compose.yaml`; touch `node_modules/`; operate on production data; disable security middleware; start `dev:*`/`start`/`preview` without approval; `apps/web` ↔ `apps/backend` app-source imports; push without approval; write TypeScript imports with `.js`/`.mjs`/`.cjs`/`.jsx` suffixes when the target is a TS/TSX module (use extensionless or `.ts`/`.tsx`; only use `.js` when importing a real JavaScript file).
+
+## Skills before MCP
+
+For framework, domain, or process work: load the matching **project skill(s)** (by their descriptions) and follow them **first**. Use MCP (Context7, browser, etc.) only when the skill lacks the needed fact, you need version-specific official docs beyond the skill, or you need a live external system. Do **not** maintain a skill-name inventory in rules — pick skills from descriptions.
 
 ## Security
 
@@ -57,7 +75,7 @@ Default for behavior-changing API/web logic: failing test → minimal impl → g
 
 ## Definition of Done
 
-Relevant tests pass; `pnpm lint` / `format:check` / `typecheck` for touched scope; no dead code/dangling imports; explicit errors; no new TODO unless deferred by user.
+Relevant tests pass; `pnpm lint` / `format:check` / `typecheck` for touched scope; no dead code/dangling imports; explicit errors; no new TODO unless deferred by user; no new single-consumer helper file that `structure` would reject; any self-judged trivial detail was disclosed to the user.
 
 ## Commit (agent)
 

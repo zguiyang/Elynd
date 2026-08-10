@@ -95,7 +95,7 @@ Aligned with official docs: [Controllers DI](https://docs.adonisjs.com/guides/ba
 | **Transformer** | Model → public JSON (`pick`, nest, `allows` → `can.*`) | Side effects; business decisions |
 
 - App services: `@inject()` constructor (preferred) or method injection. Framework singletons (`mail`, `redis`, …) may use `@adonisjs/.../services/...` **inside** services.
-- Create a service when there is business orchestration — **even for a single controller** (do not wait for “2+ call sites”). Overrides always-on `structure` “1 consumer → inline” for Adonis services.
+- Create a service when there is **business / use-case orchestration** — **even for a single controller** (do not wait for “2+ call sites”). Overrides always-on `structure` “1 consumer → inline” **only** for that orchestration layer. Do **not** add extra service/modules for env reads, one-call helpers, or logic that belongs as a private method on the orchestrating service.
 - Validators stay Vine modules; validation runs in the controller, then trust the payload.
 
 ### Auth mail tokens (opaque Redis)

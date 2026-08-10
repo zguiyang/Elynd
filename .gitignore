@@ -59,9 +59,6 @@ openspec/
 __screenshots__/
 **/coverage/
 
-# Apifox CLI local test reports
-apifox-reports/
-
 # Vite
 *.timestamp-*-*.mjs
 

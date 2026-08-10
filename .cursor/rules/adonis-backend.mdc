@@ -120,4 +120,4 @@ Prefer Ace over hand-creating differently named files.
 ## Out of scope here
 
 - Next `apps/web` → see `frontend.mdc`
-- OpenAPI / Apifox — deferred until product asks
+- OpenAPI / Swagger — deferred until product asks

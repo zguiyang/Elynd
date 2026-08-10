@@ -5,7 +5,7 @@
       "source": "zguiyang/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/adonisjs/SKILL.md",
-      "computedHash": "663cbae9749a391f64e4f8a71b814b365b25224e391d381919236d7a18c7f5cb"
+      "computedHash": "1321e140deb492b1639cfffbd39e3250f5b7ea9d3b8006fc50c55bb7992ed76b"
     },
     "brandkit": {
       "source": "Leonxlnx/taste-skill",
@@ -65,7 +65,7 @@
       "source": "zguiyang/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/lucid/SKILL.md",
-      "computedHash": "ecd5163662bd9440448c8b267d4aa6da6722049cdc53d621fee49f04fda7cc04"
+      "computedHash": "a123406b31c0ca3321cc58c1ee98ed4723fbf54240f6c21e56c9c69eeb1ecba4"
     },
     "minimalist-ui": {
       "source": "Leonxlnx/taste-skill",
@@ -101,7 +101,7 @@
       "source": "vercel-labs/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/react-best-practices/SKILL.md",
-      "computedHash": "3219a1944e404ffc14d1d9d6aef6dd2e3855b81387ee0a044ccbfe14d34c2357"
+      "computedHash": "ca7b0c0c6e5f2750043f7f0cd72d16ac4e2abc48f9b5500d047a4b77a2506212"
     }
   }
 }

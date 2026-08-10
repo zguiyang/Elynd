@@ -6,12 +6,17 @@
   "license": "GPL-3.0-or-later OR Commercial",
   "exports": {
     ".": "./src/index.ts",
-    "./auth/policy": "./src/auth/policy.ts"
+    "./auth/policy": "./src/auth/policy.ts",
+    "./api/envelope": "./src/api/envelope.ts",
+    "./api/auth": "./src/api/auth.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "pnpm -w exec eslint packages/shared",
     "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "typescript": "~6.0.3",

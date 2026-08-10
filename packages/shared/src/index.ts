@@ -1,1 +1,1 @@
-export * from './auth/policy.js';
+export * from './auth/policy.ts';

@@ -8,7 +8,7 @@ import {
   mailCooldownSeconds,
   mailCooldownUserMessage,
   normalizeEmail,
-} from './policy.js';
+} from './policy';
 
 describe('AUTH_PASSWORD_POLICY', () => {
   it('keeps password length bounds', () => {

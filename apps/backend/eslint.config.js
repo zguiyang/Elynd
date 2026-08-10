@@ -23,7 +23,8 @@ export default configApp({
     'import-x/order': 'off',
     'import/order': 'off',
     'sort-imports': 'off',
-    // TS sources must not import via .js/.mjs/.cjs/.jsx (Node ESM rewrite habit).
+    // Ban .js/.mjs/.cjs/.jsx suffixes in TS imports (targets are almost always TS modules).
+    // Real .js modules are rare — use eslint-disable-next-line with a one-line reason if needed.
     'no-restricted-imports': [
       'error',
       {

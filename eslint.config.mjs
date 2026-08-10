@@ -103,8 +103,9 @@ export default defineConfig([
       'import-x/order': 'off',
       'import/order': 'off',
       'sort-imports': 'off',
-      // TS sources must not import via .js/.mjs/.cjs/.jsx (Node ESM rewrite habit).
-      // Prefer extensionless or explicit .ts/.tsx (see packages/shared).
+      // Ban .js/.mjs/.cjs/.jsx suffixes in TS/TSX imports (targets are almost always TS modules).
+      // Real .js modules are rare — use eslint-disable-next-line with a one-line reason if needed.
+      // Complements: allowImportingTsExtensions (shared tsconfig) + vscode importModuleSpecifierEnding: minimal.
       'no-restricted-imports': [
         'error',
         {

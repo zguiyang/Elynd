@@ -41,7 +41,7 @@ Language: talk to the user in **Chinese** when they write Chinese; **code, docs,
 
 Exceptions: explicit user instruction for that path; obvious one-line bug fix; lint/test/typecheck runs.
 
-**Never:** commit secrets/`.env`; commit local `docker-compose.yaml`; touch `node_modules/`; operate on production data; disable security middleware; start `dev:*`/`start`/`preview` without approval; `apps/web` ↔ `apps/backend` app-source imports; push without approval.
+**Never:** commit secrets/`.env`; commit local `docker-compose.yaml`; touch `node_modules/`; operate on production data; disable security middleware; start `dev:*`/`start`/`preview` without approval; `apps/web` ↔ `apps/backend` app-source imports; push without approval; write TypeScript imports with `.js`/`.mjs`/`.cjs`/`.jsx` suffixes when the target is a TS/TSX module (use extensionless or `.ts`/`.tsx`; only use `.js` when importing a real JavaScript file).
 
 ## Security
 

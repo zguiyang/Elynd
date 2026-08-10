@@ -17,7 +17,10 @@ Layering: `layering`. Cross-layer edits: `layering` propagation section.
 - Extend `../../tsconfig.base.json`; local `rootDir`/`include` as needed
 - Source-first package: `exports` → `src/*.ts`, `tsc --noEmit` only (no `dist` / `build`)
 - Cross-package: `@elynd/*` names, not relative across packages
-- **Imports:** do **not** use `.js` / `.mjs` / `.cjs` / `.jsx` suffixes in TypeScript import paths (ESLint `no-restricted-imports`). Prefer extensionless or explicit `.ts` / `.tsx` (shared enables `allowImportingTsExtensions`).
+- **Import suffixes (repo-wide, not shared-only):**
+  - Do **not** use `.js` / `.mjs` / `.cjs` / `.jsx` when importing a TS/TSX module — use extensionless or `.ts` / `.tsx`.
+  - Exception: importing a **real** `.js` file may keep the `.js` suffix (rare; prefer eslint-disable with reason).
+  - TS enables writing `.ts` imports via `allowImportingTsExtensions` + `noEmit` (shared). Editor uses `importModuleSpecifierEnding: "minimal"`. ESLint `no-restricted-imports` blocks JS suffixes in `*.ts`/`*.tsx` for agents/CI.
 
 ## Ownership
 

@@ -1,5 +1,14 @@
 import vine from '@vinejs/vine';
 
+import type {
+  ForgotPasswordBody,
+  LoginBody,
+  RegisterBody,
+  ResendVerificationBody,
+  ResetPasswordBody,
+  VerifyEmailBody,
+} from '@elynd/shared/api/auth';
+
 import { AUTH_PASSWORD_POLICY, AUTH_USERNAME_POLICY } from '#auth/policy';
 
 const usernameRule = vine
@@ -52,3 +61,19 @@ export const resetPasswordValidator = vine.compile(
     password: passwordRule.clone(),
   }),
 );
+
+/** Compile-time: Vine outputs must stay assignable to shared wire contracts. */
+type Expect<T extends true> = T;
+
+export type AuthValidatorWireAlign = {
+  login: Expect<Awaited<ReturnType<typeof loginValidator.validate>> extends LoginBody ? true : false>;
+  register: Expect<Awaited<ReturnType<typeof registerValidator.validate>> extends RegisterBody ? true : false>;
+  forgot: Expect<
+    Awaited<ReturnType<typeof forgotPasswordValidator.validate>> extends ForgotPasswordBody ? true : false
+  >;
+  reset: Expect<Awaited<ReturnType<typeof resetPasswordValidator.validate>> extends ResetPasswordBody ? true : false>;
+  resend: Expect<
+    Awaited<ReturnType<typeof resendVerificationValidator.validate>> extends ResendVerificationBody ? true : false
+  >;
+  verify: Expect<Awaited<ReturnType<typeof verifyEmailValidator.validate>> extends VerifyEmailBody ? true : false>;
+};

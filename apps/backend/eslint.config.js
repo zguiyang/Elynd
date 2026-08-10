@@ -23,6 +23,18 @@ export default configApp({
     'import-x/order': 'off',
     'import/order': 'off',
     'sort-imports': 'off',
+    // TS sources must not import via .js/.mjs/.cjs/.jsx (Node ESM rewrite habit).
+    'no-restricted-imports': [
+      'error',
+      {
+        patterns: [
+          {
+            regex: '\\.(js|mjs|cjs|jsx)$',
+            message: 'Do not use JavaScript extensions in TypeScript imports; use .ts/.tsx or omit the extension.',
+          },
+        ],
+      },
+    ],
     '@typescript-eslint/consistent-type-imports': [
       'error',
       {

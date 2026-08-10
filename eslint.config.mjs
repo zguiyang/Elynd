@@ -103,6 +103,19 @@ export default defineConfig([
       'import-x/order': 'off',
       'import/order': 'off',
       'sort-imports': 'off',
+      // TS sources must not import via .js/.mjs/.cjs/.jsx (Node ESM rewrite habit).
+      // Prefer extensionless or explicit .ts/.tsx (see packages/shared).
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '\\.(js|mjs|cjs|jsx)$',
+              message: 'Do not use JavaScript extensions in TypeScript imports; use .ts/.tsx or omit the extension.',
+            },
+          ],
+        },
+      ],
       'boundaries/dependencies': [
         'error',
         {

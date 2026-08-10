@@ -1,7 +1,7 @@
 /**
  * Auth validation policy for Adonis backend.
  * Cross-app SSOT lives in `@elynd/shared`; this module re-exports it and adds
- * backend-only token lifetime for encrypted verify/reset tokens.
+ * backend-only Redis mail-token lifetime (verify / password-reset links).
  */
 
 export {
@@ -16,5 +16,5 @@ export {
   normalizeEmail,
 } from '@elynd/shared/auth/policy';
 
-/** Encrypted email-verify / password-reset token lifetime (Adonis encryption). */
-export const AUTH_TOKEN_EXPIRES_IN = '1 hour' as const;
+/** Redis EX for opaque email-verify / password-reset tokens (seconds). */
+export const AUTH_TOKEN_EXPIRES_IN_SECONDS = 60 * 60;

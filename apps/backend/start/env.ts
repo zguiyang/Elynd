@@ -23,8 +23,11 @@ export default await Env.create(new URL('../', import.meta.url), {
   APP_URL: Env.schema.string({ format: 'url', tld: false }),
   FRONTEND_URL: Env.schema.string({ format: 'url', tld: false }),
 
-  // Session
-  SESSION_DRIVER: Env.schema.enum(['cookie', 'memory', 'database'] as const),
+  // Session — redis (prod/dev tagging); memory is always available for tests
+  SESSION_DRIVER: Env.schema.enum(['cookie', 'redis', 'database', 'memory'] as const),
+
+  // Rate limiter — redis in app; tests force memory via bin/test.ts
+  LIMITER_STORE: Env.schema.enum(['redis', 'memory'] as const),
 
   // Database (Lucid) — Compose postgres maps host 5433 → container 5432
   DB_HOST: Env.schema.string({ format: 'host' }),

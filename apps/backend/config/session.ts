@@ -53,9 +53,8 @@ const sessionConfig = defineConfig({
   },
 
   /**
-   * The store to use. Make sure to validate the environment
-   * variable in order to infer the store name without any
-   * errors.
+   * Prefer redis so session tagging can revoke all devices after password reset.
+   * Cookie store cannot enumerate sessions by user id.
    */
   store: env.get('SESSION_DRIVER'),
 
@@ -64,14 +63,10 @@ const sessionConfig = defineConfig({
    * list of available stores and their config.
    */
   stores: {
-    /**
-     * Store session data inside encrypted cookies.
-     */
     cookie: stores.cookie(),
-
-    /**
-     * Store session data inside the configured database.
-     */
+    redis: stores.redis({
+      connection: 'main',
+    }),
     database: stores.database(),
   },
 });

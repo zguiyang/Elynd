@@ -14,22 +14,18 @@ export function mailCooldownKey(purpose: AuthMailCooldownPurpose, email: string)
 }
 
 export default class MailCooldownService {
-  async isActive(purpose: AuthMailCooldownPurpose, email: string): Promise<boolean> {
-    const count = await redis.exists(mailCooldownKey(purpose, email));
-    return count > 0;
-  }
-
-  async assertAllowed(purpose: AuthMailCooldownPurpose, email: string): Promise<void> {
-    if (await this.isActive(purpose, email)) {
+  /**
+   * Atomically acquire the cooldown window. Throws 429 when already cooling down.
+   * Call for every forgot/resend attempt (including unknown emails) to avoid enumeration.
+   */
+  async tryAcquire(purpose: AuthMailCooldownPurpose, email: string): Promise<void> {
+    const result = await redis.set(mailCooldownKey(purpose, email), '1', 'EX', mailCooldownSeconds(purpose), 'NX');
+    if (result !== 'OK') {
       throw new Exception(mailCooldownUserMessage(purpose), {
         status: 429,
         code: AUTH_MAIL_COOLDOWN_ERROR_CODE,
       });
     }
-  }
-
-  async mark(purpose: AuthMailCooldownPurpose, email: string): Promise<void> {
-    await redis.set(mailCooldownKey(purpose, email), '1', 'EX', mailCooldownSeconds(purpose));
   }
 
   async clear(purpose: AuthMailCooldownPurpose, email: string): Promise<void> {

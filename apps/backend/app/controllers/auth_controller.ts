@@ -1,22 +1,8 @@
-import { Exception } from '@adonisjs/core/exceptions';
+import { inject } from '@adonisjs/core';
 import type { HttpContext } from '@adonisjs/core/http';
-import mail from '@adonisjs/mail/services/main';
 import { ApiBody, ApiOperation, ApiTags } from '@foadonis/openapi/decorators';
-import { DateTime } from 'luxon';
 
-import { normalizeEmail } from '#auth/policy';
-import { applyUserCreateDefaults } from '#auth/user_create_defaults';
-import PasswordResetNotification from '#mails/password_reset_notification';
-import VerifyEmailNotification from '#mails/verify_email_notification';
-import User from '#models/user';
-import {
-  createEmailVerificationToken,
-  createPasswordResetToken,
-  decryptEmailVerificationToken,
-  decryptPasswordResetToken,
-} from '#services/auth_tokens';
-import MailCooldownService from '#services/mail_cooldown_service';
-import env from '#start/env';
+import AuthService from '#services/auth_service';
 import UserTransformer from '#transformers/user_transformer';
 import {
   forgotPasswordValidator,
@@ -27,8 +13,11 @@ import {
   verifyEmailValidator,
 } from '#validators/user';
 
+@inject()
 @ApiTags('Auth')
 export default class AuthController {
+  constructor(protected authService: AuthService) {}
+
   /**
    * POST /api/auth/register
    */
@@ -36,36 +25,7 @@ export default class AuthController {
   @ApiBody({ type: () => registerValidator })
   async register({ request, serialize }: HttpContext) {
     const payload = await request.validateUsing(registerValidator);
-    const email = normalizeEmail(payload.email);
-
-    const existing = await User.query().where('email', email).orWhere('username', payload.username).first();
-    if (existing) {
-      throw new Exception('Email or username is already taken', {
-        status: 409,
-        code: 'E_USER_EXISTS',
-      });
-    }
-
-    const cooldown = new MailCooldownService();
-    await cooldown.assertAllowed('emailVerification', email);
-
-    const existingUserCount = await User.query().count('* as total');
-    const total = Number(existingUserCount[0]!.$extras.total);
-    const defaults = applyUserCreateDefaults(total);
-
-    const user = await User.create({
-      email,
-      username: payload.username,
-      password: payload.password,
-      fullName: payload.fullName ?? null,
-      role: defaults.role,
-      image: defaults.image,
-      emailVerifiedAt: null,
-    });
-
-    await this.#sendVerificationEmail(user);
-    await cooldown.mark('emailVerification', email);
-
+    const user = await this.authService.register(payload);
     return serialize(UserTransformer.transform(user));
   }
 
@@ -74,30 +34,18 @@ export default class AuthController {
    */
   @ApiOperation({ summary: 'Login' })
   @ApiBody({ type: () => loginValidator })
-  async login({ request, auth, serialize }: HttpContext) {
-    const { login, password } = await request.validateUsing(loginValidator);
-    const user = await User.verifyCredentials(login, password);
-
-    if (!user.isEmailVerified) {
-      throw new Exception('Email address is not verified', {
-        status: 403,
-        code: 'E_EMAIL_NOT_VERIFIED',
-      });
-    }
-
-    await auth.use('web').login(user);
-    return serialize(UserTransformer.transform(user));
+  async login(ctx: HttpContext) {
+    const payload = await ctx.request.validateUsing(loginValidator);
+    const user = await this.authService.login(payload, ctx);
+    return ctx.serialize(UserTransformer.transform(user));
   }
 
   /**
    * DELETE /api/auth/logout — idempotent; clears session even when already anonymous.
    */
   @ApiOperation({ summary: 'Logout' })
-  async logout({ auth }: HttpContext) {
-    const guard = auth.use('web');
-    if (await guard.check()) {
-      await guard.logout();
-    }
+  async logout(ctx: HttpContext) {
+    await this.authService.logout(ctx);
     return { ok: true };
   }
 
@@ -105,9 +53,9 @@ export default class AuthController {
    * GET /api/auth/me
    */
   @ApiOperation({ summary: 'Current user' })
-  async me({ auth, serialize }: HttpContext) {
-    const user = auth.getUserOrFail();
-    return serialize(UserTransformer.transform(user as User));
+  async me(ctx: HttpContext) {
+    const user = await this.authService.me(ctx);
+    return ctx.serialize(UserTransformer.transform(user));
   }
 
   /**
@@ -125,22 +73,7 @@ export default class AuthController {
       token = body.token;
     }
 
-    const payload = decryptEmailVerificationToken(token);
-    const user = await User.findOrFail(payload.userId);
-
-    if (normalizeEmail(user.email) !== normalizeEmail(payload.email)) {
-      throw new Exception('Invalid or expired email verification token', {
-        status: 400,
-        code: 'E_INVALID_EMAIL_TOKEN',
-      });
-    }
-
-    if (!user.emailVerifiedAt) {
-      user.emailVerifiedAt = DateTime.utc();
-      await user.save();
-    }
-
-    await new MailCooldownService().clear('emailVerification', user.email);
+    const user = await this.authService.verifyEmail(token);
     return serialize(UserTransformer.transform(user));
   }
 
@@ -150,18 +83,8 @@ export default class AuthController {
   @ApiOperation({ summary: 'Resend verification email' })
   @ApiBody({ type: () => resendVerificationValidator })
   async resendVerification({ request }: HttpContext) {
-    const { email: rawEmail } = await request.validateUsing(resendVerificationValidator);
-    const email = normalizeEmail(rawEmail);
-    const cooldown = new MailCooldownService();
-    await cooldown.assertAllowed('emailVerification', email);
-
-    const user = await User.findBy('email', email);
-    if (user && !user.isEmailVerified) {
-      await this.#sendVerificationEmail(user);
-      await cooldown.mark('emailVerification', email);
-    }
-
-    // Always OK to avoid email enumeration
+    const { email } = await request.validateUsing(resendVerificationValidator);
+    await this.authService.resendVerification(email);
     return { ok: true };
   }
 
@@ -171,19 +94,8 @@ export default class AuthController {
   @ApiOperation({ summary: 'Forgot password' })
   @ApiBody({ type: () => forgotPasswordValidator })
   async forgotPassword({ request }: HttpContext) {
-    const { email: rawEmail } = await request.validateUsing(forgotPasswordValidator);
-    const email = normalizeEmail(rawEmail);
-    const cooldown = new MailCooldownService();
-    await cooldown.assertAllowed('passwordReset', email);
-
-    const user = await User.findBy('email', email);
-    if (user) {
-      const token = createPasswordResetToken({ userId: user.id });
-      const resetUrl = `${env.get('FRONTEND_URL')}/reset-password?token=${encodeURIComponent(token)}`;
-      await mail.send(new PasswordResetNotification(user, resetUrl));
-      await cooldown.mark('passwordReset', email);
-    }
-
+    const { email } = await request.validateUsing(forgotPasswordValidator);
+    await this.authService.forgotPassword(email);
     return { ok: true };
   }
 
@@ -194,22 +106,7 @@ export default class AuthController {
   @ApiBody({ type: () => resetPasswordValidator })
   async resetPassword({ request, serialize }: HttpContext) {
     const { token, password } = await request.validateUsing(resetPasswordValidator);
-    const payload = decryptPasswordResetToken(token);
-    const user = await User.findOrFail(payload.userId);
-
-    user.password = password;
-    await user.save();
-
-    await new MailCooldownService().clear('passwordReset', user.email);
+    const user = await this.authService.resetPassword(token, password);
     return serialize(UserTransformer.transform(user));
-  }
-
-  async #sendVerificationEmail(user: User) {
-    const token = createEmailVerificationToken({
-      userId: user.id,
-      email: user.email,
-    });
-    const verifyUrl = `${env.get('FRONTEND_URL')}/verify-email?token=${encodeURIComponent(token)}`;
-    await mail.send(new VerifyEmailNotification(user, verifyUrl));
   }
 }

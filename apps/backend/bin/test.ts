@@ -11,6 +11,10 @@
 */
 
 process.env.NODE_ENV = 'test';
+/** Japa session/auth clients share MemoryStore.static maps — required for loginAs + tagging tests. */
+process.env.SESSION_DRIVER = 'memory';
+/** Isolates login `penalize` counters from Redis during Japa. */
+process.env.LIMITER_STORE = 'memory';
 
 import 'reflect-metadata';
 

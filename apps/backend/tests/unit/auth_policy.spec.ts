@@ -44,14 +44,14 @@ test.group('Auth policy', () => {
 });
 
 test.group('User create defaults', () => {
-  test('first user is admin', ({ assert }) => {
-    assert.equal(resolveSignupRole(0), 'admin');
+  test('self-serve signup is never auto-admin', ({ assert }) => {
+    assert.equal(resolveSignupRole(0), 'user');
     assert.equal(resolveSignupRole(1), 'user');
   });
 
   test('forces role and dicebear image', ({ assert }) => {
     const defaults = applyUserCreateDefaults(0, { style: 'lorelei', seed: 'test-seed' });
-    assert.equal(defaults.role, 'admin');
+    assert.equal(defaults.role, 'user');
     assert.match(defaults.image, /^https:\/\/api\.dicebear\.com\/9\.x\/lorelei\/svg\?seed=test-seed$/);
   });
 });

@@ -21,8 +21,9 @@ export type DiceBearCartoonStyle = (typeof DICEBEAR_CARTOON_STYLES)[number];
 
 const DICEBEAR_API_MAJOR = '9.x';
 
-export function resolveSignupRole(existingUserCount: number): AuthSignupRole {
-  return existingUserCount === 0 ? AUTH_ADMIN_ROLE : AUTH_DEFAULT_ROLE;
+/** Self-serve signup never auto-promotes — bootstrap admin via seeder/ops. */
+export function resolveSignupRole(_existingUserCount?: number): AuthSignupRole {
+  return AUTH_DEFAULT_ROLE;
 }
 
 export function buildDiceBearAvatarUrl(options?: { style?: DiceBearCartoonStyle; seed?: string }): string {
@@ -36,11 +37,11 @@ export function buildDiceBearAvatarUrl(options?: { style?: DiceBearCartoonStyle;
  * Always overwrites role/image so client values cannot escalate.
  */
 export function applyUserCreateDefaults(
-  existingUserCount: number,
+  _existingUserCount?: number,
   avatarOptions?: { style?: DiceBearCartoonStyle; seed?: string },
 ): { role: AuthSignupRole; image: string } {
   return {
-    role: resolveSignupRole(existingUserCount),
+    role: resolveSignupRole(),
     image: buildDiceBearAvatarUrl(avatarOptions),
   };
 }

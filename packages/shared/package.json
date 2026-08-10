@@ -8,7 +8,8 @@
     ".": "./src/index.ts",
     "./auth/policy": "./src/auth/policy.ts",
     "./api/envelope": "./src/api/envelope.ts",
-    "./api/auth": "./src/api/auth.ts"
+    "./api/auth": "./src/api/auth.ts",
+    "./api/auth-errors": "./src/api/auth-errors.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

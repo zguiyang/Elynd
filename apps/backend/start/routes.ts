@@ -7,7 +7,9 @@
 |
 */
 
+import app from '@adonisjs/core/services/app';
 import router from '@adonisjs/core/services/router';
+import openapi from '@foadonis/openapi/services/main';
 
 import { middleware } from '#start/kernel';
 
@@ -32,3 +34,17 @@ router
     router.post('password/reset', [AuthController, 'resetPassword']);
   })
   .prefix('/api/auth');
+
+/**
+ * Swagger UI (non-production). Closure handlers are not scanned into the spec.
+ * UI: /api-docs · Spec: /api-docs.json
+ */
+if (!app.inProduction) {
+  router.get('/api-docs', async ({ response }) => {
+    return response.header('Content-Type', 'text/html').send(openapi.generateUi('/api-docs.json'));
+  });
+
+  router.get('/api-docs.json', async ({ response }) => {
+    return response.json(await openapi.buildDocument());
+  });
+}

@@ -1,6 +1,7 @@
 import { Exception } from '@adonisjs/core/exceptions';
 import type { HttpContext } from '@adonisjs/core/http';
 import mail from '@adonisjs/mail/services/main';
+import { ApiBody, ApiOperation, ApiTags } from '@foadonis/openapi/decorators';
 import { DateTime } from 'luxon';
 
 import { normalizeEmail } from '#auth/policy';
@@ -26,10 +27,13 @@ import {
   verifyEmailValidator,
 } from '#validators/user';
 
+@ApiTags('Auth')
 export default class AuthController {
   /**
    * POST /api/auth/register
    */
+  @ApiOperation({ summary: 'Register' })
+  @ApiBody({ type: () => registerValidator })
   async register({ request, serialize }: HttpContext) {
     const payload = await request.validateUsing(registerValidator);
     const email = normalizeEmail(payload.email);
@@ -68,6 +72,8 @@ export default class AuthController {
   /**
    * POST /api/auth/login — establishes `web` session cookie.
    */
+  @ApiOperation({ summary: 'Login' })
+  @ApiBody({ type: () => loginValidator })
   async login({ request, auth, serialize }: HttpContext) {
     const { login, password } = await request.validateUsing(loginValidator);
     const user = await User.verifyCredentials(login, password);
@@ -86,6 +92,7 @@ export default class AuthController {
   /**
    * DELETE /api/auth/logout — idempotent; clears session even when already anonymous.
    */
+  @ApiOperation({ summary: 'Logout' })
   async logout({ auth }: HttpContext) {
     const guard = auth.use('web');
     if (await guard.check()) {
@@ -97,6 +104,7 @@ export default class AuthController {
   /**
    * GET /api/auth/me
    */
+  @ApiOperation({ summary: 'Current user' })
   async me({ auth, serialize }: HttpContext) {
     const user = auth.getUserOrFail();
     return serialize(UserTransformer.transform(user as User));
@@ -105,6 +113,8 @@ export default class AuthController {
   /**
    * GET|POST /api/auth/email/verify
    */
+  @ApiOperation({ summary: 'Verify email' })
+  @ApiBody({ type: () => verifyEmailValidator, required: false })
   async verifyEmail({ request, serialize }: HttpContext) {
     const queryToken = request.input('token');
     let token: string;
@@ -137,6 +147,8 @@ export default class AuthController {
   /**
    * POST /api/auth/email/resend
    */
+  @ApiOperation({ summary: 'Resend verification email' })
+  @ApiBody({ type: () => resendVerificationValidator })
   async resendVerification({ request }: HttpContext) {
     const { email: rawEmail } = await request.validateUsing(resendVerificationValidator);
     const email = normalizeEmail(rawEmail);
@@ -156,6 +168,8 @@ export default class AuthController {
   /**
    * POST /api/auth/password/forgot
    */
+  @ApiOperation({ summary: 'Forgot password' })
+  @ApiBody({ type: () => forgotPasswordValidator })
   async forgotPassword({ request }: HttpContext) {
     const { email: rawEmail } = await request.validateUsing(forgotPasswordValidator);
     const email = normalizeEmail(rawEmail);
@@ -176,6 +190,8 @@ export default class AuthController {
   /**
    * POST /api/auth/password/reset
    */
+  @ApiOperation({ summary: 'Reset password' })
+  @ApiBody({ type: () => resetPasswordValidator })
   async resetPassword({ request, serialize }: HttpContext) {
     const { token, password } = await request.validateUsing(resetPasswordValidator);
     const payload = decryptPasswordResetToken(token);

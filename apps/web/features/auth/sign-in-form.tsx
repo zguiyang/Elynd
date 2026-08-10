@@ -35,7 +35,7 @@ export function SignInForm() {
 
   const form = useForm({
     defaultValues: {
-      email: '',
+      login: '',
       password: '',
     },
     onSubmit: async ({ value }) => {
@@ -47,10 +47,7 @@ export function SignInForm() {
         return;
       }
 
-      const { error } = await authClient.login({
-        login: parsed.data.email,
-        password: parsed.data.password,
-      });
+      const { error } = await authClient.login(parsed.data);
 
       if (error) {
         if (isEmailVerificationRequired(error)) {
@@ -71,13 +68,13 @@ export function SignInForm() {
   });
 
   async function handleResendVerification() {
-    const email = form.state.values.email.trim();
-    if (!email || isResending) {
+    const login = form.state.values.login.trim();
+    if (!login || isResending) {
       return;
     }
 
     setIsResending(true);
-    const { error } = await authClient.resendVerificationEmail(email);
+    const { error } = await authClient.resendVerificationEmail(login);
     setIsResending(false);
 
     if (error) {
@@ -93,7 +90,7 @@ export function SignInForm() {
 
   return (
     <>
-      <AuthIntro eyebrow="登录" title="回来继续读" description="用邮箱登录。没有账号的话，先注册一个。" />
+      <AuthIntro eyebrow="登录" title="回来继续读" description="用邮箱或用户名登录。没有账号的话，先注册一个。" />
 
       <AuthPanel>
         <form
@@ -103,13 +100,13 @@ export function SignInForm() {
             void form.handleSubmit();
           }}
         >
-          <form.Field name="email">
+          <form.Field name="login">
             {(field) => (
-              <Field label="邮箱" htmlFor="sign-in-email">
+              <Field label="邮箱或用户名" htmlFor="sign-in-login">
                 <input
-                  id="sign-in-email"
-                  type="email"
-                  autoComplete="email"
+                  id="sign-in-login"
+                  type="text"
+                  autoComplete="username"
                   placeholder="you@example.com"
                   className={authInputClassName}
                   value={field.state.value}

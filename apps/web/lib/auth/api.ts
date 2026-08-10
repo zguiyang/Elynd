@@ -1,17 +1,21 @@
-import type { AuthError, AuthResult, AuthUser } from './types';
+import type {
+  ForgotPasswordBody,
+  LoginBody,
+  RegisterBody,
+  ResendVerificationBody,
+  ResetPasswordBody,
+  User,
+} from '@elynd/shared/api/auth';
+import type { ApiValidationError } from '@elynd/shared/api/envelope';
+
+import type { AuthError, AuthResult } from './types';
 
 const AUTH_API_PREFIX = '/api/auth';
 
-type ErrorBody = {
-  message?: string;
-  code?: string;
-  errors?: Array<{ message?: string }>;
-};
-
 async function parseError(response: Response): Promise<AuthError> {
-  let body: ErrorBody = {};
+  let body: ApiValidationError & { message?: string; code?: string } = { errors: [] };
   try {
-    body = (await response.json()) as ErrorBody;
+    body = (await response.json()) as ApiValidationError & { message?: string; code?: string };
   } catch {
     // ignore
   }
@@ -54,20 +58,15 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<AuthRes
   return { data, error: null };
 }
 
-export async function register(input: {
-  email: string;
-  username: string;
-  password: string;
-  fullName?: string;
-}): Promise<AuthResult<AuthUser>> {
-  return request<AuthUser>('/register', {
+export async function register(input: RegisterBody): Promise<AuthResult<User>> {
+  return request<User>('/register', {
     method: 'POST',
     body: JSON.stringify(input),
   });
 }
 
-export async function login(input: { login: string; password: string }): Promise<AuthResult<AuthUser>> {
-  return request<AuthUser>('/login', {
+export async function login(input: LoginBody): Promise<AuthResult<User>> {
+  return request<User>('/login', {
     method: 'POST',
     body: JSON.stringify(input),
   });
@@ -78,33 +77,35 @@ export async function logout(): Promise<AuthResult<{ ok: boolean }>> {
   return result.data ? result : { data: { ok: true }, error: null };
 }
 
-export async function me(): Promise<AuthResult<AuthUser>> {
-  return request<AuthUser>('/me');
+export async function me(): Promise<AuthResult<User>> {
+  return request<User>('/me');
 }
 
-export async function resendVerificationEmail(email: string): Promise<AuthResult<{ ok: boolean }>> {
+export async function resendVerificationEmail(
+  email: ResendVerificationBody['email'],
+): Promise<AuthResult<{ ok: boolean }>> {
   return request<{ ok: boolean }>('/email/resend', {
     method: 'POST',
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email } satisfies ResendVerificationBody),
   });
 }
 
-export async function verifyEmail(token: string): Promise<AuthResult<AuthUser>> {
+export async function verifyEmail(token: string): Promise<AuthResult<User>> {
   const qs = new URLSearchParams({ token });
-  return request<AuthUser>(`/email/verify?${qs.toString()}`, {
+  return request<User>(`/email/verify?${qs.toString()}`, {
     method: 'GET',
   });
 }
 
-export async function forgotPassword(email: string): Promise<AuthResult<{ ok: boolean }>> {
+export async function forgotPassword(email: ForgotPasswordBody['email']): Promise<AuthResult<{ ok: boolean }>> {
   return request<{ ok: boolean }>('/password/forgot', {
     method: 'POST',
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email } satisfies ForgotPasswordBody),
   });
 }
 
-export async function resetPassword(input: { token: string; password: string }): Promise<AuthResult<AuthUser>> {
-  return request<AuthUser>('/password/reset', {
+export async function resetPassword(input: ResetPasswordBody): Promise<AuthResult<User>> {
+  return request<User>('/password/reset', {
     method: 'POST',
     body: JSON.stringify(input),
   });

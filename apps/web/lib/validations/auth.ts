@@ -1,35 +1,34 @@
 import { z } from 'zod';
 
-import { AUTH_PASSWORD_POLICY, AUTH_USERNAME_POLICY } from '@elynd/shared/auth/policy';
+import {
+  forgotPasswordBodySchema,
+  loginBodySchema,
+  registerBodySchema,
+  resetPasswordBodySchema,
+} from '@elynd/shared/api/auth';
 
-const passwordSchema = z
-  .string()
-  .min(AUTH_PASSWORD_POLICY.minLength, `Password must be at least ${AUTH_PASSWORD_POLICY.minLength} characters`)
-  .max(AUTH_PASSWORD_POLICY.maxLength, `Password must be at most ${AUTH_PASSWORD_POLICY.maxLength} characters`);
+/** Sign-in form = API login body (`login` may be email or username). */
+export const signInSchema = loginBodySchema;
 
-export const signInSchema = z.object({
-  email: z.email('Enter a valid email'),
-  password: passwordSchema,
-});
+export type SignInValues = z.infer<typeof signInSchema>;
 
-export const signUpSchema = z.object({
+/**
+ * Sign-up form: API register fields + required display `name` → maps to `fullName` on submit.
+ */
+export const signUpSchema = registerBodySchema.omit({ fullName: true }).extend({
   name: z.string().min(1, 'Name is required').max(100),
-  username: z
-    .string()
-    .min(AUTH_USERNAME_POLICY.minLength, `Username must be at least ${AUTH_USERNAME_POLICY.minLength} characters`)
-    .max(AUTH_USERNAME_POLICY.maxLength, `Username must be at most ${AUTH_USERNAME_POLICY.maxLength} characters`)
-    .regex(AUTH_USERNAME_POLICY.pattern, 'Username may only contain letters, numbers, dots, and underscores'),
-  email: z.email('Enter a valid email'),
-  password: passwordSchema,
 });
 
-export const forgotPasswordSchema = z.object({
-  email: z.email('Enter a valid email'),
-});
+export type SignUpValues = z.infer<typeof signUpSchema>;
 
-export const resetPasswordSchema = z
-  .object({
-    password: passwordSchema,
+export const forgotPasswordSchema = forgotPasswordBodySchema;
+
+export type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
+
+/** Reset form: password (+ confirm). Token comes from the URL, not the form schema. */
+export const resetPasswordSchema = resetPasswordBodySchema
+  .pick({ password: true })
+  .extend({
     passwordConfirm: z.string().min(1, 'Confirm your password'),
   })
   .refine((value) => value.password === value.passwordConfirm, {
@@ -37,7 +36,4 @@ export const resetPasswordSchema = z
     path: ['passwordConfirm'],
   });
 
-export type SignInValues = z.infer<typeof signInSchema>;
-export type SignUpValues = z.infer<typeof signUpSchema>;
-export type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordValues = z.infer<typeof resetPasswordSchema>;

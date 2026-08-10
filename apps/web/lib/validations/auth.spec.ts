@@ -3,21 +3,31 @@ import { describe, expect, it } from 'vitest';
 import { forgotPasswordSchema, resetPasswordSchema, signInSchema, signUpSchema } from './auth';
 
 describe('signInSchema', () => {
-  it('accepts a valid email and password', () => {
-    const parsed = signInSchema.parse({
-      email: 'reader@example.com',
+  it('accepts email or username as login', () => {
+    expect(
+      signInSchema.parse({
+        login: 'reader@example.com',
+        password: 'password1',
+      }),
+    ).toEqual({
+      login: 'reader@example.com',
       password: 'password1',
     });
 
-    expect(parsed).toEqual({
-      email: 'reader@example.com',
+    expect(
+      signInSchema.parse({
+        login: 'ada.reader',
+        password: 'password1',
+      }),
+    ).toEqual({
+      login: 'ada.reader',
       password: 'password1',
     });
   });
 
-  it('rejects an invalid email', () => {
+  it('rejects an empty login', () => {
     const result = signInSchema.safeParse({
-      email: 'not-an-email',
+      login: '',
       password: 'password1',
     });
 
@@ -26,7 +36,7 @@ describe('signInSchema', () => {
 
   it('rejects a password shorter than 8 characters', () => {
     const result = signInSchema.safeParse({
-      email: 'reader@example.com',
+      login: 'reader@example.com',
       password: 'short',
     });
 
@@ -35,7 +45,7 @@ describe('signInSchema', () => {
 
   it('rejects a password longer than 128 characters', () => {
     const result = signInSchema.safeParse({
-      email: 'reader@example.com',
+      login: 'reader@example.com',
       password: 'p'.repeat(129),
     });
 

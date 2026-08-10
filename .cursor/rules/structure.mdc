@@ -48,6 +48,8 @@ Mixed unrelated concerns → split. Long but cohesive → **do not** split (not 
 
 Exception: framework trees (Next `app/`, **Adonis `app/{controllers,models,…}` / `config` / `start` / `database`** — see `adonis-backend.mdc`).
 
+**Adonis services:** `adonis-backend` wins over the “1 consumer → inline” row. Prefer `make:service` + `@inject()` for controller orchestration even when only one controller calls it.
+
 | Existing dir files | Action |
 | --- | --- |
 | 1 | Flatten; delete dir |

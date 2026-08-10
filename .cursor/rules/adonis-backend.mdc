@@ -95,8 +95,12 @@ Aligned with official docs: [Controllers DI](https://docs.adonisjs.com/guides/ba
 | **Transformer** | Model → public JSON (`pick`, nest, `allows` → `can.*`) | Side effects; business decisions |
 
 - App services: `@inject()` constructor (preferred) or method injection. Framework singletons (`mail`, `redis`, …) may use `@adonisjs/.../services/...` **inside** services.
-- Create a service when there is business orchestration — **even for a single controller** (do not wait for “2+ call sites”).
+- Create a service when there is business orchestration — **even for a single controller** (do not wait for “2+ call sites”). Overrides always-on `structure` “1 consumer → inline” for Adonis services.
 - Validators stay Vine modules; validation runs in the controller, then trust the payload.
+
+### Auth mail tokens (opaque Redis)
+
+Email verification / password reset tokens are **app Redis keys** (`auth:token:{purpose}:{tokenId}` + TTL + delete on consume) — not `@adonisjs/auth` access tokens, not Plus Persona, and **no** SQL token table. Session revocation after reset uses Redis session store + tagging (`SESSION_DRIVER=redis`). Login brute-force uses `@adonisjs/limiter` `penalize`.
 
 ## Routes & HTTP
 

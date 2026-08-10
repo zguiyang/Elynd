@@ -120,4 +120,9 @@ Prefer Ace over hand-creating differently named files.
 ## Out of scope here
 
 - Next `apps/web` → see `frontend.mdc`
-- OpenAPI / Swagger — deferred until product asks
+
+## OpenAPI / Swagger
+
+- Package: `@foadonis/openapi` (minimal `config/openapi.ts`, Swagger UI)
+- Docs (non-production): `/api-docs` (UI), `/api-docs.json` (spec) — closure routes, not listed in the spec
+- Annotate controllers with `@ApiTags` / `@ApiOperation` / `@ApiBody` (Vine) as needed

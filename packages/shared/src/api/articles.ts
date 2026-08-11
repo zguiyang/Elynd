@@ -112,23 +112,23 @@ export function getPublishArticleIssues(article: {
   const issues: PublishArticleIssue[] = [];
 
   if (!article.title.trim()) {
-    issues.push({ path: 'title', message: 'title is required to publish' });
+    issues.push({ path: 'title', message: '发布前请填写标题' });
   }
   if (!article.body.trim()) {
-    issues.push({ path: 'body', message: 'body is required to publish' });
+    issues.push({ path: 'body', message: '发布前请填写正文' });
   }
   if (!article.sourceNote.trim()) {
-    issues.push({ path: 'sourceNote', message: 'sourceNote is required to publish' });
+    issues.push({ path: 'sourceNote', message: '发布前请填写来源说明' });
   }
   if (article.themes.length < 1) {
-    issues.push({ path: 'themes', message: 'at least one theme is required to publish' });
+    issues.push({ path: 'themes', message: '发布前请至少添加一个主题' });
   }
 
   const words = countArticleWords(article.body);
   if (words > ARTICLE_BODY_MAX_WORDS) {
     issues.push({
       path: 'body',
-      message: `body must be at most ${ARTICLE_BODY_MAX_WORDS} words (got ${words})`,
+      message: `正文最多 ${ARTICLE_BODY_MAX_WORDS} 词（当前 ${words}）`,
     });
   }
 
@@ -137,7 +137,7 @@ export function getPublishArticleIssues(article: {
   if (hasSeriesId !== hasSeriesOrder) {
     issues.push({
       path: hasSeriesId ? 'seriesOrder' : 'seriesId',
-      message: 'seriesId and seriesOrder must both be set or both be null',
+      message: '系列 ID 与系列顺序需同时填写或同时留空',
     });
   }
 

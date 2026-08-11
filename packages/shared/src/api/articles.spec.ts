@@ -53,7 +53,7 @@ describe('article api contracts', () => {
     ).toEqual([
       {
         path: 'body',
-        message: `body must be at most ${ARTICLE_BODY_MAX_WORDS} words (got ${ARTICLE_BODY_MAX_WORDS + 1})`,
+        message: `正文最多 ${ARTICLE_BODY_MAX_WORDS} 词（当前 ${ARTICLE_BODY_MAX_WORDS + 1}）`,
       },
     ]);
 
@@ -69,8 +69,26 @@ describe('article api contracts', () => {
     ).toEqual([
       {
         path: 'seriesOrder',
-        message: 'seriesId and seriesOrder must both be set or both be null',
+        message: '系列 ID 与系列顺序需同时填写或同时留空',
       },
+    ]);
+  });
+
+  it('returns Chinese messages for missing publish fields', () => {
+    expect(
+      getPublishArticleIssues({
+        title: '',
+        body: '',
+        sourceNote: '',
+        themes: [],
+        seriesId: null,
+        seriesOrder: null,
+      }),
+    ).toEqual([
+      { path: 'title', message: '发布前请填写标题' },
+      { path: 'body', message: '发布前请填写正文' },
+      { path: 'sourceNote', message: '发布前请填写来源说明' },
+      { path: 'themes', message: '发布前请至少添加一个主题' },
     ]);
   });
 });

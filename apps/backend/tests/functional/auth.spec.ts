@@ -135,6 +135,33 @@ describe('Better Auth HTTP', () => {
     expect(meAfter.status).toBe(401);
   });
 
+  it('verifies email via GET /api/auth/verify-email without callbackURL (JSON)', async () => {
+    const { signJWT } = await import('better-auth/crypto');
+    const email = uniqueEmail('dana');
+    const username = `dana_${Date.now().toString(36)}`;
+    createdEmails.push(email);
+
+    expect((await signUp({ email, username, name: 'Dana' })).status).toBe(200);
+
+    const token = await signJWT({ email: email.toLowerCase() }, process.env.BETTER_AUTH_SECRET!, 3600);
+    const verify = await app.request(`/api/auth/verify-email?token=${encodeURIComponent(token)}`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+    expect(verify.status).toBe(200);
+    const body = (await verify.json()) as { status?: boolean };
+    expect(body.status).toBe(true);
+
+    const [row] = await db
+      .select({ emailVerified: userTable.emailVerified })
+      .from(userTable)
+      .where(eq(userTable.email, email));
+    expect(row?.emailVerified).toBe(true);
+
+    const login = await signInEmail(email);
+    expect(login.status).toBe(200);
+  });
+
   it('returns 401 on protected probe without session', async () => {
     const response = await app.request('/api/me');
     expect(response.status).toBe(401);

@@ -115,32 +115,38 @@ export async function resendVerificationEmail(
 }
 
 export async function verifyEmail(token: string): Promise<AuthResult<{ ok: boolean }>> {
-  const callbackURL =
-    typeof window !== 'undefined' ? `${window.location.origin}${AUTH_ROUTES.signIn}` : AUTH_ROUTES.signIn;
-  const qs = new URLSearchParams({ token, callbackURL });
+  // Omit callbackURL so Better Auth returns JSON instead of a 302 redirect.
+  // Redirect + `redirect: 'manual'` through the Next rewrite is unreliable in the browser.
+  const qs = new URLSearchParams({ token });
   const response = await fetch(`/api/auth/verify-email?${qs.toString()}`, {
     method: 'GET',
     credentials: 'same-origin',
-    redirect: 'manual',
+    headers: { Accept: 'application/json' },
   });
 
-  // BA redirects on success/error when callbackURL is set.
-  if (response.status >= 300 && response.status < 400) {
-    const location = response.headers.get('Location') ?? '';
-    if (location.includes('error=')) {
+  if (!response.ok) {
+    let message = '验证失败，请重新申请邮件';
+    try {
+      const body = (await response.json()) as { message?: string; code?: string };
+      if (body.message?.trim()) {
+        message = body.message.trim();
+      }
       return {
         data: null,
-        error: { message: '验证失败，请重新申请邮件', status: response.status, code: 'INVALID_TOKEN' },
+        error: { message, status: response.status, code: body.code },
       };
+    } catch {
+      return { data: null, error: { message, status: response.status } };
     }
-    return { data: { ok: true }, error: null };
   }
 
-  if (!response.ok) {
-    return {
-      data: null,
-      error: { message: '验证失败，请重新申请邮件', status: response.status },
-    };
+  try {
+    const body = (await response.json()) as { status?: boolean };
+    if (body.status === true) {
+      return { data: { ok: true }, error: null };
+    }
+  } catch {
+    // Some BA versions may return an empty body on success.
   }
 
   return { data: { ok: true }, error: null };

@@ -5,6 +5,7 @@ import {
   AUTH_PASSWORD_POLICY,
   AUTH_USER_ROLE,
   AUTH_USERNAME_POLICY,
+  bootstrapRoleForNewUser,
   isAdminRole,
   isValidUsername,
   normalizeEmail,
@@ -56,5 +57,13 @@ describe('auth roles', () => {
     expect(isAdminRole('owner')).toBe(false);
     expect(isAdminRole(null)).toBe(false);
     expect(isAdminRole(undefined)).toBe(false);
+  });
+
+  it('bootstraps the first registrant as admin', () => {
+    expect(bootstrapRoleForNewUser(0)).toBe(AUTH_ADMIN_ROLE);
+    expect(bootstrapRoleForNewUser(1)).toBe(AUTH_USER_ROLE);
+    expect(bootstrapRoleForNewUser(12)).toBe(AUTH_USER_ROLE);
+    expect(bootstrapRoleForNewUser(-1)).toBe(AUTH_USER_ROLE);
+    expect(bootstrapRoleForNewUser(Number.NaN)).toBe(AUTH_USER_ROLE);
   });
 });

@@ -15,6 +15,6 @@ pnpm --filter @elynd/web lint
 
 See [`lib/auth/README.md`](./lib/auth/README.md).
 
-- Soft: cookie presence in `proxy.ts`; client `/me` + 401 → sign-in.
-- Hard: Adonis session middleware on the API (rate limits / IP later live there too).
-- Logout clears HttpOnly `adonis-session` via Next `DELETE /api/auth/logout`.
+- Soft: cookie presence in `proxy.ts`; client get-session + 401 → sign-in.
+- Hard: Hono Better Auth session + `requireAuth` on protected API routes.
+- Logout clears HttpOnly `better-auth.session_token` via Next `DELETE /api/auth/logout`.

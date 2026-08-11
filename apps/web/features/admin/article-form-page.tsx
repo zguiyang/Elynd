@@ -105,6 +105,7 @@ export function ArticleFormPage({ mode, initialArticle }: ArticleFormPageProps) 
 
       <h1 className="mt-4 font-heading text-4xl font-bold tracking-tight md:text-5xl">{heading}</h1>
       <p className="mt-3 text-lg text-muted-foreground">粘贴标题与正文；预览对齐学习者纯阅读排版。</p>
+      <p className="mt-2 text-sm text-muted-foreground">当前表单仅用于原型验证，保存和发布不会写入真实 CMS 后端。</p>
 
       <Tabs defaultValue="edit" className="mt-10">
         <AdminSegmentedTabsList aria-label="编辑或预览">

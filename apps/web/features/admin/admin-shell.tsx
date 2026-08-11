@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { type ReactNode, useEffect } from 'react';
 
+import { isAdminRole } from '@elynd/shared/auth/policy';
+
 import { BrandMark } from '@/components/brand-mark';
 import { Button } from '@/components/ui/button';
 import { ADMIN_ROUTES, AUTH_ROUTES } from '@/constants';
@@ -41,6 +43,26 @@ export function AdminShell({ children }: AdminShellProps) {
     return (
       <div className="flex h-dvh flex-1 items-center justify-center px-6">
         <p className="text-sm text-muted-foreground">正在跳转登录…</p>
+      </div>
+    );
+  }
+
+  if (!isAdminRole(user.role)) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-background px-6 py-10">
+        <section className="w-full max-w-md rounded-3xl border border-border bg-card px-8 py-10 text-center">
+          <div className="mb-8 flex justify-center">
+            <BrandMark href={AUTH_ROUTES.dashboard} subtitle="管理后台" />
+          </div>
+          <p className="mb-3 text-sm font-medium tracking-[0.16em] text-primary">无权限</p>
+          <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">无法进入管理后台</h1>
+          <p className="mt-4 text-sm leading-6 text-muted-foreground">
+            当前账号没有管理员权限。管理后台只对内容维护人员开放，你仍然可以返回学习空间继续阅读。
+          </p>
+          <Button nativeButton={false} className="mt-8 rounded-xl px-5" render={<Link href={AUTH_ROUTES.dashboard} />}>
+            返回学习空间
+          </Button>
+        </section>
       </div>
     );
   }

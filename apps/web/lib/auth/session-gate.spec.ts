@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { AUTH_ROUTES } from '@/constants';
+import { ADMIN_ROUTES, AUTH_ROUTES } from '@/constants';
 import {
   hasSessionCookie,
   resolveAuthPageRedirect,
@@ -19,6 +19,8 @@ describe('hasSessionCookie', () => {
 describe('resolveAuthPageRedirect', () => {
   it('sends users without a cookie away from app routes', () => {
     expect(resolveAuthPageRedirect(AUTH_ROUTES.dashboard, false)).toBe(AUTH_ROUTES.signIn);
+    expect(resolveAuthPageRedirect(ADMIN_ROUTES.root, false)).toBe(AUTH_ROUTES.signIn);
+    expect(resolveAuthPageRedirect(ADMIN_ROUTES.articles, false)).toBe(AUTH_ROUTES.signIn);
   });
 
   it('sends users with a cookie away from sign-in and sign-up', () => {
@@ -34,5 +36,7 @@ describe('resolveAuthPageRedirect', () => {
 
   it('allows app routes when a session cookie is present', () => {
     expect(resolveAuthPageRedirect(AUTH_ROUTES.dashboard, true)).toBeNull();
+    expect(resolveAuthPageRedirect(ADMIN_ROUTES.root, true)).toBeNull();
+    expect(resolveAuthPageRedirect(ADMIN_ROUTES.articles, true)).toBeNull();
   });
 });

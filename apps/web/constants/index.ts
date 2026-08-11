@@ -1,7 +1,6 @@
-export const APP_NAME = 'Elynd' as const;
+export { AUTH_ADMIN_ROLE } from '@elynd/shared/auth/policy';
 
-/** Matches backend `AUTH_ADMIN_ROLE` — used for UI nav only. */
-export const AUTH_ADMIN_ROLE = 'admin' as const;
+export const APP_NAME = 'Elynd' as const;
 
 export const AUTH_ROUTES = {
   signIn: '/sign-in',

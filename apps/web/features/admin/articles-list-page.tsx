@@ -113,6 +113,9 @@ export function ArticlesListPage() {
         <div className="min-w-0">
           <h1 className="font-heading text-4xl font-bold tracking-tight md:text-5xl">文章</h1>
           <p className="mt-3 text-lg text-muted-foreground">粘贴短文、存草稿，再发布到图书馆。</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            当前是内容管理原型，列表来自静态样例数据，尚未接入 CMS 后端。
+          </p>
         </div>
         <Button
           nativeButton={false}

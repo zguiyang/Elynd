@@ -1,4 +1,4 @@
-import { AUTH_ROUTES } from '@/constants';
+import { ADMIN_ROUTES, AUTH_ROUTES } from '@/constants';
 
 /** Better Auth session cookie (default prefix + name). */
 export const SESSION_COOKIE = 'better-auth.session_token' as const;
@@ -20,7 +20,7 @@ export function hasSessionCookie(getCookie: (name: string) => string | undefined
   return Boolean(getCookie(SESSION_COOKIE) || getCookie(SESSION_COOKIE_SECURE));
 }
 
-const APP_PREFIXES = [AUTH_ROUTES.dashboard] as const;
+const APP_PREFIXES = [AUTH_ROUTES.dashboard, ADMIN_ROUTES.root] as const;
 const AUTH_ONLY = [AUTH_ROUTES.signIn, AUTH_ROUTES.signUp] as const;
 
 function matchesPrefix(pathname: string, prefix: string) {

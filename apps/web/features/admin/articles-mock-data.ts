@@ -24,7 +24,10 @@ When the bus came, she returned the umbrella. He shook his head. "Keep it. The s
 
 She kept it. At home she left it by the door, still a little wet, like a quiet promise that strangers can be kind.`;
 
-/** Static catalog for admin UI shells — not an API. */
+/**
+ * Prototype-only catalog for admin content UI shells.
+ * Not backed by CMS APIs or database persistence; keep mutations UI-only until a real content module exists.
+ */
 export const MOCK_ARTICLES: MockArticle[] = [
   {
     id: '1',

@@ -6,7 +6,7 @@ export type AuthError = {
   status?: number;
 };
 
-/** Client-side request result (UX). Distinct from HTTP `ApiData<T>` envelope. */
+/** Client-side request result (UX). Distinct from HTTP `{ data: T }` payloads. */
 export type AuthResult<T> = { data: T; error: null } | { data: null; error: AuthError };
 
 /** @deprecated Prefer `User` from `@elynd/shared/api/auth` — alias kept for gradual imports. */

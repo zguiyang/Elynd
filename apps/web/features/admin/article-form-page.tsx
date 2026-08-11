@@ -23,6 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ADMIN_ROUTES } from '@/constants';
 import { AdminSegmentedTabsList, AdminSegmentedTabsTrigger } from '@/features/admin/admin-segmented-tabs';
 import { ArticlePreviewPanel } from '@/features/admin/article-preview-panel';
+import { ArticleThemesInput } from '@/features/admin/article-themes-input';
 import {
   type AdminArticle,
   adminArticlesQueryKey,
@@ -39,7 +40,7 @@ type ArticleFormValues = {
   title: string;
   body: string;
   level: ArticleLevel;
-  themesText: string;
+  themes: string[];
   sourceNote: string;
   seriesId: string;
   seriesOrder: string;
@@ -62,7 +63,7 @@ function emptyFormValues(): ArticleFormValues {
     title: '',
     body: '',
     level: 'easy',
-    themesText: '',
+    themes: [],
     sourceNote: '',
     seriesId: '',
     seriesOrder: '',
@@ -75,19 +76,12 @@ function toFormValues(article: AdminArticle): ArticleFormValues {
     title: article.title,
     body: article.body,
     level: article.level,
-    themesText: article.themes.join(', '),
+    themes: article.themes,
     sourceNote: article.sourceNote,
     seriesId: article.seriesId ?? '',
     seriesOrder: article.seriesOrder != null ? String(article.seriesOrder) : '',
     estimatedMinutes: article.estimatedMinutes != null ? String(article.estimatedMinutes) : '',
   };
-}
-
-function parseThemes(themesText: string): string[] {
-  return themesText
-    .split(',')
-    .map((t) => t.trim())
-    .filter(Boolean);
 }
 
 function parseOptionalInt(raw: string): number | null {
@@ -111,7 +105,7 @@ function buildPayload(values: ArticleFormValues) {
     title: values.title.trim(),
     body: values.body,
     level: values.level,
-    themes: parseThemes(values.themesText),
+    themes: values.themes,
     sourceNote: values.sourceNote,
     seriesId,
     seriesOrder,
@@ -133,7 +127,6 @@ function ArticleFormEditor({ mode, articleId, initialArticle }: ArticleFormEdito
   );
 
   const wordCount = useMemo(() => countArticleWords(values.body), [values.body]);
-  const themes = parseThemes(values.themesText);
   const estimatedMinutes = parseOptionalInt(values.estimatedMinutes);
   const isOverWordCap = wordCount > ARTICLE_BODY_MAX_WORDS;
 
@@ -151,7 +144,7 @@ function ArticleFormEditor({ mode, articleId, initialArticle }: ArticleFormEdito
         throw new Error('请填写标题');
       }
       if (payload.seriesOrder != null && payload.seriesId == null) {
-        throw new Error('填写系列顺序时需要同时填写系列 ID');
+        throw new Error('系列 ID 与系列顺序需同时填写或同时留空');
       }
 
       if (mode === 'create') {
@@ -183,7 +176,7 @@ function ArticleFormEditor({ mode, articleId, initialArticle }: ArticleFormEdito
         throw new Error('请填写标题');
       }
       if (payload.seriesOrder != null && payload.seriesId == null) {
-        throw new Error('填写系列顺序时需要同时填写系列 ID');
+        throw new Error('系列 ID 与系列顺序需同时填写或同时留空');
       }
 
       const issues = getPublishArticleIssues(payload);
@@ -337,14 +330,13 @@ function ArticleFormEditor({ mode, articleId, initialArticle }: ArticleFormEdito
                     <FieldLabel htmlFor="article-themes" className="text-muted-foreground">
                       主题
                     </FieldLabel>
-                    <Input
+                    <ArticleThemesInput
                       id="article-themes"
-                      value={values.themesText}
-                      onChange={(e) => updateField('themesText', e.target.value)}
-                      placeholder="故事, 情景（逗号分隔）"
-                      className="h-11 rounded-xl"
+                      value={values.themes}
+                      onChange={(themes) => updateField('themes', themes)}
                       disabled={isBusy}
                     />
+                    <FieldDescription>从列表选择，或输入后回车创建标签</FieldDescription>
                   </Field>
                 </div>
 
@@ -446,7 +438,7 @@ function ArticleFormEditor({ mode, articleId, initialArticle }: ArticleFormEdito
             title={values.title}
             body={values.body}
             level={values.level}
-            themes={themes}
+            themes={values.themes}
             estimatedMinutes={estimatedMinutes}
           />
         </TabsContent>

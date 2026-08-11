@@ -1,5 +1,5 @@
 {
-  "name": "@elynd/backend",
+  "name": "@elynd/backend-adonis",
   "version": "0.0.0",
   "private": true,
   "type": "module",

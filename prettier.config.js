@@ -33,7 +33,7 @@ const config = {
   arrowParens: 'always',
   overrides: [
     {
-      files: ['apps/backend/**/*.edge'],
+      files: ['apps/backend-adonis/**/*.edge'],
       options: {
         plugins: resolveEdgePlugin(),
       },

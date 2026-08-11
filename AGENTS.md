@@ -38,7 +38,7 @@ Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root).
 
 1. Tooling (ESLint, Prettier, typecheck, tests)
 2. Always-on: `core`, `layering`, `structure`
-3. Glob: `adonis-backend` / `frontend` / `packages`
+3. Glob: `hono-backend` / `frontend` / `packages` (legacy: `adonis-backend` → `apps/backend-adonis`)
 4. **[`DESIGN.md`](DESIGN.md)** for visual / UI appearance (when touching `apps/web` UI)
 5. Project skills (load by description first; see `core` “Skills before MCP”)
 6. MCP (docs / live systems) when skills are insufficient
@@ -53,7 +53,8 @@ Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root).
 | [core.mdc](.cursor/rules/core.mdc)                     | Always — decision gate, Ask/Never, skills-before-MCP, TDD, DoD, router |
 | [layering.mdc](.cursor/rules/layering.mdc)             | Always — package graph, concern placement, cross-layer order           |
 | [structure.mdc](.cursor/rules/structure.mdc)           | Always — create/delete/split/move; anti over-extraction                |
-| [adonis-backend.mdc](.cursor/rules/adonis-backend.mdc) | `apps/backend/**` (Adonis API)                                         |
+| [hono-backend.mdc](.cursor/rules/hono-backend.mdc)     | `apps/backend/**` (Hono API)                                           |
+| [adonis-backend.mdc](.cursor/rules/adonis-backend.mdc) | `apps/backend-adonis/**` (legacy Adonis)                               |
 | [frontend.mdc](.cursor/rules/frontend.mdc)             | `apps/web/**`                                                          |
 | [packages.mdc](.cursor/rules/packages.mdc)             | `packages/**`                                                          |
 
@@ -69,16 +70,17 @@ Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root).
 
 ```bash
 pnpm compose:init      # docker-compose.yaml.example → docker-compose.yaml
-pnpm run dev:backend   # Adonis API :3333
+pnpm run dev:backend   # Hono API :3333
 pnpm run dev:web       # Web :3000
 pnpm run lint
 pnpm run format:check
 pnpm run typecheck
 pnpm run test
 pnpm run build
-# DB migrations: cd apps/backend && node ace migration:run
+pnpm db:generate       # Drizzle generate (@elynd/db)
+pnpm db:migrate        # Drizzle migrate
 ```
 
 ## External docs
 
-- [AdonisJS](https://docs.adonisjs.com) · [Adonis folder structure](https://docs.adonisjs.com/guides/getting-started/folder-structure) · [Next.js](https://nextjs.org/docs) · [TanStack Query](https://tanstack.com/query/latest) · [Tailwind CSS](https://tailwindcss.com/docs)
+- [AdonisJS](https://docs.adonisjs.com) (legacy aside) · [Hono](https://hono.dev/) · [Better Auth](https://www.better-auth.com/) · [Drizzle](https://orm.drizzle.team/) · [Next.js](https://nextjs.org/docs) · [TanStack Query](https://tanstack.com/query/latest) · [Tailwind CSS](https://tailwindcss.com/docs)

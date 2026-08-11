@@ -1,10 +1,12 @@
 ---
-description: AdonisJS API conventions for Elynd (apps/backend)
-globs: apps/backend/**
+description: AdonisJS API conventions (legacy aside tree)
+globs: apps/backend-adonis/**
 alwaysApply: false
 ---
 
-# Backend (`apps/backend`)
+# Backend aside (`apps/backend-adonis`)
+
+**Legacy AdonisJS 7 tree** kept as a reference during the Hono migration. Active API is `apps/backend` (Hono) — see `hono-backend` rule.
 
 AdonisJS 7 API app. **Follow [AdonisJS official folder structure](https://docs.adonisjs.com/guides/getting-started/folder-structure) and Ace naming generators**.
 
@@ -13,7 +15,7 @@ SSOT for layout/names: Adonis docs + `node ace make:*`. Placement vs monorepo pa
 ## Official directory layout (keep)
 
 ```text
-apps/backend/
+apps/backend-adonis/
 ├── app/                 # domain logic
 │   ├── controllers/
 │   ├── exceptions/

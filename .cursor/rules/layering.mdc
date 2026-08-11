@@ -10,45 +10,47 @@ Stack folders: `backend` / `frontend` / `packages`. **This file wins on "where d
 ## Package graph
 
 ```text
-apps/web      ──► packages/shared     # cross-app policy/types (no ORM)
-apps/backend  ──► packages/shared     # auth policy SSOT; Lucid stays in-app
-apps/backend  ──► (Lucid under database/)
-@elynd/shared                        # NO apps / Lucid / secrets
+apps/web           ──► packages/shared     # cross-app policy/types (no ORM)
+apps/backend       ──► packages/shared     # auth policy SSOT
+apps/backend       ──► packages/db         # Drizzle schema (Better Auth + app tables)
+@elynd/shared                              # NO apps / ORM / secrets
+@elynd/db                                  # schema only — no HTTP
+apps/backend-adonis                        # legacy Adonis reference (not default scripts)
 ```
 
 | Forbidden |
 | --- |
 | `apps/web` ↔ `apps/backend` app-source imports |
 | Business workflows inside `@elynd/shared` |
-| Adonis tables outside `apps/backend/database` (Lucid) |
+| Drizzle/Better Auth tables outside `packages/db` |
 | One file mixing HTTP-server and UI-render |
 
-Root tooling (`tsconfig.base.json`, prettier, eslint) is not a package; Next/Adonis TS options stay per app.
+Root tooling (`tsconfig.base.json`, prettier, eslint) is not a package; Next/Hono TS options stay per app.
 
 ## Concern → layer
 
 | Concern | Lives in | Must not |
 | --- | --- | --- |
-| Domain workflow | `apps/backend`, `apps/web/features/**` | Generic `lib/`, shared config pkgs |
-| Tech capability (no domain) | `lib/` / Adonis `app/middleware` | Import features |
+| Domain workflow | `apps/backend` modules, `apps/web/features/**` | Generic `lib/`, shared config pkgs |
+| Tech capability (no domain) | `apps/backend/src/lib`, middleware | Import feature modules |
 | Transport cross-cutting | API middleware / web proxy | Domain workflows |
 | Cross-app Zod/DTO/constants (2+ apps) | `@elynd/shared` | Dup schemas; ORM imports |
-| Persistence schema | `apps/backend/database` (Lucid) | Ad-hoc tables in web/shared |
+| Persistence schema | `packages/db` (Drizzle) | Ad-hoc tables in web/shared/backend |
 | Server/remote state | Query/data layer | Zustand as API SoT |
 | Client UI state | UI store | Secrets; server lists as SoT |
 | Design-system atoms | `components/ui/**` | Feature rules |
 
-In-app: `routes/pages/controllers → feature services → tech lib → I/O`. No upward imports. No extra tiers (repository/use-case/facade) without concrete pain.
+In-app (Hono): `routes → modules/route → modules/service → lib/db → I/O`. No upward imports. No extra tiers (repository/use-case/facade) without concrete pain.
 
 ## Cross-layer propagation (HARD)
 
 Downstream only; typecheck each layer before the next:
 
-- **Adonis path:** `apps/backend` (Lucid + Vine) → `@elynd/shared` (when public) → `apps/web`
+- **Hono path:** `packages/db` → `apps/backend` (+ `@elynd/shared` when public) → `apps/web`
 
 | Trigger | Order |
 | --- | --- |
-| DB schema (Adonis) | Lucid migration / `database/` → controllers+Vine → tests → web |
+| DB schema | `packages/db` migrate → backend → tests → web |
 | Shared validator/type | shared → backend + web |
 | API response shape | backend (+tests) → shared if public → web → UI |
 | Shared constant | define once in owner / `@elynd/shared`; import |

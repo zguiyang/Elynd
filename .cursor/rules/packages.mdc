@@ -8,7 +8,8 @@ alwaysApply: false
 
 | Package | Role |
 | --- | --- |
-| `@elynd/shared` | Cross-app constants/types/policy for **2+** apps — no Lucid/ORM |
+| `@elynd/shared` | Cross-app constants/types/policy for **2+** apps — no ORM |
+| `@elynd/db` | Drizzle schema + migrations SSOT (Better Auth + app tables) |
 
 Layering: `layering`. Cross-layer edits: `layering` propagation section.
 
@@ -26,7 +27,7 @@ Layering: `layering`. Cross-layer edits: `layering` propagation section.
 
 - Password/username/mail-cooldown policy SSOT → `@elynd/shared/auth/policy`
 - Cross-app validators/types → `@elynd/shared`
-- Persistence → `apps/backend/database` (Lucid), not packages
+- Persistence → `@elynd/db` (Drizzle), not `@elynd/shared` and not inline in `apps/backend`
 - No Nest/React feature workflows in packages
 - Do not add to `@elynd/shared` for a single consumer
 

@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Core
 
-Elynd: English **learning space** for adults who struggle to persist—interesting, mostly understandable real content (read + listen); AI/tools lower friction. Not a course, vocab pack, or chatbot. Monorepo: `apps/backend` (Adonis **3333**), `apps/web` (Next **3000**), `packages/shared` (cross-app constants/types; Adonis persistence is Lucid in-app).
+Elynd: English **learning space** for adults who struggle to persist—interesting, mostly understandable real content (read + listen); AI/tools lower friction. Not a course, vocab pack, or chatbot. Monorepo: `apps/backend` (Hono **3333**), `apps/web` (Next **3000**), `packages/shared` (cross-app constants/types), `packages/db` (Drizzle). Legacy Adonis tree: `apps/backend-adonis`.
 
 Product SSOT: `docs/product/` (vision, philosophy, MVP scope, metrics, decision guide, guardrails). Prototypes: `prd/`.
 
@@ -41,7 +41,7 @@ Never silently fill an open design fork. Locked choices in the active Trellis `p
 
 ## Must / Ask / Never
 
-**Must:** follow `layering` + `structure` before adding files/dirs; Lucid schema in `apps/backend/database` / cross-app contracts in `@elynd/shared` before inventing layout; DB schema before consumers; extend root `tsconfig.base.json` via relative paths.
+**Must:** follow `layering` + `structure` before adding files/dirs; Drizzle schema in `packages/db` / cross-app contracts in `@elynd/shared` before inventing layout; DB schema before consumers; extend root `tsconfig.base.json` via relative paths.
 
 **Ask first** (format: plan → reason → impact → alternative → proceed?):
 
@@ -85,7 +85,7 @@ English imperative; one logical change; prefer subject-only. Format via commitli
 
 | Intent | Follow |
 | --- | --- |
-| New API feature on Adonis (`apps/backend`) | `adonis-backend` + `structure` + `layering` (Lucid in-app; Ace `make:*`) |
+| New API feature on Hono (`apps/backend`) | `hono-backend` + `structure` + `layering` (`@elynd/db`) |
 | Web UI / `features/**` | `frontend` |
 | Package / schema ownership | `packages` + `layering` |
 | Add/delete/split/move files or dirs | `structure` |

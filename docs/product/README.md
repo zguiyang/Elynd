@@ -4,16 +4,17 @@ English is the **single language** for product and engineering documentation in 
 
 ## Read in this order
 
-| Order | Doc                                                        | When to use                                           |
-| ----- | ---------------------------------------------------------- | ----------------------------------------------------- |
-| 1     | [`product-vision.md`](./product-vision.md)                 | Who we serve, what Elynd is / is not, personality     |
-| 2     | [`learning-philosophy.md`](./learning-philosophy.md)       | Why (research lineage, beliefs → product map)         |
-| 3     | [`mvp-scope.md`](./mvp-scope.md)                           | What to build first, non-goals, module ↔ `prd/` map   |
-| 4     | [`content-strategy.md`](./content-strategy.md)             | Curated library scope, processing, admin/publish flow |
-| 5     | [`prototype-flows.md`](./prototype-flows.md)               | Screen-to-screen navigation SSOT (prd + product)      |
-| 6     | [`success-metrics.md`](./success-metrics.md)               | North star, product metrics, drift metrics            |
-| 7     | [`feature-decision-guide.md`](./feature-decision-guide.md) | Before building a feature                             |
-| 8     | [`design-guardrails.md`](./design-guardrails.md)           | Reviews, walkthroughs, retros                         |
+| Order | Doc                                                                            | When to use                                                            |
+| ----- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| 1     | [`product-vision.md`](./product-vision.md)                                     | Who we serve, what Elynd is / is not, personality                      |
+| 2     | [`learning-philosophy.md`](./learning-philosophy.md)                           | Why (research lineage, beliefs → product map)                          |
+| 3     | [`mvp-scope.md`](./mvp-scope.md)                                               | What to build first, non-goals, module ↔ `prd/` map                    |
+| 4     | [`content-strategy.md`](./content-strategy.md)                                 | Curated library scope, processing, admin/publish flow                  |
+| 5     | [`feature-short-article-library-v1.md`](./feature-short-article-library-v1.md) | Feature brief: paste → publish → Library → pure read (v1); task splits |
+| 6     | [`prototype-flows.md`](./prototype-flows.md)                                   | Screen-to-screen navigation SSOT (prd + product)                       |
+| 7     | [`success-metrics.md`](./success-metrics.md)                                   | North star, product metrics, drift metrics                             |
+| 8     | [`feature-decision-guide.md`](./feature-decision-guide.md)                     | Before building a feature                                              |
+| 9     | [`design-guardrails.md`](./design-guardrails.md)                               | Reviews, walkthroughs, retros                                          |
 
 ## Prototypes
 

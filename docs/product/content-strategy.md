@@ -22,20 +22,21 @@ Content is **not** a corpus-building project. Prefer **few polished pieces** ove
 
 ## 2. Scope decisions (locked 2026-08-05)
 
-| Decision                                 | MVP stance                                                                                                                                       |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Supply model                             | **Fixed curated library**—team-owned or clearly licensed texts                                                                                   |
-| Scraping / scheduled crawl of public web | **Out** of MVP (revisit only with whitelist + legal review in a later phase)                                                                     |
-| Full ebook / EPUB reader in-app          | **Out** of MVP                                                                                                                                   |
-| User import (ebooks, links)              | **Defer** until curated loop works ([`mvp-scope.md`](./mvp-scope.md))                                                                            |
-| Memes / joke-pack / “梗” pieces          | **Out** of first batch; may return later as a small spice, not a pillar                                                                          |
-| Primary genres                           | **Short narrative / modernized fable** + **a little situational** content                                                                        |
-| Quantity                                 | **Lean**—start with a **validation set of ~5** articles, not a two-week flood                                                                    |
-| Learning unit                            | **One short article = one unit** (no chapter tree / syllabus cut in MVP)                                                                         |
-| Admin tooling                            | **Admin-only CMS** (draft → publish → unpublish); never exposed to learners                                                                      |
-| When to write bodies                     | When implementing Library / content module—not during early platform work                                                                        |
-| AI role on supply                        | AI may later **assist enrichment** (draft gloss, practice items); it does **not** invent a course or replace human selection of interesting text |
-| AI role at read time                     | In-text explain / optional practice from **this** article ([`mvp-scope.md`](./mvp-scope.md) §6)                                                  |
+| Decision                                 | MVP stance                                                                                                                                                                                            |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Supply model                             | **Fixed curated library**—team-owned or clearly licensed texts                                                                                                                                        |
+| Scraping / scheduled crawl of public web | **Out** of MVP (revisit only with whitelist + legal review in a later phase)                                                                                                                          |
+| Full ebook / EPUB reader in-app          | **Out** of MVP                                                                                                                                                                                        |
+| User import (ebooks, links)              | **Defer** until curated loop works ([`mvp-scope.md`](./mvp-scope.md))                                                                                                                                 |
+| Memes / joke-pack / “梗” pieces          | **Out** of first batch; may return later as a small spice, not a pillar                                                                                                                               |
+| Primary genres                           | **Short narrative / modernized fable** + **a little situational** content                                                                                                                             |
+| Quantity                                 | **Lean**—start with a **validation set of ~5** articles, not a two-week flood                                                                                                                         |
+| Learning unit                            | **One short article = one unit** (no chapter tree / syllabus cut in MVP)                                                                                                                              |
+| Admin tooling                            | **Admin-only CMS** (draft → publish → unpublish); never exposed to learners                                                                                                                           |
+| v1 write path                            | **Paste / form entry only** (bodies may be drafted in an external AI). No EPUB upload and no in-app generate in v1—see [`feature-short-article-library-v1.md`](./feature-short-article-library-v1.md) |
+| When to write bodies                     | When implementing Library / content module—not during early platform work                                                                                                                             |
+| AI role on supply                        | AI may later **assist enrichment** (draft gloss, practice items); it does **not** invent a course or replace human selection of interesting text                                                      |
+| AI role at read time                     | In-text explain / optional practice from **this** article ([`mvp-scope.md`](./mvp-scope.md) §6)                                                                                                       |
 
 ---
 
@@ -111,6 +112,8 @@ Select or write/rewrite short text (human)
 
 Admin UI is **operators only**. Learners never create or edit the catalog in MVP.
 
+**v1 feature brief (paste → Library → pure read, task splits):** [`feature-short-article-library-v1.md`](./feature-short-article-library-v1.md). EPUB / in-app rewrite adapters are later sources into the same article shape.
+
 ### 5.3 What we explicitly do not run in MVP
 
 ```text
@@ -168,4 +171,5 @@ Treat empty Learning Room as a product failure mode: content is part of P1 deliv
 
 | Date       | Change                                                                                                                                                                                   |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-11 | Point v1 admin path to paste-only feature brief; EPUB/in-app generate deferred to later adapters.                                                                                        |
 | 2026-08-05 | Initial SSOT from product discussion: curated lean library, narrative+situational mix, no memes/scrape/ebook-reader in MVP, admin CMS flow, five-title validation set (bodies deferred). |

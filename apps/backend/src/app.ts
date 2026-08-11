@@ -5,12 +5,13 @@ import { secureHeaders } from 'hono/secure-headers';
 
 import { auth } from '@/lib/auth';
 import { env } from '@/lib/env';
+import { type AuthVariables, sessionMiddleware } from '@/middleware/auth';
 import { errorHandler } from '@/middleware/error';
 import { logger } from '@/middleware/logger';
 import { apiLimiter } from '@/middleware/rate-limiter';
 import { routes } from '@/routes';
 
-const app = new Hono();
+const app = new Hono<{ Variables: AuthVariables }>();
 
 app.use('*', requestId());
 app.use('*', logger);
@@ -30,7 +31,8 @@ app.use('*', async (c, next) => {
   if (c.req.path === '/' || c.req.path === '/api/health') {
     return next();
   }
-  return apiLimiter(c, next);
+  // hono-rate-limiter middleware is typed against default Env
+  return apiLimiter(c as never, next);
 });
 
 app.onError(errorHandler);
@@ -38,6 +40,13 @@ app.onError(errorHandler);
 app.get('/', (c) => c.json({ ok: true }));
 
 app.on(['POST', 'GET'], '/api/auth/*', (c) => auth.handler(c.req.raw));
+
+app.use('/api/*', async (c, next) => {
+  if (c.req.path.startsWith('/api/auth/')) {
+    return next();
+  }
+  return sessionMiddleware(c, next);
+});
 
 app.route('/', routes);
 

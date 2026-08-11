@@ -1,7 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
 import { AUTH_ROUTES } from '@/constants';
-import { resolveAuthPageRedirect } from '@/lib/auth/session-gate';
+import {
+  hasSessionCookie,
+  resolveAuthPageRedirect,
+  SESSION_COOKIE,
+  SESSION_COOKIE_SECURE,
+} from '@/lib/auth/session-gate';
+
+describe('hasSessionCookie', () => {
+  it('accepts default or __Secure- Better Auth session cookie names', () => {
+    expect(hasSessionCookie((name) => (name === SESSION_COOKIE ? 'token' : undefined))).toBe(true);
+    expect(hasSessionCookie((name) => (name === SESSION_COOKIE_SECURE ? 'token' : undefined))).toBe(true);
+    expect(hasSessionCookie(() => undefined)).toBe(false);
+  });
+});
 
 describe('resolveAuthPageRedirect', () => {
   it('sends users without a cookie away from app routes', () => {

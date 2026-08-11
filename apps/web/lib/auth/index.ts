@@ -1,4 +1,4 @@
 export type { AuthError, AuthUser, User } from './client';
 export { authClient } from './client';
 export { resolveMailCooldownErrorMessage } from './mail-cooldown';
-export { resolveAuthPageRedirect, SESSION_COOKIE } from './session-gate';
+export { hasSessionCookie, resolveAuthPageRedirect, SESSION_COOKIE, SESSION_COOKIE_SECURE } from './session-gate';

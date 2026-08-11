@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { loginBodySchema, registerBodySchema, userSchema } from './auth.ts';
+import { AUTH_ERROR_EMAIL_NOT_VERIFIED, BA_ERROR_EMAIL_NOT_VERIFIED, isEmailNotVerifiedError } from './auth-errors.ts';
 import { apiDataSchema, apiValidationErrorSchema, paginationMetaSchema } from './envelope.ts';
 
 describe('loginBodySchema', () => {
@@ -13,29 +14,30 @@ describe('loginBodySchema', () => {
 });
 
 describe('registerBodySchema', () => {
-  it('accepts register wire body', () => {
+  it('accepts register wire body with BA name field', () => {
     expect(
       registerBodySchema.parse({
         email: 'ada@example.com',
         username: 'ada.reader',
         password: 'password1',
+        name: 'Ada',
       }),
-    ).toMatchObject({ email: 'ada@example.com', username: 'ada.reader' });
+    ).toMatchObject({ email: 'ada@example.com', username: 'ada.reader', name: 'Ada' });
   });
 });
 
 describe('userSchema + envelope', () => {
-  it('parses ApiData<User>', () => {
+  it('parses ApiData<User> with string id and name', () => {
     const user = {
-      id: 1,
+      id: 'user_1',
       email: 'a@b.com',
       username: 'a',
-      fullName: null,
+      name: 'Ada',
       role: 'user',
       image: null,
       emailVerified: true,
       createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: null,
+      updatedAt: '2026-01-01T00:00:00.000Z',
     };
     expect(userSchema.parse(user)).toEqual(user);
     expect(apiDataSchema(userSchema).parse({ data: user })).toEqual({ data: user });
@@ -61,5 +63,13 @@ describe('userSchema + envelope', () => {
         errors: [{ field: 'email', message: 'required', rule: 'required' }],
       }),
     ).toMatchObject({ errors: [{ field: 'email' }] });
+  });
+});
+
+describe('auth-errors', () => {
+  it('detects BA and legacy email-not-verified codes', () => {
+    expect(isEmailNotVerifiedError(AUTH_ERROR_EMAIL_NOT_VERIFIED)).toBe(true);
+    expect(isEmailNotVerifiedError(BA_ERROR_EMAIL_NOT_VERIFIED)).toBe(true);
+    expect(isEmailNotVerifiedError('OTHER')).toBe(false);
   });
 });

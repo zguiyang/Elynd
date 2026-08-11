@@ -21,7 +21,7 @@ import { authClient, type AuthUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 
 /**
- * Thin adapter over Adonis session + /me for shell children.
+ * Thin adapter over Better Auth session for shell children.
  */
 const AppUserContext = createContext<AuthUser | null>(null);
 
@@ -254,7 +254,7 @@ export function AppShell({ children }: AppShellProps) {
     );
   }
 
-  const username = user.username?.trim() || user.fullName?.trim() || '读者';
+  const username = user.username?.trim() || user.name?.trim() || '读者';
   const email = user.email?.trim() || '—';
   const initial = username.slice(0, 1).toUpperCase();
   const image = user.image?.trim() || null;

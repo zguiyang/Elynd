@@ -1,7 +1,10 @@
 import { AUTH_ROUTES } from '@/constants';
 
-/** Adonis session cookie (`apps/backend/config/session.ts`). */
-export const SESSION_COOKIE = 'adonis-session' as const;
+/** Better Auth session cookie (default prefix + name). */
+export const SESSION_COOKIE = 'better-auth.session_token' as const;
+
+/** Secure-prefix variant used when BA marks cookies Secure. */
+export const SESSION_COOKIE_SECURE = `__Secure-${SESSION_COOKIE}` as const;
 
 export function expiredSessionCookieOptions() {
   return {
@@ -13,6 +16,10 @@ export function expiredSessionCookieOptions() {
   };
 }
 
+export function hasSessionCookie(getCookie: (name: string) => string | undefined): boolean {
+  return Boolean(getCookie(SESSION_COOKIE) || getCookie(SESSION_COOKIE_SECURE));
+}
+
 const APP_PREFIXES = [AUTH_ROUTES.dashboard] as const;
 const AUTH_ONLY = [AUTH_ROUTES.signIn, AUTH_ROUTES.signUp] as const;
 
@@ -21,14 +28,14 @@ function matchesPrefix(pathname: string, prefix: string) {
 }
 
 /** Soft UX redirect only — not a security check. */
-export function resolveAuthPageRedirect(pathname: string, hasSessionCookie: boolean): string | null {
+export function resolveAuthPageRedirect(pathname: string, hasSession: boolean): string | null {
   const isApp = APP_PREFIXES.some((prefix) => matchesPrefix(pathname, prefix));
   const isAuthOnly = (AUTH_ONLY as readonly string[]).includes(pathname);
 
-  if (isApp && !hasSessionCookie) {
+  if (isApp && !hasSession) {
     return AUTH_ROUTES.signIn;
   }
-  if (isAuthOnly && hasSessionCookie) {
+  if (isAuthOnly && hasSession) {
     return AUTH_ROUTES.dashboard;
   }
   return null;

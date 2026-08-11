@@ -1,97 +1,48 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { type User, userSchema } from '@elynd/shared/api/auth';
 
-import { logout as apiLogout, me } from './api';
+import { logout as apiLogout } from './api';
+import { baClient } from './ba-client';
 import type { AuthError, AuthUser } from './types';
 
 type SessionState = {
   data: { user: AuthUser } | null;
   error: AuthError | null;
   isPending: boolean;
+  refresh: () => void;
 };
 
-/** Soft session UX via /me. Real auth is Adonis middleware. */
-export function useSession() {
-  const [state, setState] = useState<SessionState>({
-    data: null,
-    error: null,
-    isPending: true,
-  });
+function mapUser(raw: unknown): User | null {
+  const parsed = userSchema.safeParse(raw);
+  return parsed.success ? parsed.data : null;
+}
 
-  const refresh = useCallback(async () => {
-    setState((prev) => ({ ...prev, isPending: true }));
-    try {
-      const result = await me();
-      if (result.error) {
-        if (result.error.status === 401) {
-          try {
-            await apiLogout();
-          } catch {
-            // ignore logout transport errors on soft gate
-          }
-        }
-        setState({ data: null, error: result.error, isPending: false });
-        return;
-      }
-      setState({ data: { user: result.data }, error: null, isPending: false });
-    } catch (error) {
-      setState({
-        data: null,
-        error: {
-          message: error instanceof Error ? error.message : 'Session refresh failed',
-          status: 0,
-        },
-        isPending: false,
-      });
-    }
-  }, []);
+/** Soft session UX via BA `useSession` → backend get-session. */
+export function useSession(): SessionState {
+  const session = baClient.useSession();
+  const user = session.data?.user ? mapUser(session.data.user) : null;
 
-  useEffect(() => {
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        const result = await me();
-        if (cancelled) {
-          return;
-        }
-        if (result.error) {
-          if (result.error.status === 401) {
-            try {
-              await apiLogout();
-            } catch {
-              // ignore
-            }
-          }
-          if (cancelled) {
-            return;
-          }
-          setState({ data: null, error: result.error, isPending: false });
-          return;
-        }
-        setState({ data: { user: result.data }, error: null, isPending: false });
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-        setState({
-          data: null,
-          error: {
-            message: error instanceof Error ? error.message : 'Session refresh failed',
-            status: 0,
-          },
-          isPending: false,
-        });
-      }
-    })();
-
-    return () => {
-      cancelled = true;
+  let error: AuthError | null = null;
+  if (session.error) {
+    const err = session.error as { message?: string; code?: string; status?: number };
+    error = {
+      message: err.message || 'Session refresh failed',
+      code: typeof err.code === 'string' ? err.code : undefined,
+      status: err.status,
     };
-  }, []);
+  } else if (!session.isPending && !user) {
+    error = { message: 'Unauthorized', status: 401 };
+  }
 
-  return { ...state, refresh };
+  return {
+    data: user ? { user } : null,
+    error,
+    isPending: session.isPending,
+    refresh: () => {
+      void session.refetch();
+    },
+  };
 }
 
 export async function signOut(): Promise<{ error: AuthError | null }> {

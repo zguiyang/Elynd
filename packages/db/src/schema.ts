@@ -1,7 +1,7 @@
 import { relations } from 'drizzle-orm';
 import { boolean, index, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 
-/** Better Auth core tables (PostgreSQL). */
+/** Better Auth core tables (PostgreSQL) + username plugin / product fields. */
 
 export const user = pgTable('user', {
   id: text('id').primaryKey(),
@@ -14,6 +14,12 @@ export const user = pgTable('user', {
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
+  /** Username plugin (normalized, unique). */
+  username: text('username').unique(),
+  /** Username plugin (display form as entered). */
+  displayUsername: text('display_username'),
+  /** Product role — server-default `user`; never client-settable via BA input. */
+  role: text('role').default('user').notNull(),
 });
 
 export const session = pgTable(

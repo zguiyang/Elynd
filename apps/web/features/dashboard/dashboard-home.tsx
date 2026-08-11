@@ -8,7 +8,7 @@ import { DASHBOARD_FAKE, greetingForHour } from '@/features/dashboard/dashboard-
 
 export function DashboardHome() {
   const user = useAppUser();
-  const name = user?.fullName?.trim() || user?.username || '读者';
+  const name = user?.name?.trim() || user?.username || '读者';
   const greeting = greetingForHour(new Date().getHours(), name);
   const { continueReading, inProgress, recommendations, stats } = DASHBOARD_FAKE;
 

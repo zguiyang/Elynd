@@ -7,17 +7,13 @@ import {
   resetPasswordBodySchema,
 } from '@elynd/shared/api/auth';
 
-/** Sign-in form = API login body (`login` may be email or username). */
+/** Sign-in form = product login body (`login` may be email or username). */
 export const signInSchema = loginBodySchema;
 
 export type SignInValues = z.infer<typeof signInSchema>;
 
-/**
- * Sign-up form: API register fields + required display `name` → maps to `fullName` on submit.
- */
-export const signUpSchema = registerBodySchema.omit({ fullName: true }).extend({
-  name: z.string().min(1, 'Name is required').max(100),
-});
+/** Sign-up form aligns with BA `name` + username plugin fields. */
+export const signUpSchema = registerBodySchema;
 
 export type SignUpValues = z.infer<typeof signUpSchema>;
 

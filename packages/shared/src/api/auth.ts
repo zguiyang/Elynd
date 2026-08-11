@@ -11,24 +11,29 @@ const usernameSchema = z
   .max(AUTH_USERNAME_POLICY.maxLength)
   .regex(AUTH_USERNAME_POLICY.pattern);
 
-/** Align with Vine `.trim().email()` / normalizeEmail on the API. */
+/** Align with BA / web form email normalization. */
 const emailSchema = z.string().trim().pipe(z.email());
 
-/** Public user JSON (wire). Dates are ISO strings. */
+/**
+ * Public user JSON (Better Auth wire shape).
+ * Dates may be ISO strings (JSON) or Date when parsed from BA client session.
+ */
 export const userSchema = z.object({
-  id: z.number(),
+  id: z.string(),
   email: z.string(),
-  username: z.string(),
-  fullName: z.string().nullable(),
-  role: z.string(),
-  image: z.string().nullable(),
   emailVerified: z.boolean(),
-  createdAt: z.string(),
-  updatedAt: z.string().nullable(),
+  name: z.string(),
+  username: z.string().nullable().optional(),
+  displayUsername: z.string().nullable().optional(),
+  role: z.string(),
+  image: z.string().nullable().optional(),
+  createdAt: z.union([z.string(), z.date()]),
+  updatedAt: z.union([z.string(), z.date()]).nullable().optional(),
 });
 
 export type User = z.infer<typeof userSchema>;
 
+/** Web sign-in form: email or username in a single `login` field. */
 export const loginBodySchema = z.object({
   login: z.string().trim().min(1).max(254),
   password: passwordSchema,
@@ -36,11 +41,12 @@ export const loginBodySchema = z.object({
 
 export type LoginBody = z.infer<typeof loginBodySchema>;
 
+/** Product register fields mapped onto BA `signUp.email` (+ username plugin). */
 export const registerBodySchema = z.object({
   email: emailSchema,
   username: usernameSchema,
   password: passwordSchema,
-  fullName: z.string().trim().max(100).optional(),
+  name: z.string().trim().min(1).max(100),
 });
 
 export type RegisterBody = z.infer<typeof registerBodySchema>;
@@ -64,7 +70,6 @@ export const resendVerificationBodySchema = z.object({
 
 export type ResendVerificationBody = z.infer<typeof resendVerificationBodySchema>;
 
-/** GET/POST verify — `token` from query or body (merged by Adonis validateUsing). */
 export const verifyEmailBodySchema = z.object({
   token: z.string().trim().min(1),
 });

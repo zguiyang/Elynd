@@ -7,7 +7,7 @@ export type { AuthError, AuthResult, AuthUser } from './types';
 export type { User };
 
 /**
- * Auth façade: Adonis session cookies via same-origin `/api/auth/*`.
+ * Thin auth façade over Better Auth React client (Hono BA server via `/api` rewrite).
  */
 export const authClient = {
   register: api.register,

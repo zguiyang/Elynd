@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server';
 
-import { resolveAuthPageRedirect, SESSION_COOKIE } from '@/lib/auth/session-gate';
+import { hasSessionCookie, resolveAuthPageRedirect } from '@/lib/auth/session-gate';
 
-/** Soft page gate (cookie presence) + API rewrite. Real auth is Adonis middleware. */
+/** Soft page gate (cookie presence) + API rewrite. Real auth is Hono Better Auth. */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -15,7 +15,10 @@ export function proxy(request: NextRequest) {
     return NextResponse.rewrite(new URL(`${pathname}${request.nextUrl.search}`, process.env.API_INTERNAL_URL));
   }
 
-  const redirectTo = resolveAuthPageRedirect(pathname, Boolean(request.cookies.get(SESSION_COOKIE)?.value));
+  const redirectTo = resolveAuthPageRedirect(
+    pathname,
+    hasSessionCookie((name) => request.cookies.get(name)?.value),
+  );
   if (!redirectTo) {
     return NextResponse.next();
   }

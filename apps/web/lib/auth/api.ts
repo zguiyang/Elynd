@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import type {
   ForgotPasswordBody,
   LoginBody,
@@ -7,125 +9,164 @@ import type {
   User,
 } from '@elynd/shared/api/auth';
 import { userSchema } from '@elynd/shared/api/auth';
-import type { ApiValidationError } from '@elynd/shared/api/envelope';
 
+import { AUTH_ROUTES } from '@/constants';
+
+import { baClient } from './ba-client';
 import type { AuthError, AuthResult } from './types';
 
-const AUTH_API_PREFIX = '/api/auth';
-
-async function parseError(response: Response): Promise<AuthError> {
-  let body: ApiValidationError & { message?: string; code?: string } = { errors: [] };
-  try {
-    body = (await response.json()) as ApiValidationError & { message?: string; code?: string };
-  } catch {
-    // ignore
-  }
-  const fromErrors = body.errors
-    ?.map((item) => item.message)
-    .filter(Boolean)
-    .join('; ');
+function toAuthError(error: { message?: string | null; code?: string | number; status?: number } | null): AuthError {
   return {
-    message: body.message?.trim() || fromErrors || response.statusText || 'Request failed',
-    code: body.code,
-    status: response.status,
+    message: error?.message?.trim() || 'Request failed',
+    code: typeof error?.code === 'string' || typeof error?.code === 'number' ? String(error.code) : undefined,
+    status: error?.status,
   };
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<AuthResult<T>> {
-  const headers = new Headers(init.headers);
-  if (!headers.has('Accept')) {
-    headers.set('Accept', 'application/json');
-  }
-  if (init.body && !headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json');
-  }
-
-  const response = await fetch(`${AUTH_API_PREFIX}${path}`, {
-    ...init,
-    headers,
-    credentials: 'same-origin',
-  });
-
-  if (!response.ok) {
-    return { data: null, error: await parseError(response) };
-  }
-
-  if (response.status === 204) {
-    return { data: null as T, error: null };
-  }
-
-  const json = (await response.json()) as { data: T } | T;
-  const data = json && typeof json === 'object' && 'data' in json ? json.data : (json as T);
-  return { data, error: null };
-}
-
-async function requestUser(path: string, init?: RequestInit): Promise<AuthResult<User>> {
-  const result = await request<User>(path, init);
-  if (result.error || result.data === null) {
-    return result;
-  }
-
-  const parsed = userSchema.safeParse(result.data);
+function parseUser(raw: unknown): AuthResult<User> {
+  const parsed = userSchema.safeParse(raw);
   if (!parsed.success) {
     return {
       data: null,
-      error: {
-        message: 'Invalid auth response',
-        status: 502,
-      },
+      error: { message: 'Invalid auth response', status: 502 },
     };
   }
   return { data: parsed.data, error: null };
 }
 
+function looksLikeEmail(value: string): boolean {
+  return z.email().safeParse(value).success;
+}
+
 export async function register(input: RegisterBody): Promise<AuthResult<User>> {
-  return requestUser('/register', {
-    method: 'POST',
-    body: JSON.stringify(input),
+  const { data, error } = await baClient.signUp.email({
+    email: input.email,
+    password: input.password,
+    name: input.name,
+    username: input.username,
+    callbackURL: AUTH_ROUTES.signIn,
   });
+
+  if (error) {
+    return { data: null, error: toAuthError(error) };
+  }
+
+  return parseUser(data?.user ?? data);
 }
 
 export async function login(input: LoginBody): Promise<AuthResult<User>> {
-  return requestUser('/login', {
-    method: 'POST',
-    body: JSON.stringify(input),
-  });
+  const login = input.login.trim();
+  const result = looksLikeEmail(login)
+    ? await baClient.signIn.email({ email: login, password: input.password })
+    : await baClient.signIn.username({ username: login, password: input.password });
+
+  if (result.error) {
+    return { data: null, error: toAuthError(result.error) };
+  }
+
+  return parseUser(result.data?.user ?? result.data);
 }
 
 export async function logout(): Promise<AuthResult<{ ok: boolean }>> {
-  return request<{ ok: boolean }>('/logout', { method: 'DELETE' });
+  // Prefer Next route so HttpOnly BA cookie is cleared on the web origin.
+  try {
+    const response = await fetch('/api/auth/logout', {
+      method: 'DELETE',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json' },
+    });
+    if (!response.ok) {
+      const { error } = await baClient.signOut();
+      if (error) {
+        return { data: null, error: toAuthError(error) };
+      }
+    }
+  } catch {
+    const { error } = await baClient.signOut();
+    if (error) {
+      return { data: null, error: toAuthError(error) };
+    }
+  }
+  return { data: { ok: true }, error: null };
 }
 
 export async function me(): Promise<AuthResult<User>> {
-  return requestUser('/me');
+  const { data, error } = await baClient.getSession();
+  if (error) {
+    return { data: null, error: toAuthError(error) };
+  }
+  if (!data?.user) {
+    return { data: null, error: { message: 'Unauthorized', status: 401 } };
+  }
+  return parseUser(data.user);
 }
 
 export async function resendVerificationEmail(
   email: ResendVerificationBody['email'],
 ): Promise<AuthResult<{ ok: boolean }>> {
-  return request<{ ok: boolean }>('/email/resend', {
-    method: 'POST',
-    body: JSON.stringify({ email } satisfies ResendVerificationBody),
+  const { error } = await baClient.sendVerificationEmail({
+    email,
+    callbackURL: AUTH_ROUTES.signIn,
   });
+  if (error) {
+    return { data: null, error: toAuthError(error) };
+  }
+  return { data: { ok: true }, error: null };
 }
 
-export async function verifyEmail(token: string): Promise<AuthResult<User>> {
-  const qs = new URLSearchParams({ token });
-  return requestUser(`/email/verify?${qs.toString()}`, {
+export async function verifyEmail(token: string): Promise<AuthResult<{ ok: boolean }>> {
+  const callbackURL =
+    typeof window !== 'undefined' ? `${window.location.origin}${AUTH_ROUTES.signIn}` : AUTH_ROUTES.signIn;
+  const qs = new URLSearchParams({ token, callbackURL });
+  const response = await fetch(`/api/auth/verify-email?${qs.toString()}`, {
     method: 'GET',
+    credentials: 'same-origin',
+    redirect: 'manual',
   });
+
+  // BA redirects on success/error when callbackURL is set.
+  if (response.status >= 300 && response.status < 400) {
+    const location = response.headers.get('Location') ?? '';
+    if (location.includes('error=')) {
+      return {
+        data: null,
+        error: { message: '验证失败，请重新申请邮件', status: response.status, code: 'INVALID_TOKEN' },
+      };
+    }
+    return { data: { ok: true }, error: null };
+  }
+
+  if (!response.ok) {
+    return {
+      data: null,
+      error: { message: '验证失败，请重新申请邮件', status: response.status },
+    };
+  }
+
+  return { data: { ok: true }, error: null };
 }
 
 export async function forgotPassword(email: ForgotPasswordBody['email']): Promise<AuthResult<{ ok: boolean }>> {
-  return request<{ ok: boolean }>('/password/forgot', {
-    method: 'POST',
-    body: JSON.stringify({ email } satisfies ForgotPasswordBody),
+  const redirectTo =
+    typeof window !== 'undefined' ? `${window.location.origin}${AUTH_ROUTES.resetPassword}` : AUTH_ROUTES.resetPassword;
+
+  const { error } = await baClient.requestPasswordReset({
+    email,
+    redirectTo,
   });
+  if (error) {
+    return { data: null, error: toAuthError(error) };
+  }
+  return { data: { ok: true }, error: null };
 }
 
-export async function resetPassword(input: ResetPasswordBody): Promise<AuthResult<User>> {
-  return requestUser('/password/reset', {
-    method: 'POST',
-    body: JSON.stringify(input),
+export async function resetPassword(input: ResetPasswordBody): Promise<AuthResult<{ ok: boolean }>> {
+  const { error } = await baClient.resetPassword({
+    newPassword: input.password,
+    token: input.token,
   });
+  if (error) {
+    return { data: null, error: toAuthError(error) };
+  }
+  return { data: { ok: true }, error: null };
 }

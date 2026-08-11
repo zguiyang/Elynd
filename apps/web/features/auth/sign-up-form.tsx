@@ -36,7 +36,7 @@ export function SignUpForm() {
         email: parsed.data.email,
         password: parsed.data.password,
         username: parsed.data.username,
-        fullName: parsed.data.name,
+        name: parsed.data.name,
       });
 
       if (error) {

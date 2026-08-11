@@ -9,11 +9,15 @@ import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-const nodePackageFiles = ['packages/shared/**/*.{js,mjs,ts}'];
+const nodeSourceFiles = [
+  'packages/shared/**/*.{js,mjs,ts}',
+  'packages/db/**/*.{js,mjs,ts}',
+  'apps/backend/**/*.{js,mjs,ts}',
+];
 
 const nextFiles = ['apps/web/**/*.{js,jsx,mjs,ts,tsx}'];
 
-const allSourceFiles = [...nodePackageFiles, ...nextFiles];
+const allSourceFiles = [...nodeSourceFiles, ...nextFiles];
 
 const namingConventionBase = [
   {
@@ -68,11 +72,11 @@ export default defineConfig([
     '**/build/**',
     '**/*.tsbuildinfo',
     'apps/web/next-env.d.ts',
-    'apps/backend/**',
     '.trellis/**',
     '.pnpm-store/**',
     '**/vitest.config.ts',
     '**/postcss.config.mjs',
+    '**/drizzle.config.ts',
   ]),
 
   {
@@ -88,6 +92,7 @@ export default defineConfig([
         { type: 'web', pattern: 'apps/web/**' },
         { type: 'backend', pattern: 'apps/backend/**' },
         { type: 'shared', pattern: 'packages/shared/**' },
+        { type: 'db', pattern: 'packages/db/**' },
       ],
     },
     rules: {
@@ -132,7 +137,11 @@ export default defineConfig([
             },
             {
               from: { element: { type: 'shared' } },
-              disallow: { to: { element: { types: { anyOf: ['web', 'backend'] } } } },
+              disallow: { to: { element: { types: { anyOf: ['web', 'backend', 'db'] } } } },
+            },
+            {
+              from: { element: { type: 'db' } },
+              disallow: { to: { element: { types: { anyOf: ['web', 'backend', 'shared'] } } } },
             },
           ],
         },
@@ -149,7 +158,7 @@ export default defineConfig([
   },
 
   {
-    files: nodePackageFiles,
+    files: nodeSourceFiles,
     extends: [js.configs.recommended, ...tseslint.configs.recommended, eslintConfigPrettier],
     languageOptions: {
       ecmaVersion: 2023,

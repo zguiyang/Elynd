@@ -1,6 +1,7 @@
-import * as schema from '@elynd/db/schema';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
+
+import * as schema from '@elynd/db/schema';
 
 import { env } from '@/lib/env';
 import { dbLogger } from '@/lib/logger';

@@ -13,8 +13,3 @@ pnpm-lock.yaml
 .cursor/commands
 .cursor/hooks
 apps/web/next-env.d.ts
-apps/backend-adonis/.adonisjs
-
-# prettier-edge is non-idempotent on plain-text Edge mail bodies
-apps/backend-adonis/resources/views/emails/*_text.edge
-

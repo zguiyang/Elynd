@@ -1,9 +1,10 @@
-import { AUTH_PASSWORD_POLICY, AUTH_USERNAME_POLICY, isValidUsername } from '@elynd/shared/auth/policy';
-import * as schema from '@elynd/db/schema';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { username } from 'better-auth/plugins';
 import { Resend } from 'resend';
+
+import * as schema from '@elynd/db/schema';
+import { AUTH_PASSWORD_POLICY, AUTH_USERNAME_POLICY, isValidUsername } from '@elynd/shared/auth/policy';
 
 import { db } from '@/db';
 import { env } from '@/lib/env';

@@ -1,6 +1,7 @@
 import { and, eq, like } from 'drizzle-orm';
-import { user as userTable, verification as verificationTable } from '@elynd/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { user as userTable, verification as verificationTable } from '@elynd/db';
 
 import app from '@/app';
 import { db } from '@/db';

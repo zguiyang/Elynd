@@ -11,10 +11,11 @@
     "dev:web": "pnpm --filter @elynd/web dev",
     "build": "pnpm --filter @elynd/backend build && pnpm --filter @elynd/web build",
     "build:backend": "pnpm --filter @elynd/backend build",
-    "lint": "pnpm --filter @elynd/backend lint && eslint apps/web packages/shared",
+    "lint": "pnpm --filter @elynd/backend lint && eslint apps/web packages/shared packages/db",
     "lint:backend": "pnpm --filter @elynd/backend lint",
     "lint:web": "eslint apps/web",
     "lint:shared": "eslint packages/shared",
+    "lint:db": "eslint packages/db",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "pnpm --filter @elynd/shared typecheck && pnpm --filter @elynd/db typecheck && pnpm --filter @elynd/backend typecheck && pnpm --filter @elynd/web typecheck",
@@ -37,12 +38,11 @@
       "eslint --fix",
       "prettier --write"
     ],
-    "*.{json,css,md,yml,yaml,edge}": [
+    "*.{json,css,md,yml,yaml}": [
       "prettier --write"
     ]
   },
   "devDependencies": {
-    "@adonisjs/prettier-config": "^1.5.0",
     "@commitlint/cli": "^21.2.1",
     "@commitlint/config-conventional": "^21.2.0",
     "@elynd/backend": "workspace:*",

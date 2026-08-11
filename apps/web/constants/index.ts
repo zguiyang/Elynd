@@ -9,6 +9,8 @@ export const AUTH_ROUTES = {
   resetPassword: '/reset-password',
   verifyEmail: '/verify-email',
   dashboard: '/dashboard',
+  library: '/library',
+  libraryArticle: (id: string) => `/library/${id}` as const,
 } as const;
 
 export const ADMIN_ROUTES = {

@@ -12,6 +12,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { createContext, type ReactNode, useContext, useEffect } from 'react';
 import { toast } from 'sonner';
 
@@ -37,12 +38,30 @@ type NavItem = {
   disabled: boolean;
 };
 
-const learnerNavItems: NavItem[] = [
-  { href: AUTH_ROUTES.dashboard, label: '今日', icon: Sun, active: true, disabled: false },
-  { href: '#', label: '图书馆', icon: Library, active: false, disabled: true },
-  { href: '#', label: '复习', icon: RotateCcw, active: false, disabled: true },
-  { href: '#', label: '成长', icon: TrendingUp, active: false, disabled: true },
-];
+function matchesPath(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function buildLearnerNavItems(pathname: string): NavItem[] {
+  return [
+    {
+      href: AUTH_ROUTES.dashboard,
+      label: '今日',
+      icon: Sun,
+      active: matchesPath(pathname, AUTH_ROUTES.dashboard),
+      disabled: false,
+    },
+    {
+      href: AUTH_ROUTES.library,
+      label: '图书馆',
+      icon: Library,
+      active: matchesPath(pathname, AUTH_ROUTES.library),
+      disabled: false,
+    },
+    { href: '#', label: '复习', icon: RotateCcw, active: false, disabled: true },
+    { href: '#', label: '成长', icon: TrendingUp, active: false, disabled: true },
+  ];
+}
 
 type AppShellProps = {
   children: ReactNode;
@@ -216,6 +235,7 @@ function MobileAccountMenu({ username, email, initial, image, onSignOut }: UserI
 }
 
 export function AppShell({ children }: AppShellProps) {
+  const pathname = usePathname() ?? AUTH_ROUTES.dashboard;
   const { data, error, isPending } = authClient.useSession();
   const user = data?.user ?? null;
 
@@ -261,6 +281,7 @@ export function AppShell({ children }: AppShellProps) {
   const onSignOut = () => void handleSignOut();
   const identity = { username, email, initial, image, onSignOut };
 
+  const learnerNavItems = buildLearnerNavItems(pathname);
   const navItems: NavItem[] =
     user.role === AUTH_ADMIN_ROLE
       ? [
@@ -269,7 +290,7 @@ export function AppShell({ children }: AppShellProps) {
             href: ADMIN_ROUTES.articles,
             label: '管理后台',
             icon: Settings2,
-            active: false,
+            active: matchesPath(pathname, ADMIN_ROUTES.root),
             disabled: false,
           },
         ]

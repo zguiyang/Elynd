@@ -55,10 +55,10 @@ pnpm compose:init
 docker compose up -d
 ```
 
-Defaults (from the compose example):
+Defaults (from compose / `.env.example`):
 
-- Postgres: `127.0.0.1:5433` (Adonis DB name in `apps/backend/.env.example` → `DB_DATABASE`)
-- Redis: `127.0.0.1:6380` (`REDIS_HOST` / `REDIS_PORT`)
+- Postgres: `127.0.0.1:5433`, database `elynd_backend` (`DATABASE_URL`)
+- Redis: `127.0.0.1:6380` (`REDIS_URL`)
 
 ### 2. Environment files
 
@@ -67,16 +67,17 @@ cp apps/backend/.env.example apps/backend/.env
 cp apps/web/.env.example apps/web/.env
 ```
 
-Edit `apps/backend/.env` as needed (`APP_KEY`, `DB_*`, `REDIS_*`, `RESEND_API_KEY`, …). Generate `APP_KEY`:
+Edit `apps/backend/.env` as needed (see `.env.example` — only runtime-read vars). `BETTER_AUTH_SECRET` must be ≥ 16 characters, e.g.:
 
 ```bash
-cd apps/backend && node ace generate:key
+openssl rand -base64 32
 ```
 
 ### 3. Run DB migrations
 
 ```bash
-cd apps/backend && node ace migration:run
+pnpm db:migrate
+# or during early development: pnpm db:push
 ```
 
 ### 4. Run apps

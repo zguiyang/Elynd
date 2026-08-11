@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: root
-      POSTGRES_DB: app
+      POSTGRES_DB: elynd_backend
       TZ: UTC
     ports:
       - '5433:5432'
@@ -18,7 +18,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis — Adonis `@adonisjs/redis` (REDIS_HOST / REDIS_PORT on the host).
+  # Redis — Hono `REDIS_URL` / `REDIS_HOST`+`REDIS_PORT` on the host.
   redis:
     image: redis:latest
     container_name: elynd-redis

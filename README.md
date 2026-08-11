@@ -55,10 +55,10 @@ pnpm compose:init
 docker compose up -d
 ```
 
-默认连接（与 compose 示例一致）：
+默认连接（与 compose / `.env.example` 一致）：
 
-- Postgres: `127.0.0.1:5433`（Adonis 默认库名见 `apps/backend/.env.example` 的 `DB_DATABASE`）
-- Redis: `127.0.0.1:6380`（`REDIS_HOST` / `REDIS_PORT`）
+- Postgres: `127.0.0.1:5433`，库名 `elynd_backend`（`DATABASE_URL`）
+- Redis: `127.0.0.1:6380`（`REDIS_URL`）
 
 ### 2. 配置环境变量
 
@@ -67,16 +67,17 @@ cp apps/backend/.env.example apps/backend/.env
 cp apps/web/.env.example apps/web/.env
 ```
 
-按需编辑 `apps/backend/.env`（`APP_KEY`、`DB_*`、`REDIS_*`、`RESEND_API_KEY` 等）。生成 `APP_KEY`：
+按需编辑 `apps/backend/.env`（见 `.env.example`：仅保留运行时会读取的变量）。`BETTER_AUTH_SECRET` 至少 16 字符，例如：
 
 ```bash
-cd apps/backend && node ace generate:key
+openssl rand -base64 32
 ```
 
 ### 3. 运行数据库迁移
 
 ```bash
-cd apps/backend && node ace migration:run
+pnpm db:migrate
+# 或开发期：pnpm db:push
 ```
 
 ### 4. 启动服务

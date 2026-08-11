@@ -1,5 +1,5 @@
 import { relations } from 'drizzle-orm';
-import { boolean, index, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 
 /** Better Auth core tables (PostgreSQL) + username plugin / product fields. */
 
@@ -99,3 +99,30 @@ export const accountRelations = relations(account, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+/** Short-article library unit (admin CMS + learner catalog). */
+export const article = pgTable(
+  'article',
+  {
+    id: text('id').primaryKey(),
+    title: text('title').notNull(),
+    body: text('body').notNull().default(''),
+    level: text('level').notNull().default('easy'),
+    themes: jsonb('themes').$type<string[]>().notNull().default([]),
+    sourceNote: text('source_note').notNull().default(''),
+    status: text('status').notNull().default('draft'),
+    seriesId: text('series_id'),
+    seriesOrder: integer('series_order'),
+    estimatedMinutes: integer('estimated_minutes'),
+    publishedAt: timestamp('published_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [
+    index('article_status_idx').on(table.status),
+    index('article_series_idx').on(table.seriesId, table.seriesOrder),
+  ],
+);

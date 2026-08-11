@@ -1,1 +1,10 @@
-export { account, accountRelations, session, sessionRelations, user, userRelations, verification } from './schema.ts';
+export {
+  account,
+  accountRelations,
+  article,
+  session,
+  sessionRelations,
+  user,
+  userRelations,
+  verification,
+} from './schema';

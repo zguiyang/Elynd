@@ -2,11 +2,15 @@ import type { Context } from 'hono';
 import { ZodError } from 'zod';
 
 import { HTTP_STATUS } from '@/constants';
-import { AppError } from '@/lib/errors';
+import { AppError, ValidationFailedError } from '@/lib/errors';
 import { rootLogger } from '@/lib/logger';
 import { sendError, sendValidationError } from '@/lib/response';
 
 export const errorHandler = (err: Error, c: Context) => {
+  if (err instanceof ValidationFailedError) {
+    return sendValidationError(c, err.details);
+  }
+
   if (err instanceof AppError) {
     return sendError(c, err.message, err.statusCode);
   }

@@ -1,0 +1,54 @@
+import { Hono } from 'hono';
+
+import { HTTP_STATUS } from '@/constants';
+import { type AuthVariables, requireAdmin, requireAuth } from '@/middleware/auth';
+import * as articlesService from '@/modules/articles/service';
+import {
+  validateAdminArticleListQuery,
+  validateCreateArticle,
+  validateUpdateArticle,
+} from '@/modules/articles/validator';
+
+export const articlesRoutes = new Hono<{ Variables: AuthVariables }>();
+
+articlesRoutes.post('/api/admin/articles', requireAdmin, validateCreateArticle, async (c) => {
+  const body = c.req.valid('json');
+  const article = await articlesService.createArticle(body);
+  return c.json({ data: article }, HTTP_STATUS.CREATED);
+});
+
+articlesRoutes.get('/api/admin/articles', requireAdmin, validateAdminArticleListQuery, async (c) => {
+  const { status } = c.req.valid('query');
+  const items = await articlesService.listAdminArticles(status);
+  return c.json({ data: { items } });
+});
+
+articlesRoutes.get('/api/admin/articles/:id', requireAdmin, async (c) => {
+  const article = await articlesService.getAdminArticle(c.req.param('id'));
+  return c.json({ data: article });
+});
+
+articlesRoutes.patch('/api/admin/articles/:id', requireAdmin, validateUpdateArticle, async (c) => {
+  const article = await articlesService.updateArticle(c.req.param('id'), c.req.valid('json'));
+  return c.json({ data: article });
+});
+
+articlesRoutes.post('/api/admin/articles/:id/publish', requireAdmin, async (c) => {
+  const article = await articlesService.publishArticle(c.req.param('id'));
+  return c.json({ data: article });
+});
+
+articlesRoutes.post('/api/admin/articles/:id/unpublish', requireAdmin, async (c) => {
+  const article = await articlesService.unpublishArticle(c.req.param('id'));
+  return c.json({ data: article });
+});
+
+articlesRoutes.get('/api/articles', requireAuth, async (c) => {
+  const items = await articlesService.listPublishedArticles();
+  return c.json({ data: { items } });
+});
+
+articlesRoutes.get('/api/articles/:id', requireAuth, async (c) => {
+  const article = await articlesService.getPublishedArticle(c.req.param('id'));
+  return c.json({ data: article });
+});

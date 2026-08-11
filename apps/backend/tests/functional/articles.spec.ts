@@ -1,0 +1,239 @@
+import { eq, inArray } from 'drizzle-orm';
+import { afterAll, describe, expect, it } from 'vitest';
+
+import { article as articleTable, user as userTable } from '@elynd/db';
+import { ARTICLE_BODY_MAX_WORDS } from '@elynd/shared/api/articles';
+import { AUTH_ADMIN_ROLE } from '@elynd/shared/auth/policy';
+
+import app from '@/app';
+import { db } from '@/db';
+
+const password = 'password123';
+
+function uniqueEmail(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
+}
+
+function cookieHeader(response: Response): string {
+  const getSetCookie = (response.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie?.();
+  if (getSetCookie?.length) {
+    return getSetCookie.map((entry) => entry.split(';')[0]).join('; ');
+  }
+  const single = response.headers.get('set-cookie');
+  return single ? single.split(';')[0]! : '';
+}
+
+async function signUp(input: { email: string; username: string; name: string }) {
+  return app.request('/api/auth/sign-up/email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:3000' },
+    body: JSON.stringify({
+      email: input.email,
+      password,
+      name: input.name,
+      username: input.username,
+    }),
+  });
+}
+
+async function markEmailVerified(email: string) {
+  await db.update(userTable).set({ emailVerified: true }).where(eq(userTable.email, email));
+}
+
+async function setUserRole(email: string, role: string) {
+  await db.update(userTable).set({ role }).where(eq(userTable.email, email));
+}
+
+async function signInEmail(email: string) {
+  return app.request('/api/auth/sign-in/email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:3000' },
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+async function createSession(role: 'user' | 'admin' = 'user') {
+  const email = uniqueEmail(role);
+  const username = `${role}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+  expect((await signUp({ email, username, name: role })).status).toBe(200);
+  await markEmailVerified(email);
+  if (role === 'admin') {
+    await setUserRole(email, AUTH_ADMIN_ROLE);
+  }
+  const login = await signInEmail(email);
+  expect(login.status).toBe(200);
+  return { email, cookie: cookieHeader(login) };
+}
+
+type ArticleDto = {
+  id: string;
+  title: string;
+  status: string;
+  themes: string[];
+  body: string;
+  sourceNote: string;
+  publishedAt: string | null;
+};
+
+describe('Articles HTTP', () => {
+  const createdEmails: string[] = [];
+  const createdArticleIds: string[] = [];
+
+  afterAll(async () => {
+    if (createdArticleIds.length > 0) {
+      await db.delete(articleTable).where(inArray(articleTable.id, createdArticleIds));
+    }
+    for (const email of createdEmails) {
+      await db.delete(userTable).where(eq(userTable.email, email));
+    }
+  });
+
+  it('guards admin article writes and learner reads by session/role', async () => {
+    const anonymousCreate = await app.request('/api/admin/articles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'Nope' }),
+    });
+    expect(anonymousCreate.status).toBe(401);
+
+    const user = await createSession('user');
+    createdEmails.push(user.email);
+    const userDenied = await app.request('/api/admin/articles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: user.cookie },
+      body: JSON.stringify({ title: 'Nope' }),
+    });
+    expect(userDenied.status).toBe(403);
+
+    const learnerAnon = await app.request('/api/articles');
+    expect(learnerAnon.status).toBe(401);
+  });
+
+  it('creates, updates, publishes, lists for admin and learner, then unpublishes', async () => {
+    const admin = await createSession('admin');
+    const learner = await createSession('user');
+    createdEmails.push(admin.email, learner.email);
+
+    const create = await app.request('/api/admin/articles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+      body: JSON.stringify({ title: 'Rain Walk' }),
+    });
+    expect(create.status).toBe(201);
+    const created = (await create.json()) as { data: ArticleDto };
+    createdArticleIds.push(created.data.id);
+    expect(created.data.status).toBe('draft');
+    expect(created.data.publishedAt).toBeNull();
+
+    const incompletePublish = await app.request(`/api/admin/articles/${created.data.id}/publish`, {
+      method: 'POST',
+      headers: { cookie: admin.cookie },
+    });
+    expect(incompletePublish.status).toBe(400);
+    const incompleteBody = (await incompletePublish.json()) as { error: string; details: unknown[] };
+    expect(incompleteBody.error).toBe('Validation failed');
+    expect(incompleteBody.details.length).toBeGreaterThan(0);
+
+    const patch = await app.request(`/api/admin/articles/${created.data.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+      body: JSON.stringify({
+        body: 'She kept walking through the quiet rain toward the bus stop.',
+        themes: ['故事'],
+        sourceNote: '原创短叙事',
+        level: 'easy',
+        estimatedMinutes: 5,
+      }),
+    });
+    expect(patch.status).toBe(200);
+
+    const publish = await app.request(`/api/admin/articles/${created.data.id}/publish`, {
+      method: 'POST',
+      headers: { cookie: admin.cookie },
+    });
+    expect(publish.status).toBe(200);
+    const published = (await publish.json()) as { data: ArticleDto };
+    expect(published.data.status).toBe('published');
+    expect(published.data.publishedAt).toBeTruthy();
+
+    const adminList = await app.request('/api/admin/articles?status=published', {
+      headers: { cookie: admin.cookie },
+    });
+    expect(adminList.status).toBe(200);
+    const adminListBody = (await adminList.json()) as { data: { items: ArticleDto[] } };
+    expect(adminListBody.data.items.some((item) => item.id === created.data.id)).toBe(true);
+
+    const learnerList = await app.request('/api/articles', {
+      headers: { cookie: learner.cookie },
+    });
+    expect(learnerList.status).toBe(200);
+    const learnerListBody = (await learnerList.json()) as { data: { items: ArticleDto[] } };
+    expect(learnerListBody.data.items.some((item) => item.id === created.data.id)).toBe(true);
+
+    const learnerDetail = await app.request(`/api/articles/${created.data.id}`, {
+      headers: { cookie: learner.cookie },
+    });
+    expect(learnerDetail.status).toBe(200);
+
+    const unpublish = await app.request(`/api/admin/articles/${created.data.id}/unpublish`, {
+      method: 'POST',
+      headers: { cookie: admin.cookie },
+    });
+    expect(unpublish.status).toBe(200);
+    const unpublished = (await unpublish.json()) as { data: ArticleDto };
+    expect(unpublished.data.status).toBe('draft');
+    expect(unpublished.data.publishedAt).toBeNull();
+
+    const learnerHidden = await app.request(`/api/articles/${created.data.id}`, {
+      headers: { cookie: learner.cookie },
+    });
+    expect(learnerHidden.status).toBe(404);
+
+    const draftOnly = await app.request('/api/admin/articles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+      body: JSON.stringify({
+        title: 'Hidden Draft',
+        body: 'A short draft body for visibility checks.',
+        themes: ['故事'],
+        sourceNote: '草稿',
+      }),
+    });
+    expect(draftOnly.status).toBe(201);
+    const draft = (await draftOnly.json()) as { data: ArticleDto };
+    createdArticleIds.push(draft.data.id);
+
+    const learnerDraft = await app.request(`/api/articles/${draft.data.id}`, {
+      headers: { cookie: learner.cookie },
+    });
+    expect(learnerDraft.status).toBe(404);
+  });
+
+  it('rejects publish when body exceeds word cap', async () => {
+    const admin = await createSession('admin');
+    createdEmails.push(admin.email);
+
+    const longBody = Array.from({ length: ARTICLE_BODY_MAX_WORDS + 1 }, (_, i) => `w${i}`).join(' ');
+    const create = await app.request('/api/admin/articles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+      body: JSON.stringify({
+        title: 'Too Long',
+        body: longBody,
+        themes: ['故事'],
+        sourceNote: '测试',
+      }),
+    });
+    expect(create.status).toBe(201);
+    const created = (await create.json()) as { data: ArticleDto };
+    createdArticleIds.push(created.data.id);
+
+    const publish = await app.request(`/api/admin/articles/${created.data.id}/publish`, {
+      method: 'POST',
+      headers: { cookie: admin.cookie },
+    });
+    expect(publish.status).toBe(400);
+    const body = (await publish.json()) as { details: { path: string; message: string }[] };
+    expect(body.details.some((d) => d.path === 'body')).toBe(true);
+  });
+});

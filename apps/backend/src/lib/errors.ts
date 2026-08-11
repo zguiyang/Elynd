@@ -18,3 +18,10 @@ export class NotFoundError extends AppError {
     this.name = 'NotFoundError';
   }
 }
+
+export class ValidationFailedError extends AppError {
+  constructor(public details: { path: string; message: string }[]) {
+    super(HTTP_STATUS.BAD_REQUEST, 'Validation failed');
+    this.name = 'ValidationFailedError';
+  }
+}

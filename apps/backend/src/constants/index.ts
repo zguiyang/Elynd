@@ -9,5 +9,3 @@ export const HTTP_STATUS = {
   TOO_MANY_REQUESTS: 429,
   INTERNAL_ERROR: 500,
 } as const;
-
-export const DEFAULT_PORT = 3333;

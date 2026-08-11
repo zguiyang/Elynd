@@ -2,7 +2,7 @@ import path from 'node:path';
 import { config } from 'dotenv';
 import { defineConfig } from 'vitest/config';
 
-config({ path: path.resolve(__dirname, '.env') });
+config({ path: path.resolve(__dirname, '.env'), override: true });
 
 export default defineConfig({
   test: {

@@ -38,7 +38,8 @@ async function sendMail(input: { to: string; subject: string; text: string }): P
 }
 
 export const auth = betterAuth({
-  baseURL: env.BETTER_AUTH_URL,
+  // Public origin browsers use (Next BFF proxies /api/auth → Hono).
+  baseURL: env.FRONTEND_URL,
   secret: env.BETTER_AUTH_SECRET,
   trustedOrigins: [env.FRONTEND_URL],
   database: drizzleAdapter(db, {

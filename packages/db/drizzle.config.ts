@@ -4,18 +4,11 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'drizzle-kit';
 
 const root = dirname(fileURLToPath(import.meta.url));
-config({ path: resolve(root, '../../apps/backend/.env') });
+config({ path: resolve(root, '../../apps/backend/.env'), override: true });
 
-function databaseUrl(): string {
-  if (process.env.DATABASE_URL) {
-    return process.env.DATABASE_URL;
-  }
-  const host = process.env.DB_HOST ?? '127.0.0.1';
-  const port = process.env.DB_PORT ?? '5433';
-  const user = process.env.DB_USER ?? 'root';
-  const password = process.env.DB_PASSWORD ?? 'root';
-  const database = process.env.DB_DATABASE ?? 'elynd_backend';
-  return `postgresql://${user}:${password}@${host}:${port}/${database}`;
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error('DATABASE_URL is required (set in apps/backend/.env)');
 }
 
 export default defineConfig({
@@ -23,6 +16,6 @@ export default defineConfig({
   out: './migrations',
   dialect: 'postgresql',
   dbCredentials: {
-    url: databaseUrl(),
+    url: databaseUrl,
   },
 });

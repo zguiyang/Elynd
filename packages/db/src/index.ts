@@ -7,4 +7,4 @@ export {
   user,
   userRelations,
   verification,
-} from './schema';
+} from './schema.ts';

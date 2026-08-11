@@ -114,3 +114,4 @@ Optional later (not v1): in-app generate, EPUB chunk adapter, TTS, assist, pract
 | Date       | Change                                                                                                                              |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-08-11 | Initial brief from product discussion: paste-only v1; EPUB/AI deferred; weak series + soft next; pure read; suggested T1–T5 splits. |
+| 2026-08-11 | T1 shipped: article table + admin CRUD/publish + learner published reads (no UI wiring yet).                                        |

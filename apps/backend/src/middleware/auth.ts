@@ -1,6 +1,10 @@
 import { createMiddleware } from 'hono/factory';
 
+import { isAdminRole } from '@elynd/shared/auth/policy';
+
+import { HTTP_STATUS } from '@/constants';
 import { auth, type AuthSession, type AuthSessionUser } from '@/lib/auth';
+import { sendError } from '@/lib/response';
 
 export type AuthVariables = {
   user: AuthSessionUser | null;
@@ -20,7 +24,20 @@ export const requireAuth = createMiddleware<{ Variables: AuthVariables }>(async 
   const user = c.get('user');
   const session = c.get('session');
   if (!user || !session) {
-    return c.json({ message: 'Unauthorized' }, 401);
+    return sendError(c, 'Unauthorized', HTTP_STATUS.UNAUTHORIZED);
+  }
+  await next();
+});
+
+/** Require an authenticated administrator — 401 when anonymous, 403 when non-admin. */
+export const requireAdmin = createMiddleware<{ Variables: AuthVariables }>(async (c, next) => {
+  const user = c.get('user');
+  const session = c.get('session');
+  if (!user || !session) {
+    return sendError(c, 'Unauthorized', HTTP_STATUS.UNAUTHORIZED);
+  }
+  if (!isAdminRole(user.role)) {
+    return sendError(c, 'Forbidden', HTTP_STATUS.FORBIDDEN);
   }
   await next();
 });

@@ -2,6 +2,7 @@ import { and, eq, like } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { user as userTable, verification as verificationTable } from '@elynd/db';
+import { AUTH_ADMIN_ROLE, AUTH_USER_ROLE } from '@elynd/shared/auth/policy';
 
 import app from '@/app';
 import { db } from '@/db';
@@ -37,6 +38,10 @@ async function signUp(input: { email: string; username: string; name: string }) 
 
 async function markEmailVerified(email: string) {
   await db.update(userTable).set({ emailVerified: true }).where(eq(userTable.email, email));
+}
+
+async function setUserRole(email: string, role: string) {
+  await db.update(userTable).set({ role }).where(eq(userTable.email, email));
 }
 
 async function signInEmail(email: string) {
@@ -110,6 +115,7 @@ describe('Better Auth HTTP', () => {
 
     const meAnon = await app.request('/api/me');
     expect(meAnon.status).toBe(401);
+    await expect(meAnon.json()).resolves.toEqual({ error: 'Unauthorized' });
 
     const loginUsername = await signInUsername(username);
     expect(loginUsername.status).toBe(200);
@@ -166,6 +172,45 @@ describe('Better Auth HTTP', () => {
   it('returns 401 on protected probe without session', async () => {
     const response = await app.request('/api/me');
     expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ error: 'Unauthorized' });
+  });
+
+  it('guards admin probe by authenticated admin role', async () => {
+    const anonymous = await app.request('/api/admin/probe');
+    expect(anonymous.status).toBe(401);
+    await expect(anonymous.json()).resolves.toEqual({ error: 'Unauthorized' });
+
+    const userEmail = uniqueEmail('regular-admin-probe');
+    const userUsername = `regular_${Date.now().toString(36)}`;
+    createdEmails.push(userEmail);
+    expect((await signUp({ email: userEmail, username: userUsername, name: 'Regular' })).status).toBe(200);
+    await markEmailVerified(userEmail);
+
+    const userLogin = await signInEmail(userEmail);
+    expect(userLogin.status).toBe(200);
+    const userDenied = await app.request('/api/admin/probe', {
+      headers: { cookie: cookieHeader(userLogin) },
+    });
+    expect(userDenied.status).toBe(403);
+    await expect(userDenied.json()).resolves.toEqual({ error: 'Forbidden' });
+
+    const adminEmail = uniqueEmail('admin-probe');
+    const adminUsername = `admin_${Date.now().toString(36)}`;
+    createdEmails.push(adminEmail);
+    expect((await signUp({ email: adminEmail, username: adminUsername, name: 'Admin' })).status).toBe(200);
+    await markEmailVerified(adminEmail);
+    await setUserRole(adminEmail, AUTH_ADMIN_ROLE);
+
+    const adminLogin = await signInEmail(adminEmail);
+    expect(adminLogin.status).toBe(200);
+    const adminAllowed = await app.request('/api/admin/probe', {
+      headers: { cookie: cookieHeader(adminLogin) },
+    });
+    expect(adminAllowed.status).toBe(200);
+    const adminBody = (await adminAllowed.json()) as { data?: { role?: string } };
+    expect(adminBody.data?.role).toBe(AUTH_ADMIN_ROLE);
+
+    await setUserRole(adminEmail, AUTH_USER_ROLE);
   });
 
   it('resets password via BA endpoints and revokes prior sessions', async () => {

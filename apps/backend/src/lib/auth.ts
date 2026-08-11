@@ -4,7 +4,7 @@ import { username } from 'better-auth/plugins';
 import { Resend } from 'resend';
 
 import * as schema from '@elynd/db/schema';
-import { AUTH_PASSWORD_POLICY, AUTH_USERNAME_POLICY, isValidUsername } from '@elynd/shared/auth/policy';
+import { AUTH_PASSWORD_POLICY, AUTH_USER_ROLE, AUTH_USERNAME_POLICY, isValidUsername } from '@elynd/shared/auth/policy';
 
 import { db } from '@/db';
 import { env } from '@/lib/env';
@@ -83,7 +83,7 @@ export const auth = betterAuth({
       role: {
         type: 'string',
         required: false,
-        defaultValue: 'user',
+        defaultValue: AUTH_USER_ROLE,
         input: false,
       },
     },
@@ -96,7 +96,7 @@ export const auth = betterAuth({
             data: {
               ...user,
               image: user.image ?? diceBearAvatarUrl(user.email || user.id),
-              role: 'user',
+              role: AUTH_USER_ROLE,
             },
           };
         },

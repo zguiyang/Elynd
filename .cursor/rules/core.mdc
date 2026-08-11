@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Core
 
-Elynd: English **learning space** for adults who struggle to persist—interesting, mostly understandable real content (read + listen); AI/tools lower friction. Not a course, vocab pack, or chatbot. Monorepo: `apps/backend` (Hono **3333**), `apps/web` (Next **3000**), `packages/shared` (cross-app constants/types), `packages/db` (Drizzle). Legacy Adonis tree: `apps/backend-adonis`.
+Elynd: English **learning space** for adults who struggle to persist—interesting, mostly understandable real content (read + listen); AI/tools lower friction. Not a course, vocab pack, or chatbot. Monorepo: `apps/backend` (Hono **3333**), `apps/web` (Next **3000**), `packages/shared` (cross-app constants/types), `packages/db` (Drizzle).
 
 Product SSOT: `docs/product/` (vision, philosophy, MVP scope, metrics, decision guide, guardrails). Prototypes: `prd/`.
 
@@ -63,7 +63,7 @@ For framework, domain, or process work: load the matching **project skill(s)** (
 
 ## Security
 
-No hardcoded secrets; no server secrets in client bundles; validate at boundaries (Zod/Vine); parameterized DB only (Lucid); no production stack traces to clients.
+No hardcoded secrets; no server secrets in client bundles; validate at boundaries (Zod); parameterized DB only (Drizzle); no production stack traces to clients.
 
 ## TDD
 

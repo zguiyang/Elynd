@@ -27,7 +27,7 @@ Partial overlap → extend existing type; no parallel type.
 | No same role + 2+ consumers | Create | Consumers import path |
 | No same role + 1 consumer | Do **not** create | Stay inline |
 
-Before creating a file, confirm: ≥2 real consumers **or** framework Ace/layout requires it. Hypothetical reuse does not count.
+Before creating a file, confirm: ≥2 real consumers **or** framework layout requires it (e.g. Next `app/`). Hypothetical reuse does not count.
 
 ### Env / config (anti-wrapper)
 
@@ -60,9 +60,7 @@ Mixed unrelated concerns → split. Long but cohesive → **do not** split (not 
 | 1–2 | Do not create dir; keep flat |
 | 3+ | Create only with business/domain name |
 
-Exception: framework trees (Next `app/`, **Adonis `app/{controllers,models,…}` / `config` / `start` / `database`** — see `adonis-backend.mdc`).
-
-**Adonis services:** `adonis-backend` wins over the “1 consumer → inline” row **only** for use-case **orchestration** services (`make:service` + `@inject()` for a controller). It does **not** justify env getters, single-call Redis/session helpers, or one-liner utility modules.
+Exception: framework trees (Next `app/`).
 
 | Existing dir files | Action |
 | --- | --- |

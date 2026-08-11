@@ -37,7 +37,7 @@ apps/backend/
 | `lib/` | Technical only (redis, env, logger). No `modules/` imports |
 | Schema | **Only** in `packages/db` — import `@elynd/db` / `@elynd/db/schema` |
 | Auth | Better Auth at `/api/auth/*` via `auth.handler`; do not reimplement login/register |
-| Validation | Zod (`@hono/zod-validator` or shared schemas) — no Vine |
+| Validation | Zod (`@hono/zod-validator` or shared schemas) |
 | Errors | Throw `AppError` / `NotFoundError`; global `onError` maps to JSON |
 
 ## Module files
@@ -58,4 +58,3 @@ Mount new modules from `routes/index.ts` only — do not grow business logic in 
 ## Out of scope here
 
 - Next `apps/web` → `frontend.mdc`
-- Legacy Adonis tree → `apps/backend-adonis` + `adonis-backend` rule

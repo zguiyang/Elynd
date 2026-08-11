@@ -22,15 +22,15 @@ Product vision and decision docs (English SSOT): [`docs/product/`](./docs/produc
 | Review        | Re-meet important expressions in context            |
 | Progress      | Time-with-language and habit (not exam ranks)       |
 
-> The first **engineering** loop is **sign-up / sign-in (Adonis session cookie) / dashboard**. Learning-loop targets: [`docs/product/mvp-scope.md`](./docs/product/mvp-scope.md).
+> The first **engineering** loop is **sign-up / sign-in (Better Auth session cookie) / dashboard**. Learning-loop targets: [`docs/product/mvp-scope.md`](./docs/product/mvp-scope.md).
 
 ## Stack
 
-| Layer    | Tech                                                                                 |
-| -------- | ------------------------------------------------------------------------------------ |
-| API      | AdonisJS 7, Lucid, PostgreSQL, Redis (port **6380**), session cookie (port **3333**) |
-| Web      | Next.js App Router, React, TanStack Query/Form, Tailwind CSS v4 (port **3000**)      |
-| Packages | pnpm workspace (`apps/*`, `packages/*`); shared package `@elynd/shared`              |
+| Layer    | Tech                                                                                          |
+| -------- | --------------------------------------------------------------------------------------------- |
+| API      | Hono, Better Auth, Drizzle, PostgreSQL, Redis (port **6380**), session cookie (port **3333**) |
+| Web      | Next.js App Router, React, TanStack Query/Form, Tailwind CSS v4 (port **3000**)               |
+| Packages | pnpm workspace (`apps/*`, `packages/*`); `@elynd/shared`, `@elynd/db`                         |
 
 ## Requirements
 
@@ -105,7 +105,7 @@ pnpm run build
 
 ## Production deploy
 
-An Adonis / Next production deploy pipeline is not in this repository yet.
+A Hono / Next production deploy pipeline is not in this repository yet.
 
 ## License
 

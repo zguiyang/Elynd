@@ -15,7 +15,6 @@ apps/backend       ──► packages/shared     # auth policy SSOT
 apps/backend       ──► packages/db         # Drizzle schema (Better Auth + app tables)
 @elynd/shared                              # NO apps / ORM / secrets
 @elynd/db                                  # schema only — no HTTP
-apps/backend-adonis                        # legacy Adonis reference (not default scripts)
 ```
 
 | Forbidden |

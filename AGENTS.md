@@ -38,7 +38,7 @@ Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root).
 
 1. Tooling (ESLint, Prettier, typecheck, tests)
 2. Always-on: `core`, `layering`, `structure`
-3. Glob: `hono-backend` / `frontend` / `packages` (legacy: `adonis-backend` → `apps/backend-adonis`)
+3. Glob: `hono-backend` / `frontend` / `packages`
 4. **[`DESIGN.md`](DESIGN.md)** for visual / UI appearance (when touching `apps/web` UI)
 5. Project skills (load by description first; see `core` “Skills before MCP”)
 6. MCP (docs / live systems) when skills are insufficient
@@ -48,15 +48,14 @@ Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root).
 
 ### Index
 
-| Rule                                                   | When                                                                   |
-| ------------------------------------------------------ | ---------------------------------------------------------------------- |
-| [core.mdc](.cursor/rules/core.mdc)                     | Always — decision gate, Ask/Never, skills-before-MCP, TDD, DoD, router |
-| [layering.mdc](.cursor/rules/layering.mdc)             | Always — package graph, concern placement, cross-layer order           |
-| [structure.mdc](.cursor/rules/structure.mdc)           | Always — create/delete/split/move; anti over-extraction                |
-| [hono-backend.mdc](.cursor/rules/hono-backend.mdc)     | `apps/backend/**` (Hono API)                                           |
-| [adonis-backend.mdc](.cursor/rules/adonis-backend.mdc) | `apps/backend-adonis/**` (legacy Adonis)                               |
-| [frontend.mdc](.cursor/rules/frontend.mdc)             | `apps/web/**`                                                          |
-| [packages.mdc](.cursor/rules/packages.mdc)             | `packages/**`                                                          |
+| Rule                                               | When                                                                   |
+| -------------------------------------------------- | ---------------------------------------------------------------------- |
+| [core.mdc](.cursor/rules/core.mdc)                 | Always — decision gate, Ask/Never, skills-before-MCP, TDD, DoD, router |
+| [layering.mdc](.cursor/rules/layering.mdc)         | Always — package graph, concern placement, cross-layer order           |
+| [structure.mdc](.cursor/rules/structure.mdc)       | Always — create/delete/split/move; anti over-extraction                |
+| [hono-backend.mdc](.cursor/rules/hono-backend.mdc) | `apps/backend/**` (Hono API)                                           |
+| [frontend.mdc](.cursor/rules/frontend.mdc)         | `apps/web/**`                                                          |
+| [packages.mdc](.cursor/rules/packages.mdc)         | `packages/**`                                                          |
 
 ## Language
 
@@ -83,4 +82,4 @@ pnpm db:migrate        # Drizzle migrate
 
 ## External docs
 
-- [AdonisJS](https://docs.adonisjs.com) (legacy aside) · [Hono](https://hono.dev/) · [Better Auth](https://www.better-auth.com/) · [Drizzle](https://orm.drizzle.team/) · [Next.js](https://nextjs.org/docs) · [TanStack Query](https://tanstack.com/query/latest) · [Tailwind CSS](https://tailwindcss.com/docs)
+- [Hono](https://hono.dev/) · [Better Auth](https://www.better-auth.com/) · [Drizzle](https://orm.drizzle.team/) · [Next.js](https://nextjs.org/docs) · [TanStack Query](https://tanstack.com/query/latest) · [Tailwind CSS](https://tailwindcss.com/docs)

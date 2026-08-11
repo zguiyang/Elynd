@@ -8,9 +8,9 @@ Related: [`product-vision.md`](./product-vision.md) · [`success-metrics.md`](./
 
 ## 1. Current engineering reality
 
-The stack is Adonis (`apps/backend`) + Next (`apps/web`). The first **working** product loop today is roughly:
+The stack is Hono (`apps/backend`) + Next (`apps/web`) with Better Auth and Drizzle. The first **working** product loop today is roughly:
 
-**Sign-up / sign-in (cookie session) / Dashboard**
+**Sign-up / sign-in (Better Auth cookie session) / Dashboard**
 
 Learning-domain features (Library, Learning Room, Practice, Review, Progress) are still migrating or not yet rebuilt. This document is the **product target** for that rebuild—not a claim that all of it already ships.
 
@@ -32,7 +32,7 @@ Auth + empty dashboard alone is **infra MVP**, not learning MVP.
 
 | Capability         | Notes                                                                                           |
 | ------------------ | ----------------------------------------------------------------------------------------------- |
-| Auth session       | Already in progress; keep cookie session model                                                  |
+| Auth session       | Better Auth cookie session; keep first-party session via Next `/api` proxy                      |
 | Content access     | At least a small curated set (graded or leveled); one “current” text                            |
 | Learning Room      | Read + tap/select assist; optional TTS listen                                                   |
 | Light Practice     | 1–3 understanding checks **after** reading that text                                            |

@@ -22,15 +22,15 @@
 | Review        | 在语境中再次遇见重要表达                 |
 | Progress      | 看见与英语相处的时间与习惯（非考试排行） |
 
-> 当前工程首个可用闭环是 **注册 / 登录（Adonis session cookie）/ Dashboard**。学习闭环目标见 [`docs/product/mvp-scope.md`](./docs/product/mvp-scope.md)。
+> 当前工程首个可用闭环是 **注册 / 登录（Better Auth session cookie）/ Dashboard**。学习闭环目标见 [`docs/product/mvp-scope.md`](./docs/product/mvp-scope.md)。
 
 ## 技术栈
 
-| 层     | 技术                                                                                   |
-| ------ | -------------------------------------------------------------------------------------- |
-| API    | AdonisJS 7、Lucid、PostgreSQL、Redis（端口 **6380**）、session cookie（端口 **3333**） |
-| Web    | Next.js App Router、React、TanStack Query/Form、Tailwind CSS v4（端口 **3000**）       |
-| 包管理 | pnpm workspace（`apps/*`、`packages/*`）；共享包 `@elynd/shared`                       |
+| 层     | 技术                                                                                            |
+| ------ | ----------------------------------------------------------------------------------------------- |
+| API    | Hono、Better Auth、Drizzle、PostgreSQL、Redis（端口 **6380**）、session cookie（端口 **3333**） |
+| Web    | Next.js App Router、React、TanStack Query/Form、Tailwind CSS v4（端口 **3000**）                |
+| 包管理 | pnpm workspace（`apps/*`、`packages/*`）；`@elynd/shared`、`@elynd/db`                          |
 
 ## 环境要求
 
@@ -105,7 +105,7 @@ pnpm run build
 
 ## 生产部署
 
-Adonis / Next 的生产部署流水线尚未纳入本仓库。
+Hono / Next 的生产部署流水线尚未纳入本仓库。
 
 ## License
 

@@ -61,5 +61,11 @@ Filled notes: `.trellis/spec/web/frontend/component-guidelines.md`.
 
 Soft UX only: cookie presence in `proxy.ts` (`better-auth.session_token` / `__Secure-…`), session + **401 → sign-in** in the client.
 **Real auth** is Better Auth on `apps/backend` (`auth.api.getSession` / `requireAuth`) — not the Next soft gate.
+`/admin/**` must check session `user.role` with `@elynd/shared/auth/policy` before rendering admin content; hiding nav links is UX only, not authorization.
+Any backend-backed admin data must also be protected by Hono `requireAdmin`; never rely on `proxy.ts` or client checks as the security boundary.
 `DELETE /api/auth/logout` is a Next handler so HttpOnly BA session cookie(s) clear on this origin, then Hono `sign-out`.
 Password/username bounds from `@elynd/shared/auth/policy` — do not re-declare in web Zod.
+
+## Prototype / stub UI
+
+Admin/content screens backed by static arrays, mock data, or UI-only toasts must be explicitly labeled as prototype/stub in both source comments and user-facing Chinese copy. Do not imply persistence, publishing, CMS sync, or backend integration until the Hono content module exists.

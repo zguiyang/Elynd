@@ -75,7 +75,7 @@ Default for behavior-changing API/web logic: failing test → minimal impl → g
 
 ## Definition of Done
 
-Relevant tests pass; `pnpm lint` / `format:check` / `typecheck` for touched scope; no dead code/dangling imports; explicit errors; no new TODO unless deferred by user; no new single-consumer helper file that `structure` would reject; any self-judged trivial detail was disclosed to the user.
+Relevant tests pass; `pnpm lint` / `format:check` / `typecheck` for touched scope; backend production-entry/build changes must verify `pnpm --filter @elynd/backend build` completes and emitted JS does not retain unresolved `@/*` imports; no dead code/dangling imports; explicit errors; no new TODO unless deferred by user; no new single-consumer helper file that `structure` would reject; any self-judged trivial detail was disclosed to the user.
 
 ## Commit (agent)
 

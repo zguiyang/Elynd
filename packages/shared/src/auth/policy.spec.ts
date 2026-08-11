@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { AUTH_PASSWORD_POLICY, AUTH_USERNAME_POLICY, isValidUsername, normalizeEmail } from './policy';
+import {
+  AUTH_ADMIN_ROLE,
+  AUTH_PASSWORD_POLICY,
+  AUTH_USER_ROLE,
+  AUTH_USERNAME_POLICY,
+  isAdminRole,
+  isValidUsername,
+  normalizeEmail,
+} from './policy';
 
 describe('AUTH_PASSWORD_POLICY', () => {
   it('keeps password length bounds', () => {
@@ -32,5 +40,21 @@ describe('AUTH_USERNAME_POLICY', () => {
 describe('normalizeEmail', () => {
   it('trims and lowercases', () => {
     expect(normalizeEmail('  Ada@Example.COM ')).toBe('ada@example.com');
+  });
+});
+
+describe('auth roles', () => {
+  it('keeps role values stable', () => {
+    expect(AUTH_USER_ROLE).toBe('user');
+    expect(AUTH_ADMIN_ROLE).toBe('admin');
+  });
+
+  it('detects admin role only', () => {
+    expect(isAdminRole(AUTH_ADMIN_ROLE)).toBe(true);
+    expect(isAdminRole(AUTH_USER_ROLE)).toBe(false);
+    expect(isAdminRole('')).toBe(false);
+    expect(isAdminRole('owner')).toBe(false);
+    expect(isAdminRole(null)).toBe(false);
+    expect(isAdminRole(undefined)).toBe(false);
   });
 });

@@ -1,13 +1,22 @@
 'use client';
 
 import { Menu } from '@base-ui/react/menu';
-import { EllipsisVertical, Library, LogOut, RotateCcw, Sun, TrendingUp } from 'lucide-react';
+import {
+  EllipsisVertical,
+  Library,
+  LogOut,
+  type LucideIcon,
+  RotateCcw,
+  Settings2,
+  Sun,
+  TrendingUp,
+} from 'lucide-react';
 import Link from 'next/link';
 import { createContext, type ReactNode, useContext, useEffect } from 'react';
 import { toast } from 'sonner';
 
 import { BrandMark } from '@/components/brand-mark';
-import { AUTH_ROUTES } from '@/constants';
+import { ADMIN_ROUTES, AUTH_ADMIN_ROLE, AUTH_ROUTES } from '@/constants';
 import { authClient, type AuthUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 
@@ -20,12 +29,20 @@ export function useAppUser() {
   return useContext(AppUserContext);
 }
 
-const navItems = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  active: boolean;
+  disabled: boolean;
+};
+
+const learnerNavItems: NavItem[] = [
   { href: AUTH_ROUTES.dashboard, label: '今日', icon: Sun, active: true, disabled: false },
   { href: '#', label: '图书馆', icon: Library, active: false, disabled: true },
   { href: '#', label: '复习', icon: RotateCcw, active: false, disabled: true },
   { href: '#', label: '成长', icon: TrendingUp, active: false, disabled: true },
-] as const;
+];
 
 type AppShellProps = {
   children: ReactNode;
@@ -243,6 +260,20 @@ export function AppShell({ children }: AppShellProps) {
   const image = user.image?.trim() || null;
   const onSignOut = () => void handleSignOut();
   const identity = { username, email, initial, image, onSignOut };
+
+  const navItems: NavItem[] =
+    user.role === AUTH_ADMIN_ROLE
+      ? [
+          ...learnerNavItems,
+          {
+            href: ADMIN_ROUTES.articles,
+            label: '管理后台',
+            icon: Settings2,
+            active: false,
+            disabled: false,
+          },
+        ]
+      : learnerNavItems;
 
   return (
     <AppUserContext.Provider value={user}>

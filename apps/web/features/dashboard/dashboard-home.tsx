@@ -1,8 +1,10 @@
 'use client';
 
 import { Play } from 'lucide-react';
+import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
+import { AUTH_ROUTES, LEARN_DEMO } from '@/constants';
 import { useAppUser } from '@/features/dashboard/app-shell';
 import { DASHBOARD_FAKE, greetingForHour } from '@/features/dashboard/dashboard-data';
 
@@ -40,7 +42,11 @@ export function DashboardHome() {
             />
           </div>
 
-          <Button type="button" className="mt-7 h-11 gap-2 rounded-xl px-7 hover:bg-brand-deep">
+          <Button
+            nativeButton={false}
+            className="mt-7 h-11 gap-2 rounded-xl px-7 hover:bg-brand-deep"
+            render={<Link href={AUTH_ROUTES.learnArticle(LEARN_DEMO.oceans)} />}
+          >
             <Play className="size-4" strokeWidth={1.5} aria-hidden />
             开始阅读
           </Button>
@@ -57,7 +63,10 @@ export function DashboardHome() {
       <section className="mt-12 grid gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <h3 className="mb-5 text-xl font-semibold">继续阅读</h3>
-          <div className="flex flex-col gap-6 rounded-3xl border border-border bg-card p-6 transition-colors duration-300 ease-out-soft hover:bg-muted/30 sm:flex-row">
+          <Link
+            href={AUTH_ROUTES.learnArticle(LEARN_DEMO.habits)}
+            className="flex flex-col gap-6 rounded-3xl border border-border bg-card p-6 transition-colors duration-300 ease-out-soft hover:bg-muted/30 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none sm:flex-row"
+          >
             {/* eslint-disable-next-line @next/next/no-img-element -- static prototype cover */}
             <img
               className="h-40 w-32 shrink-0 rounded-2xl object-cover"
@@ -71,8 +80,9 @@ export function DashboardHome() {
               <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
                 <div className="h-full rounded-full bg-primary" style={{ width: `${inProgress.progress}%` }} />
               </div>
+              <p className="mt-4 text-sm font-medium text-brand-deep">继续阅读</p>
             </div>
-          </div>
+          </Link>
         </div>
 
         <div>

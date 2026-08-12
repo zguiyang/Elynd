@@ -15,6 +15,13 @@
       "when": 1786437287876,
       "tag": "0001_lyrical_jackpot",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786545824251,
+      "tag": "0002_cheerful_tyrannus",
+      "breakpoints": true
     }
   ]
 }

@@ -2,37 +2,23 @@
 
 import { FileTextIcon } from 'lucide-react';
 
+import { type ArticleLevel } from '@elynd/shared/api/articles';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { LEVEL_LABEL, paragraphsFromBody } from '@/features/library/library-model';
 
 type ArticlePreviewPanelProps = {
   title: string;
   body: string;
-  level?: string;
+  level?: ArticleLevel;
   themes?: string[];
   estimatedMinutes?: number | null;
 };
 
-function paragraphsFromBody(body: string): string[] {
-  const trimmed = body.trim();
-  if (!trimmed) {
-    return [];
-  }
-  return trimmed
-    .split(/\n\s*\n/)
-    .map((block) => block.trim())
-    .filter(Boolean);
-}
-
-const LEVEL_LABEL: Record<string, string> = {
-  easy: '简单',
-  mid: '中等',
-  stretch: '稍难',
-};
-
 export function ArticlePreviewPanel({ title, body, level, themes = [], estimatedMinutes }: ArticlePreviewPanelProps) {
   const paragraphs = paragraphsFromBody(body);
-  const levelLabel = level ? (LEVEL_LABEL[level] ?? level) : null;
+  const levelLabel = level ? LEVEL_LABEL[level] : null;
   const metaParts = [
     levelLabel,
     themes.length > 0 ? themes.join(' · ') : null,

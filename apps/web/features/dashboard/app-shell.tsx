@@ -18,13 +18,13 @@ import { toast } from 'sonner';
 
 import { BrandMark } from '@/components/brand-mark';
 import { ADMIN_ROUTES, AUTH_ADMIN_ROLE, AUTH_ROUTES } from '@/constants';
-import { authClient, type AuthUser } from '@/lib/auth';
+import { authClient, type User } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 
 /**
  * Thin adapter over Better Auth session for shell children.
  */
-const AppUserContext = createContext<AuthUser | null>(null);
+const AppUserContext = createContext<User | null>(null);
 
 export function useAppUser() {
   return useContext(AppUserContext);

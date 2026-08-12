@@ -7,8 +7,6 @@
   "exports": {
     ".": "./src/index.ts",
     "./auth/policy": "./src/auth/policy.ts",
-    "./api/auth": "./src/api/auth.ts",
-    "./api/auth-errors": "./src/api/auth-errors.ts",
     "./api/articles": "./src/api/articles.ts"
   },
   "scripts": {

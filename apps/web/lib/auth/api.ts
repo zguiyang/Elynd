@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { AUTH_ROUTES } from '@/constants';
 import type {
   ForgotPasswordBody,
   LoginBody,
@@ -7,10 +8,8 @@ import type {
   ResendVerificationBody,
   ResetPasswordBody,
   User,
-} from '@elynd/shared/api/auth';
-import { userSchema } from '@elynd/shared/api/auth';
-
-import { AUTH_ROUTES } from '@/constants';
+} from '@/lib/validations/auth';
+import { userSchema } from '@/lib/validations/auth';
 
 import { baClient } from './ba-client';
 import type { AuthError, AuthResult } from './types';
@@ -34,7 +33,7 @@ function parseUser(raw: unknown): AuthResult<User> {
   return { data: parsed.data, error: null };
 }
 
-function looksLikeEmail(value: string): boolean {
+export function looksLikeEmail(value: string): boolean {
   return z.email().safeParse(value).success;
 }
 
@@ -88,17 +87,6 @@ export async function logout(): Promise<AuthResult<{ ok: boolean }>> {
     }
   }
   return { data: { ok: true }, error: null };
-}
-
-export async function me(): Promise<AuthResult<User>> {
-  const { data, error } = await baClient.getSession();
-  if (error) {
-    return { data: null, error: toAuthError(error) };
-  }
-  if (!data?.user) {
-    return { data: null, error: { message: 'Unauthorized', status: 401 } };
-  }
-  return parseUser(data.user);
 }
 
 export async function resendVerificationEmail(

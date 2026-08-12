@@ -8,7 +8,6 @@ import {
   bootstrapRoleForNewUser,
   isAdminRole,
   isValidUsername,
-  normalizeEmail,
 } from './policy';
 
 describe('AUTH_PASSWORD_POLICY', () => {
@@ -35,12 +34,6 @@ describe('AUTH_USERNAME_POLICY', () => {
     expect(isValidUsername('ada reader')).toBe(false);
     expect(isValidUsername('ada!')).toBe(false);
     expect(isValidUsername('ada-reader')).toBe(false);
-  });
-});
-
-describe('normalizeEmail', () => {
-  it('trims and lowercases', () => {
-    expect(normalizeEmail('  Ada@Example.COM ')).toBe('ada@example.com');
   });
 });
 

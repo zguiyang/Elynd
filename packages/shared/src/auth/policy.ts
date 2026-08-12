@@ -35,7 +35,3 @@ export function bootstrapRoleForNewUser(existingUserCount: number): AuthRole {
 export function isValidUsername(username: string): boolean {
   return AUTH_USERNAME_POLICY.pattern.test(username);
 }
-
-export function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
-}

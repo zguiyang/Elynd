@@ -23,6 +23,7 @@ import { Tabs } from '@/components/ui/tabs';
 import { ADMIN_ARTICLES_PAGE_SIZE, ADMIN_ROUTES } from '@/constants';
 import { AdminSegmentedTabsList, AdminSegmentedTabsTrigger } from '@/features/admin/admin-segmented-tabs';
 import { adminArticlesQueryKey, formatAdminApiError, listAdminArticles } from '@/features/admin/articles-api';
+import { LEVEL_LABEL } from '@/features/library/library-model';
 import { cn } from '@/lib/utils';
 
 type StatusFilter = 'all' | ArticleStatus;
@@ -32,12 +33,6 @@ const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
   { value: 'draft', label: '草稿' },
   { value: 'published', label: '已发布' },
 ];
-
-const LEVEL_LABEL: Record<string, string> = {
-  easy: '简单',
-  mid: '中等',
-  stretch: '稍难',
-};
 
 function parseStatus(raw: string | null): StatusFilter {
   if (raw === 'draft' || raw === 'published') {

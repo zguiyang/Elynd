@@ -1,9 +1,9 @@
-import type { User } from '@elynd/shared/api/auth';
+import type { User } from '@/lib/validations/auth';
 
 import * as api from './api';
 import { signOut, useSession } from './session';
 
-export type { AuthError, AuthResult, AuthUser } from './types';
+export type { AuthError, AuthResult } from './types';
 export type { User };
 
 /**
@@ -13,7 +13,6 @@ export const authClient = {
   register: api.register,
   login: api.login,
   logout: api.logout,
-  me: api.me,
   resendVerificationEmail: api.resendVerificationEmail,
   verifyEmail: api.verifyEmail,
   forgotPassword: api.forgotPassword,

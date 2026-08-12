@@ -1,4 +1,4 @@
-import { isAuthRateLimited } from '@elynd/shared/api/auth-errors';
+import { isAuthRateLimited } from './auth-errors';
 
 /**
  * Map Better Auth rate-limit errors to UX copy.

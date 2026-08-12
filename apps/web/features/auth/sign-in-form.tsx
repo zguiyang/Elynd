@@ -5,15 +5,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { z } from 'zod';
-
-import { isEmailNotVerifiedError } from '@elynd/shared/api/auth-errors';
 
 import { Button } from '@/components/ui/button';
 import { AUTH_ROUTES } from '@/constants';
 import { authInputClassName, authPrimaryButtonClassName, Field } from '@/features/auth/auth-field';
 import { AuthFooterLink, AuthIntro, AuthPanel } from '@/features/auth/auth-layout';
 import { authClient, resolveMailCooldownErrorMessage } from '@/lib/auth';
+import { looksLikeEmail } from '@/lib/auth/api';
+import { isEmailNotVerifiedError } from '@/lib/auth/auth-errors';
 import { signInSchema } from '@/lib/validations';
 
 function isEmailVerificationRequired(error: { status?: number; code?: string | number } | null): boolean {
@@ -21,10 +20,6 @@ function isEmailVerificationRequired(error: { status?: number; code?: string | n
     return false;
   }
   return isEmailNotVerifiedError(error.code);
-}
-
-function looksLikeEmail(value: string): boolean {
-  return z.email().safeParse(value).success;
 }
 
 export function SignInForm() {

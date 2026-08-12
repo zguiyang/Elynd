@@ -1,13 +1,13 @@
 'use client';
 
-import { type User, userSchema } from '@elynd/shared/api/auth';
+import { type User, userSchema } from '@/lib/validations/auth';
 
 import { logout as apiLogout } from './api';
 import { baClient } from './ba-client';
-import type { AuthError, AuthUser } from './types';
+import type { AuthError } from './types';
 
 type SessionState = {
-  data: { user: AuthUser } | null;
+  data: { user: User } | null;
   error: AuthError | null;
   isPending: boolean;
   refresh: () => void;

@@ -177,6 +177,6 @@ Hierarchy comes mainly from **tonal layers** (canvas → paper → white surface
 - Don’t add heavy shadows, glow, mesh gradients, floating island nav, or cinematic scroll theater.
 - Don’t implement dark mode values until a night-reading theme is explicitly designed.
 - Don’t treat `prd/` HTML as pixel law — it defines elements and intent; layout may be refined, tokens in this file win for color/type/shape.
-- Don’t invent a second Admin color theme — same tokens; denser workbench layout is OK (see `.trellis/spec/web/frontend/component-guidelines.md`).
+- Don’t invent a second Admin color theme — same tokens; denser workbench layout is OK.
 
-**UI composition:** Prefer shadcn atoms, then Tailwind polish, then limited native markup — aesthetics over atom purity. Ladder and Base UI gotchas: `.cursor/rules/frontend.mdc` + Trellis component guidelines.
+**UI composition:** Prefer shadcn atoms, then Tailwind polish, then limited native markup — aesthetics over atom purity. Ladder and Base UI gotchas: `.cursor/rules/frontend.mdc`.

@@ -87,7 +87,7 @@ v1 is done when:
 
 ## 6. Suggested task breakdown (for humans to spawn)
 
-Implement **one slice per Trellis/engineering task**. Order is a recommendation, not a commit plan.
+Implement **one slice per engineering task**. Order is a recommendation, not a commit plan.
 
 | #   | Slice                     | Outcome                                           | Depends on |
 | --- | ------------------------- | ------------------------------------------------- | ---------- |

@@ -51,15 +51,31 @@
   --radius-4xl: calc(var(--radius) * 2.6);
   --shadow-card: var(--elynd-shadow-card);
   --ease-out-soft: var(--ease-out);
-  --animate-shelf-progress: shelf-progress 1.15s ease-in-out infinite;
+  --animate-loading-soft-ring: loading-soft-ring 2.2s var(--ease-out) infinite;
+  --animate-loading-page: loading-page 1.15s ease-in-out infinite;
 }
 
-@keyframes shelf-progress {
-  0% {
-    transform: translateX(-120%);
-  }
+@keyframes loading-soft-ring {
+  0%,
   100% {
-    transform: translateX(320%);
+    transform: scale(0.92);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
+@keyframes loading-page {
+  0%,
+  100% {
+    transform: scaleY(0.72);
+    opacity: 0.45;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
   }
 }
 

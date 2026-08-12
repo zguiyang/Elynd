@@ -8,6 +8,7 @@ import { type ReactNode, useEffect } from 'react';
 import { isAdminRole } from '@elynd/shared/auth/policy';
 
 import { BrandMark } from '@/components/brand-mark';
+import { GlobalLoading } from '@/components/global-loading';
 import { Button } from '@/components/ui/button';
 import { ADMIN_ROUTES, AUTH_ROUTES } from '@/constants';
 import { authClient } from '@/lib/auth';
@@ -32,11 +33,7 @@ export function AdminShell({ children }: AdminShellProps) {
   }, [error, isPending, user]);
 
   if (isPending) {
-    return (
-      <div className="flex h-dvh flex-1 items-center justify-center px-6">
-        <p className="text-sm text-muted-foreground">加载中…</p>
-      </div>
-    );
+    return <GlobalLoading />;
   }
 
   if (error || !user) {

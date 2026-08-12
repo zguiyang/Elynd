@@ -2,14 +2,25 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { requestId } from 'hono/request-id';
 import { secureHeaders } from 'hono/secure-headers';
+import { rateLimiter } from 'hono-rate-limiter';
 
+import { HTTP_STATUS } from '@/constants';
 import { auth } from '@/lib/auth';
 import { env } from '@/lib/env';
+import { sendError } from '@/lib/response';
 import { type AuthVariables, sessionMiddleware } from '@/middleware/auth';
 import { errorHandler } from '@/middleware/error';
 import { logger } from '@/middleware/logger';
-import { apiLimiter } from '@/middleware/rate-limiter';
 import { routes } from '@/routes';
+
+/** General API limiter — 60 requests / 60s / IP. In-memory store; swap to Redis when multi-instance. */
+const apiLimiter = rateLimiter({
+  windowMs: 60_000,
+  limit: 60,
+  standardHeaders: true,
+  keyGenerator: (c) => c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown',
+  handler: (c) => sendError(c, 'Too many requests. Please try again later.', HTTP_STATUS.TOO_MANY_REQUESTS),
+});
 
 const app = new Hono<{ Variables: AuthVariables }>();
 
@@ -51,4 +62,3 @@ app.use('/api/*', async (c, next) => {
 app.route('/', routes);
 
 export default app;
-export type AppType = typeof app;

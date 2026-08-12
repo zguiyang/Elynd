@@ -5,6 +5,7 @@ import { redisLogger } from '@/lib/logger';
 
 let client: Redis | null = null;
 
+// ponytail: ceiling = health-only Redis use; upgrade = Redis store for rate limit (multi-instance)
 export function getRedis(): Redis {
   if (client) {
     return client;
@@ -26,12 +27,4 @@ export function getRedis(): Redis {
 
 export async function redisPing(): Promise<string> {
   return getRedis().ping();
-}
-
-export async function disconnectRedis(): Promise<void> {
-  if (!client) {
-    return;
-  }
-  await client.quit();
-  client = null;
 }

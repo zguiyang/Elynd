@@ -2,7 +2,7 @@ import { eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { article as articleTable, user as userTable } from '@elynd/db';
-import { ARTICLE_BODY_MAX_WORDS } from '@elynd/shared/api/articles';
+import { type Article, ARTICLE_BODY_MAX_WORDS } from '@elynd/shared/api/articles';
 import { AUTH_ADMIN_ROLE } from '@elynd/shared/auth/policy';
 
 import app from '@/app';
@@ -65,16 +65,6 @@ async function createSession(role: 'user' | 'admin' = 'user') {
   return { email, cookie: cookieHeader(login) };
 }
 
-type ArticleDto = {
-  id: string;
-  title: string;
-  status: string;
-  themes: string[];
-  body: string;
-  sourceNote: string;
-  publishedAt: string | null;
-};
-
 describe('Articles HTTP', () => {
   const createdEmails: string[] = [];
   const createdArticleIds: string[] = [];
@@ -120,7 +110,7 @@ describe('Articles HTTP', () => {
       body: JSON.stringify({ title: 'Rain Walk' }),
     });
     expect(create.status).toBe(201);
-    const created = (await create.json()) as { data: ArticleDto };
+    const created = (await create.json()) as { data: Article };
     createdArticleIds.push(created.data.id);
     expect(created.data.status).toBe('draft');
     expect(created.data.publishedAt).toBeNull();
@@ -152,7 +142,7 @@ describe('Articles HTTP', () => {
       headers: { cookie: admin.cookie },
     });
     expect(publish.status).toBe(200);
-    const published = (await publish.json()) as { data: ArticleDto };
+    const published = (await publish.json()) as { data: Article };
     expect(published.data.status).toBe('published');
     expect(published.data.publishedAt).toBeTruthy();
 
@@ -160,14 +150,14 @@ describe('Articles HTTP', () => {
       headers: { cookie: admin.cookie },
     });
     expect(adminList.status).toBe(200);
-    const adminListBody = (await adminList.json()) as { data: { items: ArticleDto[] } };
+    const adminListBody = (await adminList.json()) as { data: { items: Article[] } };
     expect(adminListBody.data.items.some((item) => item.id === created.data.id)).toBe(true);
 
     const learnerList = await app.request('/api/articles', {
       headers: { cookie: learner.cookie },
     });
     expect(learnerList.status).toBe(200);
-    const learnerListBody = (await learnerList.json()) as { data: { items: ArticleDto[] } };
+    const learnerListBody = (await learnerList.json()) as { data: { items: Article[] } };
     expect(learnerListBody.data.items.some((item) => item.id === created.data.id)).toBe(true);
 
     const learnerDetail = await app.request(`/api/articles/${created.data.id}`, {
@@ -180,7 +170,7 @@ describe('Articles HTTP', () => {
       headers: { cookie: admin.cookie },
     });
     expect(unpublish.status).toBe(200);
-    const unpublished = (await unpublish.json()) as { data: ArticleDto };
+    const unpublished = (await unpublish.json()) as { data: Article };
     expect(unpublished.data.status).toBe('draft');
     expect(unpublished.data.publishedAt).toBeNull();
 
@@ -200,7 +190,7 @@ describe('Articles HTTP', () => {
       }),
     });
     expect(draftOnly.status).toBe(201);
-    const draft = (await draftOnly.json()) as { data: ArticleDto };
+    const draft = (await draftOnly.json()) as { data: Article };
     createdArticleIds.push(draft.data.id);
 
     const learnerDraft = await app.request(`/api/articles/${draft.data.id}`, {
@@ -225,7 +215,7 @@ describe('Articles HTTP', () => {
       }),
     });
     expect(create.status).toBe(201);
-    const created = (await create.json()) as { data: ArticleDto };
+    const created = (await create.json()) as { data: Article };
     createdArticleIds.push(created.data.id);
 
     const publish = await app.request(`/api/admin/articles/${created.data.id}/publish`, {

@@ -3,22 +3,27 @@ import { randomUUID } from 'node:crypto';
 import { and, desc, eq } from 'drizzle-orm';
 
 import { article as articleTable } from '@elynd/db';
-import { type CreateArticleBody, getPublishArticleIssues, type UpdateArticleBody } from '@elynd/shared/api/articles';
+import {
+  type Article,
+  type CreateArticleBody,
+  getPublishArticleIssues,
+  type UpdateArticleBody,
+} from '@elynd/shared/api/articles';
 
 import { db } from '@/db';
 import { AppError, NotFoundError, ValidationFailedError } from '@/lib/errors';
 
 type ArticleRow = typeof articleTable.$inferSelect;
 
-function toArticleDto(row: ArticleRow) {
+function toArticle(row: ArticleRow): Article {
   return {
     id: row.id,
     title: row.title,
     body: row.body,
-    level: row.level,
+    level: row.level as Article['level'],
     themes: row.themes,
     sourceNote: row.sourceNote,
-    status: row.status,
+    status: row.status as Article['status'],
     seriesId: row.seriesId,
     seriesOrder: row.seriesOrder,
     estimatedMinutes: row.estimatedMinutes,
@@ -50,7 +55,7 @@ export async function createArticle(input: CreateArticleBody) {
   if (!row) {
     throw new AppError(500, 'Failed to create article');
   }
-  return toArticleDto(row);
+  return toArticle(row);
 }
 
 export async function listAdminArticles(status?: 'draft' | 'published') {
@@ -58,7 +63,7 @@ export async function listAdminArticles(status?: 'draft' | 'published') {
     ? await db.select().from(articleTable).where(eq(articleTable.status, status)).orderBy(desc(articleTable.updatedAt))
     : await db.select().from(articleTable).orderBy(desc(articleTable.updatedAt));
 
-  return rows.map(toArticleDto);
+  return rows.map(toArticle);
 }
 
 export async function getAdminArticle(id: string) {
@@ -66,7 +71,7 @@ export async function getAdminArticle(id: string) {
   if (!row) {
     throw new NotFoundError('Article');
   }
-  return toArticleDto(row);
+  return toArticle(row);
 }
 
 export async function updateArticle(id: string, input: UpdateArticleBody) {
@@ -86,14 +91,14 @@ export async function updateArticle(id: string, input: UpdateArticleBody) {
   if (input.estimatedMinutes !== undefined) patch.estimatedMinutes = input.estimatedMinutes;
 
   if (Object.keys(patch).length === 0) {
-    return toArticleDto(existing);
+    return toArticle(existing);
   }
 
   const [row] = await db.update(articleTable).set(patch).where(eq(articleTable.id, id)).returning();
   if (!row) {
     throw new NotFoundError('Article');
   }
-  return toArticleDto(row);
+  return toArticle(row);
 }
 
 export async function publishArticle(id: string) {
@@ -124,7 +129,7 @@ export async function publishArticle(id: string) {
   if (!row) {
     throw new NotFoundError('Article');
   }
-  return toArticleDto(row);
+  return toArticle(row);
 }
 
 export async function unpublishArticle(id: string) {
@@ -142,7 +147,7 @@ export async function unpublishArticle(id: string) {
   if (!row) {
     throw new NotFoundError('Article');
   }
-  return toArticleDto(row);
+  return toArticle(row);
 }
 
 export async function listPublishedArticles() {
@@ -152,7 +157,7 @@ export async function listPublishedArticles() {
     .where(eq(articleTable.status, 'published'))
     .orderBy(desc(articleTable.publishedAt), desc(articleTable.updatedAt));
 
-  return rows.map(toArticleDto);
+  return rows.map(toArticle);
 }
 
 export async function getPublishedArticle(id: string) {
@@ -165,5 +170,5 @@ export async function getPublishedArticle(id: string) {
   if (!row) {
     throw new NotFoundError('Article');
   }
-  return toArticleDto(row);
+  return toArticle(row);
 }

@@ -32,9 +32,9 @@ export type Env = z.infer<typeof envSchema>;
  * Load `apps/backend/.env` (overrides ambient shell exports), then Zod-parse.
  * Throws on invalid/missing required vars so the process fails at boot.
  */
-export function getEnvConfig(env: NodeJS.ProcessEnv = process.env): Env {
+function getEnvConfig(processEnv: NodeJS.ProcessEnv = process.env): Env {
   loadDotenv({ path: envFilePath, override: true });
-  return envSchema.parse(env);
+  return envSchema.parse(processEnv);
 }
 
 export const env = getEnvConfig();

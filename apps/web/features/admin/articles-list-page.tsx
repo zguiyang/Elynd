@@ -1,10 +1,8 @@
 'use client';
 
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { FileTextIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect } from 'react';
+import { useState } from 'react';
 
 import { type ArticleStatus } from '@elynd/shared/api/articles';
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from '@elynd/shared/api/pagination';
@@ -23,16 +21,18 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs } from '@/components/ui/tabs';
-import { useMinimumHold } from '@/components/use-minimum-hold';
 import { ADMIN_ROUTES } from '@/constants';
 import { AdminSegmentedTabsList, AdminSegmentedTabsTrigger } from '@/features/admin/admin-segmented-tabs';
 import {
+  type AdminArticle,
   adminArticlesQueryKey,
   type AdminListParams,
+  type AdminListResult,
   formatAdminApiError,
   listAdminArticles,
 } from '@/features/admin/articles-api';
 import { LEVEL_LABEL } from '@/features/library/library-model';
+import { usePaginatedQuery } from '@/lib/query';
 import { cn } from '@/lib/utils';
 
 type StatusFilter = 'all' | ArticleStatus;
@@ -43,33 +43,8 @@ const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
   { value: 'published', label: '已发布' },
 ];
 
-/** Soft-refresh cue stays visible at least this long (local APIs finish too fast otherwise). */
 const TABLE_REFRESH_MIN_MS = 300;
-/** First-paint row placeholders — matches viewport density, not pageSize. */
 const TABLE_SKELETON_ROW_COUNT = 6;
-
-function parseStatus(raw: string | null): StatusFilter {
-  if (raw === 'draft' || raw === 'published') {
-    return raw;
-  }
-  return 'all';
-}
-
-function parsePage(raw: string | null): number {
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n < 1) {
-    return DEFAULT_PAGE;
-  }
-  return Math.floor(n);
-}
-
-function parsePageSize(raw: string | null): number {
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n < 1) {
-    return DEFAULT_PAGE_SIZE;
-  }
-  return Math.floor(n);
-}
 
 function formatUpdatedAt(iso: string): string {
   try {
@@ -125,76 +100,26 @@ function ArticlesTableSkeleton({ rows }: { rows: number }) {
 }
 
 export function ArticlesListPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const status = parseStatus(searchParams.get('status'));
-  const page = parsePage(searchParams.get('page'));
-  const pageSize = parsePageSize(searchParams.get('pageSize'));
+  const [status, setStatus] = useState<StatusFilter>('all');
+  const [page, setPage] = useState<number>(DEFAULT_PAGE);
 
   const listParams: AdminListParams = {
     page,
-    pageSize,
+    pageSize: DEFAULT_PAGE_SIZE,
     status: status === 'all' ? undefined : status,
   };
 
-  const listQuery = useQuery({
+  const list = usePaginatedQuery<AdminArticle, AdminListResult>({
     queryKey: adminArticlesQueryKey.list(listParams),
     queryFn: ({ signal }) => listAdminArticles(listParams, { signal }),
-    placeholderData: keepPreviousData,
+    page,
+    onPageChange: setPage,
+    softRefreshMinMs: TABLE_REFRESH_MIN_MS,
   });
 
-  const isInitialLoading = listQuery.isPending && !listQuery.data;
-  const isSoftRefreshing = listQuery.isFetching && Boolean(listQuery.isPlaceholderData);
-  const isTableRefreshVisible = useMinimumHold(isSoftRefreshing, TABLE_REFRESH_MIN_MS);
-
-  const articles = listQuery.data?.items ?? [];
-  const pagination = listQuery.data?.pagination;
-  const total = pagination?.total ?? 0;
-  const totalPages = pagination?.totalPages ?? 0;
-  const safePage = totalPages > 0 ? Math.min(page, totalPages) : page;
-  const hasPrevPage = safePage > 1;
-  const hasNextPage = totalPages > 0 && safePage < totalPages;
-
-  function replaceQuery(next: { status?: StatusFilter; page?: number }) {
-    const params = new URLSearchParams(searchParams.toString());
-    const nextStatus = next.status ?? status;
-    const nextPage = next.page ?? safePage;
-
-    if (nextStatus === 'all') {
-      params.delete('status');
-    } else {
-      params.set('status', nextStatus);
-    }
-
-    if (nextPage <= 1) {
-      params.delete('page');
-    } else {
-      params.set('page', String(nextPage));
-    }
-
-    if (pageSize === DEFAULT_PAGE_SIZE) {
-      params.delete('pageSize');
-    } else {
-      params.set('pageSize', String(pageSize));
-    }
-
-    const qs = params.toString();
-    router.replace(qs ? `${ADMIN_ROUTES.articles}?${qs}` : ADMIN_ROUTES.articles);
-  }
-
-  useEffect(() => {
-    if (!pagination) {
-      return;
-    }
-    if (pagination.totalPages >= 1 && page > pagination.totalPages) {
-      replaceQuery({ page: pagination.totalPages });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- clamp once when meta/page diverge
-  }, [pagination?.totalPages, page]);
-
-  const emptyTitle = total === 0 && status !== 'all' ? '当前筛选下没有文章' : '还没有文章';
+  const emptyTitle = list.total === 0 && status !== 'all' ? '当前筛选下没有文章' : '还没有文章';
   const emptyDescription =
-    total === 0 && status !== 'all' ? '试试切换状态筛选，或新建一篇短文。' : '点「新建文章」开始粘贴内容。';
+    list.total === 0 && status !== 'all' ? '试试切换状态筛选，或新建一篇短文。' : '点「新建文章」开始粘贴内容。';
 
   return (
     <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700 mx-auto max-w-6xl">
@@ -219,7 +144,8 @@ export function ArticlesListPage() {
             if (value !== 'all' && value !== 'draft' && value !== 'published') {
               return;
             }
-            replaceQuery({ status: value, page: DEFAULT_PAGE });
+            setStatus(value);
+            setPage(DEFAULT_PAGE);
           }}
         >
           <AdminSegmentedTabsList aria-label="按状态筛选">
@@ -233,21 +159,21 @@ export function ArticlesListPage() {
 
         <div
           className="overflow-hidden rounded-3xl border border-border bg-card"
-          aria-busy={isInitialLoading || isTableRefreshVisible}
+          aria-busy={list.isInitialLoading || list.isSoftRefreshing}
         >
-          {isInitialLoading ? (
+          {list.isInitialLoading ? (
             <ArticlesTableSkeleton rows={TABLE_SKELETON_ROW_COUNT} />
-          ) : listQuery.isError && !listQuery.data ? (
+          ) : list.isError && !list.data ? (
             <Empty className="border-0 py-16">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <FileTextIcon />
                 </EmptyMedia>
                 <EmptyTitle>无法加载文章列表</EmptyTitle>
-                <EmptyDescription>{formatAdminApiError(listQuery.error)}</EmptyDescription>
+                <EmptyDescription>{formatAdminApiError(list.error)}</EmptyDescription>
               </EmptyHeader>
             </Empty>
-          ) : articles.length === 0 ? (
+          ) : list.items.length === 0 ? (
             <Empty className="border-0 py-16">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -258,7 +184,7 @@ export function ArticlesListPage() {
               </EmptyHeader>
             </Empty>
           ) : (
-            <LoadingOverlay active={isTableRefreshVisible} label="列表更新中…">
+            <LoadingOverlay active={list.isSoftRefreshing} label="列表更新中…">
               <Table className="min-w-[40rem]">
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
@@ -271,7 +197,7 @@ export function ArticlesListPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {articles.map((article) => (
+                  {list.items.map((article) => (
                     <TableRow
                       key={article.id}
                       className="border-border transition-colors duration-300 ease-out-soft hover:bg-muted/30"
@@ -311,29 +237,27 @@ export function ArticlesListPage() {
         </div>
       </div>
 
-      {!isInitialLoading && !listQuery.isError ? (
+      {!list.isInitialLoading && !list.isError ? (
         <div className="mt-8 flex flex-col items-center justify-between gap-4 sm:flex-row">
           <p className="text-sm text-muted-foreground">
-            共 {total} 篇 · 第 {totalPages === 0 ? 0 : safePage} / {totalPages} 页 · 每页 {pageSize}
+            共 {list.total} 篇 · 第 {list.totalPages === 0 ? 0 : list.page} / {list.totalPages} 页 · 每页{' '}
+            {DEFAULT_PAGE_SIZE}
           </p>
-          {hasPrevPage || hasNextPage ? (
+          {list.hasPrevPage || list.hasNextPage ? (
             <Pagination className="mx-0 w-auto justify-end">
               <PaginationContent className="gap-2">
                 <PaginationItem>
                   <PaginationPrevious
                     text="上一页"
                     href="#"
-                    aria-disabled={!hasPrevPage}
+                    aria-disabled={!list.hasPrevPage}
                     className={cn(
                       'h-9 rounded-xl border border-border bg-background px-3.5',
-                      !hasPrevPage && 'pointer-events-none opacity-50',
+                      !list.hasPrevPage && 'pointer-events-none opacity-50',
                     )}
                     onClick={(event) => {
                       event.preventDefault();
-                      if (!hasPrevPage) {
-                        return;
-                      }
-                      replaceQuery({ page: safePage - 1 });
+                      list.goPrev();
                     }}
                   />
                 </PaginationItem>
@@ -341,17 +265,14 @@ export function ArticlesListPage() {
                   <PaginationNext
                     text="下一页"
                     href="#"
-                    aria-disabled={!hasNextPage}
+                    aria-disabled={!list.hasNextPage}
                     className={cn(
                       'h-9 rounded-xl border border-border bg-background px-3.5',
-                      !hasNextPage && 'pointer-events-none opacity-50',
+                      !list.hasNextPage && 'pointer-events-none opacity-50',
                     )}
                     onClick={(event) => {
                       event.preventDefault();
-                      if (!hasNextPage) {
-                        return;
-                      }
-                      replaceQuery({ page: safePage + 1 });
+                      list.goNext();
                     }}
                   />
                 </PaginationItem>

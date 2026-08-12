@@ -1,9 +1,7 @@
 'use client';
 
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { BookOpenIcon, ChevronLeftIcon, ChevronRightIcon, LibraryIcon, SearchIcon, XIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { DEFAULT_LIBRARY_ARTICLE_SORT_BY, type LibraryArticleSortField } from '@elynd/shared/api/articles';
@@ -16,50 +14,32 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useMinimumHold } from '@/components/use-minimum-hold';
 import { AUTH_ROUTES } from '@/constants';
 import {
   formatLibraryApiError,
   type LibraryArticle,
   libraryArticlesQueryKey,
   type LibraryListParams,
+  type LibraryListResult,
   listPublishedArticles,
 } from '@/features/library/articles-api';
 import {
   coverTintForVolume,
+  DEFAULT_LIBRARY_SORT_PRESET,
   isDefaultLibrarySort,
   LEVEL_LABEL,
   LIBRARY_SORT_PRESETS,
   LIBRARY_THEME_ALL,
-  parseLibrarySortBy,
-  parseLibrarySortOrder,
   resolveLibrarySortPreset,
 } from '@/features/library/library-model';
+import { usePaginatedQuery } from '@/lib/query';
 import { cn } from '@/lib/utils';
 
 const SEARCH_DEBOUNCE_MS = 300;
-/** Soft-refresh cues stay visible at least this long (local APIs finish too fast otherwise). */
 const SHELF_REFRESH_MIN_MS = 300;
-/** First-paint shelf placeholders — matches common viewport density, not pageSize. */
 const SHELF_SKELETON_COUNT = 8;
 
 const shelfGridClassName = 'grid grid-cols-2 gap-5 md:grid-cols-3 md:gap-6 xl:grid-cols-4';
-
-function parsePage(raw: string | null): number {
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n < 1) {
-    return DEFAULT_PAGE;
-  }
-  return Math.floor(n);
-}
-
-function parsePageSize(raw: string | null): number {
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n < 1) {
-    return DEFAULT_PAGE_SIZE;
-  }
-  return Math.floor(n);
-}
 
 function VolumeCard({ article }: { article: LibraryArticle }) {
   const tint = coverTintForVolume(article.themes, article.title);
@@ -115,7 +95,6 @@ const shelfTurnClassName = cn(
   'hover:border-border/80 hover:bg-muted/60 hover:text-foreground',
 );
 
-/** Paper-toned placeholders that preserve VolumeCard geometry (no layout jump). */
 function VolumeCardSkeleton() {
   return (
     <div className="flex flex-col" aria-hidden>
@@ -136,137 +115,63 @@ function ShelfSkeleton({ count }: { count: number }) {
 }
 
 export function LibraryPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const [page, setPage] = useState<number>(DEFAULT_PAGE);
+  const [theme, setTheme] = useState<string>(LIBRARY_THEME_ALL);
+  const [q, setQ] = useState('');
+  const [sortBy, setSortBy] = useState<LibraryArticleSortField>(DEFAULT_LIBRARY_ARTICLE_SORT_BY);
+  const [sortOrder, setSortOrder] = useState<SortOrder>(DEFAULT_SORT_ORDER);
+  const [searchInput, setSearchInput] = useState('');
 
-  const page = parsePage(searchParams.get('page'));
-  const pageSize = parsePageSize(searchParams.get('pageSize'));
-  const themeParam = searchParams.get('theme')?.trim() || LIBRARY_THEME_ALL;
-  const qParam = searchParams.get('q')?.trim() ?? '';
-  const sortBy = parseLibrarySortBy(searchParams.get('sortBy'));
-  const sortOrder = parseLibrarySortOrder(searchParams.get('sortOrder'));
   const sortPreset = resolveLibrarySortPreset(sortBy, sortOrder);
-
-  const [searchInput, setSearchInput] = useState(qParam);
 
   const listParams: LibraryListParams = {
     page,
-    pageSize,
+    pageSize: DEFAULT_PAGE_SIZE,
     sortBy,
     sortOrder,
-    theme: themeParam === LIBRARY_THEME_ALL ? undefined : themeParam,
-    q: qParam || undefined,
+    theme: theme === LIBRARY_THEME_ALL ? undefined : theme,
+    q: q || undefined,
   };
 
-  const listQuery = useQuery({
+  const list = usePaginatedQuery<LibraryArticle, LibraryListResult>({
     queryKey: libraryArticlesQueryKey.list(listParams),
     queryFn: ({ signal }) => listPublishedArticles(listParams, { signal }),
-    placeholderData: keepPreviousData,
+    page,
+    onPageChange: setPage,
+    softRefreshMinMs: SHELF_REFRESH_MIN_MS,
   });
 
-  const isInitialLoading = listQuery.isPending && !listQuery.data;
-  const isSoftRefreshing = listQuery.isFetching && Boolean(listQuery.isPlaceholderData);
-  const isShelfRefreshVisible = useMinimumHold(isSoftRefreshing, SHELF_REFRESH_MIN_MS);
-
-  const articles = listQuery.data?.items ?? [];
-  const themes = listQuery.data?.themes ?? [];
-  const pagination = listQuery.data?.pagination;
-  const total = pagination?.total ?? 0;
-  const totalPages = pagination?.totalPages ?? 0;
-  const safePage = totalPages > 0 ? Math.min(page, totalPages) : page;
-  const hasPrevPage = safePage > 1;
-  const hasNextPage = totalPages > 0 && safePage < totalPages;
-  const shelfValue = themeParam === LIBRARY_THEME_ALL || themes.includes(themeParam) ? themeParam : LIBRARY_THEME_ALL;
-
-  const hasSearch = Boolean(qParam) || Boolean(searchInput.trim());
-  const hasActiveFilters =
-    themeParam !== LIBRARY_THEME_ALL || Boolean(qParam) || !isDefaultLibrarySort(sortBy, sortOrder);
-
-  function replaceQuery(next: {
-    theme?: string;
-    q?: string;
-    page?: number;
-    sortBy?: LibraryArticleSortField;
-    sortOrder?: SortOrder;
-  }) {
-    const params = new URLSearchParams(searchParams.toString());
-    const nextTheme = next.theme ?? themeParam;
-    const nextQ = next.q !== undefined ? next.q : qParam;
-    const nextPage = next.page ?? safePage;
-    const nextSortBy = next.sortBy ?? sortBy;
-    const nextSortOrder = next.sortOrder ?? sortOrder;
-
-    if (nextTheme === LIBRARY_THEME_ALL) {
-      params.delete('theme');
-    } else {
-      params.set('theme', nextTheme);
-    }
-
-    if (!nextQ.trim()) {
-      params.delete('q');
-    } else {
-      params.set('q', nextQ.trim());
-    }
-
-    if (nextPage <= 1) {
-      params.delete('page');
-    } else {
-      params.set('page', String(nextPage));
-    }
-
-    if (pageSize === DEFAULT_PAGE_SIZE) {
-      params.delete('pageSize');
-    } else {
-      params.set('pageSize', String(pageSize));
-    }
-
-    if (nextSortBy === DEFAULT_LIBRARY_ARTICLE_SORT_BY) {
-      params.delete('sortBy');
-    } else {
-      params.set('sortBy', nextSortBy);
-    }
-
-    if (nextSortOrder === DEFAULT_SORT_ORDER) {
-      params.delete('sortOrder');
-    } else {
-      params.set('sortOrder', nextSortOrder);
-    }
-
-    const qs = params.toString();
-    router.replace(qs ? `${AUTH_ROUTES.library}?${qs}` : AUTH_ROUTES.library);
-  }
-
-  function clearSearch() {
-    setSearchInput('');
-    replaceQuery({ q: '', page: DEFAULT_PAGE });
-  }
-
-  function resetFilters() {
-    setSearchInput('');
-    router.replace(AUTH_ROUTES.library);
-  }
+  const themes = list.data?.themes ?? [];
+  const shelfValue = theme === LIBRARY_THEME_ALL || themes.includes(theme) ? theme : LIBRARY_THEME_ALL;
+  const hasSearch = Boolean(q) || Boolean(searchInput.trim());
+  const hasActiveFilters = theme !== LIBRARY_THEME_ALL || Boolean(q) || !isDefaultLibrarySort(sortBy, sortOrder);
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
       const nextQ = searchInput.trim();
-      if (nextQ === qParam) {
+      if (nextQ === q) {
         return;
       }
-      replaceQuery({ q: nextQ, page: DEFAULT_PAGE });
+      setQ(nextQ);
+      setPage(DEFAULT_PAGE);
     }, SEARCH_DEBOUNCE_MS);
     return () => window.clearTimeout(handle);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- debounce typing only; replaceQuery closes over latest URL state
-  }, [searchInput]);
+  }, [searchInput, q]);
 
-  useEffect(() => {
-    if (!pagination) {
-      return;
-    }
-    if (pagination.totalPages >= 1 && page > pagination.totalPages) {
-      replaceQuery({ page: pagination.totalPages });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- clamp once when meta/page diverge
-  }, [pagination?.totalPages, page]);
+  function clearSearch() {
+    setSearchInput('');
+    setQ('');
+    setPage(DEFAULT_PAGE);
+  }
+
+  function resetFilters() {
+    setSearchInput('');
+    setQ('');
+    setTheme(LIBRARY_THEME_ALL);
+    setSortBy(DEFAULT_LIBRARY_SORT_PRESET.sortBy);
+    setSortOrder(DEFAULT_LIBRARY_SORT_PRESET.sortOrder);
+    setPage(DEFAULT_PAGE);
+  }
 
   return (
     <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700 mx-auto max-w-6xl">
@@ -319,7 +224,8 @@ export function LibraryPage() {
             value={shelfValue}
             onValueChange={(value) => {
               if (typeof value === 'string' && value) {
-                replaceQuery({ theme: value, page: DEFAULT_PAGE });
+                setTheme(value);
+                setPage(DEFAULT_PAGE);
               }
             }}
             className="min-w-0"
@@ -371,11 +277,9 @@ export function LibraryPage() {
                 if (!preset) {
                   return;
                 }
-                replaceQuery({
-                  sortBy: preset.sortBy,
-                  sortOrder: preset.sortOrder,
-                  page: DEFAULT_PAGE,
-                });
+                setSortBy(preset.sortBy);
+                setSortOrder(preset.sortOrder);
+                setPage(DEFAULT_PAGE);
               }}
             >
               <SelectTrigger aria-label="排序方式" className="h-10 w-[9.5rem] rounded-xl bg-card shadow-none">
@@ -406,39 +310,39 @@ export function LibraryPage() {
         </div>
       </div>
 
-      <section className="mt-8" aria-busy={isInitialLoading || isShelfRefreshVisible}>
-        {isInitialLoading ? (
+      <section className="mt-8" aria-busy={list.isInitialLoading || list.isSoftRefreshing}>
+        {list.isInitialLoading ? (
           <ShelfSkeleton count={SHELF_SKELETON_COUNT} />
-        ) : listQuery.isError && !listQuery.data ? (
+        ) : list.isError && !list.data ? (
           <Empty className="border border-dashed border-border bg-card/50 py-16">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <LibraryIcon />
               </EmptyMedia>
               <EmptyTitle>书架暂时打不开</EmptyTitle>
-              <EmptyDescription>{formatLibraryApiError(listQuery.error)}</EmptyDescription>
+              <EmptyDescription>{formatLibraryApiError(list.error)}</EmptyDescription>
             </EmptyHeader>
           </Empty>
-        ) : articles.length === 0 ? (
+        ) : list.items.length === 0 ? (
           <Empty className="border border-dashed border-border bg-card/50 py-16">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <LibraryIcon />
               </EmptyMedia>
               <EmptyTitle>
-                {total === 0 && !listParams.theme && !listParams.q ? '架上还没有册子' : '没有符合条件的册子'}
+                {list.total === 0 && !listParams.theme && !listParams.q ? '架上还没有册子' : '没有符合条件的册子'}
               </EmptyTitle>
               <EmptyDescription>
-                {total === 0 && !listParams.theme && !listParams.q
+                {list.total === 0 && !listParams.theme && !listParams.q
                   ? '发布后的短文会出现在这里。先休息一下，稍后再来看看。'
                   : '试试换个主题，或清除筛选后再浏览。'}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
         ) : (
-          <LoadingOverlay active={isShelfRefreshVisible} label="书架整理中…">
+          <LoadingOverlay active={list.isSoftRefreshing} label="书架整理中…">
             <div className={shelfGridClassName}>
-              {articles.map((article) => (
+              {list.items.map((article) => (
                 <VolumeCard key={article.id} article={article} />
               ))}
             </div>
@@ -446,26 +350,16 @@ export function LibraryPage() {
         )}
       </section>
 
-      {!isInitialLoading && !listQuery.isError && (hasPrevPage || hasNextPage) ? (
+      {!list.isInitialLoading && !list.isError && (list.hasPrevPage || list.hasNextPage) ? (
         <nav aria-label="书架翻页" className="mt-10 flex items-center justify-center gap-3">
-          {hasPrevPage ? (
-            <Button
-              type="button"
-              variant="outline"
-              className={shelfTurnClassName}
-              onClick={() => replaceQuery({ page: safePage - 1 })}
-            >
+          {list.hasPrevPage ? (
+            <Button type="button" variant="outline" className={shelfTurnClassName} onClick={list.goPrev}>
               <ChevronLeftIcon className="size-4" strokeWidth={1.5} aria-hidden />
               上一页
             </Button>
           ) : null}
-          {hasNextPage ? (
-            <Button
-              type="button"
-              variant="outline"
-              className={shelfTurnClassName}
-              onClick={() => replaceQuery({ page: safePage + 1 })}
-            >
+          {list.hasNextPage ? (
+            <Button type="button" variant="outline" className={shelfTurnClassName} onClick={list.goNext}>
               下一页
               <ChevronRightIcon className="size-4" strokeWidth={1.5} aria-hidden />
             </Button>

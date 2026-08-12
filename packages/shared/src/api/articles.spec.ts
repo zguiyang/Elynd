@@ -4,9 +4,12 @@ import {
   ARTICLE_BODY_MAX_WORDS,
   countArticleWords,
   createArticleBodySchema,
+  DEFAULT_LIBRARY_ARTICLE_SORT_BY,
   getPublishArticleIssues,
+  libraryArticleListQuerySchema,
   updateArticleBodySchema,
 } from './articles.ts';
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEFAULT_SORT_ORDER } from './pagination.ts';
 
 describe('article api contracts', () => {
   it('counts words like the admin paste form', () => {
@@ -90,5 +93,36 @@ describe('article api contracts', () => {
       { path: 'sourceNote', message: '发布前请填写来源说明' },
       { path: 'themes', message: '发布前请至少添加一个主题' },
     ]);
+  });
+
+  it('defaults library list query pagination and sort', () => {
+    expect(libraryArticleListQuerySchema.parse({})).toEqual({
+      page: DEFAULT_PAGE,
+      pageSize: DEFAULT_PAGE_SIZE,
+      sortBy: DEFAULT_LIBRARY_ARTICLE_SORT_BY,
+      sortOrder: DEFAULT_SORT_ORDER,
+      theme: undefined,
+      q: undefined,
+    });
+  });
+
+  it('parses library list filters from query strings', () => {
+    expect(
+      libraryArticleListQuerySchema.parse({
+        page: '2',
+        pageSize: '5',
+        sortBy: 'updatedAt',
+        sortOrder: 'asc',
+        theme: ' science ',
+        q: ' rain ',
+      }),
+    ).toEqual({
+      page: 2,
+      pageSize: 5,
+      sortBy: 'updatedAt',
+      sortOrder: 'asc',
+      theme: 'science',
+      q: 'rain',
+    });
   });
 });

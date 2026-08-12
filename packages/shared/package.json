@@ -7,7 +7,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./auth/policy": "./src/auth/policy.ts",
-    "./api/articles": "./src/api/articles.ts"
+    "./api/articles": "./src/api/articles.ts",
+    "./api/pagination": "./src/api/pagination.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

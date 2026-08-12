@@ -1,5 +1,13 @@
 import { z } from 'zod';
 
+import {
+  buildPaginationMeta,
+  createSortByQuerySchema,
+  emptyToUndefined,
+  paginationMetaSchema,
+  paginationQuerySchema,
+} from '@elynd/shared/api/pagination';
+
 /** Coarse reading bands for short articles. */
 export const ARTICLE_LEVELS = ['easy', 'mid', 'stretch'] as const;
 export type ArticleLevel = (typeof ARTICLE_LEVELS)[number];
@@ -97,6 +105,40 @@ export const adminArticleListQuerySchema = z.object({
 });
 
 export type AdminArticleListQuery = z.infer<typeof adminArticleListQuerySchema>;
+
+/** Learner library list sort fields (default: publishedAt). */
+export const LIBRARY_ARTICLE_SORT_FIELDS = ['publishedAt', 'updatedAt', 'createdAt'] as const;
+export type LibraryArticleSortField = (typeof LIBRARY_ARTICLE_SORT_FIELDS)[number];
+export const DEFAULT_LIBRARY_ARTICLE_SORT_BY = 'publishedAt' as const satisfies LibraryArticleSortField;
+
+const libraryThemeQuerySchema = z.preprocess(
+  emptyToUndefined,
+  z.string().trim().min(1).max(ARTICLE_THEME_MAX_LEN).optional(),
+);
+
+const librarySearchQuerySchema = z.preprocess(
+  emptyToUndefined,
+  z.string().trim().min(1).max(ARTICLE_TITLE_MAX).optional(),
+);
+
+/** Query for `GET /api/articles` (pagination + sort + library filters). */
+export const libraryArticleListQuerySchema = paginationQuerySchema.extend({
+  sortBy: createSortByQuerySchema(LIBRARY_ARTICLE_SORT_FIELDS, DEFAULT_LIBRARY_ARTICLE_SORT_BY),
+  theme: libraryThemeQuerySchema,
+  q: librarySearchQuerySchema,
+});
+
+export type LibraryArticleListQuery = z.infer<typeof libraryArticleListQuerySchema>;
+
+export const libraryArticleListDataSchema = z.object({
+  items: z.array(articleSchema),
+  pagination: paginationMetaSchema,
+  themes: z.array(z.string()),
+});
+
+export type LibraryArticleListData = z.infer<typeof libraryArticleListDataSchema>;
+
+export { buildPaginationMeta };
 
 export type PublishArticleIssue = { path: string; message: string };
 

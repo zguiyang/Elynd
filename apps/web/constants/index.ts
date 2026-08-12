@@ -11,6 +11,15 @@ export const AUTH_ROUTES = {
   dashboard: '/dashboard',
   library: '/library',
   libraryArticle: (id: string) => `/library/${id}` as const,
+  learn: '/learn',
+  learnArticle: (id: string) => `/learn/${id}` as const,
+  learnPractice: (id: string) => `/learn/${id}/practice` as const,
+} as const;
+
+/** Static demo ids for Today → Learn wiring (no API yet). */
+export const LEARN_DEMO = {
+  oceans: 'demo-oceans',
+  habits: 'demo-habits',
 } as const;
 
 export const ADMIN_ROUTES = {

@@ -20,7 +20,7 @@ export function hasSessionCookie(getCookie: (name: string) => string | undefined
   return Boolean(getCookie(SESSION_COOKIE) || getCookie(SESSION_COOKIE_SECURE));
 }
 
-const APP_PREFIXES = [AUTH_ROUTES.dashboard, AUTH_ROUTES.library, ADMIN_ROUTES.root] as const;
+const APP_PREFIXES = [AUTH_ROUTES.dashboard, AUTH_ROUTES.library, AUTH_ROUTES.learn, ADMIN_ROUTES.root] as const;
 const AUTH_ONLY = [AUTH_ROUTES.signIn, AUTH_ROUTES.signUp] as const;
 
 function matchesPrefix(pathname: string, prefix: string) {

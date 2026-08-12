@@ -1,8 +1,9 @@
 import { type AdminArticleListQuery, type CreateArticleBody, type UpdateArticleBody } from '@elynd/shared/api/articles';
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, type PaginationMeta } from '@elynd/shared/api/pagination';
 
 import {
+  adminArticleListResponseSchema,
   articleDataSchema,
-  articleListDataSchema,
   type ArticleView,
   formatArticlesApiError,
   normalizeArticle,
@@ -11,21 +12,47 @@ import {
 
 export type AdminArticle = ArticleView;
 
+export type AdminListResult = {
+  items: AdminArticle[];
+  pagination: PaginationMeta;
+};
+
+export type AdminListParams = Partial<AdminArticleListQuery>;
+
 export const adminArticlesQueryKey = {
   all: ['admin-articles'] as const,
-  list: (status?: AdminArticleListQuery['status']) => [...adminArticlesQueryKey.all, 'list', status ?? 'all'] as const,
+  list: (params: AdminListParams) => [...adminArticlesQueryKey.all, 'list', params] as const,
   detail: (id: string) => [...adminArticlesQueryKey.all, 'detail', id] as const,
 };
 
+function buildAdminListQuery(params: AdminListParams): string {
+  const search = new URLSearchParams();
+  search.set('page', String(params.page ?? DEFAULT_PAGE));
+  search.set('pageSize', String(params.pageSize ?? DEFAULT_PAGE_SIZE));
+  if (params.sortBy) {
+    search.set('sortBy', params.sortBy);
+  }
+  if (params.sortOrder) {
+    search.set('sortOrder', params.sortOrder);
+  }
+  if (params.status) {
+    search.set('status', params.status);
+  }
+  return search.toString();
+}
+
 export async function listAdminArticles(
-  status?: AdminArticleListQuery['status'],
+  params: AdminListParams = {},
   init?: { signal?: AbortSignal },
-): Promise<AdminArticle[]> {
-  const qs = status ? `?status=${encodeURIComponent(status)}` : '';
-  const body = await requestArticlesJson(`/api/admin/articles${qs}`, articleListDataSchema, {
+): Promise<AdminListResult> {
+  const qs = buildAdminListQuery(params);
+  const body = await requestArticlesJson(`/api/admin/articles?${qs}`, adminArticleListResponseSchema, {
     signal: init?.signal,
   });
-  return body.data.items.map(normalizeArticle);
+  return {
+    items: body.data.items.map(normalizeArticle),
+    pagination: body.data.pagination,
+  };
 }
 
 export async function getAdminArticle(id: string, init?: { signal?: AbortSignal }): Promise<AdminArticle> {

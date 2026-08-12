@@ -19,5 +19,3 @@ export const ADMIN_ROUTES = {
   articleNew: '/admin/articles/new',
   articleEdit: (id: string) => `/admin/articles/${id}/edit` as const,
 } as const;
-
-export const ADMIN_ARTICLES_PAGE_SIZE = 10 as const;

@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
-import { type Article, articleSchema, libraryArticleListDataSchema } from '@elynd/shared/api/articles';
+import {
+  adminArticleListDataSchema,
+  type Article,
+  articleSchema,
+  libraryArticleListDataSchema,
+} from '@elynd/shared/api/articles';
 
 /** Article view model: same fields as shared `Article`, dates as ISO strings. */
 export type ArticleView = {
@@ -60,10 +65,8 @@ export function normalizeArticle(raw: Article): ArticleView {
 }
 
 export const articleDataSchema = z.object({ data: articleSchema });
-export const articleListDataSchema = z.object({
-  data: z.object({
-    items: z.array(articleSchema),
-  }),
+export const adminArticleListResponseSchema = z.object({
+  data: adminArticleListDataSchema,
 });
 export const libraryArticleListResponseSchema = z.object({
   data: libraryArticleListDataSchema,

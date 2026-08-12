@@ -10,9 +10,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { AUTH_ROUTES } from '@/constants';
-import { ArticlesRequestError } from '@/features/articles-http';
 import { formatLibraryApiError, getPublishedArticle, libraryArticlesQueryKey } from '@/features/library/articles-api';
 import { LEVEL_LABEL, paragraphsFromBody } from '@/features/library/library-model';
+import { ApiRequestError } from '@/lib/api-request';
 
 type ArticleReaderPageProps = {
   articleId: string;
@@ -25,7 +25,7 @@ export function ArticleReaderPage({ articleId }: ArticleReaderPageProps) {
   });
 
   const article = detailQuery.data;
-  const isNotFound = detailQuery.error instanceof ArticlesRequestError && detailQuery.error.status === 404;
+  const isNotFound = detailQuery.error instanceof ApiRequestError && detailQuery.error.status === 404;
 
   return (
     <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700 mx-auto max-w-6xl">

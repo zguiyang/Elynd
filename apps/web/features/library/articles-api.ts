@@ -1,14 +1,8 @@
-import { type LibraryArticleListQuery } from '@elynd/shared/api/articles';
+import { articleSchema, libraryArticleListDataSchema, type LibraryArticleListQuery } from '@elynd/shared/api/articles';
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, type PaginationMeta } from '@elynd/shared/api/pagination';
 
-import {
-  articleDataSchema,
-  type ArticleView,
-  formatArticlesApiError,
-  libraryArticleListResponseSchema,
-  normalizeArticle,
-  requestArticlesJson,
-} from '@/features/articles-http';
+import { type ArticleView, normalizeArticle } from '@/features/articles-http';
+import { apiRequest, formatApiError } from '@/lib/api-request';
 
 export type LibraryArticle = ArticleView;
 
@@ -50,21 +44,23 @@ export async function listPublishedArticles(
   init?: { signal?: AbortSignal },
 ): Promise<LibraryListResult> {
   const qs = buildLibraryListQuery(params);
-  const body = await requestArticlesJson(`/api/articles?${qs}`, libraryArticleListResponseSchema, {
+  const body = await apiRequest(`/api/articles?${qs}`, {
+    schema: libraryArticleListDataSchema,
     signal: init?.signal,
   });
   return {
-    items: body.data.items.map(normalizeArticle),
-    pagination: body.data.pagination,
-    themes: body.data.themes,
+    items: body.items.map(normalizeArticle),
+    pagination: body.pagination,
+    themes: body.themes,
   };
 }
 
 export async function getPublishedArticle(id: string, init?: { signal?: AbortSignal }): Promise<LibraryArticle> {
-  const body = await requestArticlesJson(`/api/articles/${encodeURIComponent(id)}`, articleDataSchema, {
+  const article = await apiRequest(`/api/articles/${encodeURIComponent(id)}`, {
+    schema: articleSchema,
     signal: init?.signal,
   });
-  return normalizeArticle(body.data);
+  return normalizeArticle(article);
 }
 
-export const formatLibraryApiError = formatArticlesApiError;
+export const formatLibraryApiError = formatApiError;

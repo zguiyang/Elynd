@@ -4,5 +4,5 @@ export type AuthError = {
   status?: number;
 };
 
-/** Client-side request result (UX). Distinct from HTTP `{ data: T }` payloads. */
+/** Client-side request result (UX). Distinct from business API JSON bodies. */
 export type AuthResult<T> = { data: T; error: null } | { data: null; error: AuthError };

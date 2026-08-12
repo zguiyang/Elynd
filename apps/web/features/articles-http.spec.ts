@@ -2,10 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { Article } from '@elynd/shared/api/articles';
 
-import { articleDataSchema, ArticlesRequestError, normalizeArticle, requestArticlesJson } from './articles-http';
+import { normalizeArticle } from './articles-http';
 
 afterEach(() => {
-  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
@@ -56,48 +55,5 @@ describe('normalizeArticle', () => {
     } satisfies Article;
 
     expect(normalizeArticle(raw)).toEqual(raw);
-  });
-});
-
-describe('requestArticlesJson error mapping', () => {
-  it('throws ArticlesRequestError with message and details from error JSON', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ error: '标题无效', details: [{ path: 'title', message: '太短' }] }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      ),
-    );
-
-    try {
-      await requestArticlesJson('/api/articles/x', articleDataSchema);
-      expect.unreachable('expected ArticlesRequestError');
-    } catch (error) {
-      expect(error).toBeInstanceOf(ArticlesRequestError);
-      expect(error).toMatchObject({
-        message: '标题无效',
-        status: 400,
-        details: [{ path: 'title', message: '太短' }],
-      });
-    }
-  });
-
-  it('throws 502 ArticlesRequestError when response body fails schema', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ data: { not: 'an-article' } }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      ),
-    );
-
-    await expect(requestArticlesJson('/api/articles/x', articleDataSchema)).rejects.toMatchObject({
-      message: '响应格式无效',
-      status: 502,
-    });
   });
 });

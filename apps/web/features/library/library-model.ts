@@ -1,4 +1,9 @@
-import type { ArticleLevel } from '@elynd/shared/api/articles';
+import {
+  type ArticleLevel,
+  DEFAULT_LIBRARY_ARTICLE_SORT_BY,
+  type LibraryArticleSortField,
+} from '@elynd/shared/api/articles';
+import { DEFAULT_SORT_ORDER, type SortOrder } from '@elynd/shared/api/pagination';
 
 export const LIBRARY_THEME_ALL = 'all' as const;
 
@@ -7,6 +12,48 @@ export const LEVEL_LABEL: Record<ArticleLevel, string> = {
   mid: '中等',
   stretch: '稍难',
 };
+
+/** Combined sort presets for the library shelf (maps to API sortBy + sortOrder). */
+export const LIBRARY_SORT_PRESETS = [
+  { value: 'publishedAt:desc', label: '最新发布', sortBy: 'publishedAt', sortOrder: 'desc' },
+  { value: 'publishedAt:asc', label: '最早发布', sortBy: 'publishedAt', sortOrder: 'asc' },
+  { value: 'updatedAt:desc', label: '最近更新', sortBy: 'updatedAt', sortOrder: 'desc' },
+  { value: 'createdAt:desc', label: '最近创建', sortBy: 'createdAt', sortOrder: 'desc' },
+] as const satisfies ReadonlyArray<{
+  value: string;
+  label: string;
+  sortBy: LibraryArticleSortField;
+  sortOrder: SortOrder;
+}>;
+
+export type LibrarySortPreset = (typeof LIBRARY_SORT_PRESETS)[number];
+
+export const DEFAULT_LIBRARY_SORT_PRESET = LIBRARY_SORT_PRESETS[0];
+
+export function resolveLibrarySortPreset(sortBy: LibraryArticleSortField, sortOrder: SortOrder): LibrarySortPreset {
+  return (
+    LIBRARY_SORT_PRESETS.find((item) => item.sortBy === sortBy && item.sortOrder === sortOrder) ??
+    DEFAULT_LIBRARY_SORT_PRESET
+  );
+}
+
+export function parseLibrarySortBy(raw: string | null): LibraryArticleSortField {
+  if (raw === 'publishedAt' || raw === 'updatedAt' || raw === 'createdAt') {
+    return raw;
+  }
+  return DEFAULT_LIBRARY_ARTICLE_SORT_BY;
+}
+
+export function parseLibrarySortOrder(raw: string | null): SortOrder {
+  if (raw === 'asc' || raw === 'desc') {
+    return raw;
+  }
+  return DEFAULT_SORT_ORDER;
+}
+
+export function isDefaultLibrarySort(sortBy: LibraryArticleSortField, sortOrder: SortOrder): boolean {
+  return sortBy === DEFAULT_LIBRARY_ARTICLE_SORT_BY && sortOrder === DEFAULT_SORT_ORDER;
+}
 
 /** Semantic cover washes — deterministic pick from theme/title seed. */
 export const VOLUME_COVER_TINTS = ['bg-paper', 'bg-muted', 'bg-secondary', 'bg-accent/50'] as const;
@@ -24,42 +71,6 @@ export function hashSeed(seed: string): number {
 export function coverTintForVolume(themes: string[], title: string): VolumeCoverTint {
   const seed = themes[0]?.trim() || title.trim() || 'volume';
   return VOLUME_COVER_TINTS[hashSeed(seed) % VOLUME_COVER_TINTS.length]!;
-}
-
-export function aggregateThemes(items: { themes: string[] }[]): string[] {
-  const seen = new Set<string>();
-  const ordered: string[] = [];
-  for (const item of items) {
-    for (const theme of item.themes) {
-      const key = theme.trim();
-      if (!key || seen.has(key)) {
-        continue;
-      }
-      seen.add(key);
-      ordered.push(key);
-    }
-  }
-  return ordered;
-}
-
-export function filterLibraryArticles<T extends { title: string; themes: string[] }>(
-  items: T[],
-  options: { theme: string; query: string },
-): T[] {
-  const theme = options.theme.trim();
-  const query = options.query.trim().toLowerCase();
-
-  return items.filter((item) => {
-    if (theme !== LIBRARY_THEME_ALL && !item.themes.some((t) => t.trim() === theme)) {
-      return false;
-    }
-    if (!query) {
-      return true;
-    }
-    const isInTitle = item.title.toLowerCase().includes(query);
-    const isInThemes = item.themes.some((t) => t.toLowerCase().includes(query));
-    return isInTitle || isInThemes;
-  });
 }
 
 export function paragraphsFromBody(body: string): string[] {

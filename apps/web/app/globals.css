@@ -51,6 +51,16 @@
   --radius-4xl: calc(var(--radius) * 2.6);
   --shadow-card: var(--elynd-shadow-card);
   --ease-out-soft: var(--ease-out);
+  --animate-shelf-progress: shelf-progress 1.15s ease-in-out infinite;
+}
+
+@keyframes shelf-progress {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
 }
 
 /*

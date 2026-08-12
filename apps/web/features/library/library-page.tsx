@@ -4,16 +4,19 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { BookOpenIcon, ChevronLeftIcon, ChevronRightIcon, LibraryIcon, SearchIcon, XIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { DEFAULT_LIBRARY_ARTICLE_SORT_BY, type LibraryArticleSortField } from '@elynd/shared/api/articles';
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEFAULT_SORT_ORDER, type SortOrder } from '@elynd/shared/api/pagination';
 
+import { LoadingOverlay } from '@/components/loading-overlay';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useMinimumHold } from '@/components/use-minimum-hold';
 import { AUTH_ROUTES } from '@/constants';
 import {
   formatLibraryApiError,
@@ -116,13 +119,8 @@ const shelfTurnClassName = cn(
 function VolumeCardSkeleton() {
   return (
     <div className="flex flex-col" aria-hidden>
-      <div
-        className={cn(
-          'aspect-[3/4] rounded-3xl border border-border/60 bg-paper ring-1 ring-foreground/5',
-          'motion-safe:animate-pulse',
-        )}
-      />
-      <div className={cn('mt-4 h-10 rounded-xl bg-muted/70', 'motion-safe:animate-pulse')} />
+      <Skeleton className="aspect-[3/4] rounded-3xl border border-border/60 bg-paper ring-1 ring-foreground/5" />
+      <Skeleton className="mt-4 h-10 rounded-xl bg-muted/70" />
     </div>
   );
 }
@@ -135,77 +133,6 @@ function ShelfSkeleton({ count }: { count: number }) {
       ))}
     </div>
   );
-}
-
-/** Progress track under filters — always reserved so the shelf does not jump. */
-function ShelfRefreshChrome({ isActive }: { isActive: boolean }) {
-  return (
-    <div
-      className={cn(
-        'mt-4 h-0.5 w-full overflow-hidden rounded-full bg-border/50',
-        'transition-opacity duration-300 ease-out-soft',
-        isActive ? 'opacity-100' : 'opacity-0',
-      )}
-      aria-hidden={!isActive}
-    >
-      <div className={cn('h-full w-1/3 rounded-full bg-primary', isActive && 'motion-safe:animate-shelf-progress')} />
-    </div>
-  );
-}
-
-/**
- * Keep a transient "active" UI flag on for at least `minMs` from when it became true.
- * setState only runs inside timeouts (avoids sync setState-in-effect lint).
- */
-function useMinimumHold(isActive: boolean, minMs: number): boolean {
-  const [isHolding, setIsHolding] = useState(false);
-  const startedAtRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    let isCancelled = false;
-    let endHoldTimer: number | undefined;
-
-    if (isActive) {
-      if (startedAtRef.current == null) {
-        startedAtRef.current = Date.now();
-      }
-      return () => {
-        isCancelled = true;
-        if (endHoldTimer != null) {
-          window.clearTimeout(endHoldTimer);
-        }
-      };
-    }
-
-    const startedAt = startedAtRef.current;
-    startedAtRef.current = null;
-    if (startedAt == null) {
-      return;
-    }
-
-    const remainMs = Math.max(0, minMs - (Date.now() - startedAt));
-    const startHoldTimer = window.setTimeout(() => {
-      if (isCancelled) {
-        return;
-      }
-      setIsHolding(true);
-      endHoldTimer = window.setTimeout(() => {
-        if (!isCancelled) {
-          setIsHolding(false);
-        }
-      }, remainMs);
-    }, 0);
-
-    return () => {
-      isCancelled = true;
-      window.clearTimeout(startHoldTimer);
-      if (endHoldTimer != null) {
-        window.clearTimeout(endHoldTimer);
-      }
-    };
-  }, [isActive, minMs]);
-
-  return isActive || isHolding;
 }
 
 export function LibraryPage() {
@@ -479,10 +406,7 @@ export function LibraryPage() {
         </div>
       </div>
 
-      <ShelfRefreshChrome isActive={isShelfRefreshVisible || isInitialLoading} />
-
       <section className="mt-8" aria-busy={isInitialLoading || isShelfRefreshVisible}>
-        {isShelfRefreshVisible ? <span className="sr-only">正在更新书架</span> : null}
         {isInitialLoading ? (
           <ShelfSkeleton count={SHELF_SKELETON_COUNT} />
         ) : listQuery.isError && !listQuery.data ? (
@@ -512,31 +436,13 @@ export function LibraryPage() {
             </EmptyHeader>
           </Empty>
         ) : (
-          <div className="relative">
-            <div
-              className={cn(
-                shelfGridClassName,
-                'transition-opacity duration-500 ease-out-soft',
-                isShelfRefreshVisible && 'pointer-events-none opacity-40',
-              )}
-            >
+          <LoadingOverlay active={isShelfRefreshVisible} label="书架整理中…">
+            <div className={shelfGridClassName}>
               {articles.map((article) => (
                 <VolumeCard key={article.id} article={article} />
               ))}
             </div>
-            <div
-              className={cn(
-                'pointer-events-none absolute inset-x-0 top-10 flex justify-center',
-                'transition-opacity duration-300 ease-out-soft',
-                isShelfRefreshVisible ? 'opacity-100' : 'opacity-0',
-              )}
-              aria-hidden={!isShelfRefreshVisible}
-            >
-              <div className="rounded-2xl border border-border bg-card/95 px-4 py-2.5 text-sm shadow-card">
-                <span className="text-brand-deep">正在整理书架…</span>
-              </div>
-            </div>
-          </div>
+          </LoadingOverlay>
         )}
       </section>
 

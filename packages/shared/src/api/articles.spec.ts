@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  adminArticleListQuerySchema,
   ARTICLE_BODY_MAX_WORDS,
   countArticleWords,
   createArticleBodySchema,
+  DEFAULT_ADMIN_ARTICLE_SORT_BY,
   DEFAULT_LIBRARY_ARTICLE_SORT_BY,
   getPublishArticleIssues,
   libraryArticleListQuerySchema,
@@ -93,6 +95,33 @@ describe('article api contracts', () => {
       { path: 'sourceNote', message: '发布前请填写来源说明' },
       { path: 'themes', message: '发布前请至少添加一个主题' },
     ]);
+  });
+
+  it('defaults admin list query pagination and sort', () => {
+    expect(adminArticleListQuerySchema.parse({})).toEqual({
+      page: DEFAULT_PAGE,
+      pageSize: DEFAULT_PAGE_SIZE,
+      sortBy: DEFAULT_ADMIN_ARTICLE_SORT_BY,
+      sortOrder: DEFAULT_SORT_ORDER,
+      status: undefined,
+    });
+  });
+
+  it('parses admin list status and pagination from query strings', () => {
+    expect(
+      adminArticleListQuerySchema.parse({
+        page: '2',
+        pageSize: '5',
+        sortOrder: 'asc',
+        status: 'draft',
+      }),
+    ).toEqual({
+      page: 2,
+      pageSize: 5,
+      sortBy: DEFAULT_ADMIN_ARTICLE_SORT_BY,
+      sortOrder: 'asc',
+      status: 'draft',
+    });
   });
 
   it('defaults library list query pagination and sort', () => {

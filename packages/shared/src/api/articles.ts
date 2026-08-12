@@ -100,11 +100,25 @@ export const updateArticleBodySchema = z
 
 export type UpdateArticleBody = z.infer<typeof updateArticleBodySchema>;
 
-export const adminArticleListQuerySchema = z.object({
-  status: z.enum(ARTICLE_STATUSES).optional(),
+/** Admin list sort fields (default: updatedAt). */
+export const ADMIN_ARTICLE_SORT_FIELDS = ['updatedAt'] as const;
+export type AdminArticleSortField = (typeof ADMIN_ARTICLE_SORT_FIELDS)[number];
+export const DEFAULT_ADMIN_ARTICLE_SORT_BY = 'updatedAt' as const satisfies AdminArticleSortField;
+
+/** Query for `GET /api/admin/articles` (pagination + status filter). */
+export const adminArticleListQuerySchema = paginationQuerySchema.extend({
+  sortBy: createSortByQuerySchema(ADMIN_ARTICLE_SORT_FIELDS, DEFAULT_ADMIN_ARTICLE_SORT_BY),
+  status: z.preprocess(emptyToUndefined, z.enum(ARTICLE_STATUSES).optional()),
 });
 
 export type AdminArticleListQuery = z.infer<typeof adminArticleListQuerySchema>;
+
+export const adminArticleListDataSchema = z.object({
+  items: z.array(articleSchema),
+  pagination: paginationMetaSchema,
+});
+
+export type AdminArticleListData = z.infer<typeof adminArticleListDataSchema>;
 
 /** Learner library list sort fields (default: publishedAt). */
 export const LIBRARY_ARTICLE_SORT_FIELDS = ['publishedAt', 'updatedAt', 'createdAt'] as const;

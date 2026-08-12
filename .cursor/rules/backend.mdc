@@ -6,9 +6,9 @@ alwaysApply: false
 
 # Backend (`apps/backend`)
 
-Hono API on Node (`@hono/node-server`). Layout and module rules align with JoyKit; auth is **Better Auth** (not JoyKit JWT).
+Hono API on Node (`@hono/node-server`). Auth: **Better Auth**.
 
-Placement vs monorepo: `layering` + `structure`. Persistence schema lives in `@elynd/db` (Drizzle).
+Placement: `layering` + `structure`. Schema: `@elynd/db` (Drizzle).
 
 ## Directory layout
 
@@ -57,7 +57,3 @@ Mount new modules from `routes/index.ts` only — do not grow business logic in 
 ## Env
 
 `getEnvConfig()` in `src/lib/env.ts` loads package `.env` and Zod-`parse`s it (fail fast at import/boot). Call sites read the exported `env` object — no `process.env` scattered in modules, no one-off getters per variable. Keep only vars the runtime actually reads.
-
-## Out of scope here
-
-- Next `apps/web` → `frontend.mdc`

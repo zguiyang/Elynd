@@ -1,13 +1,13 @@
 ---
-description: When to create, delete, split, move files or directories (always-on)
+description: Structure — when to create, delete, split, or move files/dirs (always-on mechanical SSOT)
 alwaysApply: true
 ---
 
 # Structure
 
-Use **Condition → Action → Verification** for create/delete/move/split. Ask-first list: `core`.
+Mechanical file/dir SSOT (create/delete/move/split). Coding minimalism: `ponytail`. Ask-first list: `core`.
 
-**SRP ≠ one function per file.** Extract a module only when the tables below say so—not for “cleanliness.”
+Use **Condition → Action → Verification**. **SRP ≠ one function per file** — extract only when the tables below say so, not for “cleanliness.”
 
 ## Add code
 
@@ -31,13 +31,13 @@ Before creating a file, confirm: ≥2 real consumers **or** framework layout req
 
 ### Env / config (anti-wrapper)
 
-Required env: validate at boot or config entry (fail fast). Call sites read `process.env` / app config **directly**.
+Required env: validate at boot or config entry (fail fast). Call sites read that validated source — `process.env` where that is the app pattern, or a single boot-parsed config object (e.g. backend `env` from `getEnvConfig()`). Do **not** add one-off getter modules per variable.
 
 | ❌ BAD | ✅ GOOD |
 | --- | --- |
 | `lib/api-internal-url.ts` with one `env ?? default` getter | Require `API_INTERNAL_URL` in `next.config.ts` / env types; `proxy` reads `process.env.API_INTERNAL_URL` |
 | New file for a helper used once inside one service | Private method or inline in that service |
-| One env var → one dedicated getter module | One config module only when it groups **several** related settings for **2+** callers |
+| One env var → one dedicated getter module | One boot config module grouping related settings (e.g. backend `src/lib/env.ts`); call sites import `env` |
 
 ## Delete
 

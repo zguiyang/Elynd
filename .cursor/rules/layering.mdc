@@ -54,7 +54,7 @@ Downstream only; typecheck each layer before the next:
 | API response shape | backend (+tests) → shared if public → web → UI |
 | Shared constant | define once in owner / `@elynd/shared`; import |
 
-Never update only one layer. Same-fact copies: see SSOT in `core`.
+Never update only one layer. Same-fact copies: SSOT in `core`.
 
 ## Constants
 

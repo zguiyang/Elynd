@@ -34,7 +34,7 @@ Feature/component files: `kebab-case` (`sign-in-form.tsx`); PascalCase exports. 
 | Assets | `public/` | optional (`.gitkeep` OK) |
 
 - Prefer existing `components/ui/`; shadcn CLI; ask before editing `components/ui/**` source
-- NEVER use Zustand as SoT for API/server data
+- Zustand: UI-only — never API/server SoT (`layering`)
 
 ## Styling
 

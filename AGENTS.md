@@ -32,35 +32,46 @@ Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root).
 
 ## Rules source of truth
 
-[`.cursor/rules/`](.cursor/rules/). Project rules win over Cursor User Rules on conflict.
+[`.cursor/rules/`](.cursor/rules/). Bodies live only in those files — this index does not restate them.
 
-### Precedence
+### Loading
+
+| Mode                                   | Rules                                                                                 |
+| -------------------------------------- | ------------------------------------------------------------------------------------- |
+| Always-on                              | `core`, `ponytail`, `layering`, `structure`                                           |
+| Glob (when matching paths are in play) | `backend` (`apps/backend/**`), `frontend` (`apps/web/**`), `packages` (`packages/**`) |
+| On demand                              | Project skills (by description) → MCP if skills insufficient                          |
+
+### Precedence (first wins on conflict)
 
 1. Tooling (ESLint, Prettier, typecheck, tests)
-2. Always-on: `core`, `layering`, `structure`
-3. Glob: `hono-backend` / `frontend` / `packages`
-4. **[`DESIGN.md`](DESIGN.md)** for visual / UI appearance (when touching `apps/web` UI)
-5. Project skills (load by description first; see `core` “Skills before MCP”)
-6. MCP (docs / live systems) when skills are insufficient
-7. **Filled** [`docs/product/`](docs/product/) for product-scope decisions
-8. User Rules
+2. `core` — Ask/Never, decision gate, TDD, security, DoD
+3. `ponytail` — coding minimalism / ladder
+4. `layering` — where a concern belongs
+5. `structure` — create/delete/split/move files
+6. Glob rule for the touched app/package
+7. **[`DESIGN.md`](DESIGN.md)** for visual / UI appearance (`apps/web` UI)
+8. Project skills
+9. MCP (docs / live systems)
+10. **Filled** [`docs/product/`](docs/product/) for product-scope decisions
+11. User Rules
 
 ### Index
 
-| Rule                                               | When                                                                   |
-| -------------------------------------------------- | ---------------------------------------------------------------------- |
-| [core.mdc](.cursor/rules/core.mdc)                 | Always — decision gate, Ask/Never, skills-before-MCP, TDD, DoD, router |
-| [layering.mdc](.cursor/rules/layering.mdc)         | Always — package graph, concern placement, cross-layer order           |
-| [structure.mdc](.cursor/rules/structure.mdc)       | Always — create/delete/split/move; anti over-extraction                |
-| [hono-backend.mdc](.cursor/rules/hono-backend.mdc) | `apps/backend/**` (Hono API)                                           |
-| [frontend.mdc](.cursor/rules/frontend.mdc)         | `apps/web/**`                                                          |
-| [packages.mdc](.cursor/rules/packages.mdc)         | `packages/**`                                                          |
+| Rule                                         | Load              | Role                                                |
+| -------------------------------------------- | ----------------- | --------------------------------------------------- |
+| [core.mdc](.cursor/rules/core.mdc)           | Always            | Constitution, gate, Ask/Never, TDD, DoD, router     |
+| [ponytail.mdc](.cursor/rules/ponytail.mdc)   | Always            | Lazy-senior ladder before writing code              |
+| [layering.mdc](.cursor/rules/layering.mdc)   | Always            | Package graph, concern placement, cross-layer order |
+| [structure.mdc](.cursor/rules/structure.mdc) | Always            | File/dir create/delete/split/move                   |
+| [backend.mdc](.cursor/rules/backend.mdc)     | `apps/backend/**` | Hono API conventions                                |
+| [frontend.mdc](.cursor/rules/frontend.mdc)   | `apps/web/**`     | Next.js / UI conventions                            |
+| [packages.mdc](.cursor/rules/packages.mdc)   | `packages/**`     | Shared package conventions                          |
 
 ## Language
 
-- Conversation with the user: Chinese (中文) when the user writes Chinese
-- **Documentation** (including `docs/`, README product sections, comments): **English**
-- Commits / code identifiers: English
+- Conversation: Chinese when the user writes Chinese
+- Documentation, commits, code identifiers: English
 
 ## Common commands
 

@@ -1,65 +1,64 @@
 ---
-description: Elynd constitution — principles, boundaries, DoD, router (always-on)
+description: Elynd constitution — decision gate, Ask/Never, TDD, DoD, router (always-on)
 alwaysApply: true
 ---
 
 # Core
 
-Elynd: English **learning space** for adults who struggle to persist—interesting, mostly understandable real content (read + listen); AI/tools lower friction. Not a course, vocab pack, or chatbot. Monorepo: `apps/backend` (Hono **3333**), `apps/web` (Next **3000**), `packages/shared` (cross-app constants/types), `packages/db` (Drizzle).
+Elynd: English **learning space** for adults who struggle to persist—interesting, mostly understandable real content (read + listen); AI/tools lower friction. Not a course, vocab pack, or chatbot. Monorepo: `apps/backend` (Hono **3333**), `apps/web` (Next **3000**), `packages/shared`, `packages/db` (Drizzle).
 
-Product SSOT: `docs/product/` (vision, philosophy, MVP scope, metrics, decision guide, guardrails). Prototypes: `prd/`.
-
-Language: talk to the user in **Chinese** when they write Chinese; **code, docs, comments, commits in English**.
+Product SSOT: `docs/product/`. Prototypes: `prd/`. Language: user Chinese → reply Chinese; **code, docs, comments, commits in English**.
 
 ## Principles
 
 | | |
 | --- | --- |
-| KISS | Simplest readable solution; early returns |
-| YAGNI | No speculative abstractions |
-| DRY | Extract only after **three** stabilized uses |
-| SSOT | One authority per fact — import/derive, never a parallel copy |
-| SRP | One cohesive concern per module/file |
+| KISS / YAGNI | Simplest readable solution; no speculative work — execution ladder: `ponytail` |
+| DRY | Extract shared **logic** only after **three** stabilized copies |
+| SSOT | One authority per fact — import/derive; never a parallel copy |
+| SRP | One cohesive concern per module/file — **not** one function per file; new files: `structure` |
 | Fail Fast | Never swallow errors |
 | Determinism | Tests deterministic; prefer file-scoped checks |
 | Reversibility | Small blast radius |
 
-**SSOT vs DRY:** DRY = when to share a helper (after 3 uses). SSOT = same fact (schema/env/policy/DTO) must not have a second definition — fix the owner or import. Side-effectful owner → fix the export; do not copy.
+**SSOT vs DRY:** DRY = when to share a helper (after 3 logic copies). SSOT = same fact (schema/env/policy/DTO) must not have a second definition — fix the owner or import; do not copy.
 
-**SRP:** one cohesive concern per module/file — **not** one function per file. Prefer inline until `structure` allows a new file.
+**DRY vs structure:** DRY counts logic copies; `structure` requires ≥2 real import consumers (or framework layout) before a **new file**. Different thresholds.
 
 ## Decision gate (no silent assumptions)
 
 Before a material plan or any behavior-changing implementation:
 
-1. Facts the repo/docs/tests can answer → inspect; do not ask the user.
+1. Facts the repo/docs/tests can answer → inspect; do not ask.
 2. User-owned decisions still open (product intent, scope, design forks, risk, acceptance) → **stop**; ask one highest-value question (recommendation + trade-off); do not implement that path yet.
-3. Default: **do not assume** (~90%). If you cannot decide, the user decides.
-4. Trivial local details only (naming within existing convention, mechanical wiring with one clear in-repo pattern) → may proceed; **disclose briefly after** in the same reply or wrap-up.
+3. Default: **do not assume** (~90%). If you cannot decide, the user decides. Multiple interpretations → present them; do not pick silently.
+4. Trivial local details only (naming within convention, mechanical wiring with one clear in-repo pattern) → may proceed; **disclose briefly after**.
 
-Never silently fill an open design fork. Locked choices already recorded in the active task brief / design notes (if any) count as decided.
+Never silently fill an open design fork. Locked choices in the active task brief / design notes count as decided.
+
+**Goal-driven:** turn work into verifiable success criteria, then loop until met. Weak goals (“make it work”) → tighten or ask first. Multi-step: brief `step → verify`.
 
 ## Must / Ask / Never
 
-**Must:** follow `layering` + `structure` before adding files/dirs; Drizzle schema in `packages/db` / cross-app contracts in `@elynd/shared` before inventing layout; DB schema before consumers; extend root `tsconfig.base.json` via relative paths.
+**Must:** follow `layering` + `structure` before adding files/dirs; Drizzle in `packages/db` / cross-app contracts in `@elynd/shared` before inventing layout; DB schema before consumers; extend root `tsconfig.base.json` via relative paths.
 
 **Ask first** (format: plan → reason → impact → alternative → proceed?):
 
 1. `components/ui/**` (design-system)
 2. Root/package config (`package.json`, `tsconfig*`, eslint/prettier, workspace)
 3. Deleting files or directories
-4. New deps or major bumps
+4. New deps or major bumps (`ponytail`: prefer avoid; Ask still required when adding)
 5. Auth method/provider changes
 6. Large schema changes affecting existing data
-7. Design forks not already locked in the active task: storage / token / session / rate-limit mechanism; new file or abstraction when `structure` is debatable; security or auth semantics; cross-app public contracts; required env vs silent default
+7. Design forks not locked in the active task: storage / token / session / rate-limit; new file or abstraction when `structure` is debatable; security or auth semantics; cross-app public contracts; required env vs silent default
 
 Exceptions: explicit user instruction for that path; obvious one-line bug fix; lint/test/typecheck runs; decisions already recorded in the active task PRD/design.
 
-**Never:** commit secrets/`.env`; commit local `docker-compose.yaml`; touch `node_modules/`; operate on production data; disable security middleware; start `dev:*`/`start`/`preview` without approval; `apps/web` ↔ `apps/backend` app-source imports; push without approval; write TypeScript imports with `.js`/`.mjs`/`.cjs`/`.jsx` suffixes when the target is a TS/TSX module (use extensionless or `.ts`/`.tsx`; only use `.js` when importing a real JavaScript file).
+**Never:** commit secrets/`.env` or local `docker-compose.yaml`; touch `node_modules/`; operate on production data; disable security middleware; start `dev:*`/`start`/`preview` without approval; `apps/web` ↔ `apps/backend` app-source imports; push without approval; TS/TSX imports with `.js`/`.mjs`/`.cjs`/`.jsx` suffixes (extensionless or `.ts`/`.tsx`; `.js` only when importing a real JavaScript file).
 
 ## Skills before MCP
 
-For framework, domain, or process work: load the matching **project skill(s)** (by their descriptions) and follow them **first**. Use MCP (Context7, browser, etc.) only when the skill lacks the needed fact, you need version-specific official docs beyond the skill, or you need a live external system. Do **not** maintain a skill-name inventory in rules — pick skills from descriptions.
+Load matching **project skill(s)** by description first. Use MCP only when the skill lacks the fact, you need version-specific official docs beyond the skill, or you need a live external system. Do not inventory skill names in rules.
 
 ## Security
 
@@ -67,7 +66,7 @@ No hardcoded secrets; no server secrets in client bundles; validate at boundarie
 
 ## TDD
 
-Default for behavior-changing API/web logic: failing test → minimal impl → green → refactor. If skipped in-scope, state why.
+Default for behavior-changing API/web logic: failing test → minimal impl → green → refactor. If skipped in-scope, state why. Wins over `ponytail`’s lighter check when both apply.
 
 **Exceptions:** docs/format/rename, minor style UI, tooling config, generated/scaffold, one-off migrations.
 
@@ -75,21 +74,22 @@ Default for behavior-changing API/web logic: failing test → minimal impl → g
 
 ## Definition of Done
 
-Relevant tests pass; `pnpm lint` / `format:check` / `typecheck` for touched scope; backend production-entry/build changes must verify `pnpm --filter @elynd/backend build` completes and emitted JS does not retain unresolved `@/*` imports; no dead code/dangling imports; explicit errors; no new TODO unless deferred by user; no new single-consumer helper file that `structure` would reject; any self-judged trivial detail was disclosed to the user.
+Relevant tests pass; `pnpm lint` / `format:check` / `typecheck` for touched scope; backend production-entry/build changes must verify `pnpm --filter @elynd/backend build` and emitted JS has no unresolved `@/*` imports; no dead code/dangling imports; explicit errors; no new TODO unless deferred by user; no new single-consumer helper file `structure` would reject; trivial self-judged details disclosed.
 
 ## Commit (agent)
 
-English imperative; one logical change; prefer subject-only. Format via commitlint — do not restate types here. Review staged diff before commit.
+English imperative; one logical change; prefer subject-only. Format via commitlint. Review staged diff before commit.
 
 ## Intent router
 
 | Intent | Follow |
 | --- | --- |
-| New API feature on Hono (`apps/backend`) | `hono-backend` + `structure` + `layering` (`@elynd/db`) |
+| Any code change | `ponytail` (stance) + relevant row below |
+| New API feature (`apps/backend`) | `backend` + `structure` + `layering` |
 | Web UI / `features/**` | `frontend` |
 | Package / schema ownership | `packages` + `layering` |
 | Add/delete/split/move files or dirs | `structure` |
 | Where does X belong? | `layering` |
-| Product scope / should we build X / drift risk | `docs/product/` (decision guide + guardrails + MVP scope) |
+| Product scope / build X? | `docs/product/` |
 
-Rule SoT: `.cursor/rules/`. Tooling (ESLint, Prettier, typecheck, tests) wins on conflict. Filled `docs/product/` for product intent; User Rules last.
+Rule SoT: `.cursor/rules/`. Conflict order: tooling → `core` (Ask/Never/TDD/security) → `ponytail` (minimalism) → `layering` (placement) → `structure` (files) → glob rules → `DESIGN.md` (UI look) → skills → MCP → `docs/product/` → User Rules.

@@ -109,9 +109,9 @@ describe('Better Auth HTTP', () => {
       headers: { cookie },
     });
     expect(meAuthed.status).toBe(200);
-    const meBody = (await meAuthed.json()) as { data?: { email?: string; username?: string } };
-    expect(meBody.data?.email).toBe(email);
-    expect(meBody.data?.username).toBe(username);
+    const meBody = (await meAuthed.json()) as { email?: string; username?: string };
+    expect(meBody.email).toBe(email);
+    expect(meBody.username).toBe(username);
 
     const meAnon = await app.request('/api/me');
     expect(meAnon.status).toBe(401);
@@ -207,8 +207,8 @@ describe('Better Auth HTTP', () => {
       headers: { cookie: cookieHeader(adminLogin) },
     });
     expect(adminAllowed.status).toBe(200);
-    const adminBody = (await adminAllowed.json()) as { data?: { role?: string } };
-    expect(adminBody.data?.role).toBe(AUTH_ADMIN_ROLE);
+    const adminBody = (await adminAllowed.json()) as { role?: string };
+    expect(adminBody.role).toBe(AUTH_ADMIN_ROLE);
 
     await setUserRole(adminEmail, AUTH_USER_ROLE);
   });

@@ -116,12 +116,12 @@ describe('Articles HTTP', () => {
       body: JSON.stringify({ title: 'Rain Walk' }),
     });
     expect(create.status).toBe(201);
-    const created = (await create.json()) as { data: Article };
-    createdArticleIds.push(created.data.id);
-    expect(created.data.status).toBe('draft');
-    expect(created.data.publishedAt).toBeNull();
+    const created = (await create.json()) as Article;
+    createdArticleIds.push(created.id);
+    expect(created.status).toBe('draft');
+    expect(created.publishedAt).toBeNull();
 
-    const incompletePublish = await app.request(`/api/admin/articles/${created.data.id}/publish`, {
+    const incompletePublish = await app.request(`/api/admin/articles/${created.id}/publish`, {
       method: 'POST',
       headers: { cookie: admin.cookie },
     });
@@ -130,7 +130,7 @@ describe('Articles HTTP', () => {
     expect(incompleteBody.error).toBe('Validation failed');
     expect(incompleteBody.details.length).toBeGreaterThan(0);
 
-    const patch = await app.request(`/api/admin/articles/${created.data.id}`, {
+    const patch = await app.request(`/api/admin/articles/${created.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
       body: JSON.stringify({
@@ -143,58 +143,58 @@ describe('Articles HTTP', () => {
     });
     expect(patch.status).toBe(200);
 
-    const publish = await app.request(`/api/admin/articles/${created.data.id}/publish`, {
+    const publish = await app.request(`/api/admin/articles/${created.id}/publish`, {
       method: 'POST',
       headers: { cookie: admin.cookie },
     });
     expect(publish.status).toBe(200);
-    const published = (await publish.json()) as { data: Article };
-    expect(published.data.status).toBe('published');
-    expect(published.data.publishedAt).toBeTruthy();
+    const published = (await publish.json()) as Article;
+    expect(published.status).toBe('published');
+    expect(published.publishedAt).toBeTruthy();
 
     const adminList = await app.request('/api/admin/articles?status=published', {
       headers: { cookie: admin.cookie },
     });
     expect(adminList.status).toBe(200);
-    const adminListBody = (await adminList.json()) as { data: AdminArticleListData };
-    expect(adminListBody.data.items.some((item) => item.id === created.data.id)).toBe(true);
-    expect(adminListBody.data.pagination).toMatchObject({
+    const adminListBody = (await adminList.json()) as AdminArticleListData;
+    expect(adminListBody.items.some((item) => item.id === created.id)).toBe(true);
+    expect(adminListBody.pagination).toMatchObject({
       page: DEFAULT_PAGE,
       pageSize: DEFAULT_PAGE_SIZE,
       sortBy: 'updatedAt',
       sortOrder: DEFAULT_SORT_ORDER,
     });
-    expect(adminListBody.data.pagination.total).toBeGreaterThanOrEqual(1);
+    expect(adminListBody.pagination.total).toBeGreaterThanOrEqual(1);
 
     const learnerList = await app.request('/api/articles', {
       headers: { cookie: learner.cookie },
     });
     expect(learnerList.status).toBe(200);
-    const learnerListBody = (await learnerList.json()) as { data: LibraryArticleListData };
-    expect(learnerListBody.data.items.some((item) => item.id === created.data.id)).toBe(true);
-    expect(learnerListBody.data.pagination).toMatchObject({
+    const learnerListBody = (await learnerList.json()) as LibraryArticleListData;
+    expect(learnerListBody.items.some((item) => item.id === created.id)).toBe(true);
+    expect(learnerListBody.pagination).toMatchObject({
       page: DEFAULT_PAGE,
       pageSize: DEFAULT_PAGE_SIZE,
       sortBy: 'publishedAt',
       sortOrder: DEFAULT_SORT_ORDER,
     });
-    expect(learnerListBody.data.themes).toContain('故事');
+    expect(learnerListBody.themes).toContain('故事');
 
-    const learnerDetail = await app.request(`/api/articles/${created.data.id}`, {
+    const learnerDetail = await app.request(`/api/articles/${created.id}`, {
       headers: { cookie: learner.cookie },
     });
     expect(learnerDetail.status).toBe(200);
 
-    const unpublish = await app.request(`/api/admin/articles/${created.data.id}/unpublish`, {
+    const unpublish = await app.request(`/api/admin/articles/${created.id}/unpublish`, {
       method: 'POST',
       headers: { cookie: admin.cookie },
     });
     expect(unpublish.status).toBe(200);
-    const unpublished = (await unpublish.json()) as { data: Article };
-    expect(unpublished.data.status).toBe('draft');
-    expect(unpublished.data.publishedAt).toBeNull();
+    const unpublished = (await unpublish.json()) as Article;
+    expect(unpublished.status).toBe('draft');
+    expect(unpublished.publishedAt).toBeNull();
 
-    const learnerHidden = await app.request(`/api/articles/${created.data.id}`, {
+    const learnerHidden = await app.request(`/api/articles/${created.id}`, {
       headers: { cookie: learner.cookie },
     });
     expect(learnerHidden.status).toBe(404);
@@ -210,10 +210,10 @@ describe('Articles HTTP', () => {
       }),
     });
     expect(draftOnly.status).toBe(201);
-    const draft = (await draftOnly.json()) as { data: Article };
-    createdArticleIds.push(draft.data.id);
+    const draft = (await draftOnly.json()) as Article;
+    createdArticleIds.push(draft.id);
 
-    const learnerDraft = await app.request(`/api/articles/${draft.data.id}`, {
+    const learnerDraft = await app.request(`/api/articles/${draft.id}`, {
       headers: { cookie: learner.cookie },
     });
     expect(learnerDraft.status).toBe(404);
@@ -237,15 +237,15 @@ describe('Articles HTTP', () => {
         }),
       });
       expect(create.status).toBe(201);
-      const created = (await create.json()) as { data: Article };
-      createdArticleIds.push(created.data.id);
+      const created = (await create.json()) as Article;
+      createdArticleIds.push(created.id);
 
-      const publish = await app.request(`/api/admin/articles/${created.data.id}/publish`, {
+      const publish = await app.request(`/api/admin/articles/${created.id}/publish`, {
         method: 'POST',
         headers: { cookie: admin.cookie },
       });
       expect(publish.status).toBe(200);
-      return created.data.id;
+      return created.id;
     }
 
     const scienceId = await createPublished({
@@ -268,31 +268,31 @@ describe('Articles HTTP', () => {
       headers: { cookie: learner.cookie },
     });
     expect(byTheme.status).toBe(200);
-    const themeBody = (await byTheme.json()) as { data: LibraryArticleListData };
-    expect(themeBody.data.items.map((item) => item.id)).toEqual([scienceId]);
-    expect(themeBody.data.themes).toEqual(expect.arrayContaining(['science', 'story', 'nature']));
+    const themeBody = (await byTheme.json()) as LibraryArticleListData;
+    expect(themeBody.items.map((item) => item.id)).toEqual([scienceId]);
+    expect(themeBody.themes).toEqual(expect.arrayContaining(['science', 'story', 'nature']));
 
     const byQuery = await app.request('/api/articles?q=city&page=1&pageSize=10', {
       headers: { cookie: learner.cookie },
     });
     expect(byQuery.status).toBe(200);
-    const queryBody = (await byQuery.json()) as { data: LibraryArticleListData };
-    expect(queryBody.data.items.map((item) => item.id)).toEqual([storyId]);
+    const queryBody = (await byQuery.json()) as LibraryArticleListData;
+    expect(queryBody.items.map((item) => item.id)).toEqual([storyId]);
 
     const pageOne = await app.request('/api/articles?page=1&pageSize=2&sortBy=createdAt&sortOrder=asc', {
       headers: { cookie: learner.cookie },
     });
     expect(pageOne.status).toBe(200);
-    const pageOneBody = (await pageOne.json()) as { data: LibraryArticleListData };
-    expect(pageOneBody.data.items).toHaveLength(2);
-    expect(pageOneBody.data.pagination).toMatchObject({
+    const pageOneBody = (await pageOne.json()) as LibraryArticleListData;
+    expect(pageOneBody.items).toHaveLength(2);
+    expect(pageOneBody.pagination).toMatchObject({
       page: 1,
       pageSize: 2,
       sortBy: 'createdAt',
       sortOrder: 'asc',
     });
-    expect(pageOneBody.data.pagination.total).toBeGreaterThanOrEqual(3);
-    expect(pageOneBody.data.pagination.totalPages).toBeGreaterThanOrEqual(2);
+    expect(pageOneBody.pagination.total).toBeGreaterThanOrEqual(3);
+    expect(pageOneBody.pagination.totalPages).toBeGreaterThanOrEqual(2);
 
     const badPage = await app.request('/api/articles?page=0', {
       headers: { cookie: learner.cookie },
@@ -311,9 +311,9 @@ describe('Articles HTTP', () => {
         body: JSON.stringify({ title }),
       });
       expect(create.status).toBe(201);
-      const created = (await create.json()) as { data: Article };
-      createdArticleIds.push(created.data.id);
-      return created.data.id;
+      const created = (await create.json()) as Article;
+      createdArticleIds.push(created.id);
+      return created.id;
     }
 
     await createDraft('Admin Page Alpha');
@@ -324,32 +324,32 @@ describe('Articles HTTP', () => {
       headers: { cookie: admin.cookie },
     });
     expect(pageOne.status).toBe(200);
-    const pageOneBody = (await pageOne.json()) as { data: AdminArticleListData };
-    expect(pageOneBody.data.items).toHaveLength(2);
-    expect(pageOneBody.data.items.every((item) => item.status === 'draft')).toBe(true);
-    expect(pageOneBody.data.pagination).toMatchObject({
+    const pageOneBody = (await pageOne.json()) as AdminArticleListData;
+    expect(pageOneBody.items).toHaveLength(2);
+    expect(pageOneBody.items.every((item) => item.status === 'draft')).toBe(true);
+    expect(pageOneBody.pagination).toMatchObject({
       page: 1,
       pageSize: 2,
       sortBy: 'updatedAt',
       sortOrder: DEFAULT_SORT_ORDER,
     });
-    expect(pageOneBody.data.pagination.total).toBeGreaterThanOrEqual(3);
-    expect(pageOneBody.data.pagination.totalPages).toBeGreaterThanOrEqual(2);
+    expect(pageOneBody.pagination.total).toBeGreaterThanOrEqual(3);
+    expect(pageOneBody.pagination.totalPages).toBeGreaterThanOrEqual(2);
 
     const pageTwo = await app.request('/api/admin/articles?page=2&pageSize=2&status=draft', {
       headers: { cookie: admin.cookie },
     });
     expect(pageTwo.status).toBe(200);
-    const pageTwoBody = (await pageTwo.json()) as { data: AdminArticleListData };
-    expect(pageTwoBody.data.items.length).toBeGreaterThanOrEqual(1);
-    expect(pageTwoBody.data.pagination.page).toBe(2);
+    const pageTwoBody = (await pageTwo.json()) as AdminArticleListData;
+    expect(pageTwoBody.items.length).toBeGreaterThanOrEqual(1);
+    expect(pageTwoBody.pagination.page).toBe(2);
 
     const publishedOnly = await app.request('/api/admin/articles?status=published&pageSize=50', {
       headers: { cookie: admin.cookie },
     });
     expect(publishedOnly.status).toBe(200);
-    const publishedBody = (await publishedOnly.json()) as { data: AdminArticleListData };
-    expect(publishedBody.data.items.every((item) => item.status === 'published')).toBe(true);
+    const publishedBody = (await publishedOnly.json()) as AdminArticleListData;
+    expect(publishedBody.items.every((item) => item.status === 'published')).toBe(true);
   });
 
   it('rejects publish when body exceeds word cap', async () => {
@@ -368,10 +368,10 @@ describe('Articles HTTP', () => {
       }),
     });
     expect(create.status).toBe(201);
-    const created = (await create.json()) as { data: Article };
-    createdArticleIds.push(created.data.id);
+    const created = (await create.json()) as Article;
+    createdArticleIds.push(created.id);
 
-    const publish = await app.request(`/api/admin/articles/${created.data.id}/publish`, {
+    const publish = await app.request(`/api/admin/articles/${created.id}/publish`, {
       method: 'POST',
       headers: { cookie: admin.cookie },
     });

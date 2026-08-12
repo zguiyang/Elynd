@@ -14,12 +14,12 @@ routes.get('/api/health', async (c) => {
 
 /** Protected probe — proves BA session middleware on Hono (not Next soft gate). */
 routes.get('/api/me', requireAuth, (c) => {
-  return c.json({ data: c.get('user') });
+  return c.json(c.get('user'));
 });
 
 /** Admin authorization probe — kept for auth smoke tests alongside CMS routes. */
 routes.get('/api/admin/probe', requireAdmin, (c) => {
-  return c.json({ data: { role: c.get('user')?.role } });
+  return c.json({ role: c.get('user')?.role });
 });
 
 routes.route('/', articlesRoutes);

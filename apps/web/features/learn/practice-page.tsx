@@ -1,13 +1,24 @@
 'use client';
 
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftIcon, BookOpenIcon, CheckCircleIcon } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+
+import type { LearnerPracticeItem } from '@elynd/shared/api/learn';
 
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { AUTH_ROUTES } from '@/constants';
-import { getLearnStaticArticle, type LearnPracticeQuestion } from '@/features/learn/learn-static-data';
+import {
+  formatLearnApiError,
+  getLearnPractice,
+  learnQueryKey,
+  startLearnPracticeAttempt,
+  updateLearnPracticeAttempt,
+} from '@/features/learn/learn-api';
+import { ApiRequestError } from '@/lib/api-request';
 import { cn } from '@/lib/utils';
 
 type LearnPracticePageProps = {
@@ -15,16 +26,49 @@ type LearnPracticePageProps = {
 };
 
 /**
- * Prototype / stub Practice — static questions, local UI state only.
- * Single-column one-at-a-time flow (design: Q4-B).
+ * Practice — curated items for the same article, one question at a time.
  */
 export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
-  const article = getLearnStaticArticle(articleId);
-  const [index, setIndex] = useState(0);
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [localIndex, setLocalIndex] = useState<number | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [isFinished, setIsFinished] = useState(false);
 
-  if (!article) {
+  const practiceQuery = useQuery({
+    queryKey: learnQueryKey.practice(articleId),
+    queryFn: async ({ signal }) => {
+      const data = await getLearnPractice(articleId, { signal });
+      if (data.items.length === 0) {
+        return data;
+      }
+      if (data.attempt) {
+        return data;
+      }
+      const attempt = await startLearnPracticeAttempt(articleId);
+      return { ...data, attempt };
+    },
+  });
+
+  const patchMutation = useMutation({
+    mutationFn: (input: { attemptId: string; body: Parameters<typeof updateLearnPracticeAttempt>[2] }) =>
+      updateLearnPracticeAttempt(articleId, input.attemptId, input.body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: learnQueryKey.today() });
+    },
+  });
+
+  const isNotFound = practiceQuery.error instanceof ApiRequestError && practiceQuery.error.status === 404;
+
+  if (practiceQuery.isPending) {
+    return (
+      <div className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col justify-center px-6 py-16">
+        <p className="text-sm text-muted-foreground">正在准备练习…</p>
+      </div>
+    );
+  }
+
+  if (isNotFound) {
     return (
       <div className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col justify-center px-6 py-16">
         <Empty className="border border-dashed border-border bg-card/50 py-16">
@@ -32,8 +76,8 @@ export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
             <EmptyMedia variant="icon">
               <BookOpenIcon />
             </EmptyMedia>
-            <EmptyTitle>找不到这篇演示练习</EmptyTitle>
-            <EmptyDescription>回今日重新打开一篇演示阅读即可。</EmptyDescription>
+            <EmptyTitle>找不到这篇练习</EmptyTitle>
+            <EmptyDescription>回今日重新打开一篇阅读即可。</EmptyDescription>
           </EmptyHeader>
           <Button
             nativeButton={false}
@@ -47,18 +91,103 @@ export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
     );
   }
 
-  const questions = article.practiceQuestions;
+  if (practiceQuery.isError) {
+    return (
+      <div className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col justify-center px-6 py-16">
+        <Empty className="border border-dashed border-border bg-card/50 py-16">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <BookOpenIcon />
+            </EmptyMedia>
+            <EmptyTitle>暂时打不开练习</EmptyTitle>
+            <EmptyDescription>{formatLearnApiError(practiceQuery.error)}</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      </div>
+    );
+  }
+
+  const practice = practiceQuery.data;
+  if (!practice) {
+    return null;
+  }
+
+  if (practice.items.length === 0) {
+    return (
+      <div className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col justify-center px-6 py-16">
+        <Empty className="border border-dashed border-border bg-card/50 py-16">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <BookOpenIcon />
+            </EmptyMedia>
+            <EmptyTitle>这篇还没有练习</EmptyTitle>
+            <EmptyDescription>先回去继续阅读也很好。有小题时再来这里。</EmptyDescription>
+          </EmptyHeader>
+          <Button
+            nativeButton={false}
+            className="mt-6 h-11 rounded-xl px-6 hover:bg-brand-deep"
+            render={<Link href={AUTH_ROUTES.learnArticle(articleId)} />}
+          >
+            回阅读
+          </Button>
+        </Empty>
+      </div>
+    );
+  }
+
+  const attempt = practice.attempt;
+  if (!attempt) {
+    return (
+      <div className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col justify-center px-6 py-16">
+        <p className="text-sm text-muted-foreground">正在准备练习…</p>
+      </div>
+    );
+  }
+
+  const attemptId = attempt.id;
+  const questions = practice.items;
   const total = questions.length;
+  const index = localIndex ?? attempt.currentIndex;
   const question = questions[index];
   const isLast = index >= total - 1;
+  const practiceIntro = `刚读过《${practice.articleTitle}》。下面几题只帮你确认理解，不是考试。`;
 
   function goNext() {
-    if (isLast) {
-      setIsFinished(true);
+    if (selected == null || !question) {
       return;
     }
-    setIndex((value) => value + 1);
-    setSelected(null);
+    const nextIndex = isLast ? index : index + 1;
+    patchMutation.mutate(
+      {
+        attemptId,
+        body: {
+          currentIndex: nextIndex,
+          answers: [{ practiceItemId: question.id, selectedOptionIndex: selected }],
+          ...(isLast ? { status: 'completed' as const } : {}),
+        },
+      },
+      {
+        onSuccess: () => {
+          if (isLast) {
+            setIsFinished(true);
+            return;
+          }
+          setLocalIndex(nextIndex);
+          setSelected(null);
+        },
+      },
+    );
+  }
+
+  function skipPractice() {
+    patchMutation.mutate(
+      { attemptId, body: { status: 'skipped' } },
+      {
+        onSuccess: () => {
+          router.push(AUTH_ROUTES.dashboard);
+        },
+      },
+    );
   }
 
   return (
@@ -66,8 +195,10 @@ export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
       <header className="border-b border-border/80 bg-sidebar">
         <div className="mx-auto flex h-16 max-w-3xl items-center justify-between gap-4 px-5 md:px-8">
           <div className="min-w-0">
-            <p className="text-sm tracking-wide text-brand-deep">读完之后 · 几道小题 · 演示</p>
-            <h1 className="font-heading truncate text-lg font-bold tracking-tight md:text-xl">{article.title}</h1>
+            <p className="text-sm tracking-wide text-brand-deep">读完之后 · 几道小题</p>
+            <h1 className="font-heading truncate text-lg font-bold tracking-tight md:text-xl">
+              {practice.articleTitle}
+            </h1>
           </div>
           <Button
             nativeButton={false}
@@ -110,7 +241,7 @@ export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
         ) : question ? (
           <>
             <div className="rounded-[1.75rem] bg-paper px-6 py-5 md:px-8">
-              <p className="text-base leading-relaxed text-foreground/90">{article.practiceIntro}</p>
+              <p className="text-base leading-relaxed text-foreground/90">{practiceIntro}</p>
               <p className="mt-2 text-sm text-muted-foreground">不想练也可以跳过。</p>
             </div>
 
@@ -118,17 +249,18 @@ export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <Button
-                nativeButton={false}
+                type="button"
                 variant="ghost"
                 className="h-11 rounded-xl px-4 text-muted-foreground hover:text-foreground"
-                render={<Link href={AUTH_ROUTES.dashboard} />}
+                disabled={patchMutation.isPending}
+                onClick={skipPractice}
               >
                 跳过，回今日
               </Button>
               <Button
                 type="button"
                 className="h-11 rounded-xl px-7 hover:bg-brand-deep"
-                disabled={selected == null}
+                disabled={selected == null || patchMutation.isPending}
                 onClick={goNext}
               >
                 {isLast ? '完成' : '下一题'}
@@ -148,12 +280,14 @@ function QuestionCard({
   selected,
   onSelect,
 }: {
-  question: LearnPracticeQuestion;
+  question: LearnerPracticeItem;
   index: number;
   total: number;
   selected: number | null;
   onSelect: (index: number) => void;
 }) {
+  const options = question.payload.options;
+
   return (
     <section className="mt-8 rounded-[1.75rem] border border-border bg-card p-6 md:p-8">
       <div className="flex items-center justify-between gap-4 text-sm">
@@ -163,22 +297,22 @@ function QuestionCard({
         </span>
       </div>
 
-      {question.kind === 'vocab' ? (
+      {question.kind === 'vocab' && 'word' in question.payload ? (
         <>
-          <h2 className="font-heading mt-5 text-3xl font-bold tracking-tight">{question.word}</h2>
-          <p className="mt-2 text-muted-foreground">{question.hint}</p>
-          <p className="mt-1 text-sm text-muted-foreground/80">{question.quote}</p>
+          <h2 className="font-heading mt-5 text-3xl font-bold tracking-tight">{question.payload.word}</h2>
+          <p className="mt-2 text-muted-foreground">{question.payload.hint}</p>
+          <p className="mt-1 text-sm text-muted-foreground/80">{question.payload.quote}</p>
         </>
-      ) : (
-        <h2 className="font-heading mt-5 text-2xl font-bold tracking-tight md:text-3xl">{question.prompt}</h2>
-      )}
+      ) : 'prompt' in question.payload ? (
+        <h2 className="font-heading mt-5 text-2xl font-bold tracking-tight md:text-3xl">{question.payload.prompt}</h2>
+      ) : null}
 
       <div
         className={cn('mt-6 gap-3', question.kind === 'vocab' ? 'grid sm:grid-cols-2' : 'flex flex-col')}
         role="listbox"
         aria-label="选项"
       >
-        {question.options.map((option, optionIndex) => {
+        {options.map((option, optionIndex) => {
           const isSelected = selected === optionIndex;
           return (
             <button

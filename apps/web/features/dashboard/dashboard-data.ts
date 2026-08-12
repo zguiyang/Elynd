@@ -1,21 +1,4 @@
 export const DASHBOARD_FAKE = {
-  continueReading: {
-    eyebrow: '接着读',
-    title: 'The Hidden World of Oceans',
-    titleLines: ['The Hidden World', 'of Oceans'] as const,
-    blurb: '你正在读的这篇。打开就能继续，卡住了再查。',
-    meta: ['B1', '约 15 分钟', '可读可听'] as const,
-    progress: 33,
-    coverSrc: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600',
-    coverAlt: 'Ocean surface at dusk',
-  },
-  inProgress: {
-    title: 'The Psychology of Habits',
-    subtitle: 'Chapter 3 · How habits are formed',
-    progress: 68,
-    coverSrc: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?w=400',
-    coverAlt: 'Open notebook and pen',
-  },
   recommendations: [
     {
       title: 'The Science of Sleep',

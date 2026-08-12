@@ -8,7 +8,7 @@ alwaysApply: false
 
 Next.js App Router, React, TanStack Form + Query, Better Auth **client** (`lib/auth` → Hono `/api/auth/*`), Tailwind CSS **v4**, shadcn/base-nova under `components/ui/`.
 
-Placement: **`layering`** + **`structure`**. Filled notes: `.trellis/spec/web/frontend/` (ignore **To fill**).
+Placement: **`layering`** + **`structure`**.
 
 ## Naming
 
@@ -54,8 +54,6 @@ Do not hand-roll a parallel control system. Do not ship “used shadcn but ugly/
 **System UI language:** Chinese for labels, nav, empty states, toasts, placeholders. Content field *values* may be EN/ZH.
 
 **Base UI gotchas:** `Button` + `Link` → `nativeButton={false}`. Tabs active → `data-active`. Toggle pressed → `data-pressed`. Segmented filters: prefer `Tabs`; override list `h-8` with `h-auto` and pad triggers — avoid fixed-height fights.
-
-Filled notes: `.trellis/spec/web/frontend/component-guidelines.md`.
 
 ## Auth
 

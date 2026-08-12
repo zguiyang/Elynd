@@ -37,7 +37,7 @@ Before a material plan or any behavior-changing implementation:
 3. Default: **do not assume** (~90%). If you cannot decide, the user decides.
 4. Trivial local details only (naming within existing convention, mechanical wiring with one clear in-repo pattern) → may proceed; **disclose briefly after** in the same reply or wrap-up.
 
-Never silently fill an open design fork. Locked choices in the active Trellis `prd.md` / `design.md` count as decided.
+Never silently fill an open design fork. Locked choices already recorded in the active task brief / design notes (if any) count as decided.
 
 ## Must / Ask / Never
 
@@ -92,4 +92,4 @@ English imperative; one logical change; prefer subject-only. Format via commitli
 | Where does X belong? | `layering` |
 | Product scope / should we build X / drift risk | `docs/product/` (decision guide + guardrails + MVP scope) |
 
-Rule SoT: `.cursor/rules/`. Tooling (ESLint, Prettier, typecheck, tests) wins on conflict. Filled `.trellis/spec` next; filled `docs/product/` for product intent; User Rules last.
+Rule SoT: `.cursor/rules/`. Tooling (ESLint, Prettier, typecheck, tests) wins on conflict. Filled `docs/product/` for product intent; User Rules last.

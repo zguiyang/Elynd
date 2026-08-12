@@ -42,9 +42,8 @@ Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root).
 4. **[`DESIGN.md`](DESIGN.md)** for visual / UI appearance (when touching `apps/web` UI)
 5. Project skills (load by description first; see `core` “Skills before MCP”)
 6. MCP (docs / live systems) when skills are insufficient
-7. Current Trellis task + **filled** `.trellis/spec` contracts
-8. **Filled** [`docs/product/`](docs/product/) for product-scope decisions
-9. User Rules
+7. **Filled** [`docs/product/`](docs/product/) for product-scope decisions
+8. User Rules
 
 ### Index
 

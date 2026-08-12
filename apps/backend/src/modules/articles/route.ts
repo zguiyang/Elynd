@@ -6,6 +6,7 @@ import * as articlesService from '@/modules/articles/service';
 import {
   validateAdminArticleListQuery,
   validateCreateArticle,
+  validateLibraryArticleListQuery,
   validateUpdateArticle,
 } from '@/modules/articles/validator';
 
@@ -43,9 +44,9 @@ articlesRoutes.post('/api/admin/articles/:id/unpublish', requireAdmin, async (c)
   return c.json({ data: article });
 });
 
-articlesRoutes.get('/api/articles', requireAuth, async (c) => {
-  const items = await articlesService.listPublishedArticles();
-  return c.json({ data: { items } });
+articlesRoutes.get('/api/articles', requireAuth, validateLibraryArticleListQuery, async (c) => {
+  const data = await articlesService.listPublishedArticles(c.req.valid('query'));
+  return c.json({ data });
 });
 
 articlesRoutes.get('/api/articles/:id', requireAuth, async (c) => {

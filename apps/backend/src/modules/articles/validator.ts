@@ -5,6 +5,7 @@ import type { ZodType } from 'zod';
 import {
   adminArticleListQuerySchema,
   createArticleBodySchema,
+  libraryArticleListQuerySchema,
   updateArticleBodySchema,
 } from '@elynd/shared/api/articles';
 
@@ -27,3 +28,4 @@ function validated<T extends ZodType, Target extends keyof ValidationTargets>(ta
 export const validateCreateArticle = validated('json', createArticleBodySchema);
 export const validateUpdateArticle = validated('json', updateArticleBodySchema);
 export const validateAdminArticleListQuery = validated('query', adminArticleListQuerySchema);
+export const validateLibraryArticleListQuery = validated('query', libraryArticleListQuerySchema);

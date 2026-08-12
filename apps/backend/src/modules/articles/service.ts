@@ -1,12 +1,15 @@
 import { randomUUID } from 'node:crypto';
 
-import { and, desc, eq } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, or, type SQL, sql } from 'drizzle-orm';
 
 import { article as articleTable } from '@elynd/db';
 import {
   type Article,
+  buildPaginationMeta,
   type CreateArticleBody,
   getPublishArticleIssues,
+  type LibraryArticleListData,
+  type LibraryArticleListQuery,
   type UpdateArticleBody,
 } from '@elynd/shared/api/articles';
 
@@ -31,6 +34,52 @@ function toArticle(row: ArticleRow): Article {
     updatedAt: row.updatedAt.toISOString(),
     publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
   };
+}
+
+function escapeIlikePattern(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+}
+
+function publishedListWhere(query: Pick<LibraryArticleListQuery, 'theme' | 'q'>): SQL {
+  const parts: SQL[] = [eq(articleTable.status, 'published')];
+
+  if (query.theme) {
+    parts.push(sql`${articleTable.themes} @> ${JSON.stringify([query.theme])}::jsonb`);
+  }
+
+  if (query.q) {
+    const pattern = `%${escapeIlikePattern(query.q)}%`;
+    parts.push(or(ilike(articleTable.title, pattern), sql`${articleTable.themes}::text ilike ${pattern}`)!);
+  }
+
+  return and(...parts)!;
+}
+
+function publishedListOrderBy(query: Pick<LibraryArticleListQuery, 'sortBy' | 'sortOrder'>) {
+  const column =
+    query.sortBy === 'createdAt'
+      ? articleTable.createdAt
+      : query.sortBy === 'updatedAt'
+        ? articleTable.updatedAt
+        : articleTable.publishedAt;
+  const primary = query.sortOrder === 'asc' ? asc(column) : desc(column);
+  return [primary, desc(articleTable.id)] as const;
+}
+
+function aggregateThemes(rows: { themes: string[] }[]): string[] {
+  const seen = new Set<string>();
+  const ordered: string[] = [];
+  for (const row of rows) {
+    for (const theme of row.themes) {
+      const key = theme.trim();
+      if (!key || seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      ordered.push(key);
+    }
+  }
+  return ordered;
 }
 
 export async function createArticle(input: CreateArticleBody) {
@@ -150,14 +199,38 @@ export async function unpublishArticle(id: string) {
   return toArticle(row);
 }
 
-export async function listPublishedArticles() {
+export async function listPublishedArticles(query: LibraryArticleListQuery): Promise<LibraryArticleListData> {
+  const where = publishedListWhere(query);
+  const orderBy = publishedListOrderBy(query);
+  const offset = (query.page - 1) * query.pageSize;
+
+  const [countRow] = await db.select({ value: count() }).from(articleTable).where(where);
+  const total = Number(countRow?.value ?? 0);
+
   const rows = await db
     .select()
     .from(articleTable)
-    .where(eq(articleTable.status, 'published'))
-    .orderBy(desc(articleTable.publishedAt), desc(articleTable.updatedAt));
+    .where(where)
+    .orderBy(...orderBy)
+    .limit(query.pageSize)
+    .offset(offset);
 
-  return rows.map(toArticle);
+  const themeRows = await db
+    .select({ themes: articleTable.themes })
+    .from(articleTable)
+    .where(eq(articleTable.status, 'published'));
+
+  return {
+    items: rows.map(toArticle),
+    pagination: buildPaginationMeta({
+      page: query.page,
+      pageSize: query.pageSize,
+      total,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
+    }),
+    themes: aggregateThemes(themeRows),
+  };
 }
 
 export async function getPublishedArticle(id: string) {

@@ -2,7 +2,8 @@ import { eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { article as articleTable, user as userTable } from '@elynd/db';
-import { type Article, ARTICLE_BODY_MAX_WORDS } from '@elynd/shared/api/articles';
+import { type Article, ARTICLE_BODY_MAX_WORDS, type LibraryArticleListData } from '@elynd/shared/api/articles';
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEFAULT_SORT_ORDER } from '@elynd/shared/api/pagination';
 import { AUTH_ADMIN_ROLE } from '@elynd/shared/auth/policy';
 
 import app from '@/app';
@@ -157,8 +158,15 @@ describe('Articles HTTP', () => {
       headers: { cookie: learner.cookie },
     });
     expect(learnerList.status).toBe(200);
-    const learnerListBody = (await learnerList.json()) as { data: { items: Article[] } };
+    const learnerListBody = (await learnerList.json()) as { data: LibraryArticleListData };
     expect(learnerListBody.data.items.some((item) => item.id === created.data.id)).toBe(true);
+    expect(learnerListBody.data.pagination).toMatchObject({
+      page: DEFAULT_PAGE,
+      pageSize: DEFAULT_PAGE_SIZE,
+      sortBy: 'publishedAt',
+      sortOrder: DEFAULT_SORT_ORDER,
+    });
+    expect(learnerListBody.data.themes).toContain('故事');
 
     const learnerDetail = await app.request(`/api/articles/${created.data.id}`, {
       headers: { cookie: learner.cookie },
@@ -197,6 +205,87 @@ describe('Articles HTTP', () => {
       headers: { cookie: learner.cookie },
     });
     expect(learnerDraft.status).toBe(404);
+  });
+
+  it('filters, paginates, and sorts learner library list', async () => {
+    const admin = await createSession('admin');
+    const learner = await createSession('user');
+    createdEmails.push(admin.email, learner.email);
+
+    async function createPublished(input: { title: string; themes: string[]; body: string }) {
+      const create = await app.request('/api/admin/articles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+        body: JSON.stringify({
+          title: input.title,
+          body: input.body,
+          themes: input.themes,
+          sourceNote: '测试',
+          level: 'easy',
+        }),
+      });
+      expect(create.status).toBe(201);
+      const created = (await create.json()) as { data: Article };
+      createdArticleIds.push(created.data.id);
+
+      const publish = await app.request(`/api/admin/articles/${created.data.id}/publish`, {
+        method: 'POST',
+        headers: { cookie: admin.cookie },
+      });
+      expect(publish.status).toBe(200);
+      return created.data.id;
+    }
+
+    const scienceId = await createPublished({
+      title: 'Ocean Science Notes',
+      themes: ['science'],
+      body: 'A short note about tides and salt air.',
+    });
+    const storyId = await createPublished({
+      title: 'City Story Lights',
+      themes: ['story'],
+      body: 'She watched the neon flicker across wet streets.',
+    });
+    await createPublished({
+      title: 'Quiet Garden',
+      themes: ['nature'],
+      body: 'Soft rain tapped the greenhouse roof all morning.',
+    });
+
+    const byTheme = await app.request('/api/articles?theme=science&pageSize=10', {
+      headers: { cookie: learner.cookie },
+    });
+    expect(byTheme.status).toBe(200);
+    const themeBody = (await byTheme.json()) as { data: LibraryArticleListData };
+    expect(themeBody.data.items.map((item) => item.id)).toEqual([scienceId]);
+    expect(themeBody.data.themes).toEqual(expect.arrayContaining(['science', 'story', 'nature']));
+
+    const byQuery = await app.request('/api/articles?q=city&page=1&pageSize=10', {
+      headers: { cookie: learner.cookie },
+    });
+    expect(byQuery.status).toBe(200);
+    const queryBody = (await byQuery.json()) as { data: LibraryArticleListData };
+    expect(queryBody.data.items.map((item) => item.id)).toEqual([storyId]);
+
+    const pageOne = await app.request('/api/articles?page=1&pageSize=2&sortBy=createdAt&sortOrder=asc', {
+      headers: { cookie: learner.cookie },
+    });
+    expect(pageOne.status).toBe(200);
+    const pageOneBody = (await pageOne.json()) as { data: LibraryArticleListData };
+    expect(pageOneBody.data.items).toHaveLength(2);
+    expect(pageOneBody.data.pagination).toMatchObject({
+      page: 1,
+      pageSize: 2,
+      sortBy: 'createdAt',
+      sortOrder: 'asc',
+    });
+    expect(pageOneBody.data.pagination.total).toBeGreaterThanOrEqual(3);
+    expect(pageOneBody.data.pagination.totalPages).toBeGreaterThanOrEqual(2);
+
+    const badPage = await app.request('/api/articles?page=0', {
+      headers: { cookie: learner.cookie },
+    });
+    expect(badPage.status).toBe(400);
   });
 
   it('rejects publish when body exceeds word cap', async () => {

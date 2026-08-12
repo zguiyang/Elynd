@@ -63,13 +63,4 @@ __screenshots__/
 # Vite
 *.timestamp-*-*.mjs
 
-# Trellis local runtime / Cursor adapter (optional per-developer AI tooling)
-.trellis/
-.cursor/skills/
-.cursor/agents/
-.cursor/commands/
-.cursor/hooks/
-.cursor/hooks.json
-.gitattributes
-
 .pnpm-store/

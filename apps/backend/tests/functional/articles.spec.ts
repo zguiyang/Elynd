@@ -2,7 +2,12 @@ import { eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { article as articleTable, user as userTable } from '@elynd/db';
-import { type Article, ARTICLE_BODY_MAX_WORDS, type LibraryArticleListData } from '@elynd/shared/api/articles';
+import {
+  type AdminArticleListData,
+  type Article,
+  ARTICLE_BODY_MAX_WORDS,
+  type LibraryArticleListData,
+} from '@elynd/shared/api/articles';
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEFAULT_SORT_ORDER } from '@elynd/shared/api/pagination';
 import { AUTH_ADMIN_ROLE } from '@elynd/shared/auth/policy';
 
@@ -151,8 +156,15 @@ describe('Articles HTTP', () => {
       headers: { cookie: admin.cookie },
     });
     expect(adminList.status).toBe(200);
-    const adminListBody = (await adminList.json()) as { data: { items: Article[] } };
+    const adminListBody = (await adminList.json()) as { data: AdminArticleListData };
     expect(adminListBody.data.items.some((item) => item.id === created.data.id)).toBe(true);
+    expect(adminListBody.data.pagination).toMatchObject({
+      page: DEFAULT_PAGE,
+      pageSize: DEFAULT_PAGE_SIZE,
+      sortBy: 'updatedAt',
+      sortOrder: DEFAULT_SORT_ORDER,
+    });
+    expect(adminListBody.data.pagination.total).toBeGreaterThanOrEqual(1);
 
     const learnerList = await app.request('/api/articles', {
       headers: { cookie: learner.cookie },
@@ -286,6 +298,58 @@ describe('Articles HTTP', () => {
       headers: { cookie: learner.cookie },
     });
     expect(badPage.status).toBe(400);
+  });
+
+  it('paginates and filters admin article list', async () => {
+    const admin = await createSession('admin');
+    createdEmails.push(admin.email);
+
+    async function createDraft(title: string) {
+      const create = await app.request('/api/admin/articles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+        body: JSON.stringify({ title }),
+      });
+      expect(create.status).toBe(201);
+      const created = (await create.json()) as { data: Article };
+      createdArticleIds.push(created.data.id);
+      return created.data.id;
+    }
+
+    await createDraft('Admin Page Alpha');
+    await createDraft('Admin Page Beta');
+    await createDraft('Admin Page Gamma');
+
+    const pageOne = await app.request('/api/admin/articles?page=1&pageSize=2&status=draft', {
+      headers: { cookie: admin.cookie },
+    });
+    expect(pageOne.status).toBe(200);
+    const pageOneBody = (await pageOne.json()) as { data: AdminArticleListData };
+    expect(pageOneBody.data.items).toHaveLength(2);
+    expect(pageOneBody.data.items.every((item) => item.status === 'draft')).toBe(true);
+    expect(pageOneBody.data.pagination).toMatchObject({
+      page: 1,
+      pageSize: 2,
+      sortBy: 'updatedAt',
+      sortOrder: DEFAULT_SORT_ORDER,
+    });
+    expect(pageOneBody.data.pagination.total).toBeGreaterThanOrEqual(3);
+    expect(pageOneBody.data.pagination.totalPages).toBeGreaterThanOrEqual(2);
+
+    const pageTwo = await app.request('/api/admin/articles?page=2&pageSize=2&status=draft', {
+      headers: { cookie: admin.cookie },
+    });
+    expect(pageTwo.status).toBe(200);
+    const pageTwoBody = (await pageTwo.json()) as { data: AdminArticleListData };
+    expect(pageTwoBody.data.items.length).toBeGreaterThanOrEqual(1);
+    expect(pageTwoBody.data.pagination.page).toBe(2);
+
+    const publishedOnly = await app.request('/api/admin/articles?status=published&pageSize=50', {
+      headers: { cookie: admin.cookie },
+    });
+    expect(publishedOnly.status).toBe(200);
+    const publishedBody = (await publishedOnly.json()) as { data: AdminArticleListData };
+    expect(publishedBody.data.items.every((item) => item.status === 'published')).toBe(true);
   });
 
   it('rejects publish when body exceeds word cap', async () => {

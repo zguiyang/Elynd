@@ -19,9 +19,8 @@ articlesRoutes.post('/api/admin/articles', requireAdmin, validateCreateArticle, 
 });
 
 articlesRoutes.get('/api/admin/articles', requireAdmin, validateAdminArticleListQuery, async (c) => {
-  const { status } = c.req.valid('query');
-  const items = await articlesService.listAdminArticles(status);
-  return c.json({ data: { items } });
+  const data = await articlesService.listAdminArticles(c.req.valid('query'));
+  return c.json({ data });
 });
 
 articlesRoutes.get('/api/admin/articles/:id', requireAdmin, async (c) => {

@@ -4,6 +4,8 @@ import { and, asc, count, desc, eq, ilike, or, type SQL, sql } from 'drizzle-orm
 
 import { article as articleTable } from '@elynd/db';
 import {
+  type AdminArticleListData,
+  type AdminArticleListQuery,
   type Article,
   buildPaginationMeta,
   type CreateArticleBody,
@@ -107,12 +109,36 @@ export async function createArticle(input: CreateArticleBody) {
   return toArticle(row);
 }
 
-export async function listAdminArticles(status?: 'draft' | 'published') {
-  const rows = status
-    ? await db.select().from(articleTable).where(eq(articleTable.status, status)).orderBy(desc(articleTable.updatedAt))
-    : await db.select().from(articleTable).orderBy(desc(articleTable.updatedAt));
+export async function listAdminArticles(query: AdminArticleListQuery): Promise<AdminArticleListData> {
+  const where = query.status ? eq(articleTable.status, query.status) : undefined;
+  const primary = query.sortOrder === 'asc' ? asc(articleTable.updatedAt) : desc(articleTable.updatedAt);
+  const offset = (query.page - 1) * query.pageSize;
 
-  return rows.map(toArticle);
+  const [countRow] = where
+    ? await db.select({ value: count() }).from(articleTable).where(where)
+    : await db.select({ value: count() }).from(articleTable);
+  const total = Number(countRow?.value ?? 0);
+
+  const rows = where
+    ? await db
+        .select()
+        .from(articleTable)
+        .where(where)
+        .orderBy(primary, desc(articleTable.id))
+        .limit(query.pageSize)
+        .offset(offset)
+    : await db.select().from(articleTable).orderBy(primary, desc(articleTable.id)).limit(query.pageSize).offset(offset);
+
+  return {
+    items: rows.map(toArticle),
+    pagination: buildPaginationMeta({
+      page: query.page,
+      pageSize: query.pageSize,
+      total,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
+    }),
+  };
 }
 
 export async function getAdminArticle(id: string) {

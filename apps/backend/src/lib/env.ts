@@ -24,6 +24,12 @@ const envSchema = z.object({
   RESEND_API_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
   MAIL_FROM_ADDRESS: z.string().email(),
   MAIL_FROM_NAME: z.string().min(1),
+
+  /**
+   * 32-byte key material as base64 or 64-char hex — used to encrypt LLM API keys at rest.
+   * Generate: `openssl rand -base64 32`
+   */
+  LLM_CONFIG_ENCRYPTION_KEY: z.string().min(1),
 });
 
 export type Env = z.infer<typeof envSchema>;

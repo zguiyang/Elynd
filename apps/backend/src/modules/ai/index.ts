@@ -10,5 +10,10 @@ export {
   type AiInvokeRef,
   type AiInvokeResult,
   type AiMessageInput,
+  type AiStreamDeltaEvent,
+  type AiStreamDoneEvent,
+  type AiStreamEvent,
+  type AiStreamOptions,
   invokeAi,
+  streamAi,
 } from '@/modules/ai/service';

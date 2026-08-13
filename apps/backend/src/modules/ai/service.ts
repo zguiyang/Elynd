@@ -1,4 +1,4 @@
-import type { BaseMessage, UsageMetadata } from '@langchain/core/messages';
+import type { AIMessageChunk, BaseMessage, UsageMetadata } from '@langchain/core/messages';
 import { AIMessage, HumanMessage, SystemMessage, ToolMessage } from '@langchain/core/messages';
 import type { StructuredToolInterface } from '@langchain/core/tools';
 import { eq } from 'drizzle-orm';
@@ -45,6 +45,29 @@ export type AiInvokeResult<T = string> = {
   model: { rowId: string; label: string; modelId: string };
   usage: { inputTokens: number; outputTokens: number; totalTokens: number };
 };
+
+export type AiStreamOptions = {
+  purpose?: AiPurpose;
+  modelRowId?: string;
+  source: string;
+  userId?: string;
+  ref?: AiInvokeRef;
+  messages: AiMessageInput[];
+  tools?: StructuredToolInterface[];
+  maxToolRounds?: number;
+  timeoutMs?: number;
+  requestSummaryExtra?: Record<string, unknown>;
+  signal?: AbortSignal;
+};
+
+export type AiStreamDeltaEvent = { type: 'delta'; text: string };
+export type AiStreamDoneEvent = {
+  type: 'done';
+  content: string;
+  model: { rowId: string; label: string; modelId: string };
+  usage: { inputTokens: number; outputTokens: number; totalTokens: number };
+};
+export type AiStreamEvent = AiStreamDeltaEvent | AiStreamDoneEvent;
 
 type TokenBucket = { inputTokens: number; outputTokens: number; totalTokens: number };
 
@@ -118,7 +141,7 @@ async function resolveModelRowId(options: { modelRowId?: string; purpose?: AiPur
   const rows = await db.select().from(llmAppSettingTable).where(eq(llmAppSettingTable.key, key)).limit(1);
   const value = rows[0]?.value;
   if (!value) {
-    throw new AppError(HTTP_STATUS.SERVICE_UNAVAILABLE, 'AI unavailable');
+    throw new AppError(HTTP_STATUS.SERVICE_UNAVAILABLE, 'Assist model not configured');
   }
   return value;
 }
@@ -248,6 +271,184 @@ export async function invokeAi<TSchema extends ZodTypeAny | undefined = undefine
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'AI invoke failed';
+    const statusCode = error instanceof AppError ? error.statusCode : HTTP_STATUS.SERVICE_UNAVAILABLE;
+
+    await recordInvocation({
+      status: 'failure',
+      errorCode: String(statusCode),
+      errorMessage: message,
+      purpose,
+      source: options.source,
+      userId: options.userId,
+      refType: options.ref?.type,
+      refId: options.ref?.id,
+      modelRowId: resolved?.modelRowId,
+      providerId: resolved?.providerId,
+      modelId: resolved?.modelId,
+      baseUrl: resolved?.baseUrl,
+      latencyMs: Date.now() - started,
+      inputTokens: tokens.inputTokens,
+      outputTokens: tokens.outputTokens,
+      totalTokens: tokens.totalTokens,
+      requestSummary: buildRequestSummary(options, toolRoundCount),
+    });
+
+    if (error instanceof AppError) {
+      throw error;
+    }
+    throw new AppError(HTTP_STATUS.SERVICE_UNAVAILABLE, 'AI unavailable');
+  }
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
+}
+
+/**
+ * Global AI streaming entry: same resolve/audit path as invokeAi, yields plain-text deltas.
+ * Tool rounds stream each model turn; clients typically only show the final answer text.
+ */
+export async function* streamAi(options: AiStreamOptions): AsyncGenerator<AiStreamEvent> {
+  const started = Date.now();
+  const tokens = emptyTokens();
+  let resolved: ResolvedLlm | undefined;
+  let toolRoundCount = 0;
+  const purpose = options.purpose ?? (options.modelRowId ? null : 'assist');
+  const runConfig = options.signal ? { signal: options.signal } : undefined;
+
+  try {
+    if (options.signal?.aborted) {
+      return;
+    }
+
+    const modelRowId = await resolveModelRowId(options);
+    resolved = await resolveLlmByModelRowId(modelRowId);
+    const chat = createChatModel(resolved, { timeoutMs: options.timeoutMs });
+    const conversation = toBaseMessages(options.messages);
+    const tools = options.tools ?? [];
+    const maxRounds = options.maxToolRounds ?? DEFAULT_MAX_TOOL_ROUNDS;
+
+    let replyText = '';
+
+    if (tools.length > 0) {
+      const bound = chat.bindTools(tools);
+      for (let round = 0; round < maxRounds; round += 1) {
+        if (options.signal?.aborted) {
+          return;
+        }
+
+        let assembled: AIMessageChunk | null = null;
+        for await (const chunk of await bound.stream(conversation, runConfig)) {
+          if (options.signal?.aborted) {
+            return;
+          }
+          assembled = assembled ? assembled.concat(chunk) : chunk;
+          const text = messageContentToString(chunk.content);
+          if (text) {
+            yield { type: 'delta', text };
+          }
+        }
+
+        if (!assembled) {
+          break;
+        }
+
+        addUsage(tokens, assembled.usage_metadata);
+        const toolCalls = assembled.tool_calls ?? [];
+        replyText = messageContentToString(assembled.content);
+
+        if (toolCalls.length === 0) {
+          break;
+        }
+
+        toolRoundCount += 1;
+        conversation.push(
+          new AIMessage({
+            content: assembled.content,
+            tool_calls: toolCalls,
+          }),
+        );
+
+        for (const call of toolCalls) {
+          const matched = tools.find((t) => t.name === call.name);
+          if (!matched) {
+            conversation.push(
+              new ToolMessage({
+                content: `Unknown tool: ${call.name}`,
+                tool_call_id: call.id ?? call.name,
+              }),
+            );
+            continue;
+          }
+          const raw = await matched.invoke(call.args, runConfig);
+          conversation.push(
+            new ToolMessage({
+              content: typeof raw === 'string' ? raw : JSON.stringify(raw),
+              tool_call_id: call.id ?? call.name,
+            }),
+          );
+        }
+      }
+    } else {
+      let assembled: AIMessageChunk | null = null;
+      for await (const chunk of await chat.stream(conversation, runConfig)) {
+        if (options.signal?.aborted) {
+          return;
+        }
+        assembled = assembled ? assembled.concat(chunk) : chunk;
+        const text = messageContentToString(chunk.content);
+        if (text) {
+          yield { type: 'delta', text };
+        }
+      }
+      if (assembled) {
+        addUsage(tokens, assembled.usage_metadata);
+        replyText = messageContentToString(assembled.content);
+      }
+    }
+
+    if (options.signal?.aborted) {
+      return;
+    }
+
+    if (!replyText.trim()) {
+      throw new AppError(HTTP_STATUS.SERVICE_UNAVAILABLE, 'AI unavailable');
+    }
+
+    await recordInvocation({
+      status: 'success',
+      purpose,
+      source: options.source,
+      userId: options.userId,
+      refType: options.ref?.type,
+      refId: options.ref?.id,
+      modelRowId: resolved.modelRowId,
+      providerId: resolved.providerId,
+      modelId: resolved.modelId,
+      baseUrl: resolved.baseUrl,
+      latencyMs: Date.now() - started,
+      inputTokens: tokens.inputTokens,
+      outputTokens: tokens.outputTokens,
+      totalTokens: tokens.totalTokens,
+      requestSummary: buildRequestSummary(options, toolRoundCount),
+      responseSummary: {
+        replyPreview: truncatePreview(replyText),
+        replyLength: replyText.length,
+      },
+    });
+
+    yield {
+      type: 'done',
+      content: replyText,
+      model: { rowId: resolved.modelRowId, label: resolved.label, modelId: resolved.modelId },
+      usage: tokens,
+    };
+  } catch (error) {
+    if (isAbortError(error) || options.signal?.aborted) {
+      return;
+    }
+
+    const message = error instanceof Error ? error.message : 'AI stream failed';
     const statusCode = error instanceof AppError ? error.statusCode : HTTP_STATUS.SERVICE_UNAVAILABLE;
 
     await recordInvocation({

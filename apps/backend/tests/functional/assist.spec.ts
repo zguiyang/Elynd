@@ -2,7 +2,7 @@ import { eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 
 import { article as articleTable, user as userTable } from '@elynd/db';
-import type { AssistAskData } from '@elynd/shared/api/assist';
+import { ASSIST_SSE_EVENT, type AssistSseDone, type AssistSseError } from '@elynd/shared/api/assist';
 
 import app from '@/app';
 import { HTTP_STATUS } from '@/constants';
@@ -60,6 +60,27 @@ async function createSession() {
   return { email, cookie: cookieHeader(login) };
 }
 
+type ParsedSse = { event?: string; data: string };
+
+function parseSseBlocks(raw: string): ParsedSse[] {
+  const blocks = raw
+    .split('\n\n')
+    .map((block) => block.trim())
+    .filter(Boolean);
+  return blocks.map((block) => {
+    let event: string | undefined;
+    const dataLines: string[] = [];
+    for (const line of block.split('\n')) {
+      if (line.startsWith('event:')) {
+        event = line.slice('event:'.length).trim();
+      } else if (line.startsWith('data:')) {
+        dataLines.push(line.slice('data:'.length).trim());
+      }
+    }
+    return { event, data: dataLines.join('\n') };
+  });
+}
+
 describe('Assist HTTP', () => {
   const createdEmails: string[] = [];
   const createdArticleIds: string[] = [];
@@ -73,7 +94,7 @@ describe('Assist HTTP', () => {
     }
   });
 
-  it('returns assist reply via ai.invoke and degrades when AI unavailable', async () => {
+  it('streams assist reply via ai.stream and surfaces AI errors as SSE error events', async () => {
     const user = await createSession();
     createdEmails.push(user.email);
 
@@ -89,15 +110,22 @@ describe('Assist HTTP', () => {
       publishedAt: new Date(),
     });
 
-    const invokeSpy = vi.spyOn(aiService, 'invokeAi').mockResolvedValue({
-      content: { reply: '狐狸跳过了懒狗。' },
-      model: { rowId: 'm1', label: 'Test', modelId: 'gpt-test' },
-      usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
-    });
+    async function* okStream(): AsyncGenerator<aiService.AiStreamEvent> {
+      yield { type: 'delta', text: '狐狸' };
+      yield { type: 'delta', text: '跳过了懒狗。' };
+      yield {
+        type: 'done',
+        content: '狐狸跳过了懒狗。',
+        model: { rowId: 'm1', label: 'Test', modelId: 'gpt-test' },
+        usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
+      };
+    }
+
+    const streamSpy = vi.spyOn(aiService, 'streamAi').mockImplementation(() => okStream());
 
     const ok = await app.request('/api/assist/ask', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', cookie: user.cookie },
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', cookie: user.cookie },
       body: JSON.stringify({
         articleId,
         actionId: 'meaning',
@@ -105,22 +133,39 @@ describe('Assist HTTP', () => {
       }),
     });
     expect(ok.status).toBe(200);
-    const data = (await ok.json()) as AssistAskData;
-    expect(data.reply).toContain('狐狸');
-    expect(data.model?.label).toBe('Test');
-    expect(invokeSpy).toHaveBeenCalled();
+    expect(ok.headers.get('content-type') ?? '').toContain('text/event-stream');
+    const okBody = await ok.text();
+    const okEvents = parseSseBlocks(okBody);
+    expect(okEvents.map((e) => e.event)).toEqual([
+      ASSIST_SSE_EVENT.delta,
+      ASSIST_SSE_EVENT.delta,
+      ASSIST_SSE_EVENT.done,
+    ]);
+    const done = JSON.parse(okEvents[2]!.data) as AssistSseDone;
+    expect(done.reply).toContain('狐狸');
+    expect(done.model?.label).toBe('Test');
+    expect(streamSpy).toHaveBeenCalled();
 
-    invokeSpy.mockRejectedValueOnce(new AppError(HTTP_STATUS.SERVICE_UNAVAILABLE, 'AI unavailable'));
+    async function* failStream(): AsyncGenerator<aiService.AiStreamEvent> {
+      throw new AppError(HTTP_STATUS.SERVICE_UNAVAILABLE, 'AI unavailable');
+      yield { type: 'delta', text: '' }; // unreachable — keeps generator typing
+    }
+
+    streamSpy.mockImplementation(() => failStream());
     const unavailable = await app.request('/api/assist/ask', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', cookie: user.cookie },
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', cookie: user.cookie },
       body: JSON.stringify({
         articleId,
         actionId: 'meaning',
         selection: 'The fox jumped over the lazy dog',
       }),
     });
-    expect(unavailable.status).toBe(503);
-    invokeSpy.mockRestore();
+    expect(unavailable.status).toBe(200);
+    const errEvents = parseSseBlocks(await unavailable.text());
+    expect(errEvents.some((e) => e.event === ASSIST_SSE_EVENT.error)).toBe(true);
+    const errPayload = JSON.parse(errEvents.find((e) => e.event === ASSIST_SSE_EVENT.error)!.data) as AssistSseError;
+    expect(errPayload.error).toMatch(/AI unavailable|Article/i);
+    streamSpy.mockRestore();
   });
 });

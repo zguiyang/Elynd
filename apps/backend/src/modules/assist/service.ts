@@ -1,11 +1,11 @@
 import { and, eq } from 'drizzle-orm';
 
 import { article as articleTable } from '@elynd/db';
-import { type AssistAskBody, type AssistAskData, assistReplySchema } from '@elynd/shared/api/assist';
+import { type AssistAskBody } from '@elynd/shared/api/assist';
 
 import { db } from '@/db';
 import { NotFoundError } from '@/lib/errors';
-import { invokeAi } from '@/modules/ai';
+import { type AiStreamEvent, streamAi } from '@/modules/ai';
 import { createArticleAssistTools } from '@/modules/assist/tools';
 
 function actionInstruction(actionId: AssistAskBody['actionId'], question?: string): string {
@@ -36,7 +36,18 @@ function neighborWindow(body: string, selection: string, radius = 120): string {
   return body.slice(start, end);
 }
 
-export async function askAssist(userId: string, body: AssistAskBody): Promise<AssistAskData> {
+export type StreamAssistAskOptions = {
+  signal?: AbortSignal;
+};
+
+/**
+ * Article-grounded assist as an async event stream (plain-text deltas + done).
+ */
+export async function* streamAssistAsk(
+  userId: string,
+  body: AssistAskBody,
+  options?: StreamAssistAskOptions,
+): AsyncGenerator<AiStreamEvent> {
   const rows = await db
     .select()
     .from(articleTable)
@@ -50,13 +61,13 @@ export async function askAssist(userId: string, body: AssistAskBody): Promise<As
   const neighbor = neighborWindow(article.body, body.selection);
   const tools = createArticleAssistTools({ title: article.title, body: article.body });
 
-  const result = await invokeAi({
+  yield* streamAi({
     purpose: 'assist',
     source: 'assist.ask',
     userId,
     ref: { type: 'article', id: article.id },
     tools,
-    outputSchema: assistReplySchema,
+    signal: options?.signal,
     requestSummaryExtra: { actionId: body.actionId },
     messages: [
       {
@@ -64,7 +75,8 @@ export async function askAssist(userId: string, body: AssistAskBody): Promise<As
         content: [
           'You are Elynd reading assist. Help adults understand the current English article.',
           'Stay grounded in the article. Use tools if you need more of the text.',
-          'Respond with structured JSON matching the schema (reply field).',
+          'Respond in plain text only (no JSON). Prefer clear Chinese for explanations;',
+          'use simpler English when the learner asks for a rewrite.',
           `Article title: ${article.title}`,
           `Article level: ${article.level}`,
           actionInstruction(body.actionId, body.question),
@@ -82,9 +94,4 @@ export async function askAssist(userId: string, body: AssistAskBody): Promise<As
       },
     ],
   });
-
-  return {
-    reply: result.content.reply,
-    model: { label: result.model.label },
-  };
 }

@@ -56,7 +56,7 @@ function toastComingSoon(feature: string) {
 }
 
 /**
- * Learning Room — calm editorial reader with collapsible help rail (assist stub).
+ * Learning Room — calm editorial reader with collapsible help rail (SSE assist).
  */
 export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
   const isAssistOpen = useSyncExternalStore(subscribeAssistOpen, readAssistOpenPreference, () => false);
@@ -195,6 +195,7 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
                 'max-lg:absolute max-lg:inset-y-0 max-lg:right-0 max-lg:shadow-card',
                 'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-right-2 motion-safe:duration-300',
               )}
+              articleId={articleId}
               focusSentence={focusSentence}
               pendingAssist={pendingAssist}
               onPendingAssistHandled={() => setPendingAssist(null)}

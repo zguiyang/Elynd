@@ -2,9 +2,13 @@
 
 import { ArrowUpIcon, PanelRightCloseIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
+
+import { type AssistActionId as SharedAssistActionId } from '@elynd/shared/api/assist';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { askAssistStream, formatAssistLearnerError } from '@/features/learn/assist-api';
 import { cn } from '@/lib/utils';
 
 const HELP_QUICK_ACTIONS = [
@@ -41,6 +45,7 @@ type ChatMessage = {
 
 type LearnHelpRailProps = {
   className?: string;
+  articleId: string;
   focusSentence: string;
   pendingAssist: PendingAssist | null;
   onPendingAssistHandled: () => void;
@@ -51,34 +56,16 @@ function createMessageId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/** Stub replies for UI preview — replace with real assist API later. */
-function mockAssistReply(prompt: string, contextText: string, actionId?: AssistActionId): string {
-  const clip = contextText.length > 120 ? `${contextText.slice(0, 117)}…` : contextText;
-
-  if (actionId === 'explain' || actionId === 'meaning') {
-    return `大意是在说：${clip}`;
-  }
-  if (actionId === 'simpler') {
-    return `更简单的说法：\n\n${clip}`;
-  }
-  if (actionId === 'referent') {
-    return `结合上下文，代词多半指前面刚提到的事物。代回原词后意思会更清楚。`;
-  }
-  if (actionId === 'qa') {
-    return `关于这段：\n\n${clip}\n\n可以先抓住主语和动作，再看修饰部分。`;
-  }
-  if (actionId === 'lookup') {
-    return `「${clip}」：结合原文，先按语境理解词义。`;
-  }
-
-  return `可以对照这句看：\n\n${clip}`;
+function toAskActionId(actionId: AssistActionId | undefined): SharedAssistActionId {
+  return actionId ?? 'qa';
 }
 
 /**
- * Collapsible help rail (assist stub) for the Learning Room.
+ * Collapsible help rail for the Learning Room — streams assist replies over SSE.
  */
 export function LearnHelpRail({
   className,
+  articleId,
   focusSentence,
   pendingAssist,
   onPendingAssistHandled,
@@ -88,7 +75,7 @@ export function LearnHelpRail({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isReplying, setIsReplying] = useState(false);
   const threadEndRef = useRef<HTMLDivElement | null>(null);
-  const replyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const contextRef = useRef(focusSentence);
 
   const isEmpty = messages.length === 0 && !isReplying;
@@ -99,13 +86,11 @@ export function LearnHelpRail({
 
   useEffect(() => {
     return () => {
-      if (replyTimerRef.current) {
-        clearTimeout(replyTimerRef.current);
-      }
+      abortRef.current?.abort();
     };
   }, []);
 
-  function sendPrompt(prompt: string, actionId?: AssistActionId, contextText = focusSentence) {
+  async function sendPrompt(prompt: string, actionId?: AssistActionId, contextText = focusSentence) {
     const trimmed = prompt.trim();
     if (!trimmed || isReplying) {
       return false;
@@ -117,25 +102,61 @@ export function LearnHelpRail({
       role: 'user',
       content: trimmed,
     };
+    const assistantId = createMessageId();
 
-    setMessages((current) => [...current, userMessage]);
+    setMessages((current) => [...current, userMessage, { id: assistantId, role: 'assistant', content: '' }]);
     setDraft('');
     setIsReplying(true);
 
-    if (replyTimerRef.current) {
-      clearTimeout(replyTimerRef.current);
-    }
+    abortRef.current?.abort();
+    const abort = new AbortController();
+    abortRef.current = abort;
 
-    replyTimerRef.current = setTimeout(() => {
-      const assistantMessage: ChatMessage = {
-        id: createMessageId(),
-        role: 'assistant',
-        content: mockAssistReply(trimmed, contextRef.current, actionId),
-      };
-      setMessages((current) => [...current, assistantMessage]);
+    const askActionId = toAskActionId(actionId);
+    const question = askActionId === 'qa' ? trimmed : undefined;
+
+    try {
+      await askAssistStream(
+        {
+          articleId,
+          actionId: askActionId,
+          selection: contextText.trim() || focusSentence,
+          question,
+        },
+        {
+          onDelta: (text) => {
+            setMessages((current) =>
+              current.map((message) =>
+                message.id === assistantId ? { ...message, content: message.content + text } : message,
+              ),
+            );
+          },
+          onDone: (done) => {
+            setMessages((current) =>
+              current.map((message) => (message.id === assistantId ? { ...message, content: done.reply } : message)),
+            );
+          },
+        },
+        { signal: abort.signal },
+      );
+    } catch (error) {
+      if (abort.signal.aborted) {
+        setMessages((current) =>
+          current.filter((message) => message.id !== assistantId || message.content.trim().length > 0),
+        );
+        return true;
+      }
+      const message = formatAssistLearnerError(error);
+      toast.error(message);
+      setMessages((current) =>
+        current.map((item) => (item.id === assistantId ? { ...item, content: item.content.trim() || message } : item)),
+      );
+    } finally {
+      if (abortRef.current === abort) {
+        abortRef.current = null;
+      }
       setIsReplying(false);
-      replyTimerRef.current = null;
-    }, 700);
+    }
 
     return true;
   }
@@ -146,10 +167,11 @@ export function LearnHelpRail({
     }
 
     const timer = window.setTimeout(() => {
-      const isSent = sendPrompt(pendingAssist.prompt, pendingAssist.actionId, pendingAssist.contextText);
-      if (isSent) {
-        onPendingAssistHandled();
-      }
+      void sendPrompt(pendingAssist.prompt, pendingAssist.actionId, pendingAssist.contextText).then((isSent) => {
+        if (isSent) {
+          onPendingAssistHandled();
+        }
+      });
     }, 0);
 
     return () => window.clearTimeout(timer);
@@ -191,7 +213,7 @@ export function LearnHelpRail({
                     'transition-colors duration-300 ease-out-soft hover:bg-muted/40',
                     'disabled:pointer-events-none disabled:opacity-50',
                   )}
-                  onClick={() => sendPrompt(action.label, action.id)}
+                  onClick={() => void sendPrompt(action.label, action.id)}
                 >
                   <p className="text-sm font-medium text-foreground">{action.label}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{action.hint}</p>
@@ -236,7 +258,7 @@ export function LearnHelpRail({
                       'rounded-xl bg-muted/60 px-3 py-2 text-xs text-foreground',
                       'transition-colors duration-300 ease-out-soft hover:bg-muted',
                     )}
-                    onClick={() => sendPrompt(action.label, action.id)}
+                    onClick={() => void sendPrompt(action.label, action.id)}
                   >
                     {action.label}
                   </button>
@@ -254,7 +276,7 @@ export function LearnHelpRail({
           className="flex items-center gap-2"
           onSubmit={(event) => {
             event.preventDefault();
-            sendPrompt(draft);
+            void sendPrompt(draft);
           }}
         >
           <Input

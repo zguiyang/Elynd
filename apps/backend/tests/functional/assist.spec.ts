@@ -81,6 +81,17 @@ function parseSseBlocks(raw: string): ParsedSse[] {
   });
 }
 
+async function* okStream(): AsyncGenerator<aiService.AiStreamEvent> {
+  yield { type: 'delta', text: '狐狸' };
+  yield { type: 'delta', text: '跳过了懒狗。' };
+  yield {
+    type: 'done',
+    content: '狐狸跳过了懒狗。',
+    model: { rowId: 'm1', label: 'Test', modelId: 'gpt-test' },
+    usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
+  };
+}
+
 describe('Assist HTTP', () => {
   const createdEmails: string[] = [];
   const createdArticleIds: string[] = [];
@@ -110,18 +121,12 @@ describe('Assist HTTP', () => {
       publishedAt: new Date(),
     });
 
-    async function* okStream(): AsyncGenerator<aiService.AiStreamEvent> {
-      yield { type: 'delta', text: '狐狸' };
-      yield { type: 'delta', text: '跳过了懒狗。' };
-      yield {
-        type: 'done',
-        content: '狐狸跳过了懒狗。',
-        model: { rowId: 'm1', label: 'Test', modelId: 'gpt-test' },
-        usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
-      };
-    }
-
     const streamSpy = vi.spyOn(aiService, 'streamAi').mockImplementation(() => okStream());
+    const invokeSpy = vi.spyOn(aiService, 'invokeAi').mockResolvedValue({
+      content: { suggestions: ['追问一', '追问二', '追问三'] },
+      model: { rowId: 'm1', label: 'Test', modelId: 'gpt-test' },
+      usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+    });
 
     const ok = await app.request('/api/assist/ask', {
       method: 'POST',
@@ -144,7 +149,9 @@ describe('Assist HTTP', () => {
     const done = JSON.parse(okEvents[2]!.data) as AssistSseDone;
     expect(done.reply).toContain('狐狸');
     expect(done.model?.label).toBe('Test');
+    expect(done.suggestions).toEqual(['追问一', '追问二', '追问三']);
     expect(streamSpy).toHaveBeenCalled();
+    expect(invokeSpy).toHaveBeenCalled();
 
     async function* failStream(): AsyncGenerator<aiService.AiStreamEvent> {
       throw new AppError(HTTP_STATUS.SERVICE_UNAVAILABLE, 'AI unavailable');
@@ -167,5 +174,126 @@ describe('Assist HTTP', () => {
     const errPayload = JSON.parse(errEvents.find((e) => e.event === ASSIST_SSE_EVENT.error)!.data) as AssistSseError;
     expect(errPayload.error).toMatch(/AI unavailable|Article/i);
     streamSpy.mockRestore();
+    invokeSpy.mockRestore();
+  });
+
+  it('accepts gist without selection and omits suggestions when follow-ups fail', async () => {
+    const user = await createSession();
+    createdEmails.push(user.email);
+
+    const articleId = `art_gist_${Date.now().toString(36)}`;
+    createdArticleIds.push(articleId);
+    await db.insert(articleTable).values({
+      id: articleId,
+      title: 'Gist Test',
+      body: 'The ocean covers more than seventy percent of Earth.',
+      level: 'easy',
+      themes: ['test'],
+      status: 'published',
+      publishedAt: new Date(),
+    });
+
+    const streamSpy = vi.spyOn(aiService, 'streamAi').mockImplementation(() => okStream());
+    const invokeSpy = vi.spyOn(aiService, 'invokeAi').mockRejectedValue(new Error('follow-up failed'));
+
+    const ok = await app.request('/api/assist/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', cookie: user.cookie },
+      body: JSON.stringify({
+        articleId,
+        actionId: 'gist',
+      }),
+    });
+    expect(ok.status).toBe(200);
+    const rawBody = await ok.text();
+    expect(streamSpy).toHaveBeenCalled();
+    const call = streamSpy.mock.calls[0]?.[0];
+    expect(call?.messages.some((m) => m.content.includes('No text selection'))).toBe(true);
+
+    const done = JSON.parse(
+      parseSseBlocks(rawBody).find((e) => e.event === ASSIST_SSE_EVENT.done)!.data,
+    ) as AssistSseDone;
+    expect(done.reply).toContain('狐狸');
+    expect(done.suggestions).toBeUndefined();
+
+    streamSpy.mockRestore();
+    invokeSpy.mockRestore();
+  });
+
+  it('rejects meaning without selection and qa without question', async () => {
+    const user = await createSession();
+    createdEmails.push(user.email);
+
+    const articleId = `art_val_${Date.now().toString(36)}`;
+    createdArticleIds.push(articleId);
+    await db.insert(articleTable).values({
+      id: articleId,
+      title: 'Validation Test',
+      body: 'Hello world.',
+      level: 'easy',
+      themes: ['test'],
+      status: 'published',
+      publishedAt: new Date(),
+    });
+
+    const missingSelection = await app.request('/api/assist/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', cookie: user.cookie },
+      body: JSON.stringify({
+        articleId,
+        actionId: 'meaning',
+      }),
+    });
+    expect(missingSelection.status).toBe(HTTP_STATUS.BAD_REQUEST);
+
+    const missingQuestion = await app.request('/api/assist/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', cookie: user.cookie },
+      body: JSON.stringify({
+        articleId,
+        actionId: 'qa',
+      }),
+    });
+    expect(missingQuestion.status).toBe(HTTP_STATUS.BAD_REQUEST);
+  });
+
+  it('accepts qa without selection when question is present', async () => {
+    const user = await createSession();
+    createdEmails.push(user.email);
+
+    const articleId = `art_qa_${Date.now().toString(36)}`;
+    createdArticleIds.push(articleId);
+    await db.insert(articleTable).values({
+      id: articleId,
+      title: 'QA Test',
+      body: 'Birds fly south in winter.',
+      level: 'easy',
+      themes: ['test'],
+      status: 'published',
+      publishedAt: new Date(),
+    });
+
+    const streamSpy = vi.spyOn(aiService, 'streamAi').mockImplementation(() => okStream());
+    const invokeSpy = vi.spyOn(aiService, 'invokeAi').mockResolvedValue({
+      content: { suggestions: ['A', 'B', 'C'] },
+      model: { rowId: 'm1', label: 'Test', modelId: 'gpt-test' },
+      usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+    });
+
+    const ok = await app.request('/api/assist/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', cookie: user.cookie },
+      body: JSON.stringify({
+        articleId,
+        actionId: 'qa',
+        question: '这篇在讲什么？',
+      }),
+    });
+    expect(ok.status).toBe(200);
+    await ok.text();
+    expect(streamSpy).toHaveBeenCalled();
+
+    streamSpy.mockRestore();
+    invokeSpy.mockRestore();
   });
 });

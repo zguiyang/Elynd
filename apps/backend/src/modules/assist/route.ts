@@ -40,6 +40,7 @@ assistRoutes.post('/api/assist/ask', requireAuth, validateAssistAsk, async (c) =
           data: JSON.stringify({
             reply: event.content,
             model: { label: event.model.label },
+            ...(event.suggestions?.length ? { suggestions: event.suggestions } : {}),
           }),
         });
       }

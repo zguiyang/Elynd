@@ -44,11 +44,7 @@ export function ForgotPasswordForm() {
   if (isSent) {
     return (
       <>
-        <AuthIntro
-          eyebrow="邮件已发出"
-          title="去邮箱点开链接"
-          description="点开后设新密码，保存后再登录。没收到就看垃圾箱，或再发一次。"
-        />
+        <AuthIntro title="去邮箱点开链接" description="去邮箱打开链接设置新密码。" />
 
         <AuthPanel>
           <Button
@@ -70,11 +66,7 @@ export function ForgotPasswordForm() {
 
   return (
     <>
-      <AuthIntro
-        eyebrow="找回密码"
-        title="忘了也没关系"
-        description="留下邮箱，我会发一封带链接的邮件。点开设新密码，保存后再登录。"
-      />
+      <AuthIntro title="找回密码" description="输入注册邮箱，发送重置链接。" />
 
       <AuthPanel>
         <form

@@ -68,7 +68,7 @@ export function ResetPasswordForm() {
 
   return (
     <>
-      <AuthIntro eyebrow="设置新密码" title="换一套口令" description="设好后请用新密码登录。" />
+      <AuthIntro title="设置新密码" />
 
       <AuthPanel>
         <form

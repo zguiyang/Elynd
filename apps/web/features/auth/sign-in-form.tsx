@@ -92,7 +92,7 @@ export function SignInForm() {
 
   return (
     <>
-      <AuthIntro eyebrow="登录" title="回来继续读" description="用邮箱或用户名登录。没有账号的话，先注册一个。" />
+      <AuthIntro title="登录" />
 
       <AuthPanel>
         <form

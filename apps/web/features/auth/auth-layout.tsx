@@ -38,18 +38,18 @@ export function AuthLayout({ children, headerAction }: AuthLayoutProps) {
 }
 
 type AuthIntroProps = {
-  eyebrow: string;
   title: string;
-  description: string;
+  eyebrow?: string;
+  description?: string;
   className?: string;
 };
 
 export function AuthIntro({ eyebrow, title, description, className }: AuthIntroProps) {
   return (
     <div className={cn('mb-10 text-center md:text-left', className)}>
-      <p className="mb-4 text-sm font-medium tracking-[0.16em] text-primary uppercase">{eyebrow}</p>
+      {eyebrow ? <p className="mb-4 text-sm font-medium tracking-[0.16em] text-primary uppercase">{eyebrow}</p> : null}
       <h1 className="font-heading text-3xl leading-tight font-bold tracking-tight md:text-4xl">{title}</h1>
-      <p className="mt-4 leading-relaxed text-muted-foreground">{description}</p>
+      {description ? <p className="mt-4 leading-relaxed text-muted-foreground">{description}</p> : null}
     </div>
   );
 }

@@ -75,11 +75,7 @@ export function SignUpForm() {
   if (isSent) {
     return (
       <>
-        <AuthIntro
-          eyebrow="邮件已发出"
-          title="去邮箱点开链接"
-          description={`我们已向 ${submittedEmail} 发送确认链接（约 1 小时内有效）。确认后再回来登录。没收到就看垃圾箱，或再发一次。`}
-        />
+        <AuthIntro title="去邮箱点开链接" description={`已发送至 ${submittedEmail}，约 1 小时有效。`} />
 
         <AuthPanel>
           {formError ? <p className="mb-4 text-sm text-destructive">{formError}</p> : null}
@@ -102,11 +98,7 @@ export function SignUpForm() {
 
   return (
     <>
-      <AuthIntro
-        eyebrow="注册"
-        title="先有个账号，再开始读"
-        description="不复杂。填几项就行——产品还在打磨，但方向是认真的。"
-      />
+      <AuthIntro title="注册" />
 
       <AuthPanel>
         <form

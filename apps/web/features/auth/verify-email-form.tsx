@@ -15,7 +15,7 @@ export function VerifyEmailForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
   const [status, setStatus] = useState<'pending' | 'ok' | 'error'>(() => (token ? 'pending' : 'error'));
-  const [message, setMessage] = useState(() => (token ? '正在确认邮箱…' : '验证链接无效或已过期'));
+  const [message, setMessage] = useState<string | undefined>(() => (token ? undefined : '验证链接无效或已过期'));
 
   useEffect(() => {
     if (!token) {
@@ -35,7 +35,7 @@ export function VerifyEmailForm() {
         return;
       }
       setStatus('ok');
-      setMessage('邮箱已确认，可以登录了');
+      setMessage(undefined);
       toast.success('邮箱已确认');
     })();
 
@@ -47,26 +47,13 @@ export function VerifyEmailForm() {
   return (
     <>
       <AuthIntro
-        eyebrow="确认邮箱"
-        title={status === 'ok' ? '搞定了' : status === 'error' ? '没能确认' : '稍等一下'}
+        title={status === 'ok' ? '邮箱已确认' : status === 'error' ? '确认失败' : '确认中'}
         description={message}
       />
 
-      <AuthPanel>
-        {status === 'pending' ? <p className="text-sm text-muted-foreground">确认中…</p> : null}
-        {status === 'ok' ? (
-          <Button
-            type="button"
-            className={authPrimaryButtonClassName}
-            onClick={() => {
-              router.replace(AUTH_ROUTES.signIn);
-            }}
-          >
-            去登录
-          </Button>
-        ) : null}
-        {status === 'error' ? (
-          <div className="flex flex-col gap-3">
+      {status !== 'pending' ? (
+        <AuthPanel>
+          {status === 'ok' ? (
             <Button
               type="button"
               className={authPrimaryButtonClassName}
@@ -74,20 +61,33 @@ export function VerifyEmailForm() {
                 router.replace(AUTH_ROUTES.signIn);
               }}
             >
-              返回登录
+              去登录
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                router.replace(AUTH_ROUTES.signUp);
-              }}
-            >
-              重新注册或重发邮件
-            </Button>
-          </div>
-        ) : null}
-      </AuthPanel>
+          ) : null}
+          {status === 'error' ? (
+            <div className="flex flex-col gap-3">
+              <Button
+                type="button"
+                className={authPrimaryButtonClassName}
+                onClick={() => {
+                  router.replace(AUTH_ROUTES.signIn);
+                }}
+              >
+                返回登录
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  router.replace(AUTH_ROUTES.signUp);
+                }}
+              >
+                重新注册或重发邮件
+              </Button>
+            </div>
+          ) : null}
+        </AuthPanel>
+      ) : null}
     </>
   );
 }

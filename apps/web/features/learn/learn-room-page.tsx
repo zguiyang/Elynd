@@ -1,29 +1,56 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeftIcon,
+  ArrowUpIcon,
   BookmarkIcon,
   BookOpenIcon,
   CheckIcon,
   HeadphonesIcon,
-  LightbulbIcon,
   PanelRightCloseIcon,
   PanelRightOpenIcon,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Input } from '@/components/ui/input';
 import { AUTH_ROUTES } from '@/constants';
-import { formatLearnApiError, getLearnArticle, learnQueryKey, updateLearnProgress } from '@/features/learn/learn-api';
+import { formatLearnApiError, getLearnArticle, learnQueryKey } from '@/features/learn/learn-api';
 import { LEVEL_LABEL, paragraphsFromBody } from '@/features/library/library-model';
 import { ApiRequestError } from '@/lib/api-request';
 import { cn } from '@/lib/utils';
 
 const ASSIST_OPEN_STORAGE_KEY = 'elynd.learn.assistOpen';
+
+const HELP_QUICK_ACTIONS = [
+  {
+    id: 'meaning',
+    label: '这句话什么意思',
+    hint: '中文讲清大意',
+  },
+  {
+    id: 'simpler',
+    label: '用更简单的英语说',
+    hint: '换浅一点的说法',
+  },
+  {
+    id: 'referent',
+    label: '这个词在文中指什么',
+    hint: '结合上下文',
+  },
+] as const;
+
+type HelpQuickId = (typeof HELP_QUICK_ACTIONS)[number]['id'];
+
+type ChatMessage = {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+};
 
 type LearnRoomPageProps = {
   articleId: string;
@@ -31,11 +58,11 @@ type LearnRoomPageProps = {
 
 function readAssistOpenPreference(): boolean {
   if (typeof window === 'undefined') {
-    return true;
+    return false;
   }
   const raw = window.localStorage.getItem(ASSIST_OPEN_STORAGE_KEY);
   if (raw === null) {
-    return true;
+    return false;
   }
   return raw === '1';
 }
@@ -50,34 +77,36 @@ function writeAssistOpenPreference(next: boolean) {
   window.dispatchEvent(new Event('storage'));
 }
 
-function progressCaption(ratio: number): string {
-  if (ratio < 15) {
-    return '刚开始';
-  }
-  if (ratio < 45) {
-    return '读了一小段';
-  }
-  if (ratio < 70) {
-    return '大约一半';
-  }
-  if (ratio < 95) {
-    return '接近结尾';
-  }
-  return '已读完';
-}
-
 function toastComingSoon(feature: string) {
   toast.message(`${feature}即将开放`);
 }
 
+function createMessageId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/** Stub replies for UI preview — replace with real assist API later. */
+function mockAssistReply(prompt: string, focusSentence: string, quickId?: HelpQuickId): string {
+  const clip = focusSentence.length > 120 ? `${focusSentence.slice(0, 117)}…` : focusSentence;
+
+  if (quickId === 'meaning') {
+    return `大意是在说：${clip}`;
+  }
+  if (quickId === 'simpler') {
+    return `更简单的说法：\n\n${clip}`;
+  }
+  if (quickId === 'referent') {
+    return `结合上下文，代词多半指前面刚提到的事物。代回原词后意思会更清楚。`;
+  }
+
+  return `可以对照这句看：\n\n${clip}`;
+}
+
 /**
- * Learning Room — calm editorial reader with collapsible assist rail (UI placeholders for TTS / assist).
+ * Learning Room — calm editorial reader with collapsible help rail (assist stub).
  */
 export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
-  const queryClient = useQueryClient();
-  const lastReportedRatio = useRef(0);
-  const readingScrollRef = useRef<HTMLElement | null>(null);
-  const isAssistOpen = useSyncExternalStore(subscribeAssistOpen, readAssistOpenPreference, () => true);
+  const isAssistOpen = useSyncExternalStore(subscribeAssistOpen, readAssistOpenPreference, () => false);
 
   function setAssistOpen(next: boolean) {
     writeAssistOpenPreference(next);
@@ -87,49 +116,6 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
     queryKey: learnQueryKey.article(articleId),
     queryFn: ({ signal }) => getLearnArticle(articleId, { signal }),
   });
-
-  const progressMutation = useMutation({
-    mutationFn: (progressRatio: number) => updateLearnProgress(articleId, { progressRatio }),
-    onSuccess: (progress) => {
-      lastReportedRatio.current = progress.progressRatio;
-      queryClient.setQueryData(learnQueryKey.article(articleId), (current) =>
-        current ? { ...current, progress } : current,
-      );
-      void queryClient.invalidateQueries({ queryKey: learnQueryKey.today() });
-    },
-  });
-
-  useEffect(() => {
-    if (!articleQuery.data) {
-      return;
-    }
-    lastReportedRatio.current = articleQuery.data.progress.progressRatio;
-    const scroller = readingScrollRef.current;
-    if (!scroller) {
-      return;
-    }
-
-    function onScroll() {
-      if (!scroller) {
-        return;
-      }
-      const scrollable = scroller.scrollHeight - scroller.clientHeight;
-      const ratio = scrollable <= 0 ? 100 : Math.min(100, Math.round((scroller.scrollTop / scrollable) * 100));
-      if (ratio <= lastReportedRatio.current) {
-        return;
-      }
-      if (ratio - lastReportedRatio.current < 5 && ratio < 100) {
-        return;
-      }
-      lastReportedRatio.current = ratio;
-      progressMutation.mutate(ratio);
-    }
-
-    scroller.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
-    return () => scroller.removeEventListener('scroll', onScroll);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
-  }, [articleQuery.data?.id]);
 
   const article = articleQuery.data;
   const isNotFound = articleQuery.error instanceof ApiRequestError && articleQuery.error.status === 404;
@@ -188,12 +174,11 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
     article.estimatedMinutes != null ? `约 ${article.estimatedMinutes} 分钟` : null,
   ].filter(Boolean);
   const focusSentence = paragraphs[0] ?? article.title;
-  const progressRatio = article.progress.progressRatio;
 
   return (
     <div className="flex h-[100dvh] flex-col bg-background">
       <header className="z-30 shrink-0 border-b border-border/80 bg-sidebar/95 backdrop-blur-sm">
-        <div className="flex h-16 items-center gap-3 px-4 md:gap-4 md:px-6 lg:px-8">
+        <div className="flex h-14 items-center gap-3 px-4 md:px-6 lg:px-8">
           <Button
             nativeButton={false}
             variant="ghost"
@@ -203,57 +188,53 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
             <ArrowLeftIcon className="size-4" strokeWidth={1.5} aria-hidden />
             返回
           </Button>
-          <div className="hidden h-5 w-px shrink-0 bg-border sm:block" aria-hidden />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-foreground">{article.title}</p>
-            <p className="truncate text-xs text-muted-foreground">{metaParts.join(' · ')}</p>
-          </div>
+          <div className="min-w-0 flex-1" />
           <div className="flex shrink-0 items-center gap-1">
             <Button
               type="button"
               variant="ghost"
               size="icon"
               className="size-10 rounded-xl text-muted-foreground hover:text-foreground"
-              aria-label="听读（即将开放）"
-              onClick={() => toastComingSoon('听读')}
+              aria-label="书签"
+              onClick={() => toastComingSoon('书签')}
             >
-              <HeadphonesIcon className="size-4" strokeWidth={1.5} aria-hidden />
+              <BookmarkIcon className="size-4" strokeWidth={1.5} aria-hidden />
             </Button>
             <Button
               type="button"
               variant="ghost"
               size="icon"
               className="size-10 rounded-xl text-muted-foreground hover:text-foreground"
-              aria-label="书签（即将开放）"
-              onClick={() => toastComingSoon('书签')}
+              aria-label={isAssistOpen ? '收起帮助' : '展开帮助'}
+              aria-pressed={isAssistOpen}
+              onClick={() => setAssistOpen(!isAssistOpen)}
             >
-              <BookmarkIcon className="size-4" strokeWidth={1.5} aria-hidden />
-            </Button>
-            {!isAssistOpen ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="size-10 rounded-xl text-muted-foreground hover:text-foreground"
-                aria-label="展开帮助"
-                onClick={() => setAssistOpen(true)}
-              >
+              {isAssistOpen ? (
+                <PanelRightCloseIcon className="size-4" strokeWidth={1.5} aria-hidden />
+              ) : (
                 <PanelRightOpenIcon className="size-4" strokeWidth={1.5} aria-hidden />
-              </Button>
-            ) : null}
+              )}
+            </Button>
           </div>
         </div>
       </header>
 
       <div className="relative flex min-h-0 flex-1">
-        <section ref={readingScrollRef} className="min-w-0 flex-1 overflow-y-auto px-5 py-10 md:px-8 md:py-14 lg:px-12">
+        <section className="min-w-0 flex-1 overflow-y-auto px-5 py-10 md:px-8 md:py-14 lg:px-12">
           <article
             className={cn(
               'mx-auto transition-[max-width] duration-300 ease-out-soft',
               isAssistOpen ? 'max-w-3xl' : 'max-w-3xl lg:max-w-4xl',
             )}
           >
-            <h1 className="font-heading text-4xl font-bold tracking-tight text-foreground md:text-5xl">
+            {metaParts.length > 0 ? <p className="text-sm text-muted-foreground">{metaParts.join(' · ')}</p> : null}
+
+            <h1
+              className={cn(
+                'font-heading text-4xl font-bold tracking-tight text-foreground text-pretty md:text-5xl',
+                metaParts.length > 0 ? 'mt-4' : null,
+              )}
+            >
               {article.title}
             </h1>
 
@@ -263,15 +244,6 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
               ) : (
                 <p className="text-muted-foreground">这篇还没有正文。</p>
               )}
-            </div>
-
-            <div className="mt-14 rounded-3xl bg-paper px-5 py-5 md:px-6">
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-card ring-1 ring-foreground/5">
-                  <HeadphonesIcon className="size-4 text-brand-deep" strokeWidth={1.5} aria-hidden />
-                </div>
-                <p className="font-medium text-foreground">听读 · 即将开放</p>
-              </div>
             </div>
           </article>
         </section>
@@ -284,14 +256,13 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
               aria-label="关闭帮助"
               onClick={() => setAssistOpen(false)}
             />
-            <AssistRail
+            <HelpRail
               className={cn(
-                'z-20 flex w-[min(22.5rem,100%)] shrink-0 flex-col border-l border-border bg-sidebar',
+                'z-20 flex w-[min(28rem,100%)] shrink-0 flex-col border-l border-border bg-sidebar',
                 'max-lg:absolute max-lg:inset-y-0 max-lg:right-0 max-lg:shadow-card',
                 'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-right-2 motion-safe:duration-300',
               )}
               focusSentence={focusSentence}
-              progressRatio={progressRatio}
               onClose={() => setAssistOpen(false)}
             />
           </>
@@ -340,44 +311,75 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
           </Button>
         </div>
       </footer>
-
-      {!isAssistOpen ? (
-        <Button
-          type="button"
-          variant="outline"
-          className={cn(
-            'fixed right-5 z-40 h-12 gap-2 rounded-2xl border-border bg-card px-4 shadow-card',
-            'bottom-[5.75rem] sm:bottom-24',
-            'transition-colors duration-300 ease-out-soft hover:bg-muted/40',
-          )}
-          aria-label="展开帮助"
-          onClick={() => setAssistOpen(true)}
-        >
-          <LightbulbIcon className="size-4 text-brand-deep" strokeWidth={1.5} aria-hidden />
-          <span className="text-sm font-medium">帮助</span>
-        </Button>
-      ) : null}
     </div>
   );
 }
 
-function AssistRail({
+function HelpRail({
   className,
   focusSentence,
-  progressRatio,
   onClose,
 }: {
   className?: string;
   focusSentence: string;
-  progressRatio: number;
   onClose: () => void;
 }) {
+  const [draft, setDraft] = useState('');
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isReplying, setIsReplying] = useState(false);
+  const threadEndRef = useRef<HTMLDivElement | null>(null);
+  const replyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const isEmpty = messages.length === 0 && !isReplying;
+
+  useEffect(() => {
+    threadEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages, isReplying]);
+
+  useEffect(() => {
+    return () => {
+      if (replyTimerRef.current) {
+        clearTimeout(replyTimerRef.current);
+      }
+    };
+  }, []);
+
+  function sendPrompt(prompt: string, quickId?: HelpQuickId) {
+    const trimmed = prompt.trim();
+    if (!trimmed || isReplying) {
+      return;
+    }
+
+    const userMessage: ChatMessage = {
+      id: createMessageId(),
+      role: 'user',
+      content: trimmed,
+    };
+
+    setMessages((current) => [...current, userMessage]);
+    setDraft('');
+    setIsReplying(true);
+
+    if (replyTimerRef.current) {
+      clearTimeout(replyTimerRef.current);
+    }
+
+    replyTimerRef.current = setTimeout(() => {
+      const assistantMessage: ChatMessage = {
+        id: createMessageId(),
+        role: 'assistant',
+        content: mockAssistReply(trimmed, focusSentence, quickId),
+      };
+      setMessages((current) => [...current, assistantMessage]);
+      setIsReplying(false);
+      replyTimerRef.current = null;
+    }, 700);
+  }
+
   return (
-    <aside className={className} aria-label="阅读帮助">
-      <div className="flex items-center justify-between gap-3 border-b border-border/80 px-5 py-4">
-        <div className="min-w-0">
-          <p className="font-semibold text-foreground">帮助</p>
-        </div>
+    <aside className={cn('flex min-h-0 flex-col', className)} aria-label="帮助">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/80 px-5 py-4">
+        <p className="font-semibold text-foreground">帮助</p>
         <Button
           type="button"
           variant="ghost"
@@ -390,38 +392,108 @@ function AssistRail({
         </Button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 py-6">
-        <div className="rounded-3xl border border-border bg-card p-5 md:p-6">
-          <p className="text-sm text-muted-foreground">示例句子</p>
-          <p className="mt-3 text-[0.95rem] leading-relaxed text-foreground">{focusSentence}</p>
-          <div className="mt-5 space-y-2.5">
-            {(['这句话什么意思', '用更简单的英语说', '这个词在文中指什么'] as const).map((label) => (
-              <button
-                key={label}
-                type="button"
-                className={cn(
-                  'w-full rounded-xl bg-muted/60 px-4 py-3.5 text-left text-sm text-foreground',
-                  'transition-colors duration-300 ease-out-soft hover:bg-muted',
-                )}
-                onClick={() => toastComingSoon('文内解释')}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <p className="mt-4 text-xs text-muted-foreground">即将开放</p>
-        </div>
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-5">
+        {isEmpty ? (
+          <div className="flex flex-col gap-5">
+            <div className="rounded-2xl bg-paper px-4 py-4">
+              <p className="text-[0.95rem] leading-relaxed text-foreground">{focusSentence}</p>
+            </div>
 
-        <div className="mt-8">
-          <p className="mb-3 text-sm text-muted-foreground">阅读进度</p>
-          <div className="h-2 overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-[width] duration-500 ease-out-soft"
-              style={{ width: `${progressRatio}%` }}
-            />
+            <div className="grid gap-2.5">
+              {HELP_QUICK_ACTIONS.map((action) => (
+                <button
+                  key={action.id}
+                  type="button"
+                  disabled={isReplying}
+                  className={cn(
+                    'rounded-2xl border border-border/80 bg-card px-4 py-3.5 text-left',
+                    'transition-colors duration-300 ease-out-soft hover:bg-muted/40',
+                    'disabled:pointer-events-none disabled:opacity-50',
+                  )}
+                  onClick={() => sendPrompt(action.label, action.id)}
+                >
+                  <p className="text-sm font-medium text-foreground">{action.label}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{action.hint}</p>
+                </button>
+              ))}
+            </div>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">{progressCaption(progressRatio)}</p>
-        </div>
+        ) : (
+          <div className="flex flex-col gap-4" aria-live="polite">
+            {messages.map((message) =>
+              message.role === 'user' ? (
+                <div key={message.id} className="flex justify-end">
+                  <div className="max-w-[92%] rounded-2xl bg-muted/70 px-3.5 py-2.5 text-sm leading-relaxed text-foreground">
+                    {message.content}
+                  </div>
+                </div>
+              ) : (
+                <div
+                  key={message.id}
+                  className="max-w-[95%] text-sm leading-relaxed whitespace-pre-wrap text-foreground/90"
+                >
+                  {message.content}
+                </div>
+              ),
+            )}
+
+            {isReplying ? (
+              <div className="flex items-center gap-1.5 py-1 text-muted-foreground" aria-label="正在回复">
+                <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground/70" />
+                <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground/70 [animation-delay:150ms]" />
+                <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground/70 [animation-delay:300ms]" />
+              </div>
+            ) : null}
+
+            {!isReplying && messages.length > 0 ? (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {HELP_QUICK_ACTIONS.map((action) => (
+                  <button
+                    key={action.id}
+                    type="button"
+                    className={cn(
+                      'rounded-xl bg-muted/60 px-3 py-2 text-xs text-foreground',
+                      'transition-colors duration-300 ease-out-soft hover:bg-muted',
+                    )}
+                    onClick={() => sendPrompt(action.label, action.id)}
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            <div ref={threadEndRef} />
+          </div>
+        )}
+      </div>
+
+      <div className="shrink-0 border-t border-border/80 px-4 pt-3 pb-4">
+        <form
+          className="flex items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            sendPrompt(draft);
+          }}
+        >
+          <Input
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder="提问…"
+            aria-label="提问"
+            disabled={isReplying}
+            className="h-11 flex-1 rounded-xl border-border bg-card px-3.5 text-sm shadow-none"
+          />
+          <Button
+            type="submit"
+            size="icon"
+            disabled={isReplying || draft.trim().length === 0}
+            className="size-11 shrink-0 rounded-xl hover:bg-brand-deep"
+            aria-label="发送"
+          >
+            <ArrowUpIcon className="size-4" strokeWidth={1.5} aria-hidden />
+          </Button>
+        </form>
       </div>
     </aside>
   );

@@ -117,6 +117,10 @@
   --input: var(--border-warm);
   --ring: var(--brand);
 
+  /* Text selection — soft ember wash (not system blue; not solid brand) */
+  --selection: color-mix(in oklab, var(--brand) 22%, transparent);
+  --selection-foreground: var(--ink);
+
   /* Charts — warm neutrals only (not frozen in DESIGN.md; keep non-purple) */
   --chart-1: #c2410c;
   --chart-2: #9a3412;
@@ -137,6 +141,7 @@
   /* Geometry & motion */
   --radius: 0.8rem;
   --elynd-shadow-card: 0 12px 40px -24px rgb(28 25 23 / 0.12);
+  --elynd-shadow-float: 0 2px 6px -2px rgb(28 25 23 / 0.08), 0 14px 32px -10px rgb(28 25 23 / 0.18);
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 
   /* Fonts — DESIGN.md stacks via Fontsource variable packages + OS fallbacks */
@@ -152,6 +157,10 @@
   box-shadow: var(--elynd-shadow-card);
 }
 
+@utility shadow-float {
+  box-shadow: var(--elynd-shadow-float);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -162,6 +171,12 @@
   html {
     @apply font-sans;
   }
+
+  ::selection {
+    background: var(--selection);
+    color: var(--selection-foreground);
+  }
+
   /* Optional paper grain — DESIGN.md Elevation */
   body::before {
     content: '';

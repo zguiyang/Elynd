@@ -58,15 +58,15 @@ Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root).
 
 ### Index
 
-| Rule                                         | Load              | Role                                                |
-| -------------------------------------------- | ----------------- | --------------------------------------------------- |
-| [core.mdc](.cursor/rules/core.mdc)           | Always            | Constitution, gate, Ask/Never, TDD, DoD, router     |
-| [ponytail.mdc](.cursor/rules/ponytail.mdc)   | Always            | Lazy-senior ladder before writing code              |
-| [layering.mdc](.cursor/rules/layering.mdc)   | Always            | Package graph, concern placement, cross-layer order |
-| [structure.mdc](.cursor/rules/structure.mdc) | Always            | File/dir create/delete/split/move                   |
-| [backend.mdc](.cursor/rules/backend.mdc)     | `apps/backend/**` | Hono API conventions                                |
-| [frontend.mdc](.cursor/rules/frontend.mdc)   | `apps/web/**`     | Next.js / UI conventions                            |
-| [packages.mdc](.cursor/rules/packages.mdc)   | `packages/**`     | Shared package conventions                          |
+| Rule                                         | Load              | Role                                                        |
+| -------------------------------------------- | ----------------- | ----------------------------------------------------------- |
+| [core.mdc](.cursor/rules/core.mdc)           | Always            | Constitution, gate, Ask/Never, TDD, DoD, router             |
+| [ponytail.mdc](.cursor/rules/ponytail.mdc)   | Always            | Lazy-senior ladder before writing code                      |
+| [layering.mdc](.cursor/rules/layering.mdc)   | Always            | Package graph, concern placement, cross-layer order         |
+| [structure.mdc](.cursor/rules/structure.mdc) | Always            | File/dir create/delete/split/move; feature UI size ceiling  |
+| [backend.mdc](.cursor/rules/backend.mdc)     | `apps/backend/**` | Hono API conventions                                        |
+| [frontend.mdc](.cursor/rules/frontend.mdc)   | `apps/web/**`     | Next.js / UI; feature page composition (anti–god component) |
+| [packages.mdc](.cursor/rules/packages.mdc)   | `packages/**`     | Shared package conventions                                  |
 
 ## Language
 

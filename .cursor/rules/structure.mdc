@@ -45,7 +45,25 @@ Required env: validate at boot or config entry (fail fast). Call sites read that
 
 ## Split
 
-Mixed unrelated concerns → split. Long but cohesive → **do not** split (not for line count).
+| Condition | Action | Verify |
+| --- | --- | --- |
+| Mixed unrelated concerns in one file | Split by concern | Each file one cohesive job |
+| Long but cohesive, **and** under size ceiling | **Do not** split for line count alone | Keep together |
+| Feature / page UI file over size ceiling (see below) | Split by UI concern into colocated siblings | Each file ≤ ceiling; page stays orchestrator |
+
+### Feature UI size ceiling (`apps/web/features/**`)
+
+Soft target for feature page/shell/component modules (not API helpers, not `components/ui/`):
+
+| Lines | Action |
+| --- | --- |
+| ~300–400 | Comfortable default |
+| 401–500 | Prefer split if 2+ UI concerns; OK if still one cohesive surface |
+| **>500** | **Must split** — do not leave god/page megacomponents |
+
+Colocate page-owned pieces as siblings under the same feature dir (e.g. `learn-room-page.tsx` + `learn-article-reader.tsx` + `learn-help-rail.tsx`). A single real consumer is OK when the split exists to enforce this ceiling / isolation — that overrides the “1 consumer → inline” row above for this case only.
+
+Do **not**: invent shared abstractions for the split; extract tiny 30-line wrappers; promote to `packages/*` for one page.
 
 ## Move / promote shared
 

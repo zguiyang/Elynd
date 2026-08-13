@@ -36,6 +36,30 @@ Feature/component files: `kebab-case` (`sign-in-form.tsx`); PascalCase exports. 
 - Prefer existing `components/ui/`; shadcn CLI; ask before editing `components/ui/**` source
 - Zustand: UI-only — never API/server SoT (`layering`)
 
+### Feature page composition (anti–god component)
+
+Prefer **compose many focused components** over one 700–1000 line page module.
+
+| Rule | Detail |
+| --- | --- |
+| Thin route | `app/**/page.tsx` only passes params / renders a feature entry |
+| Page = orchestrator | `*-page.tsx` owns data load, empty/error gates, layout chrome; delegates UI surfaces |
+| Colocate siblings | Page-owned pieces live next to the page under `features/<domain>/` (same dir), not in a catch-all `components/` |
+| Size ceiling | Soft ~300–400 lines; hard split at **>500** — see `structure` Feature UI size ceiling |
+| Isolation | Keep selection state, chat/rail state, form editor state in their owning child; parent passes props / callbacks |
+| When to split vs wait | Split structure **before** wiring the next real API into a megacomponent — do not wait for “full real data” to carve boundaries |
+| Not this rule | Stub/mock honesty, data-flow bugs, and `formatXApiError = formatApiError` aliases — fix those separately; splitting alone does not fix them |
+
+Example shape:
+
+```text
+features/learn/
+  learn-room-page.tsx      # query + chrome + compose
+  learn-article-reader.tsx # body + selection popover
+  learn-help-rail.tsx      # assist rail
+  learn-api.ts
+```
+
 ## Styling
 
 Tailwind v4 (`@import "tailwindcss"`); semantic tokens over raw colors.

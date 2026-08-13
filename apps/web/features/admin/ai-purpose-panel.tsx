@@ -65,13 +65,13 @@ export function AiPurposePanel({
     .sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label));
 
   return (
-    <section className="rounded-3xl border border-border bg-secondary/60 px-5 py-5 md:px-6">
-      <div className="flex flex-col gap-1">
+    <section className="flex flex-col gap-4">
+      <div>
         <h2 className="text-base font-medium text-foreground">用途默认模型</h2>
-        <p className="text-sm text-muted-foreground">决定各业务能力实际调用哪一个已启用模型。</p>
+        <p className="mt-1 text-sm text-muted-foreground">决定各业务能力实际调用哪一个已启用模型。</p>
       </div>
 
-      <ul className="mt-5 flex flex-col gap-4">
+      <ul className="overflow-hidden rounded-3xl border border-border bg-secondary/60">
         {settings.map((setting) => {
           const copy = AI_PURPOSE_LABELS[setting.key];
           const draft = draftByKey[setting.key] ?? setting.modelId ?? '';
@@ -96,11 +96,11 @@ export function AiPurposePanel({
           return (
             <li
               key={setting.key}
-              className="flex flex-col gap-4 border-t border-border/80 pt-4 first:border-t-0 first:pt-0 md:flex-row md:items-end md:justify-between"
+              className="grid gap-5 border-t border-border/80 px-5 py-5 first:border-t-0 md:grid-cols-2 md:items-start md:gap-10 md:px-6 md:py-6"
             >
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-medium text-foreground">{copy.title}</p>
+                  <p className="text-base font-medium text-foreground">{copy.title}</p>
                   <Badge
                     variant="secondary"
                     className={
@@ -114,12 +114,12 @@ export function AiPurposePanel({
                     {health.label}
                   </Badge>
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">{copy.description}</p>
+                <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">{copy.description}</p>
               </div>
 
-              <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end md:w-auto">
-                <Field className="min-w-0 flex-1 sm:min-w-56">
-                  <FieldLabel htmlFor={`purpose-${setting.key}`}>默认模型</FieldLabel>
+              <Field className="min-w-0 gap-2">
+                <FieldLabel htmlFor={`purpose-${setting.key}`}>默认模型</FieldLabel>
+                <div className="flex items-center gap-3">
                   <Select
                     items={selectItems}
                     value={draft || null}
@@ -132,7 +132,7 @@ export function AiPurposePanel({
                   >
                     <SelectTrigger
                       id={`purpose-${setting.key}`}
-                      className="h-10 w-full rounded-xl"
+                      className="h-10 min-w-0 flex-1 rounded-xl"
                       disabled={enabledModels.length === 0 && !draft}
                     >
                       <SelectValue placeholder={enabledModels.length === 0 ? '暂无可用模型' : '选择启用中的模型'} />
@@ -147,16 +147,16 @@ export function AiPurposePanel({
                       </SelectGroup>
                     </SelectContent>
                   </Select>
-                  <FieldDescription>仅列出已启用服务商下的启用模型。</FieldDescription>
-                </Field>
-                <Button
-                  className="h-10 shrink-0 rounded-xl px-5 hover:bg-brand-deep"
-                  disabled={!draft || !isDirty}
-                  onClick={() => onSave(setting.key)}
-                >
-                  保存
-                </Button>
-              </div>
+                  <Button
+                    className="h-10 shrink-0 rounded-xl px-5 hover:bg-brand-deep"
+                    disabled={!draft || !isDirty}
+                    onClick={() => onSave(setting.key)}
+                  >
+                    保存
+                  </Button>
+                </div>
+                <FieldDescription>仅列出已启用服务商下的启用模型。</FieldDescription>
+              </Field>
             </li>
           );
         })}

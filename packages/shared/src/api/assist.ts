@@ -23,13 +23,22 @@ export const assistAskBodySchema = z
 
 export type AssistAskBody = z.infer<typeof assistAskBodySchema>;
 
-export const assistReplySchema = z.object({
-  reply: z.string().min(1),
+/** SSE `event:` names for POST /api/assist/ask */
+export const ASSIST_SSE_EVENT = {
+  delta: 'delta',
+  done: 'done',
+  error: 'error',
+} as const;
+
+export type AssistSseEventName = (typeof ASSIST_SSE_EVENT)[keyof typeof ASSIST_SSE_EVENT];
+
+export const assistSseDeltaSchema = z.object({
+  text: z.string(),
 });
 
-export type AssistReply = z.infer<typeof assistReplySchema>;
+export type AssistSseDelta = z.infer<typeof assistSseDeltaSchema>;
 
-export const assistAskDataSchema = z.object({
+export const assistSseDoneSchema = z.object({
   reply: z.string(),
   model: z
     .object({
@@ -38,4 +47,10 @@ export const assistAskDataSchema = z.object({
     .optional(),
 });
 
-export type AssistAskData = z.infer<typeof assistAskDataSchema>;
+export type AssistSseDone = z.infer<typeof assistSseDoneSchema>;
+
+export const assistSseErrorSchema = z.object({
+  error: z.string(),
+});
+
+export type AssistSseError = z.infer<typeof assistSseErrorSchema>;

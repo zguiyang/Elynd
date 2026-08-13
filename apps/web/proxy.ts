@@ -6,8 +6,9 @@ import { hasSessionCookie, resolveAuthPageRedirect } from '@/lib/auth/session-ga
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Logout stays on Next so HttpOnly cookie can be cleared on this origin.
-  if (pathname === '/api/auth/logout') {
+  // Stay on Next (do not rewrite): logout clears HttpOnly cookie; assist ask must
+  // stream through a Route Handler — proxy rewrites can buffer SSE until done.
+  if (pathname === '/api/auth/logout' || pathname === '/api/assist/ask') {
     return NextResponse.next();
   }
 

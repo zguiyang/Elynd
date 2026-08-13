@@ -3,6 +3,7 @@
 import { ArrowUpIcon, PanelRightCloseIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { Streamdown } from 'streamdown';
 
 import { type AssistActionId as SharedAssistActionId } from '@elynd/shared/api/assist';
 
@@ -223,22 +224,34 @@ export function LearnHelpRail({
           </div>
         ) : (
           <div className="flex flex-col gap-4" aria-live="polite">
-            {messages.map((message) =>
-              message.role === 'user' ? (
-                <div key={message.id} className="flex justify-end">
-                  <div className="max-w-[92%] rounded-2xl bg-muted/70 px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap text-foreground">
-                    {message.content}
+            {messages.map((message, index) => {
+              if (message.role === 'user') {
+                return (
+                  <div key={message.id} className="flex justify-end">
+                    <div className="max-w-[92%] rounded-2xl bg-muted/70 px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap text-foreground">
+                      {message.content}
+                    </div>
                   </div>
+                );
+              }
+
+              const isStreamingMessage = isReplying && index === messages.length - 1;
+
+              return (
+                <div key={message.id} className="max-w-[95%] text-sm leading-relaxed text-foreground/90">
+                  {message.content ? (
+                    <Streamdown
+                      className="[&_*]:leading-relaxed [&_ol]:my-2 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_ul]:my-2"
+                      controls={false}
+                      isAnimating={isStreamingMessage}
+                      mode={isStreamingMessage ? 'streaming' : 'static'}
+                    >
+                      {message.content}
+                    </Streamdown>
+                  ) : null}
                 </div>
-              ) : (
-                <div
-                  key={message.id}
-                  className="max-w-[95%] text-sm leading-relaxed whitespace-pre-wrap text-foreground/90"
-                >
-                  {message.content}
-                </div>
-              ),
-            )}
+              );
+            })}
 
             {isReplying ? (
               <div className="flex items-center gap-1.5 py-1 text-muted-foreground" aria-label="正在回复">

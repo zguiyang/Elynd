@@ -1,6 +1,7 @@
 'use client';
 
-import { ArrowUpIcon, XIcon } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { ArrowUpIcon, PlusIcon, XIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Streamdown } from 'streamdown';
@@ -10,6 +11,13 @@ import { type AssistActionId as SharedAssistActionId } from '@elynd/shared/api/a
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { askAssistStream, formatAssistLearnerError } from '@/features/learn/assist-api';
+import {
+  conversationQueryKey,
+  createAssistConversation,
+  formatConversationApiError,
+  getConversation,
+} from '@/features/learn/conversation-api';
+import { LearnHelpHistory } from '@/features/learn/learn-help-history';
 import { cn } from '@/lib/utils';
 
 const INTRO_MESSAGE =
@@ -59,7 +67,8 @@ function createIntroMessage(): ChatMessage {
 }
 
 /**
- * Collapsible help rail for the Learning Room — streams assist replies over SSE.
+ * Collapsible help rail for the Learning Room — streams assist replies over SSE,
+ * persists turns server-side, and supports new chat / history resume.
  */
 export function LearnHelpRail({
   className,
@@ -68,15 +77,24 @@ export function LearnHelpRail({
   onPendingAssistHandled,
   onClose,
 }: LearnHelpRailProps) {
+  const queryClient = useQueryClient();
   const [draft, setDraft] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>(() => [createIntroMessage()]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [isReplying, setIsReplying] = useState(false);
+  const [isStartingNew, setIsStartingNew] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [followUps, setFollowUps] = useState<string[]>([]);
   const [followUpsForMessageId, setFollowUpsForMessageId] = useState<string | null>(null);
   const threadEndRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const lastSelectionRef = useRef('');
+  const conversationIdRef = useRef<string | null>(null);
   const skipIntroRef = useRef(Boolean(pendingAssist));
+
+  useEffect(() => {
+    conversationIdRef.current = conversationId;
+  }, [conversationId]);
 
   useEffect(() => {
     if (skipIntroRef.current) {
@@ -95,9 +113,70 @@ export function LearnHelpRail({
     };
   }, []);
 
+  function resetComposerState() {
+    setDraft('');
+    setFollowUps([]);
+    setFollowUpsForMessageId(null);
+  }
+
+  async function handleNewChat() {
+    if (isReplying || isStartingNew || isLoadingHistory) {
+      return;
+    }
+    abortRef.current?.abort();
+    setIsStartingNew(true);
+    try {
+      const created = await createAssistConversation(articleId);
+      setConversationId(created.id);
+      setMessages([createIntroMessage()]);
+      resetComposerState();
+      void queryClient.invalidateQueries({ queryKey: conversationQueryKey.list({ articleId }) });
+    } catch (error) {
+      toast.error(formatConversationApiError(error));
+    } finally {
+      setIsStartingNew(false);
+    }
+  }
+
+  async function handleSelectHistory(id: string) {
+    if (isReplying || isStartingNew || isLoadingHistory) {
+      return;
+    }
+    abortRef.current?.abort();
+    setIsLoadingHistory(true);
+    try {
+      const detail = await getConversation(id);
+      setConversationId(detail.id);
+      setMessages(
+        detail.messages.map((message) => ({
+          id: message.id,
+          role: message.role,
+          content: message.content,
+        })),
+      );
+      resetComposerState();
+      const lastAssistant = [...detail.messages].reverse().find((message) => message.role === 'assistant');
+      const suggestions = lastAssistant?.metadata.suggestions;
+      if (lastAssistant && suggestions?.length) {
+        setFollowUps(suggestions);
+        setFollowUpsForMessageId(lastAssistant.id);
+      }
+      const lastUserWithSelection = [...detail.messages]
+        .reverse()
+        .find((message) => message.role === 'user' && message.metadata.selection?.trim());
+      if (lastUserWithSelection?.metadata.selection) {
+        lastSelectionRef.current = lastUserWithSelection.metadata.selection;
+      }
+    } catch (error) {
+      toast.error(formatConversationApiError(error));
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }
+
   async function sendPrompt(prompt: string, actionId?: AssistActionId, contextText?: string) {
     const trimmed = prompt.trim();
-    if (!trimmed || isReplying) {
+    if (!trimmed || isReplying || isStartingNew || isLoadingHistory) {
       return false;
     }
 
@@ -120,7 +199,10 @@ export function LearnHelpRail({
     };
     const assistantId = createMessageId();
 
-    setMessages((current) => [...current, userMessage, { id: assistantId, role: 'assistant', content: '' }]);
+    setMessages((current) => {
+      const withoutIntro = current.filter((message) => !message.isIntro);
+      return [...withoutIntro, userMessage, { id: assistantId, role: 'assistant', content: '' }];
+    });
     setDraft('');
     setFollowUps([]);
     setFollowUpsForMessageId(null);
@@ -131,6 +213,7 @@ export function LearnHelpRail({
     abortRef.current = abort;
 
     const question = askActionId === 'qa' ? trimmed : undefined;
+    const activeConversationId = conversationIdRef.current;
 
     try {
       await askAssistStream(
@@ -139,6 +222,7 @@ export function LearnHelpRail({
           actionId: askActionId,
           ...(selection ? { selection } : {}),
           ...(question ? { question } : {}),
+          ...(activeConversationId ? { conversationId: activeConversationId } : {}),
         },
         {
           onDelta: (text) => {
@@ -152,10 +236,14 @@ export function LearnHelpRail({
             setMessages((current) =>
               current.map((message) => (message.id === assistantId ? { ...message, content: done.reply } : message)),
             );
+            if (done.conversationId) {
+              setConversationId(done.conversationId);
+            }
             if (done.suggestions?.length) {
               setFollowUps(done.suggestions);
               setFollowUpsForMessageId(assistantId);
             }
+            void queryClient.invalidateQueries({ queryKey: conversationQueryKey.list({ articleId }) });
           },
         },
         { signal: abort.signal },
@@ -208,23 +296,45 @@ export function LearnHelpRail({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- pending assist bridge
   }, [pendingAssist, isReplying]);
 
+  const isChromeBusy = isReplying || isStartingNew || isLoadingHistory;
+
   return (
     <aside className={cn('flex min-h-0 flex-col', className)} aria-label="帮助">
-      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/80 px-5 py-4">
-        <p className="font-semibold text-foreground">帮助</p>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-10 shrink-0 rounded-xl text-muted-foreground hover:text-foreground"
-          aria-label="关闭帮助"
-          onClick={onClose}
-        >
-          <XIcon className="size-4" strokeWidth={1.5} aria-hidden />
-        </Button>
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/80 px-3 py-3 sm:px-5 sm:py-4">
+        <p className="min-w-0 flex-1 truncate font-semibold text-foreground">帮助</p>
+        <div className="flex shrink-0 items-center gap-0.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            disabled={isChromeBusy}
+            className="size-10 shrink-0 rounded-xl text-muted-foreground hover:text-foreground"
+            aria-label="新对话"
+            onClick={() => void handleNewChat()}
+          >
+            <PlusIcon className="size-4" strokeWidth={1.5} aria-hidden />
+          </Button>
+          <LearnHelpHistory
+            articleId={articleId}
+            activeConversationId={conversationId}
+            disabled={isChromeBusy}
+            onSelect={(id) => void handleSelectHistory(id)}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-10 shrink-0 rounded-xl text-muted-foreground hover:text-foreground"
+            aria-label="关闭帮助"
+            onClick={onClose}
+          >
+            <XIcon className="size-4" strokeWidth={1.5} aria-hidden />
+          </Button>
+        </div>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-5">
+        {isLoadingHistory ? <p className="mb-4 text-sm text-muted-foreground">加载对话…</p> : null}
         <div className="flex flex-col gap-4" aria-live="polite">
           {messages.map((message, index) => {
             if (message.role === 'user') {
@@ -295,7 +405,7 @@ export function LearnHelpRail({
             <button
               key={chip.id}
               type="button"
-              disabled={isReplying}
+              disabled={isChromeBusy}
               className={cn(
                 'rounded-xl bg-muted/60 px-3 py-2 text-xs text-foreground',
                 'transition-colors duration-300 ease-out-soft hover:bg-muted',
@@ -320,13 +430,13 @@ export function LearnHelpRail({
             onChange={(event) => setDraft(event.target.value)}
             placeholder="提问…"
             aria-label="提问"
-            disabled={isReplying}
+            disabled={isChromeBusy}
             className="h-11 flex-1 rounded-xl border-border bg-card px-3.5 text-sm shadow-none"
           />
           <Button
             type="submit"
             size="icon"
-            disabled={isReplying || draft.trim().length === 0}
+            disabled={isChromeBusy || draft.trim().length === 0}
             className="size-11 shrink-0 rounded-xl hover:bg-brand-deep"
             aria-label="发送"
           >

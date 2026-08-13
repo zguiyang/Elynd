@@ -14,9 +14,9 @@ export const DASHBOARD_FAKE = {
     },
   ],
   stats: [
-    { value: '12', label: '天有读过' },
-    { value: '28', label: '篇碰过' },
-    { value: '6h', label: '大概读了多久' },
+    { value: '12', label: '阅读天数' },
+    { value: '28', label: '读过篇数' },
+    { value: '6h', label: '阅读时长' },
   ],
 } as const;
 

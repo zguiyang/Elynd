@@ -303,7 +303,7 @@ export function AppShell({ children }: AppShellProps) {
 
         <aside className="hidden h-full w-72 shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar px-7 pt-7 pb-3 md:flex">
           <div className="min-h-0 flex-1">
-            <BrandMark href={AUTH_ROUTES.dashboard} size="md" subtitle="Digital Reading Room" className="mb-12" />
+            <BrandMark href={AUTH_ROUTES.dashboard} size="md" className="mb-12" />
 
             <nav className="space-y-2">
               {navItems.map((item) => {

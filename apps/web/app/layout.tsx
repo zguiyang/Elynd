@@ -16,7 +16,7 @@ import { APP_NAME } from '@/constants';
 
 export const metadata: Metadata = {
   title: APP_NAME,
-  description: 'AI-assisted English reading for work',
+  description: '读自己想读的英语',
 };
 
 export default function RootLayout({

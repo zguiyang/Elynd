@@ -31,17 +31,16 @@ export function DashboardHome() {
   return (
     <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700 mx-auto max-w-6xl">
       <h1 className="font-heading text-4xl font-bold tracking-tight md:text-5xl">{greeting}</h1>
-      <p className="mt-3 text-lg text-muted-foreground">想读就读一会儿。不必硬撑一小时。</p>
 
       {todayQuery.isPending ? (
-        <p className="mt-10 text-sm text-muted-foreground">正在准备今日阅读…</p>
+        <p className="mt-10 text-sm text-muted-foreground">加载中…</p>
       ) : todayQuery.isError ? (
         <Empty className="mt-10 border border-dashed border-border bg-card/50 py-12">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <BookOpenIcon />
             </EmptyMedia>
-            <EmptyTitle>今日进度暂时打不开</EmptyTitle>
+            <EmptyTitle>暂时无法加载</EmptyTitle>
             <EmptyDescription>{formatLearnApiError(todayQuery.error)}</EmptyDescription>
           </EmptyHeader>
         </Empty>
@@ -50,7 +49,6 @@ export function DashboardHome() {
           <div className="max-w-xl">
             <p className="mb-4 text-sm text-brand-deep">接着读</p>
             <h2 className="font-heading text-3xl font-bold tracking-tight md:text-4xl">{current.article.title}</h2>
-            <p className="mt-5 text-muted-foreground">你正在读的这篇。打开就能继续。</p>
 
             <div className="mt-5 flex flex-wrap gap-5 text-sm text-muted-foreground">
               <span>{LEVEL_LABEL[current.article.level]}</span>
@@ -102,8 +100,7 @@ export function DashboardHome() {
       ) : (
         <section className="mt-10 rounded-3xl bg-paper p-8 md:p-10">
           <p className="mb-4 text-sm text-brand-deep">今日还没有在读的文章</p>
-          <h2 className="font-heading text-3xl font-bold tracking-tight md:text-4xl">去图书馆挑一篇</h2>
-          <p className="mt-5 max-w-xl text-muted-foreground">打开一篇短文开始读，进度会记在这里，下次就能接着读。</p>
+          <h2 className="font-heading text-3xl font-bold tracking-tight md:text-4xl">从图书馆开始</h2>
           <Button
             nativeButton={false}
             className="mt-7 h-11 gap-2 rounded-xl px-7 hover:bg-brand-deep"
@@ -155,14 +152,14 @@ export function DashboardHome() {
             </div>
           ) : (
             <p className="rounded-3xl border border-dashed border-border bg-card/40 px-6 py-10 text-sm text-muted-foreground">
-              还没有其他正在读的文章。图书馆里多逛逛也很好。
+              暂无其他在读
             </p>
           )}
         </div>
 
         <div>
           <h3 className="mb-5 text-xl font-semibold">为你推荐</h3>
-          <p className="mb-4 text-xs text-muted-foreground">演示占位 · 稍后接真实推荐</p>
+          <p className="mb-4 text-xs text-muted-foreground">示例</p>
           <div className="space-y-4">
             {recommendations.map((item) => (
               <div
@@ -182,8 +179,8 @@ export function DashboardHome() {
       </section>
 
       <section className="mt-12 rounded-3xl border border-border bg-card p-8">
-        <h3 className="text-xl font-semibold">跟英语相处多久了</h3>
-        <p className="mt-2 text-xs text-muted-foreground">演示占位 · Progress stub 稍后接入</p>
+        <h3 className="text-xl font-semibold">阅读统计</h3>
+        <p className="mt-2 text-xs text-muted-foreground">示例</p>
         <div className="mt-8 grid grid-cols-3 gap-4 text-foreground">
           {stats.map((stat) => (
             <div key={stat.label}>

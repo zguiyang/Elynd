@@ -3,6 +3,7 @@ import { afterAll, describe, expect, it, vi } from 'vitest';
 
 import { llmAppSetting as llmAppSettingTable, llmProvider as llmProviderTable, user as userTable } from '@elynd/db';
 import type { LlmAppSettingView, LlmModel, LlmProvider } from '@elynd/shared/api/llm-config';
+import { AI_PURPOSE_TO_SETTING_KEY } from '@elynd/shared/api/llm-config-keys';
 import { AUTH_ADMIN_ROLE } from '@elynd/shared/auth/policy';
 
 import app from '@/app';
@@ -10,6 +11,7 @@ import { db } from '@/db';
 import * as aiService from '@/modules/ai/service';
 
 const password = 'password123';
+const ASSIST_SETTING_KEY = AI_PURPOSE_TO_SETTING_KEY.assist;
 
 function uniqueEmail(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
@@ -66,15 +68,43 @@ async function createSession(role: 'user' | 'admin' = 'user') {
   return { email, cookie: cookieHeader(login) };
 }
 
+async function readAssistDefaultModelId(): Promise<string | null> {
+  const rows = await db
+    .select({ value: llmAppSettingTable.value })
+    .from(llmAppSettingTable)
+    .where(eq(llmAppSettingTable.key, ASSIST_SETTING_KEY))
+    .limit(1);
+  return rows[0]?.value ?? null;
+}
+
+/** Restore pre-test binding (or remove row if there was none). Does not wipe unrelated local config. */
+async function restoreAssistDefaultModelId(priorModelRowId: string | null): Promise<void> {
+  if (priorModelRowId) {
+    await db
+      .insert(llmAppSettingTable)
+      .values({ key: ASSIST_SETTING_KEY, value: priorModelRowId })
+      .onConflictDoUpdate({
+        target: llmAppSettingTable.key,
+        set: { value: priorModelRowId },
+      });
+    return;
+  }
+  await db.delete(llmAppSettingTable).where(eq(llmAppSettingTable.key, ASSIST_SETTING_KEY));
+}
+
 describe('LLM config HTTP', () => {
   const createdEmails: string[] = [];
   const createdProviderIds: string[] = [];
+  /** Snapshot before this suite mutates purpose binding; undefined = never snapshotted / already restored. */
+  let priorAssistModelRowId: string | null | undefined;
 
   afterAll(async () => {
+    if (priorAssistModelRowId !== undefined) {
+      await restoreAssistDefaultModelId(priorAssistModelRowId);
+    }
     if (createdProviderIds.length > 0) {
       await db.delete(llmProviderTable).where(inArray(llmProviderTable.id, createdProviderIds));
     }
-    await db.delete(llmAppSettingTable).where(eq(llmAppSettingTable.key, 'assist.default_model_id'));
     for (const email of createdEmails) {
       await db.delete(userTable).where(eq(userTable.email, email));
     }
@@ -114,7 +144,9 @@ describe('LLM config HTTP', () => {
     const model = (await createModel.json()) as LlmModel;
     expect(model.modelId).toBe('gpt-test');
 
-    const putSetting = await app.request('/api/admin/llm/settings/assist.default_model_id', {
+    priorAssistModelRowId = await readAssistDefaultModelId();
+
+    const putSetting = await app.request(`/api/admin/llm/settings/${ASSIST_SETTING_KEY}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
       body: JSON.stringify({ modelId: model.id }),
@@ -145,7 +177,9 @@ describe('LLM config HTTP', () => {
     expect(invokeSpy).toHaveBeenCalled();
     invokeSpy.mockRestore();
 
-    await db.delete(llmAppSettingTable).where(eq(llmAppSettingTable.key, 'assist.default_model_id'));
+    // Unbind test model without wiping the learner's prior purpose binding.
+    await restoreAssistDefaultModelId(priorAssistModelRowId);
+    priorAssistModelRowId = undefined;
 
     const deleteModel = await app.request(`/api/admin/llm/models/${model.id}`, {
       method: 'DELETE',

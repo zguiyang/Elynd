@@ -75,7 +75,8 @@ export async function* streamAssistAsk(
         content: [
           'You are Elynd reading assist. Help adults understand the current English article.',
           'Stay grounded in the article. Use tools if you need more of the text.',
-          'Respond in plain text only (no JSON). Prefer clear Chinese for explanations;',
+          'Respond in light Markdown only (short paragraphs, **bold**, lists). No JSON;',
+          'avoid code fences unless quoting a short English rewrite. Prefer clear Chinese for explanations;',
           'use simpler English when the learner asks for a rewrite.',
           `Article title: ${article.title}`,
           `Article level: ${article.level}`,

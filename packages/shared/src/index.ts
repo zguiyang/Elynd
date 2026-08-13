@@ -1,3 +1,4 @@
+export * from './api/ai-invocations.ts';
 export * from './api/articles.ts';
 export * from './api/assist.ts';
 export * from './api/conversations.ts';

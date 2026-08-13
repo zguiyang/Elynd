@@ -7,10 +7,7 @@ import {
   learnTodayDataSchema,
   type PracticeAttempt,
   practiceAttemptSchema,
-  type ReadingProgress,
-  readingProgressSchema,
   type UpdatePracticeAttemptBody,
-  type UpdateReadingProgressBody,
 } from '@elynd/shared/api/learn';
 
 import { apiRequest, formatApiError } from '@/lib/api-request';
@@ -33,17 +30,6 @@ export async function getLearnArticle(articleId: string, init?: { signal?: Abort
   return apiRequest(`/api/learn/articles/${encodeURIComponent(articleId)}`, {
     schema: learnArticleDataSchema,
     signal: init?.signal,
-  });
-}
-
-export async function updateLearnProgress(
-  articleId: string,
-  body: UpdateReadingProgressBody,
-): Promise<ReadingProgress> {
-  return apiRequest(`/api/learn/articles/${encodeURIComponent(articleId)}/progress`, {
-    method: 'PATCH',
-    schema: readingProgressSchema,
-    json: body,
   });
 }
 

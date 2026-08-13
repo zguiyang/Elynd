@@ -58,13 +58,6 @@ export function DashboardHome() {
               {current.article.themes[0] ? <span>{current.article.themes[0]}</span> : null}
             </div>
 
-            <div className="mt-6 h-2 overflow-hidden rounded-full bg-card">
-              <div
-                className="h-full rounded-full bg-primary transition-[width] duration-500 ease-out-soft"
-                style={{ width: `${current.progress.progressRatio}%` }}
-              />
-            </div>
-
             <div className="mt-7 flex flex-wrap gap-3">
               <Button
                 nativeButton={false}
@@ -138,13 +131,6 @@ export function DashboardHome() {
                       {LEVEL_LABEL[entry.article.level]}
                       {entry.article.estimatedMinutes != null ? ` · 约 ${entry.article.estimatedMinutes} 分钟` : ''}
                     </p>
-                    <div className="mt-5 text-sm text-foreground">阅读进度 {entry.progress.progressRatio}%</div>
-                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-primary"
-                        style={{ width: `${entry.progress.progressRatio}%` }}
-                      />
-                    </div>
                     <p className="mt-4 text-sm font-medium text-brand-deep">继续阅读</p>
                   </div>
                 </Link>

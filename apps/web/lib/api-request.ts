@@ -94,7 +94,18 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions<T>)
     throwApiError(await readApiError(response), onError);
   }
 
-  const parsed = schema.safeParse(await response.json());
+  const rawText = await response.text();
+  let payload: unknown;
+  if (rawText.trim() === '') {
+    payload = undefined;
+  } else {
+    try {
+      payload = JSON.parse(rawText) as unknown;
+    } catch {
+      throwApiError({ message: '响应格式无效', status: 502 }, onError);
+    }
+  }
+  const parsed = schema.safeParse(payload);
   if (!parsed.success) {
     throwApiError({ message: '响应格式无效', status: 502 }, onError);
   }

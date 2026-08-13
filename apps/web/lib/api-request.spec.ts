@@ -89,6 +89,14 @@ describe('apiRequest', () => {
     });
   });
 
+  it('returns undefined for 204 with z.void()', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
+
+    await expect(
+      apiRequest('/api/admin/llm/providers/x', { method: 'DELETE', schema: z.void() }),
+    ).resolves.toBeUndefined();
+  });
+
   it('invokes optional onError before throw', async () => {
     vi.stubGlobal(
       'fetch',

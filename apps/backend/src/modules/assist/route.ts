@@ -15,6 +15,7 @@ assistRoutes.post('/api/assist/ask', requireAuth, validateAssistAsk, async (c) =
   const body = c.req.valid('json');
 
   c.header('X-Accel-Buffering', 'no');
+  c.header('Cache-Control', 'no-cache, no-transform');
 
   return streamSSE(c, async (stream) => {
     const abort = new AbortController();

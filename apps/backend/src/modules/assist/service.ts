@@ -5,26 +5,9 @@ import { type AssistAskBody } from '@elynd/shared/api/assist';
 
 import { db } from '@/db';
 import { NotFoundError } from '@/lib/errors';
+import { composePromptMessages, PROMPT_ROLE, PROMPT_SCENE } from '@/lib/prompts';
 import { type AiStreamEvent, streamAi } from '@/modules/ai';
-import { createArticleAssistTools } from '@/modules/assist/tools';
-
-function actionInstruction(actionId: AssistAskBody['actionId'], question?: string): string {
-  switch (actionId) {
-    case 'meaning':
-    case 'explain':
-      return 'Explain the selected text in clear Chinese for an English learner. Keep it short.';
-    case 'simpler':
-      return 'Rewrite the selected text in simpler English. Keep meaning. Be concise.';
-    case 'referent':
-      return 'Explain what pronouns or references in the selection point to, using the article context.';
-    case 'lookup':
-      return 'Explain the selected word or phrase in this article context (Chinese gloss + brief note).';
-    case 'qa':
-      return `Answer the learner question about the selection using the article. Question: ${question ?? ''}`;
-    default:
-      return 'Help the learner understand the selected text.';
-  }
-}
+import { resolveAssistToolsForAction } from '@/modules/assist/tools';
 
 function neighborWindow(body: string, selection: string, radius = 120): string {
   const index = body.indexOf(selection);
@@ -59,7 +42,25 @@ export async function* streamAssistAsk(
   }
 
   const neighbor = neighborWindow(article.body, body.selection);
-  const tools = createArticleAssistTools({ title: article.title, body: article.body });
+  const tools = resolveAssistToolsForAction(body.actionId, {
+    title: article.title,
+    body: article.body,
+  });
+
+  const messages = await composePromptMessages({
+    roleId: PROMPT_ROLE.languageTeacher,
+    sceneId: PROMPT_SCENE.assistRead,
+    actionId: body.actionId,
+    vars: {
+      targetLanguage: 'English',
+      replyLanguage: 'Chinese',
+      articleTitle: article.title,
+      articleLevel: article.level,
+      selection: body.selection,
+      neighbor: neighbor || undefined,
+      question: body.question?.trim() || undefined,
+    },
+  });
 
   yield* streamAi({
     purpose: 'assist',
@@ -69,30 +70,6 @@ export async function* streamAssistAsk(
     tools,
     signal: options?.signal,
     requestSummaryExtra: { actionId: body.actionId },
-    messages: [
-      {
-        role: 'system',
-        content: [
-          'You are Elynd reading assist. Help adults understand the current English article.',
-          'Stay grounded in the article. Use tools if you need more of the text.',
-          'Respond in light Markdown only (short paragraphs, **bold**, lists). No JSON;',
-          'avoid code fences unless quoting a short English rewrite. Prefer clear Chinese for explanations;',
-          'use simpler English when the learner asks for a rewrite.',
-          `Article title: ${article.title}`,
-          `Article level: ${article.level}`,
-          actionInstruction(body.actionId, body.question),
-        ].join('\n'),
-      },
-      {
-        role: 'user',
-        content: [
-          `Selection:\n${body.selection}`,
-          neighbor ? `Nearby context:\n${neighbor}` : '',
-          body.question ? `Learner question:\n${body.question}` : '',
-        ]
-          .filter(Boolean)
-          .join('\n\n'),
-      },
-    ],
+    messages,
   });
 }

@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { redisPing } from '@/lib/redis';
 import { type AuthVariables, requireAdmin, requireAuth } from '@/middleware/auth';
 import { articlesRoutes } from '@/modules/articles/route';
+import { assistRoutes } from '@/modules/assist/route';
 import { learnRoutes } from '@/modules/learn/route';
 import { llmConfigRoutes } from '@/modules/llm-config/route';
 
@@ -27,3 +28,4 @@ routes.get('/api/admin/probe', requireAdmin, (c) => {
 routes.route('/', articlesRoutes);
 routes.route('/', learnRoutes);
 routes.route('/', llmConfigRoutes);
+routes.route('/', assistRoutes);

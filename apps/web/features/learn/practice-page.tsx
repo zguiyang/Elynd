@@ -63,7 +63,7 @@ export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
   if (practiceQuery.isPending) {
     return (
       <div className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col justify-center px-6 py-16">
-        <p className="text-sm text-muted-foreground">正在准备练习…</p>
+        <p className="text-sm text-muted-foreground">加载中…</p>
       </div>
     );
   }
@@ -99,7 +99,7 @@ export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
             <EmptyMedia variant="icon">
               <BookOpenIcon />
             </EmptyMedia>
-            <EmptyTitle>暂时打不开练习</EmptyTitle>
+            <EmptyTitle>暂时无法加载练习</EmptyTitle>
             <EmptyDescription>{formatLearnApiError(practiceQuery.error)}</EmptyDescription>
           </EmptyHeader>
         </Empty>
@@ -120,8 +120,8 @@ export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
             <EmptyMedia variant="icon">
               <BookOpenIcon />
             </EmptyMedia>
-            <EmptyTitle>这篇还没有练习</EmptyTitle>
-            <EmptyDescription>先回去继续阅读也很好。有小题时再来这里。</EmptyDescription>
+            <EmptyTitle>这篇暂无练习</EmptyTitle>
+            <EmptyDescription>有小题时再来这里。</EmptyDescription>
           </EmptyHeader>
           <Button
             nativeButton={false}
@@ -139,7 +139,7 @@ export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
   if (!attempt) {
     return (
       <div className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col justify-center px-6 py-16">
-        <p className="text-sm text-muted-foreground">正在准备练习…</p>
+        <p className="text-sm text-muted-foreground">加载中…</p>
       </div>
     );
   }
@@ -150,7 +150,7 @@ export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
   const index = localIndex ?? attempt.currentIndex;
   const question = questions[index];
   const isLast = index >= total - 1;
-  const practiceIntro = `刚读过《${practice.articleTitle}》。下面几题只帮你确认理解，不是考试。`;
+  const practiceIntro = `《${practice.articleTitle}》· 理解确认`;
 
   function goNext() {
     if (selected == null || !question) {
@@ -195,7 +195,7 @@ export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
       <header className="border-b border-border/80 bg-sidebar">
         <div className="mx-auto flex h-16 max-w-3xl items-center justify-between gap-4 px-5 md:px-8">
           <div className="min-w-0">
-            <p className="text-sm tracking-wide text-brand-deep">读完之后 · 几道小题</p>
+            <p className="text-sm tracking-wide text-brand-deep">练习</p>
             <h1 className="font-heading truncate text-lg font-bold tracking-tight md:text-xl">
               {practice.articleTitle}
             </h1>
@@ -224,25 +224,20 @@ export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
 
         {isFinished ? (
           <section className="rounded-[1.75rem] border border-border bg-card p-8 md:p-10">
-            <p className="text-sm tracking-wide text-brand-deep">这篇就到这</p>
-            <h2 className="font-heading mt-3 text-3xl font-bold tracking-tight">先这样也很好</h2>
-            <p className="mt-4 text-muted-foreground leading-relaxed">
-              读过了，也轻轻练了一下。不想继续也没关系——明天还能再打开这篇。
-            </p>
+            <h2 className="font-heading text-3xl font-bold tracking-tight">练习完成</h2>
             <Button
               nativeButton={false}
               className="mt-10 h-12 w-full gap-2 rounded-2xl hover:bg-brand-deep sm:w-auto sm:px-8"
               render={<Link href={AUTH_ROUTES.dashboard} />}
             >
               <CheckCircleIcon className="size-4" strokeWidth={1.5} aria-hidden />
-              先这样，回今日
+              回今日
             </Button>
           </section>
         ) : question ? (
           <>
             <div className="rounded-[1.75rem] bg-paper px-6 py-5 md:px-8">
               <p className="text-base leading-relaxed text-foreground/90">{practiceIntro}</p>
-              <p className="mt-2 text-sm text-muted-foreground">不想练也可以跳过。</p>
             </div>
 
             <QuestionCard question={question} index={index} total={total} selected={selected} onSelect={setSelected} />

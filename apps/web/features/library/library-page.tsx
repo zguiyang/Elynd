@@ -177,11 +177,7 @@ export function LibraryPage() {
     <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700 mx-auto max-w-6xl">
       <header className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="mb-2 text-sm tracking-wide text-brand-deep">图书馆</p>
-          <h1 className="font-heading text-4xl font-bold tracking-tight md:text-5xl">探索英语内容</h1>
-          <p className="mt-3 max-w-xl text-lg text-muted-foreground">
-            选择你感兴趣的真实短文，像抽一册书那样开始读一会儿。
-          </p>
+          <h1 className="font-heading text-4xl font-bold tracking-tight md:text-5xl">图书馆</h1>
         </div>
         <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
           <LibraryIcon className="size-5" strokeWidth={1.5} aria-hidden />
@@ -319,7 +315,7 @@ export function LibraryPage() {
               <EmptyMedia variant="icon">
                 <LibraryIcon />
               </EmptyMedia>
-              <EmptyTitle>书架暂时打不开</EmptyTitle>
+              <EmptyTitle>暂时无法加载</EmptyTitle>
               <EmptyDescription>{formatLibraryApiError(list.error)}</EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -330,17 +326,17 @@ export function LibraryPage() {
                 <LibraryIcon />
               </EmptyMedia>
               <EmptyTitle>
-                {list.total === 0 && !listParams.theme && !listParams.q ? '架上还没有册子' : '没有符合条件的册子'}
+                {list.total === 0 && !listParams.theme && !listParams.q ? '暂无文章' : '没有符合条件的结果'}
               </EmptyTitle>
               <EmptyDescription>
                 {list.total === 0 && !listParams.theme && !listParams.q
-                  ? '发布后的短文会出现在这里。先休息一下，稍后再来看看。'
+                  ? '发布后的文章会显示在这里。'
                   : '试试换个主题，或清除筛选后再浏览。'}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
         ) : (
-          <LoadingOverlay active={list.isSoftRefreshing} label="书架整理中…">
+          <LoadingOverlay active={list.isSoftRefreshing} label="加载中…">
             <div className={shelfGridClassName}>
               {list.items.map((article) => (
                 <VolumeCard key={article.id} article={article} />

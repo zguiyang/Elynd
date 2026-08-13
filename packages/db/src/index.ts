@@ -1,8 +1,19 @@
-export type { PracticeAttemptAnswer, PracticeItemPayload } from './schema';
+export type {
+  AiInvocationRequestSummary,
+  AiInvocationResponseSummary,
+  PracticeAttemptAnswer,
+  PracticeItemPayload,
+} from './schema';
 export {
   account,
   accountRelations,
+  aiInvocationLog,
   article,
+  llmAppSetting,
+  llmModel,
+  llmModelRelations,
+  llmProvider,
+  llmProviderRelations,
   practiceAttempt,
   practiceAttemptRelations,
   practiceItem,

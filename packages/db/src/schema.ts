@@ -1,5 +1,17 @@
 import { relations, sql } from 'drizzle-orm';
-import { boolean, index, integer, jsonb, pgTable, text, timestamp, unique, uniqueIndex } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  doublePrecision,
+  index,
+  integer,
+  jsonb,
+  numeric,
+  pgTable,
+  text,
+  timestamp,
+  unique,
+  uniqueIndex,
+} from 'drizzle-orm/pg-core';
 
 /** Better Auth core tables (PostgreSQL) + username plugin / product fields. */
 
@@ -246,5 +258,115 @@ export const practiceAttemptRelations = relations(practiceAttempt, ({ one }) => 
   article: one(article, {
     fields: [practiceAttempt.articleId],
     references: [article.id],
+  }),
+}));
+
+/** OpenAI-compatible LLM gateway credentials (API key encrypted at rest). */
+export const llmProvider = pgTable('llm_provider', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  baseUrl: text('base_url').notNull(),
+  apiKeyCiphertext: text('api_key_ciphertext').notNull(),
+  isEnabled: boolean('is_enabled').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
+/** Callable model under a provider (upstream model id + tuning). */
+export const llmModel = pgTable(
+  'llm_model',
+  {
+    id: text('id').primaryKey(),
+    providerId: text('provider_id')
+      .notNull()
+      .references(() => llmProvider.id, { onDelete: 'cascade' }),
+    modelId: text('model_id').notNull(),
+    label: text('label').notNull(),
+    temperature: doublePrecision('temperature'),
+    maxTokens: integer('max_tokens'),
+    isEnabled: boolean('is_enabled').default(true).notNull(),
+    sortOrder: integer('sort_order').default(0).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [
+    unique('llm_model_provider_model_uidx').on(table.providerId, table.modelId),
+    index('llm_model_provider_idx').on(table.providerId),
+  ],
+);
+
+/** App-level purpose → default model binding (e.g. assist.default_model_id). */
+export const llmAppSetting = pgTable('llm_app_setting', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
+export type AiInvocationRequestSummary = {
+  messageCount?: number;
+  selectionPreview?: string;
+  selectionLength?: number;
+  toolNames?: string[];
+  toolRoundCount?: number;
+  actionId?: string;
+};
+
+export type AiInvocationResponseSummary = {
+  replyPreview?: string;
+  replyLength?: number;
+};
+
+/** Append-only AI call audit / spend log (one business invoke = one row). */
+export const aiInvocationLog = pgTable(
+  'ai_invocation_log',
+  {
+    id: text('id').primaryKey(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    status: text('status').notNull(),
+    errorCode: text('error_code'),
+    errorMessage: text('error_message'),
+    purpose: text('purpose'),
+    source: text('source').notNull(),
+    userId: text('user_id'),
+    refType: text('ref_type'),
+    refId: text('ref_id'),
+    modelRowId: text('model_row_id'),
+    providerId: text('provider_id'),
+    modelId: text('model_id'),
+    baseUrl: text('base_url'),
+    latencyMs: integer('latency_ms'),
+    inputTokens: integer('input_tokens'),
+    outputTokens: integer('output_tokens'),
+    totalTokens: integer('total_tokens'),
+    costAmount: numeric('cost_amount', { precision: 18, scale: 8 }),
+    costCurrency: text('cost_currency'),
+    requestSummary: jsonb('request_summary').$type<AiInvocationRequestSummary>(),
+    responseSummary: jsonb('response_summary').$type<AiInvocationResponseSummary>(),
+  },
+  (table) => [
+    index('ai_invocation_log_created_at_idx').on(table.createdAt),
+    index('ai_invocation_log_purpose_created_idx').on(table.purpose, table.createdAt),
+    index('ai_invocation_log_source_created_idx').on(table.source, table.createdAt),
+    index('ai_invocation_log_status_created_idx').on(table.status, table.createdAt),
+  ],
+);
+
+export const llmProviderRelations = relations(llmProvider, ({ many }) => ({
+  models: many(llmModel),
+}));
+
+export const llmModelRelations = relations(llmModel, ({ one }) => ({
+  provider: one(llmProvider, {
+    fields: [llmModel.providerId],
+    references: [llmProvider.id],
   }),
 }));

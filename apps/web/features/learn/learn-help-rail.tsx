@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowUpIcon, PanelRightCloseIcon } from 'lucide-react';
+import { ArrowUpIcon, XIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Streamdown } from 'streamdown';
@@ -217,10 +217,10 @@ export function LearnHelpRail({
           variant="ghost"
           size="icon"
           className="size-10 shrink-0 rounded-xl text-muted-foreground hover:text-foreground"
-          aria-label="收起帮助"
+          aria-label="关闭帮助"
           onClick={onClose}
         >
-          <PanelRightCloseIcon className="size-4" strokeWidth={1.5} aria-hidden />
+          <XIcon className="size-4" strokeWidth={1.5} aria-hidden />
         </Button>
       </div>
 

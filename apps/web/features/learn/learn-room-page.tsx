@@ -1,15 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import {
-  ArrowLeftIcon,
-  BookmarkIcon,
-  BookOpenIcon,
-  CheckIcon,
-  HeadphonesIcon,
-  PanelRightCloseIcon,
-  PanelRightOpenIcon,
-} from 'lucide-react';
+import { ArrowLeftIcon, BookmarkIcon, BookOpenIcon, CheckIcon, HeadphonesIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
@@ -134,33 +126,16 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
             返回
           </Button>
           <div className="min-w-0 flex-1" />
-          <div className="flex shrink-0 items-center gap-1">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-10 rounded-xl text-muted-foreground hover:text-foreground"
-              aria-label="书签"
-              onClick={() => toastComingSoon('书签')}
-            >
-              <BookmarkIcon className="size-4" strokeWidth={1.5} aria-hidden />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-10 rounded-xl text-muted-foreground hover:text-foreground"
-              aria-label={isAssistOpen ? '收起帮助' : '展开帮助'}
-              aria-pressed={isAssistOpen}
-              onClick={() => setAssistOpen(!isAssistOpen)}
-            >
-              {isAssistOpen ? (
-                <PanelRightCloseIcon className="size-4" strokeWidth={1.5} aria-hidden />
-              ) : (
-                <PanelRightOpenIcon className="size-4" strokeWidth={1.5} aria-hidden />
-              )}
-            </Button>
-          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-10 rounded-xl text-muted-foreground hover:text-foreground"
+            aria-label="书签"
+            onClick={() => toastComingSoon('书签')}
+          >
+            <BookmarkIcon className="size-4" strokeWidth={1.5} aria-hidden />
+          </Button>
         </div>
       </header>
 
@@ -177,7 +152,18 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
           }}
         />
 
-        {isAssistOpen ? (
+        {!isAssistOpen ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="absolute right-4 bottom-5 z-20 size-14 rounded-full border-border bg-accent text-[15px] font-semibold tracking-wide text-accent-foreground shadow-card hover:bg-accent hover:text-accent-foreground"
+            aria-label="打开帮助"
+            onClick={() => setAssistOpen(true)}
+          >
+            AI
+          </Button>
+        ) : (
           <>
             <button
               type="button"
@@ -197,7 +183,7 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
               onClose={() => setAssistOpen(false)}
             />
           </>
-        ) : null}
+        )}
       </div>
 
       <footer className="z-30 shrink-0 border-t border-border/80 bg-sidebar/95 backdrop-blur-sm">

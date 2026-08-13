@@ -7,7 +7,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AI_PURPOSE_LABELS } from '@/features/admin/ai-config-mock';
+
+const AI_PURPOSE_LABELS: Record<AiSettingKey, { title: string; description: string }> = {
+  'assist.default_model_id': {
+    title: '阅读助手',
+    description: '阅读页提问与划词帮助使用的默认模型。',
+  },
+};
 
 type AiPurposePanelProps = {
   settings: LlmAppSettingView[];

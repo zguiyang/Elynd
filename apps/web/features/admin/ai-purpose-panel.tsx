@@ -81,6 +81,17 @@ export function AiPurposePanel({
             providers,
           );
           const isDirty = draft !== (setting.modelId ?? '');
+          const selectItems = (() => {
+            const byId = new Map(enabledModels.map((model) => [model.id, { value: model.id, label: model.label }]));
+            if (draft && !byId.has(draft)) {
+              const model = models.find((item) => item.id === draft);
+              byId.set(draft, {
+                value: draft,
+                label: model?.label ?? setting.modelLabel ?? draft,
+              });
+            }
+            return [...byId.values()];
+          })();
 
           return (
             <li
@@ -110,6 +121,7 @@ export function AiPurposePanel({
                 <Field className="min-w-0 flex-1 sm:min-w-56">
                   <FieldLabel htmlFor={`purpose-${setting.key}`}>默认模型</FieldLabel>
                   <Select
+                    items={selectItems}
                     value={draft || null}
                     onValueChange={(value) => {
                       if (value == null) {
@@ -121,7 +133,7 @@ export function AiPurposePanel({
                     <SelectTrigger
                       id={`purpose-${setting.key}`}
                       className="h-10 w-full rounded-xl"
-                      disabled={enabledModels.length === 0}
+                      disabled={enabledModels.length === 0 && !draft}
                     >
                       <SelectValue placeholder={enabledModels.length === 0 ? '暂无可用模型' : '选择启用中的模型'} />
                     </SelectTrigger>

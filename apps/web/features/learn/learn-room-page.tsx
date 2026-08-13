@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverArrow, PopoverContent, PopoverDescription, PopoverTitle } from '@/components/ui/popover';
 import { AUTH_ROUTES } from '@/constants';
 import { formatLearnApiError, getLearnArticle, learnQueryKey } from '@/features/learn/learn-api';
 import { LEVEL_LABEL, paragraphsFromBody } from '@/features/library/library-model';
@@ -44,12 +45,30 @@ const HELP_QUICK_ACTIONS = [
   },
 ] as const;
 
+const SELECTION_ACTIONS = [
+  { id: 'explain', label: '解释', promptLabel: '解释这句话' },
+  { id: 'qa', label: '问答', promptLabel: '问答解释' },
+  { id: 'lookup', label: '查词', promptLabel: '单词查询' },
+] as const;
+
 type HelpQuickId = (typeof HELP_QUICK_ACTIONS)[number]['id'];
+type SelectionActionId = (typeof SELECTION_ACTIONS)[number]['id'];
+type AssistActionId = HelpQuickId | SelectionActionId;
 
 type ChatMessage = {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+};
+
+type PendingAssist = {
+  prompt: string;
+  actionId: AssistActionId;
+  contextText: string;
+};
+
+type SelectionMenuState = {
+  text: string;
 };
 
 type LearnRoomPageProps = {
@@ -85,18 +104,42 @@ function createMessageId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/** Stub replies for UI preview — replace with real assist API later. */
-function mockAssistReply(prompt: string, focusSentence: string, quickId?: HelpQuickId): string {
-  const clip = focusSentence.length > 120 ? `${focusSentence.slice(0, 117)}…` : focusSentence;
+function buildSelectionPrompt(promptLabel: string, selectedText: string) {
+  return `${promptLabel}：\n\n${selectedText}`;
+}
 
-  if (quickId === 'meaning') {
+/** Compact head…tail preview so long selections stay readable in the bubble. */
+function formatSelectionPreview(text: string, maxChars = 48): string {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  if (normalized.length <= maxChars) {
+    return normalized;
+  }
+
+  const ellipsis = '…';
+  const budget = maxChars - ellipsis.length;
+  const headLen = Math.ceil(budget / 2);
+  const tailLen = Math.floor(budget / 2);
+  return `${normalized.slice(0, headLen)}${ellipsis}${normalized.slice(-tailLen)}`;
+}
+
+/** Stub replies for UI preview — replace with real assist API later. */
+function mockAssistReply(prompt: string, contextText: string, actionId?: AssistActionId): string {
+  const clip = contextText.length > 120 ? `${contextText.slice(0, 117)}…` : contextText;
+
+  if (actionId === 'explain' || actionId === 'meaning') {
     return `大意是在说：${clip}`;
   }
-  if (quickId === 'simpler') {
+  if (actionId === 'simpler') {
     return `更简单的说法：\n\n${clip}`;
   }
-  if (quickId === 'referent') {
+  if (actionId === 'referent') {
     return `结合上下文，代词多半指前面刚提到的事物。代回原词后意思会更清楚。`;
+  }
+  if (actionId === 'qa') {
+    return `关于这段：\n\n${clip}\n\n可以先抓住主语和动作，再看修饰部分。`;
+  }
+  if (actionId === 'lookup') {
+    return `「${clip}」：结合原文，先按语境理解词义。`;
   }
 
   return `可以对照这句看：\n\n${clip}`;
@@ -107,6 +150,9 @@ function mockAssistReply(prompt: string, focusSentence: string, quickId?: HelpQu
  */
 export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
   const isAssistOpen = useSyncExternalStore(subscribeAssistOpen, readAssistOpenPreference, () => false);
+  const [pendingAssist, setPendingAssist] = useState<PendingAssist | null>(null);
+  const [selectionMenu, setSelectionMenu] = useState<SelectionMenuState | null>(null);
+  const articleBodyRef = useRef<HTMLDivElement | null>(null);
 
   function setAssistOpen(next: boolean) {
     writeAssistOpenPreference(next);
@@ -116,6 +162,111 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
     queryKey: learnQueryKey.article(articleId),
     queryFn: ({ signal }) => getLearnArticle(articleId, { signal }),
   });
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setSelectionMenu(null);
+      }
+    }
+
+    function onPointerUp() {
+      // Mouseup may land outside the article while the selection remains inside —
+      // listen on document so the bubble still opens after drag-out release.
+      window.requestAnimationFrame(updateSelectionMenu);
+    }
+
+    function onSelectionChange() {
+      if (!selectionMenu) {
+        return;
+      }
+      const selection = window.getSelection();
+      if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+        setSelectionMenu(null);
+        return;
+      }
+      if (!selectionIntersectsArticle(selection)) {
+        setSelectionMenu(null);
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('pointerup', onPointerUp);
+    document.addEventListener('selectionchange', onSelectionChange);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('pointerup', onPointerUp);
+      document.removeEventListener('selectionchange', onSelectionChange);
+    };
+    // updateSelectionMenu reads latest refs/state via closure each render; rebind when menu toggles.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- selection assist listeners
+  }, [selectionMenu]);
+
+  function selectionIntersectsArticle(selection: Selection) {
+    const root = articleBodyRef.current;
+    if (!root || selection.rangeCount === 0) {
+      return false;
+    }
+    const range = selection.getRangeAt(0);
+    const ancestor = range.commonAncestorContainer;
+    const node = ancestor.nodeType === Node.ELEMENT_NODE ? ancestor : ancestor.parentElement;
+    return Boolean(node && root.contains(node));
+  }
+
+  function updateSelectionMenu() {
+    const root = articleBodyRef.current;
+    const selection = window.getSelection();
+    if (!root || !selection || selection.rangeCount === 0 || selection.isCollapsed) {
+      setSelectionMenu(null);
+      return;
+    }
+
+    const text = selection.toString().replace(/\s+/g, ' ').trim();
+    if (text.length < 1 || !selectionIntersectsArticle(selection)) {
+      setSelectionMenu(null);
+      return;
+    }
+
+    const rect = selection.getRangeAt(0).getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) {
+      setSelectionMenu(null);
+      return;
+    }
+
+    setSelectionMenu({ text });
+  }
+
+  function getSelectionAnchor() {
+    return {
+      contextElement: articleBodyRef.current ?? undefined,
+      getBoundingClientRect() {
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0 || selection.isCollapsed) {
+          return new DOMRect();
+        }
+        const anchorNode = selection.anchorNode;
+        if (!anchorNode || !articleBodyRef.current?.contains(anchorNode)) {
+          return new DOMRect();
+        }
+        return selection.getRangeAt(0).getBoundingClientRect();
+      },
+    };
+  }
+
+  function runSelectionAction(action: (typeof SELECTION_ACTIONS)[number]) {
+    if (!selectionMenu) {
+      return;
+    }
+    const selectedText = selectionMenu.text;
+    setSelectionMenu(null);
+    window.getSelection()?.removeAllRanges();
+    setAssistOpen(true);
+    setPendingAssist({
+      prompt: buildSelectionPrompt(action.promptLabel, selectedText),
+      actionId: action.id,
+      contextText: selectedText,
+    });
+  }
 
   const article = articleQuery.data;
   const isNotFound = articleQuery.error instanceof ApiRequestError && articleQuery.error.status === 404;
@@ -238,7 +389,10 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
               {article.title}
             </h1>
 
-            <div className="mt-10 flex max-w-[42rem] flex-col gap-7 text-lg leading-loose text-foreground/90">
+            <div
+              ref={articleBodyRef}
+              className="mt-10 flex max-w-[42rem] flex-col gap-7 text-lg leading-loose text-foreground/90"
+            >
               {paragraphs.length > 0 ? (
                 paragraphs.map((paragraph) => <p key={paragraph.slice(0, 40)}>{paragraph}</p>)
               ) : (
@@ -263,6 +417,8 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
                 'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-right-2 motion-safe:duration-300',
               )}
               focusSentence={focusSentence}
+              pendingAssist={pendingAssist}
+              onPendingAssistHandled={() => setPendingAssist(null)}
               onClose={() => setAssistOpen(false)}
             />
           </>
@@ -311,6 +467,63 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
           </Button>
         </div>
       </footer>
+
+      <Popover
+        open={selectionMenu !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectionMenu(null);
+          }
+        }}
+        modal={false}
+      >
+        {selectionMenu ? (
+          <PopoverContent
+            anchor={getSelectionAnchor}
+            side="top"
+            sideOffset={12}
+            align="center"
+            collisionPadding={12}
+            className={cn(
+              'relative w-[min(17.5rem,calc(100vw-1.5rem))] gap-0 overflow-visible rounded-2xl border-0 bg-transparent p-0',
+              'shadow-none ring-0',
+            )}
+            onMouseDown={(event) => {
+              // Keep the text selection while interacting with the toolbar.
+              event.preventDefault();
+            }}
+          >
+            <PopoverArrow />
+            <div className="overflow-hidden rounded-2xl bg-card shadow-float ring-1 ring-foreground/10">
+              <PopoverTitle className="sr-only">选中文本</PopoverTitle>
+              <PopoverDescription className="px-3.5 pt-3 pb-2.5 text-[12.5px] leading-relaxed text-muted-foreground">
+                {formatSelectionPreview(selectionMenu.text)}
+              </PopoverDescription>
+
+              <div className="border-t border-border/70" role="toolbar" aria-label="选中文本操作">
+                <div className="flex divide-x divide-border/70">
+                  {SELECTION_ACTIONS.map((action) => (
+                    <button
+                      key={action.id}
+                      type="button"
+                      className={cn(
+                        'h-9 min-w-0 flex-1 px-2.5 text-[13px] font-medium tracking-tight text-foreground/90',
+                        'transition-[color,background-color,transform] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)]',
+                        'hover:bg-muted/55 hover:text-foreground',
+                        'active:scale-[0.98] active:bg-muted/80',
+                        'focus-visible:bg-muted/55 focus-visible:outline-none',
+                      )}
+                      onClick={() => runSelectionAction(action)}
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </PopoverContent>
+        ) : null}
+      </Popover>
     </div>
   );
 }
@@ -318,10 +531,14 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
 function HelpRail({
   className,
   focusSentence,
+  pendingAssist,
+  onPendingAssistHandled,
   onClose,
 }: {
   className?: string;
   focusSentence: string;
+  pendingAssist: PendingAssist | null;
+  onPendingAssistHandled: () => void;
   onClose: () => void;
 }) {
   const [draft, setDraft] = useState('');
@@ -329,6 +546,7 @@ function HelpRail({
   const [isReplying, setIsReplying] = useState(false);
   const threadEndRef = useRef<HTMLDivElement | null>(null);
   const replyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const contextRef = useRef(focusSentence);
 
   const isEmpty = messages.length === 0 && !isReplying;
 
@@ -344,12 +562,13 @@ function HelpRail({
     };
   }, []);
 
-  function sendPrompt(prompt: string, quickId?: HelpQuickId) {
+  function sendPrompt(prompt: string, actionId?: AssistActionId, contextText = focusSentence) {
     const trimmed = prompt.trim();
     if (!trimmed || isReplying) {
-      return;
+      return false;
     }
 
+    contextRef.current = contextText;
     const userMessage: ChatMessage = {
       id: createMessageId(),
       role: 'user',
@@ -368,13 +587,32 @@ function HelpRail({
       const assistantMessage: ChatMessage = {
         id: createMessageId(),
         role: 'assistant',
-        content: mockAssistReply(trimmed, focusSentence, quickId),
+        content: mockAssistReply(trimmed, contextRef.current, actionId),
       };
       setMessages((current) => [...current, assistantMessage]);
       setIsReplying(false);
       replyTimerRef.current = null;
     }, 700);
+
+    return true;
   }
+
+  useEffect(() => {
+    if (!pendingAssist || isReplying) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      const isSent = sendPrompt(pendingAssist.prompt, pendingAssist.actionId, pendingAssist.contextText);
+      if (isSent) {
+        onPendingAssistHandled();
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+    // Intentionally omit sendPrompt — local function; run when pending arrives or reply frees up.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pending assist bridge
+  }, [pendingAssist, isReplying]);
 
   return (
     <aside className={cn('flex min-h-0 flex-col', className)} aria-label="帮助">
@@ -423,7 +661,7 @@ function HelpRail({
             {messages.map((message) =>
               message.role === 'user' ? (
                 <div key={message.id} className="flex justify-end">
-                  <div className="max-w-[92%] rounded-2xl bg-muted/70 px-3.5 py-2.5 text-sm leading-relaxed text-foreground">
+                  <div className="max-w-[92%] rounded-2xl bg-muted/70 px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap text-foreground">
                     {message.content}
                   </div>
                 </div>

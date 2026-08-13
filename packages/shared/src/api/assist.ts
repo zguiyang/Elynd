@@ -1,14 +1,17 @@
 import { z } from 'zod';
 
-export const ASSIST_ACTION_IDS = ['meaning', 'simpler', 'referent', 'explain', 'qa', 'lookup'] as const;
+export const ASSIST_ACTION_IDS = ['meaning', 'simpler', 'referent', 'explain', 'qa', 'lookup', 'gist'] as const;
 
 export type AssistActionId = (typeof ASSIST_ACTION_IDS)[number];
+
+/** Actions that require a non-empty selection (not article-level). */
+const SELECTION_REQUIRED_ACTIONS = new Set<AssistActionId>(['meaning', 'simpler', 'referent', 'explain', 'lookup']);
 
 export const assistAskBodySchema = z
   .object({
     articleId: z.string().min(1),
     actionId: z.enum(ASSIST_ACTION_IDS),
-    selection: z.string().trim().min(1).max(4000),
+    selection: z.string().trim().min(1).max(4000).optional(),
     question: z.string().trim().max(2000).optional(),
   })
   .superRefine((body, ctx) => {
@@ -17,6 +20,13 @@ export const assistAskBodySchema = z
         code: 'custom',
         path: ['question'],
         message: 'question is required for qa',
+      });
+    }
+    if (SELECTION_REQUIRED_ACTIONS.has(body.actionId) && !body.selection?.trim()) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['selection'],
+        message: 'selection is required for this action',
       });
     }
   });
@@ -45,6 +55,7 @@ export const assistSseDoneSchema = z.object({
       label: z.string(),
     })
     .optional(),
+  suggestions: z.array(z.string().min(1).max(48)).min(1).max(3).optional(),
 });
 
 export type AssistSseDone = z.infer<typeof assistSseDoneSchema>;

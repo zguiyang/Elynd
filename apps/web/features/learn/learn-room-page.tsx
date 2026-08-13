@@ -20,7 +20,6 @@ import { AUTH_ROUTES } from '@/constants';
 import { formatLearnApiError, getLearnArticle, learnQueryKey } from '@/features/learn/learn-api';
 import { LearnArticleReader } from '@/features/learn/learn-article-reader';
 import { LearnHelpRail, type PendingAssist } from '@/features/learn/learn-help-rail';
-import { paragraphsFromBody } from '@/features/library/library-model';
 import { ApiRequestError } from '@/lib/api-request';
 import { cn } from '@/lib/utils';
 
@@ -121,9 +120,6 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
     );
   }
 
-  const paragraphs = paragraphsFromBody(article.body);
-  const focusSentence = paragraphs[0] ?? article.title;
-
   return (
     <div className="flex h-[100dvh] flex-col bg-background">
       <header className="z-30 shrink-0 border-b border-border/80 bg-sidebar/95 backdrop-blur-sm">
@@ -196,7 +192,6 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
                 'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-right-2 motion-safe:duration-300',
               )}
               articleId={articleId}
-              focusSentence={focusSentence}
               pendingAssist={pendingAssist}
               onPendingAssistHandled={() => setPendingAssist(null)}
               onClose={() => setAssistOpen(false)}

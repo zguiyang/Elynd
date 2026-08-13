@@ -12,25 +12,16 @@ import { Input } from '@/components/ui/input';
 import { askAssistStream, formatAssistLearnerError } from '@/features/learn/assist-api';
 import { cn } from '@/lib/utils';
 
-const HELP_QUICK_ACTIONS = [
-  {
-    id: 'meaning',
-    label: '这句话什么意思',
-    hint: '中文讲清大意',
-  },
-  {
-    id: 'simpler',
-    label: '用更简单的英语说',
-    hint: '换浅一点的说法',
-  },
-  {
-    id: 'referent',
-    label: '这个词在文中指什么',
-    hint: '结合上下文',
-  },
+const INTRO_MESSAGE =
+  '我是这篇的阅读帮手。划词可以查、可以问这句话什么意思；也可以问英语学习上的问题。其它学科我帮不了。';
+
+const COMPOSER_CHIPS = [
+  { id: 'gist' as const, label: '总结大意', needsSelection: false },
+  { id: 'meaning' as const, label: '这句话什么意思', needsSelection: true },
+  { id: 'simpler' as const, label: '换简单说法', needsSelection: true },
 ] as const;
 
-export type AssistActionId = (typeof HELP_QUICK_ACTIONS)[number]['id'] | 'explain' | 'qa' | 'lookup';
+export type AssistActionId = SharedAssistActionId;
 
 export type PendingAssist = {
   prompt: string;
@@ -42,12 +33,13 @@ type ChatMessage = {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  /** Static welcome; not an API reply — no follow-up chips. */
+  isIntro?: boolean;
 };
 
 type LearnHelpRailProps = {
   className?: string;
   articleId: string;
-  focusSentence: string;
   pendingAssist: PendingAssist | null;
   onPendingAssistHandled: () => void;
   onClose: () => void;
@@ -57,8 +49,13 @@ function createMessageId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function toAskActionId(actionId: AssistActionId | undefined): SharedAssistActionId {
-  return actionId ?? 'qa';
+function createIntroMessage(): ChatMessage {
+  return {
+    id: 'intro',
+    role: 'assistant',
+    content: INTRO_MESSAGE,
+    isIntro: true,
+  };
 }
 
 /**
@@ -67,23 +64,30 @@ function toAskActionId(actionId: AssistActionId | undefined): SharedAssistAction
 export function LearnHelpRail({
   className,
   articleId,
-  focusSentence,
   pendingAssist,
   onPendingAssistHandled,
   onClose,
 }: LearnHelpRailProps) {
   const [draft, setDraft] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [createIntroMessage()]);
   const [isReplying, setIsReplying] = useState(false);
+  const [followUps, setFollowUps] = useState<string[]>([]);
+  const [followUpsForMessageId, setFollowUpsForMessageId] = useState<string | null>(null);
   const threadEndRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const contextRef = useRef(focusSentence);
+  const lastSelectionRef = useRef('');
+  const skipIntroRef = useRef(Boolean(pendingAssist));
 
-  const isEmpty = messages.length === 0 && !isReplying;
+  useEffect(() => {
+    if (skipIntroRef.current) {
+      setMessages([]);
+      skipIntroRef.current = false;
+    }
+  }, []);
 
   useEffect(() => {
     threadEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [messages, isReplying]);
+  }, [messages, isReplying, followUps]);
 
   useEffect(() => {
     return () => {
@@ -91,13 +95,24 @@ export function LearnHelpRail({
     };
   }, []);
 
-  async function sendPrompt(prompt: string, actionId?: AssistActionId, contextText = focusSentence) {
+  async function sendPrompt(prompt: string, actionId?: AssistActionId, contextText?: string) {
     const trimmed = prompt.trim();
     if (!trimmed || isReplying) {
       return false;
     }
 
-    contextRef.current = contextText;
+    const askActionId: SharedAssistActionId = actionId ?? 'qa';
+    const selection = (contextText ?? lastSelectionRef.current).trim();
+
+    if (askActionId !== 'gist' && askActionId !== 'qa' && !selection) {
+      toast.message('先在正文划一段');
+      return false;
+    }
+
+    if (selection) {
+      lastSelectionRef.current = selection;
+    }
+
     const userMessage: ChatMessage = {
       id: createMessageId(),
       role: 'user',
@@ -107,13 +122,14 @@ export function LearnHelpRail({
 
     setMessages((current) => [...current, userMessage, { id: assistantId, role: 'assistant', content: '' }]);
     setDraft('');
+    setFollowUps([]);
+    setFollowUpsForMessageId(null);
     setIsReplying(true);
 
     abortRef.current?.abort();
     const abort = new AbortController();
     abortRef.current = abort;
 
-    const askActionId = toAskActionId(actionId);
     const question = askActionId === 'qa' ? trimmed : undefined;
 
     try {
@@ -121,8 +137,8 @@ export function LearnHelpRail({
         {
           articleId,
           actionId: askActionId,
-          selection: contextText.trim() || focusSentence,
-          question,
+          ...(selection ? { selection } : {}),
+          ...(question ? { question } : {}),
         },
         {
           onDelta: (text) => {
@@ -136,6 +152,10 @@ export function LearnHelpRail({
             setMessages((current) =>
               current.map((message) => (message.id === assistantId ? { ...message, content: done.reply } : message)),
             );
+            if (done.suggestions?.length) {
+              setFollowUps(done.suggestions);
+              setFollowUpsForMessageId(assistantId);
+            }
           },
         },
         { signal: abort.signal },
@@ -160,6 +180,14 @@ export function LearnHelpRail({
     }
 
     return true;
+  }
+
+  function runComposerChip(chip: (typeof COMPOSER_CHIPS)[number]) {
+    if (chip.needsSelection && !lastSelectionRef.current.trim()) {
+      toast.message('先在正文划一段');
+      return;
+    }
+    void sendPrompt(chip.label, chip.id, lastSelectionRef.current || undefined);
   }
 
   useEffect(() => {
@@ -197,48 +225,25 @@ export function LearnHelpRail({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-5">
-        {isEmpty ? (
-          <div className="flex flex-col gap-5">
-            <div className="rounded-2xl bg-paper px-4 py-4">
-              <p className="text-[0.95rem] leading-relaxed text-foreground">{focusSentence}</p>
-            </div>
-
-            <div className="grid gap-2.5">
-              {HELP_QUICK_ACTIONS.map((action) => (
-                <button
-                  key={action.id}
-                  type="button"
-                  disabled={isReplying}
-                  className={cn(
-                    'rounded-2xl border border-border/80 bg-card px-4 py-3.5 text-left',
-                    'transition-colors duration-300 ease-out-soft hover:bg-muted/40',
-                    'disabled:pointer-events-none disabled:opacity-50',
-                  )}
-                  onClick={() => void sendPrompt(action.label, action.id)}
-                >
-                  <p className="text-sm font-medium text-foreground">{action.label}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{action.hint}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-4" aria-live="polite">
-            {messages.map((message, index) => {
-              if (message.role === 'user') {
-                return (
-                  <div key={message.id} className="flex justify-end">
-                    <div className="max-w-[92%] rounded-2xl bg-muted/70 px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap text-foreground">
-                      {message.content}
-                    </div>
-                  </div>
-                );
-              }
-
-              const isStreamingMessage = isReplying && index === messages.length - 1;
-
+        <div className="flex flex-col gap-4" aria-live="polite">
+          {messages.map((message, index) => {
+            if (message.role === 'user') {
               return (
-                <div key={message.id} className="max-w-[95%] text-sm leading-relaxed text-foreground/90">
+                <div key={message.id} className="flex justify-end">
+                  <div className="max-w-[92%] rounded-2xl bg-muted/70 px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap text-foreground">
+                    {message.content}
+                  </div>
+                </div>
+              );
+            }
+
+            const isStreamingMessage = isReplying && index === messages.length - 1;
+            const shouldShowFollowUps =
+              !isReplying && followUpsForMessageId === message.id && followUps.length > 0 && !message.isIntro;
+
+            return (
+              <div key={message.id} className="flex max-w-[95%] flex-col gap-2.5">
+                <div className="text-sm leading-relaxed text-foreground/90">
                   {message.content ? (
                     <Streamdown
                       className="[&_*]:leading-relaxed [&_ol]:my-2 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0 [&_ul]:my-2"
@@ -250,41 +255,59 @@ export function LearnHelpRail({
                     </Streamdown>
                   ) : null}
                 </div>
-              );
-            })}
 
-            {isReplying ? (
-              <div className="flex items-center gap-1.5 py-1 text-muted-foreground" aria-label="正在回复">
-                <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground/70" />
-                <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground/70 [animation-delay:150ms]" />
-                <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground/70 [animation-delay:300ms]" />
+                {shouldShowFollowUps ? (
+                  <div className="flex flex-wrap gap-2">
+                    {followUps.map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        type="button"
+                        className={cn(
+                          'rounded-xl bg-muted/60 px-3 py-2 text-xs text-foreground',
+                          'transition-colors duration-300 ease-out-soft hover:bg-muted',
+                        )}
+                        onClick={() => void sendPrompt(suggestion, 'qa', lastSelectionRef.current || undefined)}
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
-            ) : null}
+            );
+          })}
 
-            {!isReplying && messages.length > 0 ? (
-              <div className="flex flex-wrap gap-2 pt-1">
-                {HELP_QUICK_ACTIONS.map((action) => (
-                  <button
-                    key={action.id}
-                    type="button"
-                    className={cn(
-                      'rounded-xl bg-muted/60 px-3 py-2 text-xs text-foreground',
-                      'transition-colors duration-300 ease-out-soft hover:bg-muted',
-                    )}
-                    onClick={() => void sendPrompt(action.label, action.id)}
-                  >
-                    {action.label}
-                  </button>
-                ))}
-              </div>
-            ) : null}
+          {isReplying ? (
+            <div className="flex items-center gap-1.5 py-1 text-muted-foreground" aria-label="正在回复">
+              <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground/70" />
+              <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground/70 [animation-delay:150ms]" />
+              <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground/70 [animation-delay:300ms]" />
+            </div>
+          ) : null}
 
-            <div ref={threadEndRef} />
-          </div>
-        )}
+          <div ref={threadEndRef} />
+        </div>
       </div>
 
       <div className="shrink-0 border-t border-border/80 px-4 pt-3 pb-4">
+        <div className="mb-2.5 flex flex-wrap gap-2">
+          {COMPOSER_CHIPS.map((chip) => (
+            <button
+              key={chip.id}
+              type="button"
+              disabled={isReplying}
+              className={cn(
+                'rounded-xl bg-muted/60 px-3 py-2 text-xs text-foreground',
+                'transition-colors duration-300 ease-out-soft hover:bg-muted',
+                'disabled:pointer-events-none disabled:opacity-50',
+              )}
+              onClick={() => runComposerChip(chip)}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+
         <form
           className="flex items-center gap-2"
           onSubmit={(event) => {

@@ -13,6 +13,8 @@ export const assistAskBodySchema = z
     actionId: z.enum(ASSIST_ACTION_IDS),
     selection: z.string().trim().min(1).max(4000).optional(),
     question: z.string().trim().max(2000).optional(),
+    /** Resume an existing thread; omit to start a new conversation for this visit. */
+    conversationId: z.string().min(1).optional(),
   })
   .superRefine((body, ctx) => {
     if (body.actionId === 'qa' && !body.question?.trim()) {
@@ -56,6 +58,8 @@ export const assistSseDoneSchema = z.object({
     })
     .optional(),
   suggestions: z.array(z.string().min(1).max(48)).min(1).max(3).optional(),
+  /** Present when the turn was persisted; omit if transcript write failed. */
+  conversationId: z.string().min(1).optional(),
 });
 
 export type AssistSseDone = z.infer<typeof assistSseDoneSchema>;

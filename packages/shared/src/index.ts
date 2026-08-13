@@ -1,5 +1,6 @@
 export * from './api/articles.ts';
 export * from './api/assist.ts';
+export * from './api/conversations.ts';
 export * from './api/learn.ts';
 export * from './api/llm-config.ts';
 export * from './api/llm-config-keys.ts';

@@ -9,6 +9,7 @@
     "./auth/policy": "./src/auth/policy.ts",
     "./api/assist": "./src/api/assist.ts",
     "./api/articles": "./src/api/articles.ts",
+    "./api/conversations": "./src/api/conversations.ts",
     "./api/learn": "./src/api/learn.ts",
     "./api/llm-config": "./src/api/llm-config.ts",
     "./api/llm-config-keys": "./src/api/llm-config-keys.ts",

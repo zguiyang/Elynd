@@ -46,6 +46,15 @@ describe('assist ask body', () => {
     });
     expect(parsed.selection).toBe('The fox jumped.');
   });
+
+  it('accepts optional conversationId', () => {
+    const parsed = assistAskBodySchema.parse({
+      articleId: 'art_1',
+      actionId: 'gist',
+      conversationId: 'conv_1',
+    });
+    expect(parsed.conversationId).toBe('conv_1');
+  });
 });
 
 describe('assist SSE done', () => {
@@ -60,6 +69,11 @@ describe('assist SSE done', () => {
       suggestions: ['orbit 在文中指什么？', '用更简单的英语说这段', '这段时态是什么？'],
     });
     expect(parsed.suggestions).toHaveLength(3);
+  });
+
+  it('accepts optional conversationId', () => {
+    const parsed = assistSseDoneSchema.parse({ reply: '你好', conversationId: 'conv_1' });
+    expect(parsed.conversationId).toBe('conv_1');
   });
 
   it('rejects empty suggestions array', () => {

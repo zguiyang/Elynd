@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, FileText } from 'lucide-react';
+import { ArrowLeft, FileText, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { type ReactNode, useEffect } from 'react';
@@ -65,6 +65,7 @@ export function AdminShell({ children }: AdminShellProps) {
   }
 
   const isArticlesActive = pathname.startsWith(ADMIN_ROUTES.articles);
+  const isAiActive = pathname.startsWith(ADMIN_ROUTES.ai);
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden md:flex-row">
@@ -100,6 +101,20 @@ export function AdminShell({ children }: AdminShellProps) {
             >
               <FileText data-icon="inline-start" />
               文章
+            </Button>
+            <Button
+              variant="ghost"
+              nativeButton={false}
+              className={cn(
+                'h-auto justify-start gap-3 rounded-xl px-4 py-3 text-base font-normal transition-colors duration-300 ease-out-soft',
+                isAiActive
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+              )}
+              render={<Link href={ADMIN_ROUTES.ai} />}
+            >
+              <Sparkles data-icon="inline-start" />
+              AI 配置
             </Button>
           </nav>
         </div>

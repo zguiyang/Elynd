@@ -370,3 +370,91 @@ export const llmModelRelations = relations(llmModel, ({ one }) => ({
     references: [llmProvider.id],
   }),
 }));
+
+/**
+ * User-scoped chat transcript SSOT (thread header).
+ * Future embeddings / RAG / memory / cache must store pointers to these rows —
+ * never duplicate full message bodies in derived tables.
+ * `subjectId` is polymorphic (no article FK) so surfaces beyond reading stay possible.
+ */
+export type ConversationMessageMetadata = {
+  actionId?: string;
+  selection?: string;
+  question?: string;
+  suggestions?: string[];
+  invocationLogId?: string;
+};
+
+export const conversation = pgTable(
+  'conversation',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    /** e.g. assist-read — which product surface owns this thread. */
+    surface: text('surface').notNull(),
+    /** e.g. article — polymorphic subject kind. */
+    subjectType: text('subject_type').notNull(),
+    /** Subject id (article id today); no FK — keeps transcripts after subject deletion. */
+    subjectId: text('subject_id').notNull(),
+    preview: text('preview').notNull().default(''),
+    /** Null while open; set when superseded by a newer thread in the same scope. */
+    endedAt: timestamp('ended_at'),
+    lastMessageAt: timestamp('last_message_at').defaultNow().notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [
+    index('conversation_user_last_msg_idx').on(table.userId, table.lastMessageAt),
+    index('conversation_user_scope_last_idx').on(
+      table.userId,
+      table.surface,
+      table.subjectType,
+      table.subjectId,
+      table.lastMessageAt,
+    ),
+    index('conversation_user_open_idx')
+      .on(table.userId, table.surface, table.subjectType, table.subjectId)
+      .where(sql`${table.endedAt} is null`),
+  ],
+);
+
+/**
+ * Append-only learner-visible message rows (transcript body).
+ * Stable `id` is the future `source_message_id` for memory_item / embedding_ref / cache_entry.
+ * Do not truncate content for storage — audit preview stays on ai_invocation_log only.
+ */
+export const conversationMessage = pgTable(
+  'conversation_message',
+  {
+    id: text('id').primaryKey(),
+    conversationId: text('conversation_id')
+      .notNull()
+      .references(() => conversation.id, { onDelete: 'cascade' }),
+    role: text('role').notNull(),
+    content: text('content').notNull(),
+    status: text('status').notNull(),
+    metadata: jsonb('metadata').$type<ConversationMessageMetadata>().notNull().default({}),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [index('conversation_message_conv_created_idx').on(table.conversationId, table.createdAt)],
+);
+
+export const conversationRelations = relations(conversation, ({ one, many }) => ({
+  user: one(user, {
+    fields: [conversation.userId],
+    references: [user.id],
+  }),
+  messages: many(conversationMessage),
+}));
+
+export const conversationMessageRelations = relations(conversationMessage, ({ one }) => ({
+  conversation: one(conversation, {
+    fields: [conversationMessage.conversationId],
+    references: [conversation.id],
+  }),
+}));

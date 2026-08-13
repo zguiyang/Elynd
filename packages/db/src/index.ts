@@ -1,6 +1,7 @@
 export type {
   AiInvocationRequestSummary,
   AiInvocationResponseSummary,
+  ConversationMessageMetadata,
   PracticeAttemptAnswer,
   PracticeItemPayload,
 } from './schema';
@@ -9,6 +10,10 @@ export {
   accountRelations,
   aiInvocationLog,
   article,
+  conversation,
+  conversationMessage,
+  conversationMessageRelations,
+  conversationRelations,
   llmAppSetting,
   llmModel,
   llmModelRelations,

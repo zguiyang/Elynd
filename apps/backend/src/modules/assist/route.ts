@@ -41,6 +41,7 @@ assistRoutes.post('/api/assist/ask', requireAuth, validateAssistAsk, async (c) =
             reply: event.content,
             model: { label: event.model.label },
             ...(event.suggestions?.length ? { suggestions: event.suggestions } : {}),
+            ...(event.conversationId ? { conversationId: event.conversationId } : {}),
           }),
         });
       }

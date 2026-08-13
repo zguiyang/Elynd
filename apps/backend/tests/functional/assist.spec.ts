@@ -1,7 +1,7 @@
 import { eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 
-import { article as articleTable, user as userTable } from '@elynd/db';
+import { article as articleTable, conversationMessage as conversationMessageTable, user as userTable } from '@elynd/db';
 import { ASSIST_SSE_EVENT, type AssistSseDone, type AssistSseError } from '@elynd/shared/api/assist';
 
 import app from '@/app';
@@ -9,6 +9,7 @@ import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';
 import { AppError } from '@/lib/errors';
 import * as aiService from '@/modules/ai/service';
+import * as conversationsService from '@/modules/conversations/service';
 
 const password = 'password123';
 
@@ -150,8 +151,15 @@ describe('Assist HTTP', () => {
     expect(done.reply).toContain('狐狸');
     expect(done.model?.label).toBe('Test');
     expect(done.suggestions).toEqual(['追问一', '追问二', '追问三']);
+    expect(done.conversationId).toBeTruthy();
     expect(streamSpy).toHaveBeenCalled();
     expect(invokeSpy).toHaveBeenCalled();
+
+    const messages = await db
+      .select()
+      .from(conversationMessageTable)
+      .where(eq(conversationMessageTable.conversationId, done.conversationId!));
+    expect(messages).toHaveLength(2);
 
     async function* failStream(): AsyncGenerator<aiService.AiStreamEvent> {
       throw new AppError(HTTP_STATUS.SERVICE_UNAVAILABLE, 'AI unavailable');
@@ -293,6 +301,141 @@ describe('Assist HTTP', () => {
     await ok.text();
     expect(streamSpy).toHaveBeenCalled();
 
+    streamSpy.mockRestore();
+    invokeSpy.mockRestore();
+  });
+
+  it('appends a second ask to the same conversation and rejects wrong article id', async () => {
+    const user = await createSession();
+    createdEmails.push(user.email);
+
+    const articleId = `art_resume_${Date.now().toString(36)}`;
+    const otherArticleId = `art_other_${Date.now().toString(36)}`;
+    createdArticleIds.push(articleId, otherArticleId);
+    await db.insert(articleTable).values([
+      {
+        id: articleId,
+        title: 'Resume Test',
+        body: 'The fox jumped over the lazy dog near the river.',
+        level: 'easy',
+        themes: ['test'],
+        status: 'published',
+        publishedAt: new Date(),
+      },
+      {
+        id: otherArticleId,
+        title: 'Other',
+        body: 'Another published article body.',
+        level: 'easy',
+        themes: ['test'],
+        status: 'published',
+        publishedAt: new Date(),
+      },
+    ]);
+
+    const streamSpy = vi.spyOn(aiService, 'streamAi').mockImplementation(() => okStream());
+    const invokeSpy = vi.spyOn(aiService, 'invokeAi').mockResolvedValue({
+      content: { suggestions: ['一', '二', '三'] },
+      model: { rowId: 'm1', label: 'Test', modelId: 'gpt-test' },
+      usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+    });
+
+    const first = await app.request('/api/assist/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', cookie: user.cookie },
+      body: JSON.stringify({
+        articleId,
+        actionId: 'meaning',
+        selection: 'The fox jumped over the lazy dog',
+      }),
+    });
+    expect(first.status).toBe(200);
+    const firstDone = JSON.parse(
+      parseSseBlocks(await first.text()).find((e) => e.event === ASSIST_SSE_EVENT.done)!.data,
+    ) as AssistSseDone;
+    expect(firstDone.conversationId).toBeTruthy();
+
+    const second = await app.request('/api/assist/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', cookie: user.cookie },
+      body: JSON.stringify({
+        articleId,
+        actionId: 'qa',
+        question: '还有别的意思吗？',
+        conversationId: firstDone.conversationId,
+      }),
+    });
+    expect(second.status).toBe(200);
+    const secondDone = JSON.parse(
+      parseSseBlocks(await second.text()).find((e) => e.event === ASSIST_SSE_EVENT.done)!.data,
+    ) as AssistSseDone;
+    expect(secondDone.conversationId).toBe(firstDone.conversationId);
+
+    const messageCount = await db
+      .select()
+      .from(conversationMessageTable)
+      .where(eq(conversationMessageTable.conversationId, firstDone.conversationId!));
+    expect(messageCount).toHaveLength(4);
+
+    const wrongArticle = await app.request('/api/assist/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', cookie: user.cookie },
+      body: JSON.stringify({
+        articleId: otherArticleId,
+        actionId: 'gist',
+        conversationId: firstDone.conversationId,
+      }),
+    });
+    expect(wrongArticle.status).toBe(200);
+    const wrongEvents = parseSseBlocks(await wrongArticle.text());
+    expect(wrongEvents.some((e) => e.event === ASSIST_SSE_EVENT.error)).toBe(true);
+    const errPayload = JSON.parse(wrongEvents.find((e) => e.event === ASSIST_SSE_EVENT.error)!.data) as AssistSseError;
+    expect(errPayload.error).toMatch(/conversation does not match article/i);
+
+    streamSpy.mockRestore();
+    invokeSpy.mockRestore();
+  });
+
+  it('still returns reply when transcript persist fails', async () => {
+    const user = await createSession();
+    createdEmails.push(user.email);
+
+    const articleId = `art_persist_${Date.now().toString(36)}`;
+    createdArticleIds.push(articleId);
+    await db.insert(articleTable).values({
+      id: articleId,
+      title: 'Persist Fail',
+      body: 'The fox jumped over the lazy dog near the river.',
+      level: 'easy',
+      themes: ['test'],
+      status: 'published',
+      publishedAt: new Date(),
+    });
+
+    const streamSpy = vi.spyOn(aiService, 'streamAi').mockImplementation(() => okStream());
+    const invokeSpy = vi.spyOn(aiService, 'invokeAi').mockResolvedValue({
+      content: { suggestions: ['一', '二', '三'] },
+      model: { rowId: 'm1', label: 'Test', modelId: 'gpt-test' },
+      usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+    });
+    const persistSpy = vi.spyOn(conversationsService, 'appendAssistTurn').mockRejectedValue(new Error('db down'));
+
+    const ok = await app.request('/api/assist/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', cookie: user.cookie },
+      body: JSON.stringify({
+        articleId,
+        actionId: 'gist',
+      }),
+    });
+    expect(ok.status).toBe(200);
+    const done = JSON.parse(
+      parseSseBlocks(await ok.text()).find((e) => e.event === ASSIST_SSE_EVENT.done)!.data,
+    ) as AssistSseDone;
+    expect(done.reply).toContain('狐狸');
+    expect(done.conversationId).toBeUndefined();
+
+    persistSpy.mockRestore();
     streamSpy.mockRestore();
     invokeSpy.mockRestore();
   });

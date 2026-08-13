@@ -20,6 +20,7 @@ describe('prompt compose', () => {
     expect(withNeighbor).toContain('hello');
     expect(withNeighbor).toContain('Nearby context');
     expect(withNeighbor).not.toContain('Learner question');
+    expect(withNeighbor).not.toContain('No text selection');
 
     const withQuestion = await renderPrompt('scenes/assist-read/user', {
       selection: 'hello',
@@ -27,9 +28,17 @@ describe('prompt compose', () => {
     });
     expect(withQuestion).toContain('Learner question');
     expect(withQuestion).not.toContain('Nearby context');
+
+    const articleLevel = await renderPrompt('scenes/assist-read/user', {
+      question: '这篇大意？',
+      selectionNote: 'No text selection — answer for the article as a whole (use tools if you need the body).',
+    });
+    expect(articleLevel).toContain('No text selection');
+    expect(articleLevel).toContain('Learner question');
+    expect(articleLevel).not.toContain('Selection:');
   });
 
-  it('composes language-teacher + assist-read + lookup without explain grammar task', async () => {
+  it('composes language-teacher + assist-read with refuse-and-steer scope', async () => {
     clearPromptTemplateCache();
     const messages = await composePromptMessages({
       roleId: PROMPT_ROLE.languageTeacher,
@@ -52,6 +61,7 @@ describe('prompt compose', () => {
     expect(system).toContain('language teacher');
     expect(system).toContain('word card');
     expect(system).toContain('Sample');
+    expect(system).toMatch(/refuse|Out of scope|only help/i);
     expect(system).not.toContain('Explain the selected text in clear Chinese');
     expect(system).toMatch(/Do not[\s\S]*grammar/i);
     expect(messages[1]!.content).toContain('orbit');
@@ -74,6 +84,24 @@ describe('prompt compose', () => {
     expect(messages[0]!.content).toContain('meaning and structure');
     expect(messages[0]!.content).not.toContain('word card');
   });
+
+  it('composes gist without selection', async () => {
+    clearPromptTemplateCache();
+    const messages = await composePromptMessages({
+      roleId: PROMPT_ROLE.languageTeacher,
+      sceneId: PROMPT_SCENE.assistRead,
+      actionId: 'gist',
+      vars: {
+        targetLanguage: 'English',
+        replyLanguage: 'Chinese',
+        articleTitle: 'Ocean',
+        articleLevel: 'easy',
+        selectionNote: 'No text selection — answer for the article as a whole (use tools if you need the body).',
+      },
+    });
+    expect(messages[0]!.content).toMatch(/gist|大意|summary/i);
+    expect(messages[1]!.content).toContain('No text selection');
+  });
 });
 
 describe('resolveAssistToolsForAction', () => {
@@ -84,8 +112,14 @@ describe('resolveAssistToolsForAction', () => {
     expect(tools.map((t) => t.name)).toEqual(['search_article']);
   });
 
-  it('gives meaning slice and search', () => {
-    const tools = resolveAssistToolsForAction('meaning', article);
-    expect(tools.map((t) => t.name)).toEqual(['get_article_slice', 'search_article']);
+  it('gives meaning and gist slice and search', () => {
+    expect(resolveAssistToolsForAction('meaning', article).map((t) => t.name)).toEqual([
+      'get_article_slice',
+      'search_article',
+    ]);
+    expect(resolveAssistToolsForAction('gist', article).map((t) => t.name)).toEqual([
+      'get_article_slice',
+      'search_article',
+    ]);
   });
 });

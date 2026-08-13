@@ -26,4 +26,5 @@ export const ASSIST_ACTION_TEMPLATE: Record<string, string> = {
   simpler: 'simpler',
   referent: 'referent',
   qa: 'qa',
+  gist: 'gist',
 };

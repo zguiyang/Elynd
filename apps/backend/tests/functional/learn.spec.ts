@@ -226,10 +226,29 @@ describe('Learn HTTP', () => {
     expect(skip.status).toBe(200);
     expect(((await skip.json()) as PracticeAttempt).status).toBe('skipped');
 
-    const todayAfterSkip = await app.request('/api/learn/today', {
+    const editFinished = await app.request(`/api/learn/articles/${article.id}/practice/attempts/${attempt.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
+      body: JSON.stringify({
+        currentIndex: 1,
+        answers: [{ practiceItemId: practiceData.items[0]!.id, selectedOptionIndex: 0 }],
+      }),
+    });
+    expect(editFinished.status).toBe(400);
+
+    const restart = await app.request(`/api/learn/articles/${article.id}/practice/attempts`, {
+      method: 'POST',
       headers: { cookie: learner.cookie },
     });
-    expect(((await todayAfterSkip.json()) as LearnTodayData).activePractice).toBeNull();
+    expect(restart.status).toBe(200);
+    const restarted = (await restart.json()) as PracticeAttempt;
+    expect(restarted.id).not.toBe(attempt.id);
+    expect(restarted.status).toBe('in_progress');
+
+    const todayAfterRestart = await app.request('/api/learn/today', {
+      headers: { cookie: learner.cookie },
+    });
+    expect(((await todayAfterRestart.json()) as LearnTodayData).activePractice?.attemptId).toBe(restarted.id);
 
     const otherLearner = await createSession('user');
     createdEmails.push(otherLearner.email);

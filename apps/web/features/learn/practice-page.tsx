@@ -4,9 +4,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftIcon, BookOpenIcon, CheckCircleIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 
-import { type LearnerPracticeItem, practiceOptionLetter } from '@elynd/shared/api/learn';
+import type {
+  LearnerPracticeItem,
+  LearnPracticeData,
+  PracticeAttempt,
+  UpdatePracticeAttemptBody,
+} from '@elynd/shared/api/learn';
+import { practiceOptionLetter } from '@elynd/shared/api/learn';
 
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
@@ -29,32 +35,24 @@ type LearnPracticePageProps = {
  * Practice — curated items for the same article, one question at a time.
  */
 export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const [localIndex, setLocalIndex] = useState<number | null>(null);
-  const [selected, setSelected] = useState<number | null>(null);
-  const [isFinished, setIsFinished] = useState(false);
+  const [isSessionComplete, setIsSessionComplete] = useState(false);
 
   const practiceQuery = useQuery({
     queryKey: learnQueryKey.practice(articleId),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
     queryFn: async ({ signal }) => {
       const data = await getLearnPractice(articleId, { signal });
       if (data.items.length === 0) {
         return data;
       }
-      if (data.attempt) {
+      // Server only returns in-progress attempts; start a new session when none.
+      if (data.attempt?.status === 'in_progress') {
         return data;
       }
       const attempt = await startLearnPracticeAttempt(articleId);
       return { ...data, attempt };
-    },
-  });
-
-  const patchMutation = useMutation({
-    mutationFn: (input: { attemptId: string; body: Parameters<typeof updateLearnPracticeAttempt>[2] }) =>
-      updateLearnPracticeAttempt(articleId, input.attemptId, input.body),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: learnQueryKey.today() });
     },
   });
 
@@ -135,8 +133,25 @@ export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
     );
   }
 
-  const attempt = practice.attempt;
-  if (!attempt) {
+  if (isSessionComplete) {
+    return (
+      <PracticeShell articleId={articleId} title={practice.articleTitle}>
+        <section className="rounded-[1.75rem] border border-border bg-card p-8 md:p-10">
+          <h2 className="font-heading text-3xl font-bold tracking-tight">练习完成</h2>
+          <Button
+            nativeButton={false}
+            className="mt-10 h-12 w-full gap-2 rounded-2xl hover:bg-brand-deep sm:w-auto sm:px-8"
+            render={<Link href={AUTH_ROUTES.dashboard} />}
+          >
+            <CheckCircleIcon className="size-4" strokeWidth={1.5} aria-hidden />
+            回今日
+          </Button>
+        </section>
+      </PracticeShell>
+    );
+  }
+
+  if (!practice.attempt || practice.attempt.status !== 'in_progress') {
     return (
       <div className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col justify-center px-6 py-16">
         <p className="text-sm text-muted-foreground">加载中…</p>
@@ -144,61 +159,25 @@ export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
     );
   }
 
-  const attemptId = attempt.id;
-  const questions = practice.items;
-  const total = questions.length;
-  const index = localIndex ?? attempt.currentIndex;
-  const question = questions[index];
-  const isLast = index >= total - 1;
-  const practiceIntro = `《${practice.articleTitle}》· 理解确认`;
+  return (
+    <PracticeSession
+      key={practice.attempt.id}
+      articleId={articleId}
+      practice={practice}
+      attempt={practice.attempt}
+      onCompleted={() => setIsSessionComplete(true)}
+    />
+  );
+}
 
-  function goNext() {
-    if (selected == null || !question) {
-      return;
-    }
-    const nextIndex = isLast ? index : index + 1;
-    patchMutation.mutate(
-      {
-        attemptId,
-        body: {
-          currentIndex: nextIndex,
-          answers: [{ practiceItemId: question.id, selectedOptionIndex: selected }],
-          ...(isLast ? { status: 'completed' as const } : {}),
-        },
-      },
-      {
-        onSuccess: () => {
-          if (isLast) {
-            setIsFinished(true);
-            return;
-          }
-          setLocalIndex(nextIndex);
-          setSelected(null);
-        },
-      },
-    );
-  }
-
-  function skipPractice() {
-    patchMutation.mutate(
-      { attemptId, body: { status: 'skipped' } },
-      {
-        onSuccess: () => {
-          router.push(AUTH_ROUTES.dashboard);
-        },
-      },
-    );
-  }
-
+function PracticeShell({ articleId, title, children }: { articleId: string; title: string; children: ReactNode }) {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <header className="border-b border-border/80 bg-sidebar">
         <div className="mx-auto flex h-16 max-w-3xl items-center justify-between gap-4 px-5 md:px-8">
           <div className="min-w-0">
-            <p className="text-sm tracking-wide text-brand-deep">练习</p>
-            <h1 className="font-heading truncate text-lg font-bold tracking-tight md:text-xl">
-              {practice.articleTitle}
-            </h1>
+            <p className="text-sm tracking-wide text-brand-deep">读完之后 · 几道小题</p>
+            <h1 className="font-heading truncate text-lg font-bold tracking-tight md:text-xl">{title}</h1>
           </div>
           <Button
             nativeButton={false}
@@ -221,50 +200,146 @@ export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
           <ArrowLeftIcon className="size-4" strokeWidth={1.5} aria-hidden />
           回阅读
         </Button>
-
-        {isFinished ? (
-          <section className="rounded-[1.75rem] border border-border bg-card p-8 md:p-10">
-            <h2 className="font-heading text-3xl font-bold tracking-tight">练习完成</h2>
-            <Button
-              nativeButton={false}
-              className="mt-10 h-12 w-full gap-2 rounded-2xl hover:bg-brand-deep sm:w-auto sm:px-8"
-              render={<Link href={AUTH_ROUTES.dashboard} />}
-            >
-              <CheckCircleIcon className="size-4" strokeWidth={1.5} aria-hidden />
-              回今日
-            </Button>
-          </section>
-        ) : question ? (
-          <>
-            <div className="rounded-[1.75rem] bg-paper px-6 py-5 md:px-8">
-              <p className="text-base leading-relaxed text-foreground/90">{practiceIntro}</p>
-            </div>
-
-            <QuestionCard question={question} index={index} total={total} selected={selected} onSelect={setSelected} />
-
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-11 rounded-xl px-4 text-muted-foreground hover:text-foreground"
-                disabled={patchMutation.isPending}
-                onClick={skipPractice}
-              >
-                跳过，回今日
-              </Button>
-              <Button
-                type="button"
-                className="h-11 rounded-xl px-7 hover:bg-brand-deep"
-                disabled={selected == null || patchMutation.isPending}
-                onClick={goNext}
-              >
-                {isLast ? '完成' : '下一题'}
-              </Button>
-            </div>
-          </>
-        ) : null}
+        {children}
       </main>
     </div>
+  );
+}
+
+function PracticeSession({
+  articleId,
+  practice,
+  attempt,
+  onCompleted,
+}: {
+  articleId: string;
+  practice: LearnPracticeData;
+  attempt: PracticeAttempt;
+  onCompleted: () => void;
+}) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [localIndex, setLocalIndex] = useState<number | null>(null);
+  const [pickedOption, setPickedOption] = useState<number | null>(null);
+  const [pickedQuestionId, setPickedQuestionId] = useState<string | null>(null);
+
+  const questions = practice.items;
+  const total = questions.length;
+  const index = localIndex ?? attempt.currentIndex;
+  const question = questions[index];
+  const isLast = index >= total - 1;
+  const questionId = question?.id;
+  const restoredOption =
+    questionId == null
+      ? null
+      : (attempt.answers.find((answer) => answer.practiceItemId === questionId)?.selectedOptionIndex ?? null);
+  const selected = pickedQuestionId === questionId ? pickedOption : restoredOption;
+  const practiceIntro = `刚读过《${practice.articleTitle}》。下面几题只帮你确认理解，不是考试——不想练也可以跳过。`;
+
+  const patchMutation = useMutation({
+    mutationFn: (input: { attemptId: string; body: UpdatePracticeAttemptBody }) =>
+      updateLearnPracticeAttempt(articleId, input.attemptId, input.body),
+    onSuccess: (updated) => {
+      void queryClient.invalidateQueries({ queryKey: learnQueryKey.today() });
+      if (updated.status === 'in_progress') {
+        queryClient.setQueryData(learnQueryKey.practice(articleId), (previous: LearnPracticeData | undefined) =>
+          previous ? { ...previous, attempt: updated } : previous,
+        );
+        return;
+      }
+      // Clear finished attempt so the next visit starts a fresh in-progress session.
+      queryClient.setQueryData(learnQueryKey.practice(articleId), (previous: LearnPracticeData | undefined) =>
+        previous ? { ...previous, attempt: null } : previous,
+      );
+    },
+  });
+
+  function goNext() {
+    if (selected == null || !question || attempt.status !== 'in_progress' || patchMutation.isPending) {
+      return;
+    }
+    const nextIndex = isLast ? index : index + 1;
+    patchMutation.mutate(
+      {
+        attemptId: attempt.id,
+        body: {
+          currentIndex: nextIndex,
+          answers: [{ practiceItemId: question.id, selectedOptionIndex: selected }],
+          ...(isLast ? { status: 'completed' as const } : {}),
+        },
+      },
+      {
+        onSuccess: () => {
+          if (isLast) {
+            onCompleted();
+            return;
+          }
+          setLocalIndex(nextIndex);
+          setPickedQuestionId(null);
+          setPickedOption(null);
+        },
+      },
+    );
+  }
+
+  function skipPractice() {
+    if (attempt.status !== 'in_progress' || patchMutation.isPending) {
+      return;
+    }
+    patchMutation.mutate(
+      { attemptId: attempt.id, body: { status: 'skipped' } },
+      {
+        onSuccess: () => {
+          router.push(AUTH_ROUTES.dashboard);
+        },
+      },
+    );
+  }
+
+  return (
+    <PracticeShell articleId={articleId} title={practice.articleTitle}>
+      <div className="rounded-[1.75rem] bg-paper px-6 py-5 md:px-8">
+        <p className="text-base leading-relaxed text-foreground/90">{practiceIntro}</p>
+      </div>
+
+      {question ? (
+        <>
+          <QuestionCard
+            question={question}
+            index={index}
+            total={total}
+            selected={selected}
+            onSelect={(optionIndex) => {
+              if (!questionId) {
+                return;
+              }
+              setPickedQuestionId(questionId);
+              setPickedOption(optionIndex);
+            }}
+          />
+
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-11 rounded-xl px-4 text-muted-foreground hover:text-foreground"
+              disabled={patchMutation.isPending}
+              onClick={skipPractice}
+            >
+              跳过，回今日
+            </Button>
+            <Button
+              type="button"
+              className="h-11 rounded-xl px-7 hover:bg-brand-deep"
+              disabled={selected == null || patchMutation.isPending}
+              onClick={goNext}
+            >
+              {isLast ? '完成' : '下一题'}
+            </Button>
+          </div>
+        </>
+      ) : null}
+    </PracticeShell>
   );
 }
 

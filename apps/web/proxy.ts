@@ -6,9 +6,9 @@ import { hasSessionCookie, resolveAuthPageRedirect } from '@/lib/auth/session-ga
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Stay on Next (do not rewrite): logout clears HttpOnly cookie; assist ask must
-  // stream through a Route Handler — proxy rewrites can buffer SSE until done.
-  if (pathname === '/api/auth/logout' || pathname === '/api/assist/ask') {
+  // Stay on Next (do not rewrite): logout clears HttpOnly cookie; SSE must
+  // stream through a Route Handler — proxy rewrites can buffer until done.
+  if (pathname === '/api/auth/logout' || pathname === '/api/assist/ask' || pathname === '/api/translate/article') {
     return NextResponse.next();
   }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeftIcon, BookOpenIcon, CheckCircleIcon } from 'lucide-react';
+import { ArrowLeftIcon, BookOpenIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useState } from 'react';
@@ -10,6 +10,7 @@ import type {
   LearnerPracticeItem,
   LearnPracticeData,
   PracticeAttempt,
+  PracticeAttemptResult,
   UpdatePracticeAttemptBody,
 } from '@elynd/shared/api/learn';
 import { practiceOptionLetter } from '@elynd/shared/api/learn';
@@ -24,6 +25,7 @@ import {
   startLearnPracticeAttempt,
   updateLearnPracticeAttempt,
 } from '@/features/learn/learn-api';
+import { PracticeSummary } from '@/features/learn/practice-summary';
 import { ApiRequestError } from '@/lib/api-request';
 import { cn } from '@/lib/utils';
 
@@ -35,7 +37,7 @@ type LearnPracticePageProps = {
  * Practice — curated items for the same article, one question at a time.
  */
 export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
-  const [isSessionComplete, setIsSessionComplete] = useState(false);
+  const [sessionResult, setSessionResult] = useState<PracticeAttemptResult | null>(null);
 
   const practiceQuery = useQuery({
     queryKey: learnQueryKey.practice(articleId),
@@ -133,20 +135,10 @@ export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
     );
   }
 
-  if (isSessionComplete) {
+  if (sessionResult) {
     return (
       <PracticeShell articleId={articleId} title={practice.articleTitle}>
-        <section className="rounded-[1.75rem] border border-border bg-card p-8 md:p-10">
-          <h2 className="font-heading text-3xl font-bold tracking-tight">练习完成</h2>
-          <Button
-            nativeButton={false}
-            className="mt-10 h-12 w-full gap-2 rounded-2xl hover:bg-brand-deep sm:w-auto sm:px-8"
-            render={<Link href={AUTH_ROUTES.dashboard} />}
-          >
-            <CheckCircleIcon className="size-4" strokeWidth={1.5} aria-hidden />
-            回今日
-          </Button>
-        </section>
+        <PracticeSummary result={sessionResult} />
       </PracticeShell>
     );
   }
@@ -165,7 +157,7 @@ export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
       articleId={articleId}
       practice={practice}
       attempt={practice.attempt}
-      onCompleted={() => setIsSessionComplete(true)}
+      onCompleted={(result) => setSessionResult(result)}
     />
   );
 }
@@ -215,7 +207,7 @@ function PracticeSession({
   articleId: string;
   practice: LearnPracticeData;
   attempt: PracticeAttempt;
-  onCompleted: () => void;
+  onCompleted: (result: PracticeAttemptResult) => void;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -269,9 +261,12 @@ function PracticeSession({
         },
       },
       {
-        onSuccess: () => {
+        onSuccess: (updated) => {
           if (isLast) {
-            onCompleted();
+            if (!updated.result) {
+              return;
+            }
+            onCompleted(updated.result);
             return;
           }
           setLocalIndex(nextIndex);

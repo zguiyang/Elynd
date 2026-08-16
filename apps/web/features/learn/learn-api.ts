@@ -8,6 +8,8 @@ import {
   type PracticeAttempt,
   practiceAttemptSchema,
   type UpdatePracticeAttemptBody,
+  type UpdatePracticeAttemptResponse,
+  updatePracticeAttemptResponseSchema,
 } from '@elynd/shared/api/learn';
 
 import { apiRequest, formatApiError } from '@/lib/api-request';
@@ -51,12 +53,12 @@ export async function updateLearnPracticeAttempt(
   articleId: string,
   attemptId: string,
   body: UpdatePracticeAttemptBody,
-): Promise<PracticeAttempt> {
+): Promise<UpdatePracticeAttemptResponse> {
   return apiRequest(
     `/api/learn/articles/${encodeURIComponent(articleId)}/practice/attempts/${encodeURIComponent(attemptId)}`,
     {
       method: 'PATCH',
-      schema: practiceAttemptSchema,
+      schema: updatePracticeAttemptResponseSchema,
       json: body,
     },
   );

@@ -13,6 +13,10 @@ const AI_PURPOSE_LABELS: Record<AiSettingKey, { title: string; description: stri
     title: '阅读助手',
     description: '阅读页提问与划词帮助使用的默认模型。',
   },
+  'translate.default_model_id': {
+    title: '双语翻译',
+    description: '阅读页双语模式下英译中使用的默认模型。',
+  },
 };
 
 type AiPurposePanelProps = {

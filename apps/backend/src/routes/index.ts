@@ -8,6 +8,7 @@ import { assistRoutes } from '@/modules/assist/route';
 import { conversationsRoutes } from '@/modules/conversations/route';
 import { learnRoutes } from '@/modules/learn/route';
 import { llmConfigRoutes } from '@/modules/llm-config/route';
+import { translateRoutes } from '@/modules/translate/route';
 
 /** Route composition entry — mount feature modules here as they are added. */
 export const routes = new Hono<{ Variables: AuthVariables }>();
@@ -33,3 +34,4 @@ routes.route('/', llmConfigRoutes);
 routes.route('/', aiRoutes);
 routes.route('/', assistRoutes);
 routes.route('/', conversationsRoutes);
+routes.route('/', translateRoutes);

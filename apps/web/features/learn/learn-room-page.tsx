@@ -320,24 +320,13 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
               <CheckIcon className="size-4" strokeWidth={1.5} aria-hidden />
               练几道小题
             </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11 gap-2 rounded-xl border-border bg-card px-5 shadow-none"
-              disabled
-              title="这篇还没有练习题"
-            >
-              <CheckIcon className="size-4" strokeWidth={1.5} aria-hidden />
-              练几道小题
-            </Button>
-          )}
+          ) : null}
           <Button
             nativeButton={false}
             className="h-11 rounded-xl px-6 hover:bg-brand-deep"
             render={<Link href={AUTH_ROUTES.dashboard} />}
           >
-            回今日
+            先这样，回今日
           </Button>
         </div>
       </footer>

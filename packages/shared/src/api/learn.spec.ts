@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  generatePracticeItemsResponseSchema,
   replacePracticeItemsBodySchema,
   updatePracticeAttemptBodySchema,
   updateReadingProgressBodySchema,
@@ -65,5 +66,19 @@ describe('learn api contracts', () => {
   it('requires at least one attempt patch field', () => {
     expect(updatePracticeAttemptBodySchema.safeParse({}).success).toBe(false);
     expect(updatePracticeAttemptBodySchema.parse({ status: 'skipped' })).toEqual({ status: 'skipped' });
+  });
+
+  it('accepts AI generate response with one to five items', () => {
+    const parsed = generatePracticeItemsResponseSchema.parse({
+      items: [
+        {
+          kind: 'comprehension',
+          payload: { prompt: 'What happened?', options: ['A', 'B', 'C'] },
+          correctOptionIndex: 0,
+        },
+      ],
+    });
+    expect(parsed.items).toHaveLength(1);
+    expect(generatePracticeItemsResponseSchema.safeParse({ items: [] }).success).toBe(false);
   });
 });

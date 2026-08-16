@@ -21,6 +21,11 @@ export const PRACTICE_HINT_MAX = 200 as const;
 export const PRACTICE_QUOTE_MAX = 400 as const;
 export const LEARN_CONTINUE_READING_LIMIT = 5 as const;
 
+/** Display label for a 0-based option index (A, B, C, …). */
+export function practiceOptionLetter(index: number): string {
+  return String.fromCharCode(65 + index);
+}
+
 const optionSchema = z.string().trim().min(1).max(PRACTICE_OPTION_MAX);
 
 const optionsSchema = z.array(optionSchema).min(PRACTICE_OPTIONS_MIN).max(PRACTICE_OPTIONS_MAX);
@@ -203,7 +208,8 @@ export const adminPracticeItemsDataSchema = z.object({
 
 export type AdminPracticeItemsData = z.infer<typeof adminPracticeItemsDataSchema>;
 
-const replacePracticeItemInputSchema = z
+/** Write shape for admin replace / AI generate (includes answer key). */
+export const practiceItemWriteSchema = z
   .object({
     kind: z.enum(PRACTICE_ITEM_KINDS),
     payload: practiceItemPayloadSchema,
@@ -215,8 +221,23 @@ const replacePracticeItemInputSchema = z
     refineCorrectOptionIndex(value, ctx);
   });
 
+export type PracticeItemWrite = z.infer<typeof practiceItemWriteSchema>;
+
 export const replacePracticeItemsBodySchema = z.object({
-  items: z.array(replacePracticeItemInputSchema).max(PRACTICE_ITEMS_MAX),
+  items: z.array(practiceItemWriteSchema).max(PRACTICE_ITEMS_MAX),
 });
 
 export type ReplacePracticeItemsBody = z.infer<typeof replacePracticeItemsBodySchema>;
+
+/** AI generate returns draft items only — does not write the database. */
+export const generatePracticeItemsResponseSchema = z.object({
+  items: z.array(practiceItemWriteSchema).min(1).max(PRACTICE_ITEMS_MAX),
+});
+
+export type GeneratePracticeItemsResponse = z.infer<typeof generatePracticeItemsResponseSchema>;
+
+export const generatePracticeItemsBodySchema = z.object({
+  replaceExistingHint: z.boolean().optional(),
+});
+
+export type GeneratePracticeItemsBody = z.infer<typeof generatePracticeItemsBodySchema>;

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
-import type { LearnerPracticeItem } from '@elynd/shared/api/learn';
+import { type LearnerPracticeItem, practiceOptionLetter } from '@elynd/shared/api/learn';
 
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
@@ -323,6 +323,7 @@ function QuestionCard({
               )}
               onClick={() => onSelect(optionIndex)}
             >
+              <span className="mr-2 font-medium text-muted-foreground">{practiceOptionLetter(optionIndex)}.</span>
               {option}
             </button>
           );

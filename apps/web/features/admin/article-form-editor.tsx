@@ -244,8 +244,22 @@ export function ArticleFormEditor({ mode, articleId, initialArticle }: ArticleFo
         ← 返回列表
       </Button>
 
-      <h1 className="mt-4 font-heading text-4xl font-bold tracking-tight md:text-5xl">{heading}</h1>
-      <p className="mt-3 text-lg text-muted-foreground">粘贴标题与正文；预览对齐学习者纯阅读排版。</p>
+      <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-4xl font-bold tracking-tight md:text-5xl">{heading}</h1>
+          <p className="mt-3 text-lg text-muted-foreground">粘贴标题与正文；预览对齐学习者纯阅读排版。</p>
+        </div>
+        {mode === 'edit' && articleId ? (
+          <Button
+            variant="outline"
+            className="h-11 rounded-xl"
+            nativeButton={false}
+            render={<Link href={ADMIN_ROUTES.articlePractice(articleId)} />}
+          >
+            练习题工作台
+          </Button>
+        ) : null}
+      </div>
 
       <Tabs defaultValue="edit" className="mt-10">
         <AdminSegmentedTabsList aria-label="编辑或预览">

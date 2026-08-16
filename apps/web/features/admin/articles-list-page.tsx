@@ -218,15 +218,26 @@ export function ArticlesListPage() {
                         {formatUpdatedAt(article.updatedAt)}
                       </TableCell>
                       <TableCell className="px-5 py-4">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          nativeButton={false}
-                          className="rounded-xl"
-                          render={<Link href={ADMIN_ROUTES.articleEdit(article.id)} />}
-                        >
-                          编辑
-                        </Button>
+                        <div className="flex flex-wrap gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            nativeButton={false}
+                            className="rounded-xl"
+                            render={<Link href={ADMIN_ROUTES.articleEdit(article.id)} />}
+                          >
+                            编辑
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            nativeButton={false}
+                            className="rounded-xl"
+                            render={<Link href={ADMIN_ROUTES.articlePractice(article.id)} />}
+                          >
+                            练习题
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

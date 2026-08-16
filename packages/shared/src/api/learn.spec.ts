@@ -4,6 +4,7 @@ import {
   generatePracticeItemsResponseSchema,
   replacePracticeItemsBodySchema,
   updatePracticeAttemptBodySchema,
+  updatePracticeAttemptResponseSchema,
   updateReadingProgressBodySchema,
 } from './learn.ts';
 
@@ -80,5 +81,33 @@ describe('learn api contracts', () => {
     });
     expect(parsed.items).toHaveLength(1);
     expect(generatePracticeItemsResponseSchema.safeParse({ items: [] }).success).toBe(false);
+  });
+
+  it('accepts completed attempt result shape', () => {
+    const parsed = updatePracticeAttemptResponseSchema.parse({
+      id: 'a1',
+      articleId: 'art1',
+      status: 'completed',
+      currentIndex: 1,
+      answers: [{ practiceItemId: 'i1', selectedOptionIndex: 0 }],
+      startedAt: new Date().toISOString(),
+      finishedAt: new Date().toISOString(),
+      result: {
+        correctCount: 1,
+        totalCount: 1,
+        items: [
+          {
+            practiceItemId: 'i1',
+            kind: 'comprehension',
+            label: 'Main idea?',
+            options: ['A', 'B'],
+            selectedOptionIndex: 0,
+            correctOptionIndex: 0,
+            isCorrect: true,
+          },
+        ],
+      },
+    });
+    expect(parsed.result?.correctCount).toBe(1);
   });
 });

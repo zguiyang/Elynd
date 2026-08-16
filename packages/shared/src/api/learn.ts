@@ -174,6 +174,33 @@ export const practiceAttemptSchema = z.object({
 
 export type PracticeAttempt = z.infer<typeof practiceAttemptSchema>;
 
+/** Revealed after an attempt is completed (not while answering). */
+export const practiceAttemptResultItemSchema = z.object({
+  practiceItemId: z.string(),
+  kind: z.enum(PRACTICE_ITEM_KINDS),
+  label: z.string(),
+  options: z.array(z.string()),
+  selectedOptionIndex: z.number().int().min(0).nullable(),
+  correctOptionIndex: z.number().int().min(0),
+  isCorrect: z.boolean(),
+});
+
+export type PracticeAttemptResultItem = z.infer<typeof practiceAttemptResultItemSchema>;
+
+export const practiceAttemptResultSchema = z.object({
+  correctCount: z.number().int().min(0),
+  totalCount: z.number().int().min(0),
+  items: z.array(practiceAttemptResultItemSchema),
+});
+
+export type PracticeAttemptResult = z.infer<typeof practiceAttemptResultSchema>;
+
+export const updatePracticeAttemptResponseSchema = practiceAttemptSchema.extend({
+  result: practiceAttemptResultSchema.optional(),
+});
+
+export type UpdatePracticeAttemptResponse = z.infer<typeof updatePracticeAttemptResponseSchema>;
+
 export const learnPracticeDataSchema = z.object({
   articleId: z.string(),
   articleTitle: z.string(),

@@ -1,17 +1,21 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeftIcon, BookmarkIcon, BookOpenIcon, CheckIcon, HeadphonesIcon } from 'lucide-react';
+import { ArrowLeftIcon, BookmarkIcon, BookOpenIcon, CheckIcon, HeadphonesIcon, LanguagesIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
+
+import { type TranslateSentenceEn } from '@elynd/shared/api/translate';
 
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AUTH_ROUTES } from '@/constants';
 import { formatLearnApiError, getLearnArticle, learnQueryKey } from '@/features/learn/learn-api';
-import { LearnArticleReader } from '@/features/learn/learn-article-reader';
+import { type BilingualReaderState, LearnArticleReader } from '@/features/learn/learn-article-reader';
 import { LearnHelpRail, type PendingAssist } from '@/features/learn/learn-help-rail';
+import { formatTranslateLearnerError, streamTranslateArticle } from '@/features/learn/translate-api';
 import { ApiRequestError } from '@/lib/api-request';
 import { cn } from '@/lib/utils';
 
@@ -52,9 +56,23 @@ function toastComingSoon(feature: string) {
 export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
   const isAssistOpen = useSyncExternalStore(subscribeAssistOpen, readAssistOpenPreference, () => false);
   const [pendingAssist, setPendingAssist] = useState<PendingAssist | null>(null);
+  const [isBilingualOn, setIsBilingualOn] = useState(false);
+  const [bilingual, setBilingual] = useState<BilingualReaderState | null>(null);
+  const translateAbortRef = useRef<AbortController | null>(null);
 
   function setAssistOpen(next: boolean) {
     writeAssistOpenPreference(next);
+  }
+
+  function toggleBilingualMode() {
+    if (isBilingualOn) {
+      translateAbortRef.current?.abort();
+      translateAbortRef.current = null;
+      setBilingual(null);
+      setIsBilingualOn(false);
+      return;
+    }
+    setIsBilingualOn(true);
   }
 
   const articleQuery = useQuery({
@@ -64,6 +82,74 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
 
   const article = articleQuery.data;
   const isNotFound = articleQuery.error instanceof ApiRequestError && articleQuery.error.status === 404;
+
+  useEffect(() => {
+    if (!isBilingualOn || !article?.id) {
+      return;
+    }
+
+    const abort = new AbortController();
+    translateAbortRef.current?.abort();
+    translateAbortRef.current = abort;
+
+    void streamTranslateArticle(
+      { articleId },
+      {
+        onMeta: (meta) => {
+          if (abort.signal.aborted) {
+            return;
+          }
+          setBilingual({
+            titleZh: null,
+            sentences: meta.sentences.map((sentence: TranslateSentenceEn) => ({ ...sentence, zh: null })),
+            isStreaming: true,
+          });
+        },
+        onTitle: (title) => {
+          if (abort.signal.aborted) {
+            return;
+          }
+          setBilingual((prev) =>
+            prev ? { ...prev, titleZh: title.zh } : { titleZh: title.zh, sentences: [], isStreaming: true },
+          );
+        },
+        onSentence: (sentence) => {
+          if (abort.signal.aborted) {
+            return;
+          }
+          setBilingual((prev) => {
+            if (!prev) {
+              return prev;
+            }
+            return {
+              ...prev,
+              sentences: prev.sentences.map((item) =>
+                item.index === sentence.index ? { ...item, zh: sentence.zh } : item,
+              ),
+            };
+          });
+        },
+        onDone: () => {
+          if (abort.signal.aborted) {
+            return;
+          }
+          setBilingual((prev) => (prev ? { ...prev, isStreaming: false } : prev));
+        },
+      },
+      { signal: abort.signal },
+    ).catch((error: unknown) => {
+      if (abort.signal.aborted) {
+        return;
+      }
+      setIsBilingualOn(false);
+      setBilingual(null);
+      toast.error(formatTranslateLearnerError(error));
+    });
+
+    return () => {
+      abort.abort();
+    };
+  }, [isBilingualOn, articleId, article?.id]);
 
   if (articleQuery.isPending) {
     return (
@@ -112,6 +198,8 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
     );
   }
 
+  const bilingualTooltip = isBilingualOn ? '关闭双语模式' : '开启双语模式';
+
   return (
     <div className="flex h-[100dvh] flex-col bg-background">
       <header className="z-30 shrink-0 border-b border-border/80 bg-sidebar/95 backdrop-blur-sm">
@@ -126,6 +214,29 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
             返回
           </Button>
           <div className="min-w-0 flex-1" />
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    'size-10 rounded-xl text-muted-foreground hover:text-foreground',
+                    isBilingualOn
+                      ? 'bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground'
+                      : null,
+                  )}
+                  aria-label={bilingualTooltip}
+                  aria-pressed={isBilingualOn}
+                  onClick={toggleBilingualMode}
+                />
+              }
+            >
+              <LanguagesIcon className="size-4" strokeWidth={1.5} aria-hidden />
+            </TooltipTrigger>
+            <TooltipContent side="bottom">{bilingualTooltip}</TooltipContent>
+          </Tooltip>
           <Button
             type="button"
             variant="ghost"
@@ -146,6 +257,8 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
           level={article.level}
           estimatedMinutes={article.estimatedMinutes}
           isAssistOpen={isAssistOpen}
+          isBilingualOn={isBilingualOn}
+          bilingual={bilingual}
           onAssistRequest={(pending) => {
             setAssistOpen(true);
             setPendingAssist(pending);

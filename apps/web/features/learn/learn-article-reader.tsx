@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { type ArticleLevel } from '@elynd/shared/api/articles';
+import { type TranslateSentenceEn } from '@elynd/shared/api/translate';
 
 import { Popover, PopoverArrow, PopoverContent, PopoverDescription, PopoverTitle } from '@/components/ui/popover';
 import { type AssistActionId, type PendingAssist } from '@/features/learn/learn-help-rail';
@@ -23,12 +24,20 @@ type SelectionMenuState = {
   text: string;
 };
 
+export type BilingualReaderState = {
+  titleZh: string | null;
+  sentences: Array<TranslateSentenceEn & { zh: string | null }>;
+  isStreaming: boolean;
+};
+
 type LearnArticleReaderProps = {
   title: string;
   body: string;
   level: ArticleLevel;
   estimatedMinutes: number | null;
   isAssistOpen: boolean;
+  isBilingualOn: boolean;
+  bilingual: BilingualReaderState | null;
   onAssistRequest: (pending: PendingAssist) => void;
 };
 
@@ -50,6 +59,16 @@ function formatSelectionPreview(text: string, maxChars = 48): string {
   return `${normalized.slice(0, headLen)}${ellipsis}${normalized.slice(-tailLen)}`;
 }
 
+function groupSentencesByParagraph(sentences: BilingualReaderState['sentences']) {
+  const groups = new Map<number, BilingualReaderState['sentences']>();
+  for (const sentence of sentences) {
+    const list = groups.get(sentence.paragraphIndex) ?? [];
+    list.push(sentence);
+    groups.set(sentence.paragraphIndex, list);
+  }
+  return [...groups.entries()].sort(([a], [b]) => a - b).map(([, items]) => items.sort((a, b) => a.index - b.index));
+}
+
 /**
  * Article body + text-selection assist popover for the Learning Room.
  */
@@ -59,6 +78,8 @@ export function LearnArticleReader({
   level,
   estimatedMinutes,
   isAssistOpen,
+  isBilingualOn,
+  bilingual,
   onAssistRequest,
 }: LearnArticleReaderProps) {
   const [selectionMenu, setSelectionMenu] = useState<SelectionMenuState | null>(null);
@@ -72,8 +93,6 @@ export function LearnArticleReader({
     }
 
     function onPointerUp() {
-      // Mouseup may land outside the article while the selection remains inside —
-      // listen on document so the bubble still opens after drag-out release.
       window.requestAnimationFrame(updateSelectionMenu);
     }
 
@@ -86,7 +105,7 @@ export function LearnArticleReader({
         setSelectionMenu(null);
         return;
       }
-      if (!selectionIntersectsArticle(selection)) {
+      if (!selectionIntersectsArticle(selection) || selectionTouchesChinese(selection)) {
         setSelectionMenu(null);
       }
     }
@@ -99,7 +118,6 @@ export function LearnArticleReader({
       document.removeEventListener('pointerup', onPointerUp);
       document.removeEventListener('selectionchange', onSelectionChange);
     };
-    // updateSelectionMenu reads latest refs/state via closure each render; rebind when menu toggles.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- selection assist listeners
   }, [selectionMenu]);
 
@@ -114,10 +132,45 @@ export function LearnArticleReader({
     return Boolean(node && root.contains(node));
   }
 
+  function selectionTouchesChinese(selection: Selection) {
+    if (selection.rangeCount === 0) {
+      return false;
+    }
+    const range = selection.getRangeAt(0);
+    const root = range.commonAncestorContainer;
+    const element = root.nodeType === Node.ELEMENT_NODE ? (root as Element) : root.parentElement;
+    if (element?.closest('[data-bilingual-zh]')) {
+      return true;
+    }
+    // Mixed selection: walk nodes in range for zh markers.
+    const walkerRoot = articleBodyRef.current;
+    if (!walkerRoot) {
+      return false;
+    }
+    const walker = document.createTreeWalker(walkerRoot, NodeFilter.SHOW_ELEMENT);
+    let current = walker.nextNode();
+    while (current) {
+      if (
+        current instanceof HTMLElement &&
+        current.hasAttribute('data-bilingual-zh') &&
+        selection.containsNode(current, true)
+      ) {
+        return true;
+      }
+      current = walker.nextNode();
+    }
+    return false;
+  }
+
   function updateSelectionMenu() {
     const root = articleBodyRef.current;
     const selection = window.getSelection();
     if (!root || !selection || selection.rangeCount === 0 || selection.isCollapsed) {
+      setSelectionMenu(null);
+      return;
+    }
+
+    if (selectionTouchesChinese(selection)) {
       setSelectionMenu(null);
       return;
     }
@@ -171,6 +224,8 @@ export function LearnArticleReader({
   const paragraphs = paragraphsFromBody(body);
   const levelLabel = LEVEL_LABEL[level];
   const metaParts = [levelLabel, estimatedMinutes != null ? `约 ${estimatedMinutes} 分钟` : null].filter(Boolean);
+  const isShowingBilingual = isBilingualOn && bilingual !== null;
+  const paragraphGroups = isShowingBilingual ? groupSentencesByParagraph(bilingual.sentences) : [];
 
   return (
     <>
@@ -191,13 +246,54 @@ export function LearnArticleReader({
           >
             {title}
           </h1>
+          {isShowingBilingual ? (
+            <p
+              data-bilingual-zh
+              className={cn(
+                'mt-3 max-w-[42rem] select-none text-xl leading-snug text-muted-foreground text-pretty md:text-2xl',
+                !bilingual.titleZh && bilingual.isStreaming ? 'animate-pulse' : null,
+              )}
+            >
+              {bilingual.titleZh ?? (bilingual.isStreaming ? '翻译中…' : null)}
+            </p>
+          ) : isBilingualOn ? (
+            <p
+              data-bilingual-zh
+              className="mt-3 max-w-[42rem] select-none text-xl leading-snug text-muted-foreground animate-pulse md:text-2xl"
+            >
+              翻译中…
+            </p>
+          ) : null}
 
           <div
             ref={articleBodyRef}
             className="mt-10 flex max-w-[42rem] flex-col gap-7 text-lg leading-loose text-foreground/90"
           >
-            {paragraphs.length > 0 ? (
-              paragraphs.map((paragraph) => <p key={paragraph.slice(0, 40)}>{paragraph}</p>)
+            {isShowingBilingual ? (
+              paragraphGroups.length > 0 ? (
+                paragraphGroups.map((group) => (
+                  <div key={group[0]?.index ?? 0} className="flex flex-col gap-4">
+                    {group.map((sentence) => (
+                      <div key={sentence.index} className="flex flex-col gap-1.5">
+                        <p data-bilingual-en>{sentence.en}</p>
+                        <p
+                          data-bilingual-zh
+                          className={cn(
+                            'select-none text-base leading-relaxed text-muted-foreground',
+                            !sentence.zh && bilingual.isStreaming ? 'animate-pulse' : null,
+                          )}
+                        >
+                          {sentence.zh ?? (bilingual.isStreaming ? '…' : null)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ))
+              ) : (
+                <p className="text-muted-foreground">这篇还没有正文。</p>
+              )
+            ) : paragraphs.length > 0 ? (
+              paragraphs.map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 24)}`}>{paragraph}</p>)
             ) : (
               <p className="text-muted-foreground">这篇还没有正文。</p>
             )}
@@ -226,7 +322,6 @@ export function LearnArticleReader({
               'shadow-none ring-0',
             )}
             onMouseDown={(event) => {
-              // Keep the text selection while interacting with the toolbar.
               event.preventDefault();
             }}
           >

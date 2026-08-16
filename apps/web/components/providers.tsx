@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { Toaster } from 'sonner';
 
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { QueryProvider } from '@/lib/query';
 
 type ProvidersProps = {
@@ -12,8 +13,10 @@ type ProvidersProps = {
 export function Providers({ children }: ProvidersProps) {
   return (
     <QueryProvider>
-      {children}
-      <Toaster richColors closeButton position="top-right" />
+      <TooltipProvider delay={300}>
+        {children}
+        <Toaster richColors closeButton position="top-right" />
+      </TooltipProvider>
     </QueryProvider>
   );
 }

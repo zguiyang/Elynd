@@ -23,9 +23,11 @@ import {
   type LearnTodayData,
   type PracticeAttempt,
   type PracticeAttemptAnswer,
+  type PracticeAttemptResult,
   type PracticeItemKind,
   type ReplacePracticeItemsBody,
   type UpdatePracticeAttemptBody,
+  type UpdatePracticeAttemptResponse,
   type UpdateReadingProgressBody,
 } from '@elynd/shared/api/learn';
 
@@ -87,6 +89,41 @@ function toAttempt(row: AttemptRow): PracticeAttempt {
     answers: row.answers as PracticeAttemptAnswer[],
     startedAt: toIso(row.startedAt),
     finishedAt: row.finishedAt ? toIso(row.finishedAt) : null,
+  };
+}
+
+function practiceItemLabel(row: PracticeItemRow): string {
+  if (row.kind === 'vocab' && 'word' in row.payload) {
+    return row.payload.word;
+  }
+  if ('prompt' in row.payload) {
+    return row.payload.prompt;
+  }
+  return '题目';
+}
+
+function buildPracticeAttemptResult(
+  itemRows: PracticeItemRow[],
+  answers: PracticeAttemptAnswer[],
+): PracticeAttemptResult {
+  const selectedByItem = new Map(answers.map((answer) => [answer.practiceItemId, answer.selectedOptionIndex]));
+  const items = itemRows.map((row) => {
+    const selectedOptionIndex = selectedByItem.get(row.id) ?? null;
+    const isCorrect = selectedOptionIndex === row.correctOptionIndex;
+    return {
+      practiceItemId: row.id,
+      kind: row.kind as PracticeItemKind,
+      label: practiceItemLabel(row),
+      options: row.payload.options,
+      selectedOptionIndex,
+      correctOptionIndex: row.correctOptionIndex,
+      isCorrect,
+    };
+  });
+  return {
+    correctCount: items.filter((item) => item.isCorrect).length,
+    totalCount: items.length,
+    items,
   };
 }
 
@@ -580,7 +617,7 @@ export async function updatePracticeAttempt(
   articleId: string,
   attemptId: string,
   input: UpdatePracticeAttemptBody,
-): Promise<PracticeAttempt> {
+): Promise<UpdatePracticeAttemptResponse> {
   await requirePublishedArticle(articleId);
 
   const [attempt] = await db
@@ -634,12 +671,13 @@ export async function updatePracticeAttempt(
   const nextStatus = input.status ?? attempt.status;
   const now = new Date();
   const finishedAt = nextStatus === 'completed' || nextStatus === 'skipped' ? (attempt.finishedAt ?? now) : null;
+  const nextAnswers = input.answers ? mergeAnswers(attempt.answers, input.answers) : attempt.answers;
 
   const [updated] = await db
     .update(practiceAttemptTable)
     .set({
       currentIndex: input.currentIndex ?? attempt.currentIndex,
-      answers: input.answers ? mergeAnswers(attempt.answers, input.answers) : attempt.answers,
+      answers: nextAnswers,
       status: nextStatus,
       finishedAt,
     })
@@ -649,5 +687,14 @@ export async function updatePracticeAttempt(
   if (!updated) {
     throw new NotFoundError('Practice attempt');
   }
-  return toAttempt(updated);
+
+  const base = toAttempt(updated);
+  if (nextStatus !== 'completed') {
+    return base;
+  }
+
+  return {
+    ...base,
+    result: buildPracticeAttemptResult(itemRows, nextAnswers as PracticeAttemptAnswer[]),
+  };
 }

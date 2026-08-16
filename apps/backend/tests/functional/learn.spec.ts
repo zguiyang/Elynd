@@ -10,6 +10,7 @@ import type {
   LearnTodayData,
   PracticeAttempt,
   ReadingProgress,
+  UpdatePracticeAttemptResponse,
 } from '@elynd/shared/api/learn';
 import { AUTH_ADMIN_ROLE } from '@elynd/shared/auth/policy';
 
@@ -297,5 +298,93 @@ describe('Learn HTTP', () => {
       headers: { cookie: learner.cookie },
     });
     expect(start.status).toBe(404);
+  });
+
+  it('returns answer summary when practice attempt is completed', async () => {
+    const admin = await createSession('admin');
+    const learner = await createSession('user');
+    createdEmails.push(admin.email, learner.email);
+
+    const create = await app.request('/api/admin/articles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+      body: JSON.stringify({
+        title: 'Summary Seas',
+        body: 'Life hides below.',
+        themes: ['story'],
+        sourceNote: 'demo',
+      }),
+    });
+    const article = (await create.json()) as Article;
+    createdArticleIds.push(article.id);
+    expect(
+      (
+        await app.request(`/api/admin/articles/${article.id}/publish`, {
+          method: 'POST',
+          headers: { cookie: admin.cookie },
+        })
+      ).status,
+    ).toBe(200);
+
+    const putPractice = await app.request(`/api/admin/articles/${article.id}/practice-items`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+      body: JSON.stringify({
+        items: [
+          {
+            kind: 'comprehension',
+            payload: {
+              prompt: 'What is the main idea?',
+              options: ['Seas are empty', 'Seas hold hidden life', 'Seas are dry'],
+            },
+            correctOptionIndex: 1,
+          },
+          {
+            kind: 'vocab',
+            payload: {
+              word: 'hides',
+              hint: 'In this text…',
+              quote: 'Life hides below.',
+              options: ['conceals', 'shouts', 'melts'],
+            },
+            correctOptionIndex: 0,
+          },
+        ],
+      }),
+    });
+    expect(putPractice.status).toBe(200);
+
+    const practiceGet = await app.request(`/api/learn/articles/${article.id}/practice`, {
+      headers: { cookie: learner.cookie },
+    });
+    const practiceData = (await practiceGet.json()) as LearnPracticeData;
+    const start = await app.request(`/api/learn/articles/${article.id}/practice/attempts`, {
+      method: 'POST',
+      headers: { cookie: learner.cookie },
+    });
+    const attempt = (await start.json()) as PracticeAttempt;
+
+    const complete = await app.request(`/api/learn/articles/${article.id}/practice/attempts/${attempt.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
+      body: JSON.stringify({
+        currentIndex: 1,
+        status: 'completed',
+        answers: [
+          { practiceItemId: practiceData.items[0]!.id, selectedOptionIndex: 1 },
+          { practiceItemId: practiceData.items[1]!.id, selectedOptionIndex: 1 },
+        ],
+      }),
+    });
+    expect(complete.status).toBe(200);
+    const finished = (await complete.json()) as UpdatePracticeAttemptResponse;
+    expect(finished.status).toBe('completed');
+    expect(finished.result?.totalCount).toBe(2);
+    expect(finished.result?.correctCount).toBe(1);
+    expect(finished.result?.items[0]?.isCorrect).toBe(true);
+    expect(finished.result?.items[0]?.correctOptionIndex).toBe(1);
+    expect(finished.result?.items[1]?.isCorrect).toBe(false);
+    expect(finished.result?.items[1]?.selectedOptionIndex).toBe(1);
+    expect(finished.result?.items[1]?.correctOptionIndex).toBe(0);
   });
 });

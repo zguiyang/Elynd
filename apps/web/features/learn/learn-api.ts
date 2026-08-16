@@ -7,6 +7,8 @@ import {
   learnTodayDataSchema,
   type PracticeAttempt,
   practiceAttemptSchema,
+  type PracticeFeedbackResponse,
+  practiceFeedbackResponseSchema,
   type UpdatePracticeAttemptBody,
   type UpdatePracticeAttemptResponse,
   updatePracticeAttemptResponseSchema,
@@ -60,6 +62,21 @@ export async function updateLearnPracticeAttempt(
       method: 'PATCH',
       schema: updatePracticeAttemptResponseSchema,
       json: body,
+    },
+  );
+}
+
+export async function requestPracticeFeedback(
+  articleId: string,
+  attemptId: string,
+  init?: { signal?: AbortSignal },
+): Promise<PracticeFeedbackResponse> {
+  return apiRequest(
+    `/api/learn/articles/${encodeURIComponent(articleId)}/practice/attempts/${encodeURIComponent(attemptId)}/feedback`,
+    {
+      method: 'POST',
+      schema: practiceFeedbackResponseSchema,
+      signal: init?.signal,
     },
   );
 }

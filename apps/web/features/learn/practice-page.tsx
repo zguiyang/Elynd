@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftIcon, BookOpenIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 
 import type {
   LearnerPracticeItem,
@@ -22,6 +22,7 @@ import {
   formatLearnApiError,
   getLearnPractice,
   learnQueryKey,
+  requestPracticeFeedback,
   startLearnPracticeAttempt,
   updateLearnPracticeAttempt,
 } from '@/features/learn/learn-api';
@@ -33,11 +34,15 @@ type LearnPracticePageProps = {
   articleId: string;
 };
 
+type SummaryPhase =
+  | { status: 'preparing'; result: PracticeAttemptResult; attemptId: string }
+  | { status: 'ready'; result: PracticeAttemptResult; advice: string | null };
+
 /**
  * Practice — curated items for the same article, one question at a time.
  */
 export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
-  const [sessionResult, setSessionResult] = useState<PracticeAttemptResult | null>(null);
+  const [summaryPhase, setSummaryPhase] = useState<SummaryPhase | null>(null);
 
   const practiceQuery = useQuery({
     queryKey: learnQueryKey.practice(articleId),
@@ -57,6 +62,31 @@ export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
       return { ...data, attempt };
     },
   });
+
+  const preparingAttemptId = summaryPhase?.status === 'preparing' ? summaryPhase.attemptId : null;
+  const preparingResult = summaryPhase?.status === 'preparing' ? summaryPhase.result : null;
+
+  useEffect(() => {
+    if (preparingAttemptId == null || preparingResult == null) {
+      return;
+    }
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        const { advice } = await requestPracticeFeedback(articleId, preparingAttemptId, {
+          signal: controller.signal,
+        });
+        if (!controller.signal.aborted) {
+          setSummaryPhase({ status: 'ready', result: preparingResult, advice });
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setSummaryPhase({ status: 'ready', result: preparingResult, advice: null });
+        }
+      }
+    })();
+    return () => controller.abort();
+  }, [articleId, preparingAttemptId, preparingResult]);
 
   const isNotFound = practiceQuery.error instanceof ApiRequestError && practiceQuery.error.status === 404;
 
@@ -135,10 +165,22 @@ export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
     );
   }
 
-  if (sessionResult) {
+  if (summaryPhase?.status === 'preparing') {
     return (
       <PracticeShell articleId={articleId} title={practice.articleTitle}>
-        <PracticeSummary result={sessionResult} />
+        <div className="flex min-h-[min(50dvh,24rem)] flex-col items-center justify-center gap-3 text-center">
+          <p className="text-sm font-medium tracking-[0.16em] text-brand-deep">练习总结</p>
+          <p className="font-heading text-2xl font-bold tracking-tight">正在生成学习建议…</p>
+          <p className="max-w-sm text-sm text-muted-foreground">稍等片刻，对照与建议马上就来。</p>
+        </div>
+      </PracticeShell>
+    );
+  }
+
+  if (summaryPhase?.status === 'ready') {
+    return (
+      <PracticeShell articleId={articleId} title={practice.articleTitle}>
+        <PracticeSummary result={summaryPhase.result} advice={summaryPhase.advice} />
       </PracticeShell>
     );
   }
@@ -157,7 +199,7 @@ export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
       articleId={articleId}
       practice={practice}
       attempt={practice.attempt}
-      onCompleted={(result) => setSessionResult(result)}
+      onCompleted={(result, attemptId) => setSummaryPhase({ status: 'preparing', result, attemptId })}
     />
   );
 }
@@ -207,7 +249,7 @@ function PracticeSession({
   articleId: string;
   practice: LearnPracticeData;
   attempt: PracticeAttempt;
-  onCompleted: (result: PracticeAttemptResult) => void;
+  onCompleted: (result: PracticeAttemptResult, attemptId: string) => void;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -266,7 +308,7 @@ function PracticeSession({
             if (!updated.result) {
               return;
             }
-            onCompleted(updated.result);
+            onCompleted(updated.result, updated.id);
             return;
           }
           setLocalIndex(nextIndex);

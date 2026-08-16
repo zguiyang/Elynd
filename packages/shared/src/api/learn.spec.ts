@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   generatePracticeItemsResponseSchema,
+  practiceFeedbackResponseSchema,
   replacePracticeItemsBodySchema,
   updatePracticeAttemptBodySchema,
   updatePracticeAttemptResponseSchema,
@@ -109,5 +110,12 @@ describe('learn api contracts', () => {
       },
     });
     expect(parsed.result?.correctCount).toBe(1);
+  });
+
+  it('accepts practice feedback advice', () => {
+    expect(practiceFeedbackResponseSchema.parse({ advice: '先回看错题里的那句就好。' }).advice.length).toBeGreaterThan(
+      0,
+    );
+    expect(practiceFeedbackResponseSchema.safeParse({ advice: '' }).success).toBe(false);
   });
 });

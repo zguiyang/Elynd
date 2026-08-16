@@ -195,6 +195,13 @@ export const practiceAttemptResultSchema = z.object({
 
 export type PracticeAttemptResult = z.infer<typeof practiceAttemptResultSchema>;
 
+/** Post-practice AI advice (not persisted). */
+export const practiceFeedbackResponseSchema = z.object({
+  advice: z.string().min(1).max(500),
+});
+
+export type PracticeFeedbackResponse = z.infer<typeof practiceFeedbackResponseSchema>;
+
 export const updatePracticeAttemptResponseSchema = practiceAttemptSchema.extend({
   result: practiceAttemptResultSchema.optional(),
 });

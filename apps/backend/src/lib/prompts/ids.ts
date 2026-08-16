@@ -13,6 +13,7 @@ export const PROMPT_SCENE = {
   assistRead: 'assist-read',
   translateArticle: 'translate-article',
   practiceGenerate: 'practice-generate',
+  practiceFeedback: 'practice-feedback',
 } as const;
 
 export type PromptSceneId = (typeof PROMPT_SCENE)[keyof typeof PROMPT_SCENE];

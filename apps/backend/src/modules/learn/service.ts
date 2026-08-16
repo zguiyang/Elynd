@@ -24,7 +24,10 @@ import {
   type PracticeAttempt,
   type PracticeAttemptAnswer,
   type PracticeAttemptResult,
+  type PracticeFeedbackResponse,
+  practiceFeedbackResponseSchema,
   type PracticeItemKind,
+  practiceOptionLetter,
   type ReplacePracticeItemsBody,
   type UpdatePracticeAttemptBody,
   type UpdatePracticeAttemptResponse,
@@ -697,4 +700,115 @@ export async function updatePracticeAttempt(
     ...base,
     result: buildPracticeAttemptResult(itemRows, nextAnswers as PracticeAttemptAnswer[]),
   };
+}
+
+const practiceFeedbackLlmSchema = z.object({
+  advice: z.string().min(1).max(500),
+});
+
+function formatAttemptDetailForPrompt(result: PracticeAttemptResult): string {
+  return result.items
+    .map((item, index) => {
+      const selected =
+        item.selectedOptionIndex == null
+          ? '未作答'
+          : `${practiceOptionLetter(item.selectedOptionIndex)}. ${item.options[item.selectedOptionIndex] ?? ''}`;
+      const correct = `${practiceOptionLetter(item.correctOptionIndex)}. ${item.options[item.correctOptionIndex] ?? ''}`;
+      return [
+        `${index + 1}. [${item.kind}] ${item.label}`,
+        `   result: ${item.isCorrect ? 'correct' : 'incorrect'}`,
+        `   selected: ${selected}`,
+        `   correct: ${correct}`,
+      ].join('\n');
+    })
+    .join('\n');
+}
+
+function parsePracticeFeedbackJson(raw: string): z.infer<typeof practiceFeedbackLlmSchema> {
+  const trimmed = raw.trim();
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = (fenced?.[1] ?? trimmed).trim();
+  const start = candidate.indexOf('{');
+  const end = candidate.lastIndexOf('}');
+  if (start < 0 || end <= start) {
+    throw new ValidationFailedError([{ path: 'advice', message: 'AI reply was not valid JSON' }]);
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(candidate.slice(start, end + 1)) as unknown;
+  } catch {
+    throw new ValidationFailedError([{ path: 'advice', message: 'AI reply was not valid JSON' }]);
+  }
+  const checked = practiceFeedbackLlmSchema.safeParse(parsed);
+  if (!checked.success) {
+    throw new ValidationFailedError(
+      checked.error.issues.map((issue) => ({
+        path: issue.path.join('.') || 'advice',
+        message: issue.message,
+      })),
+    );
+  }
+  return checked.data;
+}
+
+/**
+ * AI advice for a completed practice attempt. Does not persist advice.
+ * Uses plain chat JSON (not provider response_format) for OpenAI-compatible gateways.
+ */
+export async function getPracticeAttemptFeedback(
+  userId: string,
+  articleId: string,
+  attemptId: string,
+): Promise<PracticeFeedbackResponse> {
+  const article = await requirePublishedArticle(articleId);
+
+  const [attempt] = await db
+    .select()
+    .from(practiceAttemptTable)
+    .where(
+      and(
+        eq(practiceAttemptTable.id, attemptId),
+        eq(practiceAttemptTable.userId, userId),
+        eq(practiceAttemptTable.articleId, articleId),
+      ),
+    )
+    .limit(1);
+
+  if (!attempt) {
+    throw new NotFoundError('Practice attempt');
+  }
+  if (attempt.status !== 'completed') {
+    throw new ValidationFailedError([{ path: 'status', message: 'Feedback is only available for completed attempts' }]);
+  }
+
+  const itemRows = await listPracticeItemRows(articleId);
+  const result = buildPracticeAttemptResult(itemRows, attempt.answers as PracticeAttemptAnswer[]);
+
+  const messages = await composePromptMessages({
+    roleId: PROMPT_ROLE.languageTeacher,
+    sceneId: PROMPT_SCENE.practiceFeedback,
+    actionId: 'advise',
+    vars: {
+      articleTitle: article.title,
+      correctCount: String(result.correctCount),
+      totalCount: String(result.totalCount),
+      attemptDetail: formatAttemptDetailForPrompt(result),
+    },
+  });
+
+  const aiResult = await invokeAi({
+    purpose: 'practiceFeedback',
+    source: 'practice.feedback',
+    userId,
+    ref: { type: 'practice_attempt', id: attempt.id },
+    messages,
+    timeoutMs: 45_000,
+    requestSummaryExtra: {
+      correctCount: result.correctCount,
+      totalCount: result.totalCount,
+    },
+  });
+
+  const llmPayload = parsePracticeFeedbackJson(aiResult.content);
+  return practiceFeedbackResponseSchema.parse(llmPayload);
 }

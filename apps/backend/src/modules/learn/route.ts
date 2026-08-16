@@ -57,6 +57,16 @@ learnRoutes.patch(
   },
 );
 
+learnRoutes.post('/api/learn/articles/:articleId/practice/attempts/:attemptId/feedback', requireAuth, async (c) => {
+  const user = c.get('user')!;
+  const data = await learnService.getPracticeAttemptFeedback(
+    user.id,
+    c.req.param('articleId'),
+    c.req.param('attemptId'),
+  );
+  return c.json(data);
+});
+
 learnRoutes.get('/api/admin/articles/:id/practice-items', requireAdmin, async (c) => {
   const data = await learnService.getAdminPracticeItems(c.req.param('id'));
   return c.json(data);

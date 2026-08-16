@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { type AuthVariables, requireAdmin, requireAuth } from '@/middleware/auth';
 import * as learnService from '@/modules/learn/service';
 import {
+  validateGeneratePracticeItems,
   validateReplacePracticeItems,
   validateUpdatePracticeAttempt,
   validateUpdateReadingProgress,
@@ -65,3 +66,14 @@ learnRoutes.put('/api/admin/articles/:id/practice-items', requireAdmin, validate
   const data = await learnService.replaceAdminPracticeItems(c.req.param('id'), c.req.valid('json'));
   return c.json(data);
 });
+
+learnRoutes.post(
+  '/api/admin/articles/:id/practice-items/generate',
+  requireAdmin,
+  validateGeneratePracticeItems,
+  async (c) => {
+    const user = c.get('user')!;
+    const data = await learnService.generateAdminPracticeItems(c.req.param('id'), user.id);
+    return c.json(data);
+  },
+);

@@ -3,6 +3,7 @@ import type { Context, ValidationTargets } from 'hono';
 import type { ZodType } from 'zod';
 
 import {
+  generatePracticeItemsBodySchema,
   replacePracticeItemsBodySchema,
   updatePracticeAttemptBodySchema,
   updateReadingProgressBodySchema,
@@ -27,3 +28,4 @@ function validated<T extends ZodType, Target extends keyof ValidationTargets>(ta
 export const validateUpdateReadingProgress = validated('json', updateReadingProgressBodySchema);
 export const validateReplacePracticeItems = validated('json', replacePracticeItemsBodySchema);
 export const validateUpdatePracticeAttempt = validated('json', updatePracticeAttemptBodySchema);
+export const validateGeneratePracticeItems = validated('json', generatePracticeItemsBodySchema);

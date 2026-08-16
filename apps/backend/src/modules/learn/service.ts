@@ -1,6 +1,7 @@
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 
 import { and, asc, count, desc, eq } from 'drizzle-orm';
+import { z } from 'zod';
 
 import {
   article as articleTable,
@@ -12,6 +13,8 @@ import {
 } from '@elynd/db';
 import {
   type AdminPracticeItemsData,
+  type GeneratePracticeItemsResponse,
+  generatePracticeItemsResponseSchema,
   LEARN_CONTINUE_READING_LIMIT,
   type LearnArticleData,
   type LearnArticleSummary,
@@ -28,6 +31,8 @@ import {
 
 import { db } from '@/db';
 import { AppError, NotFoundError, ValidationFailedError } from '@/lib/errors';
+import { composePromptMessages, PROMPT_ROLE, PROMPT_SCENE } from '@/lib/prompts';
+import { invokeAi } from '@/modules/ai';
 
 type ArticleRow = typeof articleTable.$inferSelect;
 type ProgressRow = typeof readingProgressTable.$inferSelect;
@@ -358,6 +363,157 @@ export async function replaceAdminPracticeItems(
   });
 
   return getAdminPracticeItems(articleId);
+}
+
+/**
+ * Flat LLM JSON shape (parsed from plain chat text — many gateways lack response_format).
+ * Re-mapped and validated with generatePracticeItemsResponseSchema before return.
+ */
+const practiceGenerateLlmSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        kind: z.enum(['comprehension', 'vocab']),
+        prompt: z.string().optional(),
+        word: z.string().optional(),
+        hint: z.string().optional(),
+        quote: z.string().optional(),
+        options: z.array(z.string()).min(2).max(6),
+        correctOptionIndex: z.number().int().min(0),
+      }),
+    )
+    .min(1)
+    .max(5),
+});
+
+function shufflePracticeOptions(
+  options: string[],
+  correctOptionIndex: number,
+): {
+  options: string[];
+  correctOptionIndex: number;
+} {
+  const next = [...options];
+  let correct = correctOptionIndex;
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = randomInt(i + 1);
+    const atI = next[i]!;
+    next[i] = next[j]!;
+    next[j] = atI;
+    if (correct === i) {
+      correct = j;
+    } else if (correct === j) {
+      correct = i;
+    }
+  }
+  return { options: next, correctOptionIndex: correct };
+}
+
+function mapLlmItemsToWriteShape(items: z.infer<typeof practiceGenerateLlmSchema>['items']) {
+  return items.map((item, index) => {
+    const shuffled = shufflePracticeOptions(item.options, item.correctOptionIndex);
+    if (item.kind === 'vocab') {
+      return {
+        kind: 'vocab' as const,
+        payload: {
+          word: item.word ?? '',
+          hint: item.hint ?? '',
+          quote: item.quote ?? '',
+          options: shuffled.options,
+        },
+        correctOptionIndex: shuffled.correctOptionIndex,
+        sortOrder: index + 1,
+      };
+    }
+    return {
+      kind: 'comprehension' as const,
+      payload: {
+        prompt: item.prompt ?? '',
+        options: shuffled.options,
+      },
+      correctOptionIndex: shuffled.correctOptionIndex,
+      sortOrder: index + 1,
+    };
+  });
+}
+
+function parsePracticeGenerateJson(raw: string): z.infer<typeof practiceGenerateLlmSchema> {
+  const trimmed = raw.trim();
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = (fenced?.[1] ?? trimmed).trim();
+  const start = candidate.indexOf('{');
+  const end = candidate.lastIndexOf('}');
+  if (start < 0 || end <= start) {
+    throw new ValidationFailedError([{ path: 'items', message: 'AI reply was not valid JSON' }]);
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(candidate.slice(start, end + 1)) as unknown;
+  } catch {
+    throw new ValidationFailedError([{ path: 'items', message: 'AI reply was not valid JSON' }]);
+  }
+  const checked = practiceGenerateLlmSchema.safeParse(parsed);
+  if (!checked.success) {
+    throw new ValidationFailedError(
+      checked.error.issues.map((issue) => ({
+        path: issue.path.join('.') || 'items',
+        message: issue.message,
+      })),
+    );
+  }
+  return checked.data;
+}
+
+/**
+ * AI draft practice items for an article (admin). Does not write the database.
+ * Uses plain chat JSON (not provider response_format) for OpenAI-compatible gateways.
+ */
+export async function generateAdminPracticeItems(
+  articleId: string,
+  userId: string,
+): Promise<GeneratePracticeItemsResponse> {
+  const article = await requireArticleExists(articleId);
+  if (!article.title.trim() || !article.body.trim()) {
+    throw new ValidationFailedError([
+      { path: 'body', message: 'Article title and body are required to generate practice' },
+    ]);
+  }
+
+  const messages = await composePromptMessages({
+    roleId: PROMPT_ROLE.languageTeacher,
+    sceneId: PROMPT_SCENE.practiceGenerate,
+    actionId: 'generate',
+    vars: {
+      articleTitle: article.title,
+      articleBody: article.body,
+      articleLevel: article.level,
+    },
+  });
+
+  const result = await invokeAi({
+    purpose: 'practice',
+    source: 'practice.generate',
+    userId,
+    ref: { type: 'article', id: article.id },
+    messages,
+    timeoutMs: 60_000,
+    requestSummaryExtra: { articleLevel: article.level },
+  });
+
+  const llmPayload = parsePracticeGenerateJson(result.content);
+  const parsed = generatePracticeItemsResponseSchema.safeParse({
+    items: mapLlmItemsToWriteShape(llmPayload.items),
+  });
+  if (!parsed.success) {
+    throw new ValidationFailedError(
+      parsed.error.issues.map((issue) => ({
+        path: issue.path.join('.') || 'items',
+        message: issue.message,
+      })),
+    );
+  }
+
+  return parsed.data;
 }
 
 export async function getLearnPractice(userId: string, articleId: string): Promise<LearnPracticeData> {

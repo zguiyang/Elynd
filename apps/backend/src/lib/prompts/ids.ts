@@ -12,6 +12,7 @@ export const PROMPT_ROLE_RESERVED = ['progress-coach', 'practice-coach'] as cons
 export const PROMPT_SCENE = {
   assistRead: 'assist-read',
   translateArticle: 'translate-article',
+  practiceGenerate: 'practice-generate',
 } as const;
 
 export type PromptSceneId = (typeof PROMPT_SCENE)[keyof typeof PROMPT_SCENE];

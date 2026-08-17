@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 
-import { type AuthVariables, requireAdmin } from '@/middleware/auth';
+import { type AuthVariables, requireAdmin, requireAuth } from '@/middleware/auth';
 import * as articleAudioService from '@/modules/article-audio/service';
-import { validateGenerateArticleAudio } from '@/modules/article-audio/validator';
+import { validateGenerateArticleAudio, validateLearnArticleAudioQuery } from '@/modules/article-audio/validator';
 
 export const articleAudioRoutes = new Hono<{ Variables: AuthVariables }>();
 
@@ -20,6 +20,18 @@ articleAudioRoutes.post(
       await articleAudioService.generateArticleAudio(c.req.param('id'), c.req.valid('json'), {
         userId: user?.id,
       }),
+    );
+  },
+);
+
+/** Learner playback — published article track only. */
+articleAudioRoutes.get(
+  '/api/learn/articles/:articleId/audio',
+  requireAuth,
+  validateLearnArticleAudioQuery,
+  async (c) => {
+    return c.json(
+      await articleAudioService.getPublishedArticleAudioTrack(c.req.param('articleId'), c.req.valid('query').role),
     );
   },
 );

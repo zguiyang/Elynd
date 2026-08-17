@@ -38,6 +38,7 @@ import { db } from '@/db';
 import { AppError, NotFoundError, ValidationFailedError } from '@/lib/errors';
 import { composePromptMessages, PROMPT_ROLE, PROMPT_SCENE } from '@/lib/prompts';
 import { invokeAi } from '@/modules/ai';
+import { getArticleAudioAvailability } from '@/modules/article-audio/service';
 
 type ArticleRow = typeof articleTable.$inferSelect;
 type ProgressRow = typeof readingProgressTable.$inferSelect;
@@ -287,6 +288,7 @@ export async function getLearnArticle(userId: string, articleId: string): Promis
   }
 
   const practiceAvailable = (await countPracticeItems(articleId)) > 0;
+  const audioAvailable = await getArticleAudioAvailability(articleId);
 
   return {
     id: article.id,
@@ -297,6 +299,7 @@ export async function getLearnArticle(userId: string, articleId: string): Promis
     estimatedMinutes: article.estimatedMinutes,
     progress: toProgress(progress),
     practiceAvailable,
+    audioAvailable,
   };
 }
 

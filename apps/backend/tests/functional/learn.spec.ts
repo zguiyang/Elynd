@@ -151,6 +151,7 @@ describe('Learn HTTP', () => {
     expect(room.status).toBe(200);
     const roomData = (await room.json()) as LearnArticleData;
     expect(roomData.practiceAvailable).toBe(true);
+    expect(roomData.audioAvailable).toEqual({ us: false, uk: false });
     expect(roomData.progress.status).toBe('in_progress');
     expect(roomData.progress.progressRatio).toBe(0);
 

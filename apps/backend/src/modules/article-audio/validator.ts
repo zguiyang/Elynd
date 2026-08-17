@@ -3,6 +3,7 @@ import type { Context, ValidationTargets } from 'hono';
 import type { ZodType } from 'zod';
 
 import { generateArticleAudioBodySchema } from '@elynd/shared/api/article-audio';
+import { learnArticleAudioQuerySchema } from '@elynd/shared/api/learn';
 
 import { sendValidationError } from '@/lib/response';
 
@@ -21,3 +22,4 @@ function validated<T extends ZodType, Target extends keyof ValidationTargets>(ta
 }
 
 export const validateGenerateArticleAudio = validated('json', generateArticleAudioBodySchema);
+export const validateLearnArticleAudioQuery = validated('query', learnArticleAudioQuerySchema);

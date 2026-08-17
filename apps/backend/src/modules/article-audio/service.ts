@@ -358,3 +358,60 @@ export async function generateArticleAudio(
   const view = await getArticleAudio(articleId);
   return { ...view, results };
 }
+
+export type ArticleAudioAvailability = { us: boolean; uk: boolean };
+
+async function isTrackPlayable(articleId: string, role: ArticleAudioRole): Promise<boolean> {
+  const [meta] = await db
+    .select()
+    .from(articleAudioTable)
+    .where(and(eq(articleAudioTable.articleId, articleId), eq(articleAudioTable.role, role)))
+    .limit(1);
+  if (!meta || meta.status !== 'ready') {
+    return false;
+  }
+  const blob = await readArticleAudioBlob(articleId, role);
+  return Boolean(blob);
+}
+
+/** Learner: which accent tracks are ready with Redis bytes present. */
+export async function getArticleAudioAvailability(articleId: string): Promise<ArticleAudioAvailability> {
+  const [us, uk] = await Promise.all([isTrackPlayable(articleId, 'us'), isTrackPlayable(articleId, 'uk')]);
+  return { us, uk };
+}
+
+/** Learner: published article only; returns one track blob or NotFound. */
+export async function getPublishedArticleAudioTrack(
+  articleId: string,
+  role: ArticleAudioRole,
+): Promise<{ role: ArticleAudioRole; mimeType: string; voice: string; audioBase64: string }> {
+  const [article] = await db
+    .select({ id: articleTable.id })
+    .from(articleTable)
+    .where(and(eq(articleTable.id, articleId), eq(articleTable.status, 'published')))
+    .limit(1);
+  if (!article) {
+    throw new NotFoundError('Article');
+  }
+
+  const [meta] = await db
+    .select()
+    .from(articleAudioTable)
+    .where(and(eq(articleAudioTable.articleId, articleId), eq(articleAudioTable.role, role)))
+    .limit(1);
+  if (!meta || meta.status !== 'ready') {
+    throw new NotFoundError('Article audio');
+  }
+
+  const blob = await readArticleAudioBlob(articleId, role);
+  if (!blob) {
+    throw new NotFoundError('Article audio');
+  }
+
+  return {
+    role,
+    mimeType: blob.mimeType,
+    voice: blob.voice,
+    audioBase64: blob.audioBase64,
+  };
+}

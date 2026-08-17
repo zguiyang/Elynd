@@ -27,6 +27,7 @@ export {
   readingProgressRelations,
   session,
   sessionRelations,
+  ttsConfig,
   user,
   userRelations,
   verification,

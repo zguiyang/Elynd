@@ -311,6 +311,22 @@ export const llmAppSetting = pgTable('llm_app_setting', {
     .notNull(),
 });
 
+/** Singleton Azure TTS credentials + default / accent voice bindings. */
+export const ttsConfig = pgTable('tts_config', {
+  id: text('id').primaryKey(),
+  provider: text('provider').notNull().default('azure'),
+  region: text('region').notNull(),
+  apiKeyCiphertext: text('api_key_ciphertext').notNull(),
+  isEnabled: boolean('is_enabled').default(true).notNull(),
+  defaultVoice: text('default_voice').notNull(),
+  usVoice: text('us_voice').notNull(),
+  ukVoice: text('uk_voice').notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
 export type AiInvocationRequestSummary = {
   messageCount?: number;
   selectionPreview?: string;

@@ -36,6 +36,13 @@
       "when": 1786632391341,
       "tag": "0004_overjoyed_nicolaos",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786935563447,
+      "tag": "0005_nasty_power_pack",
+      "breakpoints": true
     }
   ]
 }

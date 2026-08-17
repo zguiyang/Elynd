@@ -85,3 +85,13 @@ export const testTtsResultSchema = z.object({
 });
 
 export type TestTtsResult = z.infer<typeof testTtsResultSchema>;
+
+/** Redis payload for successful TTS synthesis (30-day TTL). */
+export const ttsCachePayloadSchema = z.object({
+  mimeType: z.string().min(1),
+  voice: z.string().min(1),
+  audioBase64: z.string().min(1),
+  wordTimings: z.array(ttsWordTimingSchema),
+});
+
+export type TtsCachePayload = z.infer<typeof ttsCachePayloadSchema>;

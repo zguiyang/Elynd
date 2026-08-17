@@ -16,7 +16,9 @@
     "./api/llm-config-keys": "./src/api/llm-config-keys.ts",
     "./api/pagination": "./src/api/pagination.ts",
     "./api/translate": "./src/api/translate.ts",
-    "./api/tts": "./src/api/tts.ts"
+    "./api/tts": "./src/api/tts.ts",
+    "./api/article-audio": "./src/api/article-audio.ts",
+    "./api/tts-invocations": "./src/api/tts-invocations.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

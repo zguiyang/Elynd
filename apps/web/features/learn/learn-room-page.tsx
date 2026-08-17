@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeftIcon, BookmarkIcon, BookOpenIcon, CheckIcon, HeadphonesIcon, LanguagesIcon } from 'lucide-react';
+import { ArrowLeftIcon, BookmarkIcon, BookOpenIcon, CheckIcon, LanguagesIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
@@ -14,6 +14,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { AUTH_ROUTES } from '@/constants';
 import { formatLearnApiError, getLearnArticle, learnQueryKey } from '@/features/learn/learn-api';
 import { type BilingualReaderState, LearnArticleReader } from '@/features/learn/learn-article-reader';
+import { hasAnyLearnAudio } from '@/features/learn/learn-audio-api';
+import { LearnAudioBar } from '@/features/learn/learn-audio-bar';
 import { LearnHelpRail, type PendingAssist } from '@/features/learn/learn-help-rail';
 import { formatTranslateLearnerError, streamTranslateArticle } from '@/features/learn/translate-api';
 import { ApiRequestError } from '@/lib/api-request';
@@ -300,34 +302,34 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
       </div>
 
       <footer className="z-30 shrink-0 border-t border-border/80 bg-sidebar/95 backdrop-blur-sm">
-        <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-center sm:gap-4 md:px-8">
-          <Button
-            type="button"
-            variant="outline"
-            className="h-11 gap-2 rounded-xl border-border bg-card px-5 shadow-none"
-            onClick={() => toastComingSoon('听读')}
-          >
-            <HeadphonesIcon className="size-4" strokeWidth={1.5} aria-hidden />
-            听一听
-          </Button>
-          {article.practiceAvailable ? (
+        <div className="mx-auto flex w-full max-w-3xl flex-col items-stretch gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-center sm:gap-6 md:px-8">
+          {hasAnyLearnAudio(article.audioAvailable) ? (
+            <LearnAudioBar
+              articleId={articleId}
+              audioAvailable={article.audioAvailable}
+              className="w-full sm:w-[min(100%,22rem)] sm:shrink-0"
+            />
+          ) : null}
+          <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-center sm:gap-4">
+            {article.practiceAvailable ? (
+              <Button
+                nativeButton={false}
+                variant="outline"
+                className="h-11 gap-2 rounded-xl border-border bg-card px-5 shadow-none"
+                render={<Link href={AUTH_ROUTES.learnPractice(articleId)} />}
+              >
+                <CheckIcon className="size-4" strokeWidth={1.5} aria-hidden />
+                练几道小题
+              </Button>
+            ) : null}
             <Button
               nativeButton={false}
-              variant="outline"
-              className="h-11 gap-2 rounded-xl border-border bg-card px-5 shadow-none"
-              render={<Link href={AUTH_ROUTES.learnPractice(articleId)} />}
+              className="h-11 rounded-xl px-6 hover:bg-brand-deep"
+              render={<Link href={AUTH_ROUTES.dashboard} />}
             >
-              <CheckIcon className="size-4" strokeWidth={1.5} aria-hidden />
-              练几道小题
+              先这样，回今日
             </Button>
-          ) : null}
-          <Button
-            nativeButton={false}
-            className="h-11 rounded-xl px-6 hover:bg-brand-deep"
-            render={<Link href={AUTH_ROUTES.dashboard} />}
-          >
-            先这样，回今日
-          </Button>
+          </div>
         </div>
       </footer>
     </div>

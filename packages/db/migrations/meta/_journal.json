@@ -50,6 +50,13 @@
       "when": 1786939434485,
       "tag": "0006_uneven_roulette",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786953824645,
+      "tag": "0007_cool_rumiko_fujikawa",
+      "breakpoints": true
     }
   ]
 }

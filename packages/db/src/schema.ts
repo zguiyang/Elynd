@@ -7,6 +7,7 @@ import {
   jsonb,
   numeric,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   unique,
@@ -327,25 +328,30 @@ export const ttsConfig = pgTable('tts_config', {
     .notNull(),
 });
 
-/** Per-article TTS audio metadata (bytes live in Redis with 30-day TTL). */
-export const articleAudio = pgTable('article_audio', {
-  articleId: text('article_id')
-    .primaryKey()
-    .references(() => article.id, { onDelete: 'cascade' }),
-  status: text('status').notNull(),
-  voice: text('voice').notNull(),
-  role: text('role'),
-  contentHash: text('content_hash').notNull(),
-  redisKey: text('redis_key').notNull(),
-  mimeType: text('mime_type').notNull(),
-  durationMs: integer('duration_ms'),
-  lastError: text('last_error'),
-  generatedAt: timestamp('generated_at'),
-  updatedAt: timestamp('updated_at')
-    .defaultNow()
-    .$onUpdate(() => /* @__PURE__ */ new Date())
-    .notNull(),
-});
+/** Per-article per-role TTS audio metadata (bytes live in Redis with 30-day TTL). */
+export const articleAudio = pgTable(
+  'article_audio',
+  {
+    articleId: text('article_id')
+      .notNull()
+      .references(() => article.id, { onDelete: 'cascade' }),
+    /** `us` | `uk` — one row per accent track. */
+    role: text('role').notNull(),
+    status: text('status').notNull(),
+    voice: text('voice').notNull(),
+    contentHash: text('content_hash').notNull(),
+    redisKey: text('redis_key').notNull(),
+    mimeType: text('mime_type').notNull(),
+    durationMs: integer('duration_ms'),
+    lastError: text('last_error'),
+    generatedAt: timestamp('generated_at'),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.articleId, table.role] })],
+);
 
 /** Append-only TTS synthesis audit log (article generate / admin test). */
 export const ttsInvocationLog = pgTable(

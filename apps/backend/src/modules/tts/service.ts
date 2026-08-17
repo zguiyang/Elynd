@@ -24,6 +24,7 @@ import { decryptApiKey, encryptApiKey, maskApiKey } from '@/lib/llm';
 import { rootLogger } from '@/lib/logger';
 import { getRedis } from '@/lib/redis';
 import { synthesizeAzureTts } from '@/lib/tts';
+import { recordTtsInvocation } from '@/modules/tts/log';
 
 export const TTS_CONFIG_ID = 'default';
 
@@ -266,22 +267,56 @@ export async function synthesizeTts(options: SynthesizeTtsOptions): Promise<Synt
   return result;
 }
 
-export async function testTts(body: TestTtsBody): Promise<TestTtsResult> {
+export async function testTts(body: TestTtsBody, options: { userId?: string } = {}): Promise<TestTtsResult> {
   const started = Date.now();
-  const result = await synthesizeTts({
-    text: body.text,
-    role: body.role,
-    voice: body.voice,
-    source: 'admin.tts_test',
-    bypassCache: true,
-  });
+  try {
+    const result = await synthesizeTts({
+      text: body.text,
+      role: body.role,
+      voice: body.voice,
+      source: 'admin.tts_test',
+      userId: options.userId,
+      bypassCache: true,
+    });
+    const latencyMs = Date.now() - started;
 
-  return {
-    ok: true,
-    latencyMs: Date.now() - started,
-    voice: result.voice,
-    mimeType: result.mimeType,
-    audioBase64: result.audio.toString('base64'),
-    wordTimings: result.wordTimings,
-  };
+    await recordTtsInvocation({
+      status: 'success',
+      source: 'admin.tts_test',
+      userId: options.userId,
+      voice: result.voice,
+      role: body.role ?? null,
+      textPreview: body.text,
+      textLength: body.text.length,
+      latencyMs,
+      cached: false,
+    });
+
+    return {
+      ok: true,
+      latencyMs,
+      voice: result.voice,
+      mimeType: result.mimeType,
+      audioBase64: result.audio.toString('base64'),
+      wordTimings: result.wordTimings,
+    };
+  } catch (error) {
+    const latencyMs = Date.now() - started;
+    const message = error instanceof Error ? error.message : String(error);
+    const errorCode = error instanceof AppError ? String(error.statusCode) : '500';
+    await recordTtsInvocation({
+      status: 'failure',
+      errorCode,
+      errorMessage: message,
+      source: 'admin.tts_test',
+      userId: options.userId,
+      voice: body.voice ?? null,
+      role: body.role ?? null,
+      textPreview: body.text,
+      textLength: body.text.length,
+      latencyMs,
+      cached: null,
+    });
+    throw error;
+  }
 }

@@ -2,8 +2,7 @@ import { zValidator } from '@hono/zod-validator';
 import type { Context, ValidationTargets } from 'hono';
 import type { ZodType } from 'zod';
 
-import { putTtsConfigBodySchema, testTtsBodySchema } from '@elynd/shared/api/tts';
-import { ttsInvocationListQuerySchema, ttsInvocationStatsQuerySchema } from '@elynd/shared/api/tts-invocations';
+import { generateArticleAudioBodySchema } from '@elynd/shared/api/article-audio';
 
 import { sendValidationError } from '@/lib/response';
 
@@ -21,7 +20,4 @@ function validated<T extends ZodType, Target extends keyof ValidationTargets>(ta
   });
 }
 
-export const validatePutTtsConfig = validated('json', putTtsConfigBodySchema);
-export const validateTestTts = validated('json', testTtsBodySchema);
-export const validateTtsInvocationListQuery = validated('query', ttsInvocationListQuerySchema);
-export const validateTtsInvocationStatsQuery = validated('query', ttsInvocationStatsQuerySchema);
+export const validateGenerateArticleAudio = validated('json', generateArticleAudioBodySchema);

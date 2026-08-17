@@ -5,15 +5,15 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-import { type TtsVoiceRole } from '@elynd/shared/api/tts';
+import { type ArticleAudioRole, type ArticleAudioTrack } from '@elynd/shared/api/article-audio';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
-import { Field, FieldLabel } from '@/components/ui/field';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs } from '@/components/ui/tabs';
 import { ADMIN_ROUTES } from '@/constants';
+import { AdminSegmentedTabsList, AdminSegmentedTabsTrigger } from '@/features/admin/admin-segmented-tabs';
 import {
   adminArticleAudioQueryKey,
   formatAdminArticleAudioApiError,
@@ -26,13 +26,10 @@ type ArticleAudioPageProps = {
   articleId: string;
 };
 
-type RoleValue = 'default' | TtsVoiceRole;
-
-const ROLE_ITEMS = [
-  { value: 'default', label: '默认音色' },
-  { value: 'us', label: '美音' },
-  { value: 'uk', label: '英音' },
-] as const;
+const ROLE_LABEL: Record<ArticleAudioRole, string> = {
+  us: '美音',
+  uk: '英音',
+};
 
 function formatDateTime(iso: string | Date | null): string {
   if (!iso) {
@@ -52,36 +49,35 @@ function formatDateTime(iso: string | Date | null): string {
   }
 }
 
-function statusPresentation(audio: {
-  status: 'none' | 'ready' | 'failed';
-  expired: boolean;
-  contentStale: boolean;
-  lastError: string | null;
-}): { label: string; variant: 'outline' | 'secondary' | 'destructive'; detail?: string } {
-  if (audio.status === 'none') {
+function statusPresentation(track: ArticleAudioTrack): {
+  label: string;
+  variant: 'outline' | 'secondary' | 'destructive';
+  detail?: string;
+} {
+  if (track.status === 'none') {
     return { label: '未生成', variant: 'outline' };
   }
-  if (audio.status === 'failed') {
-    return { label: '失败', variant: 'destructive', detail: audio.lastError ?? undefined };
+  if (track.status === 'failed') {
+    return { label: '失败', variant: 'destructive', detail: track.lastError ?? undefined };
   }
-  if (audio.expired) {
+  if (track.expired) {
     return { label: '已过期', variant: 'outline', detail: 'Redis 中已无音频，请重新生成' };
   }
-  if (audio.contentStale) {
+  if (track.contentStale) {
     return { label: '原文已变更', variant: 'secondary', detail: '当前音频对应旧正文，建议重新生成' };
   }
-  if (audio.lastError) {
-    return { label: '就绪（上次重生成失败）', variant: 'secondary', detail: audio.lastError };
+  if (track.lastError) {
+    return { label: '就绪（上次重生成失败）', variant: 'secondary', detail: track.lastError };
   }
   return { label: '就绪', variant: 'secondary' };
 }
 
 /**
- * Admin workspace: whole-article TTS generate / preview / regenerate.
+ * Admin workspace: whole-article US/UK TTS generate / preview / regenerate.
  */
 export function ArticleAudioPage({ articleId }: ArticleAudioPageProps) {
   const queryClient = useQueryClient();
-  const [roleOverride, setRoleOverride] = useState<RoleValue | null>(null);
+  const [previewRole, setPreviewRole] = useState<ArticleAudioRole>('us');
 
   const articleQuery = useQuery({
     queryKey: adminArticlesQueryKey.detail(articleId),
@@ -94,13 +90,25 @@ export function ArticleAudioPage({ articleId }: ArticleAudioPageProps) {
   });
 
   const generateMutation = useMutation({
-    mutationFn: (selectedRole: RoleValue) =>
-      generateAdminArticleAudio(articleId, {
-        role: selectedRole === 'default' ? undefined : selectedRole,
-      }),
-    onSuccess: (data) => {
+    mutationFn: (roles?: ArticleAudioRole[]) => generateAdminArticleAudio(articleId, roles ? { roles } : {}),
+    onSuccess: (data, roles) => {
       queryClient.setQueryData(adminArticleAudioQueryKey.detail(articleId), data);
-      toast.success(data.cached ? '已生成（命中合成缓存）' : '音频已生成');
+      const failed = data.results.filter((item) => !item.ok);
+      const okCount = data.results.filter((item) => item.ok).length;
+      if (failed.length === 0) {
+        const hasCachedHit = data.results.some((item) => item.cached);
+        toast.success(
+          roles?.length === 1
+            ? `${ROLE_LABEL[roles[0]!]}已生成${hasCachedHit ? '（命中缓存）' : ''}`
+            : `美音与英音已生成${hasCachedHit ? '（含缓存）' : ''}`,
+        );
+        return;
+      }
+      if (okCount > 0) {
+        toast.warning(`部分成功：${failed.map((item) => `${ROLE_LABEL[item.role]}失败`).join('、')}`);
+        return;
+      }
+      toast.error(failed.map((item) => `${ROLE_LABEL[item.role]}：${item.error ?? '失败'}`).join('；'));
     },
     onError: (error) => {
       void queryClient.invalidateQueries({ queryKey: adminArticleAudioQueryKey.detail(articleId) });
@@ -146,10 +154,11 @@ export function ArticleAudioPage({ articleId }: ArticleAudioPageProps) {
 
   const article = articleQuery.data;
   const audio = audioQuery.data;
-  const role: RoleValue = roleOverride ?? (audio.role === 'us' || audio.role === 'uk' ? audio.role : 'default');
-  const status = statusPresentation(audio);
-  const hasGeneratedBefore = audio.status !== 'none';
-  const canPreview = Boolean(audio.audioAvailable && audio.audioBase64 && audio.mimeType);
+  const track = audio.tracks[previewRole];
+  const status = statusPresentation(track);
+  const hasAnyTrack = audio.tracks.us.status !== 'none' || audio.tracks.uk.status !== 'none';
+  const canPreview = Boolean(track.audioAvailable && track.audioBase64 && track.mimeType);
+  const pendingRoles = generateMutation.isPending ? generateMutation.variables : undefined;
 
   return (
     <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700 mx-auto max-w-3xl pb-28">
@@ -176,63 +185,103 @@ export function ArticleAudioPage({ articleId }: ArticleAudioPageProps) {
 
       <div className="mt-4">
         <h1 className="font-heading text-4xl font-bold tracking-tight md:text-5xl">{article.title}</h1>
-        <p className="mt-3 text-lg text-muted-foreground">短文音频工作台 · 整篇一条朗读音频</p>
+        <p className="mt-3 text-lg text-muted-foreground">短文音频工作台 · 美音与英音各一条</p>
       </div>
 
       <section className="mt-8 rounded-3xl border border-border bg-card px-5 py-5 md:px-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <Badge variant={status.variant}>{status.label}</Badge>
-          {status.detail ? <p className="text-sm text-muted-foreground">{status.detail}</p> : null}
-        </div>
-
-        <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end">
-          <Field className="sm:w-56">
-            <FieldLabel>音色角色</FieldLabel>
-            <Select
-              items={[...ROLE_ITEMS]}
-              value={role}
-              onValueChange={(value) => {
-                if (value === 'default' || value === 'us' || value === 'uk') {
-                  setRoleOverride(value);
-                }
-              }}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-3">
+            {(['us', 'uk'] as const).map((role) => {
+              const item = statusPresentation(audio.tracks[role]);
+              return (
+                <div key={role} className="flex flex-wrap items-center gap-2">
+                  <span className="w-10 text-sm text-muted-foreground">{ROLE_LABEL[role]}</span>
+                  <Badge variant={item.variant}>{item.label}</Badge>
+                  {item.detail ? <span className="text-sm text-muted-foreground">{item.detail}</span> : null}
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              className="h-11 rounded-xl"
+              disabled={generateMutation.isPending}
+              onClick={() => generateMutation.mutate(undefined)}
             >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="选择音色" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {ROLE_ITEMS.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
-          <Button
-            className="h-11 rounded-xl"
-            disabled={generateMutation.isPending}
-            onClick={() => generateMutation.mutate(role)}
-          >
-            {generateMutation.isPending ? '生成中…' : hasGeneratedBefore ? '重新生成' : '生成音频'}
-          </Button>
+              {pendingRoles === undefined && generateMutation.isPending
+                ? '生成中…'
+                : hasAnyTrack
+                  ? '重新生成全部'
+                  : '生成美音与英音'}
+            </Button>
+            {hasAnyTrack ? (
+              <>
+                <Button
+                  variant="outline"
+                  className="h-11 rounded-xl"
+                  disabled={generateMutation.isPending}
+                  onClick={() => generateMutation.mutate(['us'])}
+                >
+                  {pendingRoles?.length === 1 && pendingRoles[0] === 'us' ? '美音生成中…' : '重生成美音'}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-11 rounded-xl"
+                  disabled={generateMutation.isPending}
+                  onClick={() => generateMutation.mutate(['uk'])}
+                >
+                  {pendingRoles?.length === 1 && pendingRoles[0] === 'uk' ? '英音生成中…' : '重生成英音'}
+                </Button>
+              </>
+            ) : null}
+          </div>
         </div>
       </section>
 
       <section className="mt-6 rounded-3xl border border-border bg-card px-5 py-5 md:px-6">
-        <h2 className="text-base font-medium text-foreground">预览</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-base font-medium text-foreground">预览</h2>
+          <Tabs
+            value={previewRole}
+            onValueChange={(value) => {
+              if (value === 'us' || value === 'uk') {
+                setPreviewRole(value);
+              }
+            }}
+          >
+            <AdminSegmentedTabsList aria-label="切换美音或英音">
+              <AdminSegmentedTabsTrigger value="us">美音</AdminSegmentedTabsTrigger>
+              <AdminSegmentedTabsTrigger value="uk">英音</AdminSegmentedTabsTrigger>
+            </AdminSegmentedTabsList>
+          </Tabs>
+        </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Badge variant={status.variant}>
+            {ROLE_LABEL[previewRole]} · {status.label}
+          </Badge>
+          {status.detail ? <p className="text-sm text-muted-foreground">{status.detail}</p> : null}
+        </div>
+
         {canPreview ? (
-          <audio className="mt-4 w-full" controls src={`data:${audio.mimeType};base64,${audio.audioBase64}`}>
+          <audio
+            key={`${previewRole}-${track.generatedAt ?? 'na'}`}
+            className="mt-4 w-full"
+            controls
+            src={`data:${track.mimeType};base64,${track.audioBase64}`}
+          >
             浏览器不支持音频播放
           </audio>
         ) : (
           <Empty className="border-0 py-10">
             <EmptyHeader>
-              <EmptyTitle>{audio.expired ? '音频已过期' : '暂无预览'}</EmptyTitle>
+              <EmptyTitle>
+                {track.expired ? `${ROLE_LABEL[previewRole]}已过期` : `暂无${ROLE_LABEL[previewRole]}预览`}
+              </EmptyTitle>
               <EmptyDescription>
-                {audio.expired ? '请重新生成后再试听。' : '生成成功后可在此播放整篇朗读。'}
+                {track.expired
+                  ? `请重新生成${ROLE_LABEL[previewRole]}后再试听。`
+                  : `生成成功后可在此切换并播放${ROLE_LABEL[previewRole]}。`}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -240,23 +289,23 @@ export function ArticleAudioPage({ articleId }: ArticleAudioPageProps) {
       </section>
 
       <section className="mt-6 rounded-3xl border border-border bg-secondary/40 px-5 py-5 md:px-6">
-        <h2 className="text-base font-medium text-foreground">元信息</h2>
+        <h2 className="text-base font-medium text-foreground">元信息 · {ROLE_LABEL[previewRole]}</h2>
         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-muted-foreground">Voice</dt>
-            <dd className="mt-1 text-foreground">{audio.voice ?? '—'}</dd>
+            <dd className="mt-1 text-foreground">{track.voice ?? '—'}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">生成时间</dt>
-            <dd className="mt-1 tabular-nums text-foreground">{formatDateTime(audio.generatedAt)}</dd>
+            <dd className="mt-1 tabular-nums text-foreground">{formatDateTime(track.generatedAt)}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">更新时间</dt>
-            <dd className="mt-1 tabular-nums text-foreground">{formatDateTime(audio.updatedAt)}</dd>
+            <dd className="mt-1 tabular-nums text-foreground">{formatDateTime(track.updatedAt)}</dd>
           </div>
           <div>
             <dt className="text-muted-foreground">MIME</dt>
-            <dd className="mt-1 text-foreground">{audio.mimeType ?? '—'}</dd>
+            <dd className="mt-1 text-foreground">{track.mimeType ?? '—'}</dd>
           </div>
         </dl>
       </section>

@@ -23,4 +23,5 @@ export const ADMIN_ROUTES = {
   articlePractice: (id: string) => `/admin/articles/${id}/practice` as const,
   ai: '/admin/ai',
   aiLogs: '/admin/ai-logs',
+  tts: '/admin/tts',
 } as const;

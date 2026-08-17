@@ -1,11 +1,22 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { type ArticleLevel } from '@elynd/shared/api/articles';
 import { type TranslateSentenceEn } from '@elynd/shared/api/translate';
+import { type TtsWordTiming } from '@elynd/shared/api/tts';
 
 import { Popover, PopoverArrow, PopoverContent, PopoverDescription, PopoverTitle } from '@/components/ui/popover';
+import {
+  activeWordSyncKey,
+  articleBodyParagraphWordTokens,
+  articleTitleWordTokens,
+  type AudioWordToken,
+  bilingualSentenceWordTokens,
+  findActiveWordTiming,
+  resolveTimingDisplayOffsets,
+  tokenContainsTextOffset,
+} from '@/features/learn/learn-audio-sync';
 import { type AssistActionId, type PendingAssist } from '@/features/learn/learn-help-rail';
 import { LEVEL_LABEL, paragraphsFromBody } from '@/features/library/library-model';
 import { cn } from '@/lib/utils';
@@ -39,7 +50,37 @@ type LearnArticleReaderProps = {
   isBilingualOn: boolean;
   bilingual: BilingualReaderState | null;
   onAssistRequest: (pending: PendingAssist) => void;
+  /** When set with timings, highlight the spoken English word. */
+  audioWordTimings?: TtsWordTiming[] | null;
+  audioTimeMs?: number | null;
 };
+
+function AudioWordLine({ tokens, activeTextOffset }: { tokens: AudioWordToken[]; activeTextOffset: number | null }) {
+  if (tokens.length === 0) {
+    return null;
+  }
+  return (
+    <>
+      {tokens.map((token, index) => {
+        const isActive = activeTextOffset != null && tokenContainsTextOffset(token, activeTextOffset);
+        return (
+          <span key={`${token.textOffset}-${index}-${token.text}`}>
+            {index > 0 ? ' ' : null}
+            <span
+              data-audio-word={token.textOffset >= 0 ? String(token.textOffset) : undefined}
+              className={cn(
+                'rounded-sm transition-colors duration-150',
+                isActive ? 'bg-accent text-accent-foreground' : null,
+              )}
+            >
+              {token.text}
+            </span>
+          </span>
+        );
+      })}
+    </>
+  );
+}
 
 function buildSelectionPrompt(promptLabel: string, selectedText: string) {
   return `${promptLabel}：\n\n${selectedText}`;
@@ -81,6 +122,8 @@ export function LearnArticleReader({
   isBilingualOn,
   bilingual,
   onAssistRequest,
+  audioWordTimings = null,
+  audioTimeMs = null,
 }: LearnArticleReaderProps) {
   const [selectionMenu, setSelectionMenu] = useState<SelectionMenuState | null>(null);
   const articleBodyRef = useRef<HTMLDivElement | null>(null);
@@ -226,6 +269,30 @@ export function LearnArticleReader({
   const metaParts = [levelLabel, estimatedMinutes != null ? `约 ${estimatedMinutes} 分钟` : null].filter(Boolean);
   const isShowingBilingual = isBilingualOn && bilingual !== null;
   const paragraphGroups = isShowingBilingual ? groupSentencesByParagraph(bilingual.sentences) : [];
+  const displayOffsetByTimingKey = useMemo(
+    () =>
+      audioWordTimings && audioWordTimings.length > 0
+        ? resolveTimingDisplayOffsets(title, body, audioWordTimings)
+        : null,
+    [audioWordTimings, title, body],
+  );
+  const activeTiming =
+    audioWordTimings && audioWordTimings.length > 0 && audioTimeMs != null
+      ? findActiveWordTiming(audioWordTimings, audioTimeMs)
+      : null;
+  const highlightOffset =
+    activeTiming && displayOffsetByTimingKey
+      ? (displayOffsetByTimingKey.get(activeWordSyncKey(activeTiming)) ?? activeTiming.textOffset)
+      : null;
+  const titleTokens = articleTitleWordTokens(title);
+  const bodyParagraphTokens = articleBodyParagraphWordTokens(title, body, paragraphs);
+  const bilingualTokens =
+    isShowingBilingual && bilingual ? bilingualSentenceWordTokens(title, body, bilingual.sentences) : [];
+  const bilingualTokenByIndex = new Map(
+    isShowingBilingual && bilingual
+      ? bilingual.sentences.map((sentence, index) => [sentence.index, bilingualTokens[index] ?? []] as const)
+      : [],
+  );
 
   return (
     <>
@@ -244,7 +311,7 @@ export function LearnArticleReader({
               metaParts.length > 0 ? 'mt-4' : null,
             )}
           >
-            {title}
+            <AudioWordLine tokens={titleTokens} activeTextOffset={highlightOffset} />
           </h1>
           {isShowingBilingual ? (
             <p
@@ -275,7 +342,12 @@ export function LearnArticleReader({
                   <div key={group[0]?.index ?? 0} className="flex flex-col gap-4">
                     {group.map((sentence) => (
                       <div key={sentence.index} className="flex flex-col gap-1.5">
-                        <p data-bilingual-en>{sentence.en}</p>
+                        <p data-bilingual-en>
+                          <AudioWordLine
+                            tokens={bilingualTokenByIndex.get(sentence.index) ?? []}
+                            activeTextOffset={highlightOffset}
+                          />
+                        </p>
                         <p
                           data-bilingual-zh
                           className={cn(
@@ -293,7 +365,11 @@ export function LearnArticleReader({
                 <p className="text-muted-foreground">这篇还没有正文。</p>
               )
             ) : paragraphs.length > 0 ? (
-              paragraphs.map((paragraph, index) => <p key={`${index}-${paragraph.slice(0, 24)}`}>{paragraph}</p>)
+              paragraphs.map((paragraph, index) => (
+                <p key={`${index}-${paragraph.slice(0, 24)}`}>
+                  <AudioWordLine tokens={bodyParagraphTokens[index] ?? []} activeTextOffset={highlightOffset} />
+                </p>
+              ))
             ) : (
               <p className="text-muted-foreground">这篇还没有正文。</p>
             )}

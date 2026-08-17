@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 
 import { type TranslateSentenceEn } from '@elynd/shared/api/translate';
+import { type TtsWordTiming } from '@elynd/shared/api/tts';
 
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
@@ -60,6 +61,10 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
   const [pendingAssist, setPendingAssist] = useState<PendingAssist | null>(null);
   const [isBilingualOn, setIsBilingualOn] = useState(false);
   const [bilingual, setBilingual] = useState<BilingualReaderState | null>(null);
+  const [audioSync, setAudioSync] = useState<{
+    timeMs: number | null;
+    wordTimings: TtsWordTiming[] | null;
+  }>({ timeMs: null, wordTimings: null });
   const translateAbortRef = useRef<AbortController | null>(null);
 
   function setAssistOpen(next: boolean) {
@@ -261,6 +266,8 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
           isAssistOpen={isAssistOpen}
           isBilingualOn={isBilingualOn}
           bilingual={bilingual}
+          audioWordTimings={audioSync.wordTimings}
+          audioTimeMs={audioSync.timeMs}
           onAssistRequest={(pending) => {
             setAssistOpen(true);
             setPendingAssist(pending);
@@ -308,6 +315,7 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
               articleId={articleId}
               audioAvailable={article.audioAvailable}
               className="w-full sm:w-[min(100%,22rem)] sm:shrink-0"
+              onSyncChange={setAudioSync}
             />
           ) : null}
           <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-center sm:gap-4">

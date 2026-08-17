@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { type LearnAudioAvailability } from '@elynd/shared/api/learn';
-import { type TtsVoiceRole } from '@elynd/shared/api/tts';
+import { type TtsVoiceRole, type TtsWordTiming } from '@elynd/shared/api/tts';
 
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -16,6 +16,7 @@ import {
   getLearnArticleAudioTrack,
   learnAudioQueryKey,
 } from '@/features/learn/learn-audio-api';
+import { activeWordSyncKey, findActiveWordTiming } from '@/features/learn/learn-audio-sync';
 import { cn } from '@/lib/utils';
 
 const PLAYBACK_RATES = [0.75, 1, 1.25, 1.5] as const;
@@ -35,6 +36,7 @@ type LearnAudioBarProps = {
   articleId: string;
   audioAvailable: LearnAudioAvailability;
   className?: string;
+  onSyncChange?: (sync: { timeMs: number | null; wordTimings: TtsWordTiming[] | null }) => void;
 };
 
 function nextPlaybackRate(current: PlaybackRate): PlaybackRate {
@@ -74,18 +76,21 @@ function resolveRole(available: LearnAudioAvailability, preferred: TtsVoiceRole 
 /**
  * Always-visible footer listen strip (paused by default): play · progress · rate · accent.
  */
-export function LearnAudioBar({ articleId, audioAvailable, className }: LearnAudioBarProps) {
+export function LearnAudioBar({ articleId, audioAvailable, className, onSyncChange }: LearnAudioBarProps) {
   const [roleOverride, setRoleOverride] = useState<TtsVoiceRole | null>(null);
   const [shouldFetchTrack, setShouldFetchTrack] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackRate, setPlaybackRate] = useState<PlaybackRate>(1);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isPlaybackEnded, setIsPlaybackEnded] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const loadedKeyRef = useRef<string | null>(null);
   const rateRef = useRef(playbackRate);
   const playAfterLoadRef = useRef(false);
   const progressRef = useRef<HTMLDivElement | null>(null);
+  const onSyncChangeRef = useRef(onSyncChange);
+  const lastSyncKeyRef = useRef<string | null>(null);
 
   const role = resolveRole(audioAvailable, roleOverride);
   const isRoleReady = role ? audioAvailable[role] : false;
@@ -100,12 +105,71 @@ export function LearnAudioBar({ articleId, audioAvailable, className }: LearnAud
   });
 
   useEffect(() => {
+    onSyncChangeRef.current = onSyncChange;
+  }, [onSyncChange]);
+
+  function publishSync(timeMs: number | null, wordTimings: TtsWordTiming[] | null, force = false) {
+    const sync = onSyncChangeRef.current;
+    if (!sync) {
+      return;
+    }
+    if (timeMs == null || !wordTimings?.length) {
+      const key = 'idle';
+      if (!force && lastSyncKeyRef.current === key) {
+        return;
+      }
+      lastSyncKeyRef.current = key;
+      sync({ timeMs: null, wordTimings: wordTimings?.length ? wordTimings : null });
+      return;
+    }
+    const active = findActiveWordTiming(wordTimings, timeMs);
+    const key = activeWordSyncKey(active);
+    if (!force && lastSyncKeyRef.current === key) {
+      return;
+    }
+    lastSyncKeyRef.current = key;
+    sync({ timeMs, wordTimings });
+  }
+
+  useEffect(() => {
     rateRef.current = playbackRate;
     const element = audioRef.current;
     if (element) {
       element.playbackRate = playbackRate;
     }
   }, [playbackRate]);
+
+  // Media-clock loop while playing (fixes sparse timeupdate + high rate).
+  useEffect(() => {
+    if (!isPlaying || isPlaybackEnded) {
+      return;
+    }
+    let frame = 0;
+    const tick = () => {
+      const element = audioRef.current;
+      const timings = trackQuery.data?.wordTimings ?? null;
+      if (element && timings) {
+        const seconds = element.currentTime;
+        setCurrentTime(seconds);
+        publishSync(seconds * 1000, timings);
+      }
+      frame = window.requestAnimationFrame(tick);
+    };
+    frame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frame);
+  }, [isPlaying, isPlaybackEnded, trackQuery.data]);
+
+  useEffect(() => {
+    if (!shouldFetchTrack || !trackQuery.data) {
+      lastSyncKeyRef.current = null;
+      publishSync(null, null, true);
+      return;
+    }
+    if (isPlaybackEnded) {
+      publishSync(null, trackQuery.data.wordTimings, true);
+    }
+    // While paused, highlight was already published on pause; avoid forcing timeMs=0 on fresh track.
+  }, [shouldFetchTrack, trackQuery.data, isPlaybackEnded]);
 
   useEffect(() => {
     const element = audioRef.current;
@@ -123,6 +187,8 @@ export function LearnAudioBar({ articleId, audioAvailable, className }: LearnAud
     element.playbackRate = rateRef.current;
     setCurrentTime(0);
     setDuration(0);
+    setIsPlaybackEnded(false);
+    lastSyncKeyRef.current = null;
     if (playAfterLoadRef.current) {
       playAfterLoadRef.current = false;
       void element
@@ -134,6 +200,7 @@ export function LearnAudioBar({ articleId, audioAvailable, className }: LearnAud
         });
     } else {
       setIsPlaying(false);
+      publishSync(null, track.wordTimings, true);
     }
   }, [trackQuery.data, role]);
 
@@ -157,6 +224,7 @@ export function LearnAudioBar({ articleId, audioAvailable, className }: LearnAud
       playAfterLoadRef.current = false;
       setIsPlaying(false);
       loadedKeyRef.current = null;
+      publishSync(null, null, true);
     }, 0);
     return () => window.clearTimeout(timer);
   }, [trackQuery.isError, trackQuery.error, shouldFetchTrack]);
@@ -181,6 +249,7 @@ export function LearnAudioBar({ articleId, audioAvailable, className }: LearnAud
       return;
     }
     if (element.paused) {
+      setIsPlaybackEnded(false);
       void element
         .play()
         .then(() => setIsPlaying(true))
@@ -191,6 +260,9 @@ export function LearnAudioBar({ articleId, audioAvailable, className }: LearnAud
     } else {
       element.pause();
       setIsPlaying(false);
+      const timeMs = element.currentTime * 1000;
+      setCurrentTime(element.currentTime);
+      publishSync(timeMs, trackQuery.data.wordTimings, true);
     }
   }
 
@@ -205,6 +277,9 @@ export function LearnAudioBar({ articleId, audioAvailable, className }: LearnAud
     loadedKeyRef.current = null;
     setCurrentTime(0);
     setDuration(0);
+    setIsPlaybackEnded(false);
+    lastSyncKeyRef.current = null;
+    publishSync(null, null, true);
     if (shouldFetchTrack) {
       playAfterLoadRef.current = isPlaying;
       setIsPlaying(false);
@@ -223,8 +298,26 @@ export function LearnAudioBar({ articleId, audioAvailable, className }: LearnAud
       return;
     }
     const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    setIsPlaybackEnded(false);
     element.currentTime = ratio * duration;
     setCurrentTime(element.currentTime);
+    if (trackQuery.data) {
+      publishSync(element.currentTime * 1000, trackQuery.data.wordTimings, true);
+    }
+  }
+
+  function cycleRate() {
+    const next = nextPlaybackRate(playbackRate);
+    setPlaybackRate(next);
+    const element = audioRef.current;
+    if (element) {
+      element.playbackRate = next;
+      rateRef.current = next;
+      setCurrentTime(element.currentTime);
+      if (trackQuery.data && !isPlaybackEnded) {
+        publishSync(element.currentTime * 1000, trackQuery.data.wordTimings, true);
+      }
+    }
   }
 
   const progressRatio = duration > 0 ? Math.min(1, currentTime / duration) : 0;
@@ -239,9 +332,15 @@ export function LearnAudioBar({ articleId, audioAvailable, className }: LearnAud
         preload="metadata"
         onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
         onLoadedMetadata={(event) => setDuration(event.currentTarget.duration)}
-        onPlay={() => setIsPlaying(true)}
+        onPlay={() => {
+          setIsPlaybackEnded(false);
+          setIsPlaying(true);
+        }}
         onPause={() => setIsPlaying(false)}
-        onEnded={() => setIsPlaying(false)}
+        onEnded={() => {
+          setIsPlaying(false);
+          setIsPlaybackEnded(true);
+        }}
       />
 
       <Tooltip>
@@ -303,13 +402,21 @@ export function LearnAudioBar({ articleId, audioAvailable, className }: LearnAud
             }
             if (event.key === 'ArrowRight') {
               event.preventDefault();
+              setIsPlaybackEnded(false);
               element.currentTime = Math.min(duration, element.currentTime + 5);
               setCurrentTime(element.currentTime);
+              if (trackQuery.data) {
+                publishSync(element.currentTime * 1000, trackQuery.data.wordTimings, true);
+              }
             }
             if (event.key === 'ArrowLeft') {
               event.preventDefault();
+              setIsPlaybackEnded(false);
               element.currentTime = Math.max(0, element.currentTime - 5);
               setCurrentTime(element.currentTime);
+              if (trackQuery.data) {
+                publishSync(element.currentTime * 1000, trackQuery.data.wordTimings, true);
+              }
             }
           }}
         >
@@ -339,7 +446,7 @@ export function LearnAudioBar({ articleId, audioAvailable, className }: LearnAud
               size="icon"
               className="size-9 shrink-0 rounded-xl text-muted-foreground hover:text-foreground"
               aria-label={rateTooltip}
-              onClick={() => setPlaybackRate((prev) => nextPlaybackRate(prev))}
+              onClick={cycleRate}
             />
           }
         >

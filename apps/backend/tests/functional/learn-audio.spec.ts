@@ -210,6 +210,13 @@ describe('learner article audio', () => {
     expect(usBody.role).toBe('us');
     expect(usBody.voice).toBe('en-US-GuyNeural');
     expect(usBody.audioBase64).toBeTruthy();
+    expect(usBody.wordTimings.length).toBeGreaterThan(0);
+    expect(usBody.wordTimings[0]).toMatchObject({
+      text: 'Listen',
+      audioOffsetMs: 0,
+      durationMs: 100,
+      textOffset: 0,
+    });
 
     memory.store.delete(`elynd:article-audio:v1:${article.id}:uk`);
     const ukGone = await app.request(`/api/learn/articles/${article.id}/audio?role=uk`, {

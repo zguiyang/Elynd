@@ -8,11 +8,12 @@ import {
   type ArticleAudioRole,
   type ArticleAudioTrack,
   type ArticleAudioView,
+  buildArticleAudioText,
   type GenerateArticleAudioBody,
   type GenerateArticleAudioResult,
   type GenerateArticleAudioRoleResult,
 } from '@elynd/shared/api/article-audio';
-import { ttsWordTimingSchema } from '@elynd/shared/api/tts';
+import { type TtsWordTiming, ttsWordTimingSchema } from '@elynd/shared/api/tts';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';
@@ -40,18 +41,6 @@ type MetaRow = typeof articleAudioTable.$inferSelect;
 
 function articleAudioRedisKey(articleId: string, role: ArticleAudioRole): string {
   return `elynd:article-audio:v1:${articleId}:${role}`;
-}
-
-export function buildArticleAudioText(title: string, body: string): string {
-  const normalizedTitle = title.trim().replace(/\s+/g, ' ');
-  const normalizedBody = body.trim().replace(/\s+/g, ' ');
-  if (!normalizedTitle) {
-    return normalizedBody;
-  }
-  if (!normalizedBody) {
-    return normalizedTitle;
-  }
-  return `${normalizedTitle}\n\n${normalizedBody}`;
 }
 
 export function hashArticleAudioContent(title: string, body: string): string {
@@ -384,7 +373,13 @@ export async function getArticleAudioAvailability(articleId: string): Promise<Ar
 export async function getPublishedArticleAudioTrack(
   articleId: string,
   role: ArticleAudioRole,
-): Promise<{ role: ArticleAudioRole; mimeType: string; voice: string; audioBase64: string }> {
+): Promise<{
+  role: ArticleAudioRole;
+  mimeType: string;
+  voice: string;
+  audioBase64: string;
+  wordTimings: TtsWordTiming[];
+}> {
   const [article] = await db
     .select({ id: articleTable.id })
     .from(articleTable)
@@ -413,5 +408,6 @@ export async function getPublishedArticleAudioTrack(
     mimeType: blob.mimeType,
     voice: blob.voice,
     audioBase64: blob.audioBase64,
+    wordTimings: blob.wordTimings,
   };
 }

@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { afterAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { ttsConfig as ttsConfigTable, user as userTable } from '@elynd/db';
 import type { TestTtsResult, TtsConfigView } from '@elynd/shared/api/tts';
@@ -8,10 +8,17 @@ import { AUTH_ADMIN_ROLE } from '@elynd/shared/auth/policy';
 import app from '@/app';
 import { db } from '@/db';
 import { encryptApiKey } from '@/lib/llm';
+import * as redisLib from '@/lib/redis';
 import * as azureTts from '@/lib/tts/azure';
+import * as ttsService from '@/modules/tts/service';
 import { TTS_CONFIG_ID } from '@/modules/tts/service';
 
 const password = 'password123';
+
+type TtsConfigRow = typeof ttsConfigTable.$inferSelect;
+
+/** Snapshot of local/dev `tts_config` before this suite mutates the singleton row. */
+let priorConfig: TtsConfigRow | null | undefined;
 
 function uniqueEmail(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
@@ -68,8 +75,38 @@ async function createSession(role: 'user' | 'admin' = 'user') {
   return { email, cookie: cookieHeader(login) };
 }
 
-afterAll(async () => {
+function createMemoryRedis() {
+  const store = new Map<string, string>();
+  return {
+    store,
+    client: {
+      get: vi.fn(async (key: string) => store.get(key) ?? null),
+      set: vi.fn(async (key: string, value: string) => {
+        store.set(key, value);
+        return 'OK';
+      }),
+    },
+  };
+}
+
+/** Restore pre-suite singleton (or remove if there was none). Does not wipe unrelated tables. */
+async function restorePriorConfig(): Promise<void> {
+  if (priorConfig === undefined) {
+    return;
+  }
   await db.delete(ttsConfigTable).where(eq(ttsConfigTable.id, TTS_CONFIG_ID));
+  if (priorConfig) {
+    await db.insert(ttsConfigTable).values(priorConfig);
+  }
+}
+
+beforeAll(async () => {
+  const rows = await db.select().from(ttsConfigTable).where(eq(ttsConfigTable.id, TTS_CONFIG_ID)).limit(1);
+  priorConfig = rows[0] ?? null;
+});
+
+afterAll(async () => {
+  await restorePriorConfig();
 });
 
 describe('admin TTS config', () => {
@@ -81,6 +118,9 @@ describe('admin TTS config', () => {
       headers: { Cookie: user.cookie },
     });
     expect(forbidden.status).toBe(403);
+
+    // Isolate empty-state assertion without permanently discarding local config (restored in afterAll).
+    await db.delete(ttsConfigTable).where(eq(ttsConfigTable.id, TTS_CONFIG_ID));
 
     const empty = await app.request('/api/admin/tts/config', {
       headers: { Cookie: admin.cookie },
@@ -174,10 +214,9 @@ describe('admin TTS config', () => {
     );
 
     synthesizeSpy.mockRestore();
-    await db.delete(ttsConfigTable).where(eq(ttsConfigTable.id, TTS_CONFIG_ID));
   });
 
-  it('keeps encrypted key across updates without re-sending apiKey', async () => {
+  it('caches successful synthesis for reuse and lets admin test bypass cache', async () => {
     const admin = await createSession('admin');
     await db
       .insert(ttsConfigTable)
@@ -185,7 +224,7 @@ describe('admin TTS config', () => {
         id: TTS_CONFIG_ID,
         provider: 'azure',
         region: 'eastasia',
-        apiKeyCiphertext: encryptApiKey('kept-secret-key'),
+        apiKeyCiphertext: encryptApiKey('cache-secret-key'),
         isEnabled: true,
         defaultVoice: 'en-US-JennyNeural',
         usVoice: 'en-US-JennyNeural',
@@ -195,7 +234,7 @@ describe('admin TTS config', () => {
         target: ttsConfigTable.id,
         set: {
           region: 'eastasia',
-          apiKeyCiphertext: encryptApiKey('kept-secret-key'),
+          apiKeyCiphertext: encryptApiKey('cache-secret-key'),
           isEnabled: true,
           defaultVoice: 'en-US-JennyNeural',
           usVoice: 'en-US-JennyNeural',
@@ -203,27 +242,42 @@ describe('admin TTS config', () => {
         },
       });
 
+    const memory = createMemoryRedis();
+    const redisSpy = vi.spyOn(redisLib, 'getRedis').mockReturnValue(memory.client as never);
     const synthesizeSpy = vi.spyOn(azureTts, 'synthesizeAzureTts').mockResolvedValue({
-      audio: Buffer.from('x'),
+      audio: Buffer.from('cached-mp3'),
       mimeType: 'audio/mpeg',
-      wordTimings: [],
+      wordTimings: [{ text: 'hello', audioOffsetMs: 0, durationMs: 120, textOffset: 0 }],
     });
 
+    const first = await ttsService.synthesizeTts({
+      text: '  hello   world  ',
+      source: 'test.cache',
+    });
+    expect(first.cached).toBe(false);
+    expect(first.audio.toString()).toBe('cached-mp3');
+    expect(synthesizeSpy).toHaveBeenCalledTimes(1);
+    expect(memory.client.set).toHaveBeenCalled();
+
+    synthesizeSpy.mockClear();
+    const second = await ttsService.synthesizeTts({
+      text: 'hello world',
+      source: 'test.cache',
+    });
+    expect(second.cached).toBe(true);
+    expect(second.audio.toString()).toBe('cached-mp3');
+    expect(synthesizeSpy).not.toHaveBeenCalled();
+
+    synthesizeSpy.mockClear();
     const tested = await app.request('/api/admin/tts/test', {
       method: 'POST',
       headers: { Cookie: admin.cookie, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: 'world' }),
+      body: JSON.stringify({ text: 'hello world' }),
     });
     expect(tested.status).toBe(200);
-    expect(synthesizeSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        subscriptionKey: 'kept-secret-key',
-        text: 'world',
-        voice: 'en-US-JennyNeural',
-      }),
-    );
+    expect(synthesizeSpy).toHaveBeenCalledTimes(1);
 
     synthesizeSpy.mockRestore();
-    await db.delete(ttsConfigTable).where(eq(ttsConfigTable.id, TTS_CONFIG_ID));
+    redisSpy.mockRestore();
   });
 });

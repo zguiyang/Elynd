@@ -21,7 +21,9 @@ export const ADMIN_ROUTES = {
   articleNew: '/admin/articles/new',
   articleEdit: (id: string) => `/admin/articles/${id}/edit` as const,
   articlePractice: (id: string) => `/admin/articles/${id}/practice` as const,
+  articleAudio: (id: string) => `/admin/articles/${id}/audio` as const,
   ai: '/admin/ai',
   aiLogs: '/admin/ai-logs',
   tts: '/admin/tts',
+  ttsLogs: '/admin/tts-logs',
 } as const;

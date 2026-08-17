@@ -250,14 +250,24 @@ export function ArticleFormEditor({ mode, articleId, initialArticle }: ArticleFo
           <p className="mt-3 text-lg text-muted-foreground">粘贴标题与正文；预览对齐学习者纯阅读排版。</p>
         </div>
         {mode === 'edit' && articleId ? (
-          <Button
-            variant="outline"
-            className="h-11 rounded-xl"
-            nativeButton={false}
-            render={<Link href={ADMIN_ROUTES.articlePractice(articleId)} />}
-          >
-            练习题工作台
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              className="h-11 rounded-xl"
+              nativeButton={false}
+              render={<Link href={ADMIN_ROUTES.articlePractice(articleId)} />}
+            >
+              练习题工作台
+            </Button>
+            <Button
+              variant="outline"
+              className="h-11 rounded-xl"
+              nativeButton={false}
+              render={<Link href={ADMIN_ROUTES.articleAudio(articleId)} />}
+            >
+              音频工作台
+            </Button>
+          </div>
         ) : null}
       </div>
 

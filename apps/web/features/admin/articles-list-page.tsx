@@ -237,6 +237,15 @@ export function ArticlesListPage() {
                           >
                             练习题
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            nativeButton={false}
+                            className="rounded-xl"
+                            render={<Link href={ADMIN_ROUTES.articleAudio(article.id)} />}
+                          >
+                            音频
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>

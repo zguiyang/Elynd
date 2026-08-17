@@ -1,15 +1,18 @@
 import { createHash } from 'node:crypto';
 
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { article as articleTable, articleAudio as articleAudioTable } from '@elynd/db';
 import {
+  type ArticleAudioRole,
+  type ArticleAudioTrack,
   type ArticleAudioView,
   type GenerateArticleAudioBody,
   type GenerateArticleAudioResult,
+  type GenerateArticleAudioRoleResult,
 } from '@elynd/shared/api/article-audio';
-import { type TtsVoiceRole, ttsWordTimingSchema } from '@elynd/shared/api/tts';
+import { ttsWordTimingSchema } from '@elynd/shared/api/tts';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';
@@ -22,6 +25,7 @@ import { synthesizeTts } from '@/modules/tts/service';
 const articleAudioLogger = rootLogger.child({ module: 'ArticleAudio' });
 
 const ARTICLE_AUDIO_TTL_SECONDS = 30 * 24 * 60 * 60;
+const ALL_ROLES: ArticleAudioRole[] = ['us', 'uk'];
 
 const articleAudioRedisPayloadSchema = z.object({
   mimeType: z.string().min(1),
@@ -32,9 +36,10 @@ const articleAudioRedisPayloadSchema = z.object({
 });
 
 type ArticleAudioRedisPayload = z.infer<typeof articleAudioRedisPayloadSchema>;
+type MetaRow = typeof articleAudioTable.$inferSelect;
 
-function articleAudioRedisKey(articleId: string): string {
-  return `elynd:article-audio:v1:${articleId}`;
+function articleAudioRedisKey(articleId: string, role: ArticleAudioRole): string {
+  return `elynd:article-audio:v1:${articleId}:${role}`;
 }
 
 export function buildArticleAudioText(title: string, body: string): string {
@@ -53,6 +58,13 @@ export function hashArticleAudioContent(title: string, body: string): string {
   return createHash('sha256').update(buildArticleAudioText(title, body), 'utf8').digest('hex');
 }
 
+function resolveGenerateRoles(body: GenerateArticleAudioBody): ArticleAudioRole[] {
+  if (!body.roles?.length) {
+    return [...ALL_ROLES];
+  }
+  return [...new Set(body.roles)];
+}
+
 async function loadArticle(articleId: string): Promise<{ id: string; title: string; body: string }> {
   const rows = await db
     .select({ id: articleTable.id, title: articleTable.title, body: articleTable.body })
@@ -66,8 +78,11 @@ async function loadArticle(articleId: string): Promise<{ id: string; title: stri
   return row;
 }
 
-async function readArticleAudioBlob(articleId: string): Promise<ArticleAudioRedisPayload | null> {
-  const key = articleAudioRedisKey(articleId);
+async function readArticleAudioBlob(
+  articleId: string,
+  role: ArticleAudioRole,
+): Promise<ArticleAudioRedisPayload | null> {
+  const key = articleAudioRedisKey(articleId, role);
   try {
     const raw = await getRedis().get(key);
     if (!raw) {
@@ -75,70 +90,69 @@ async function readArticleAudioBlob(articleId: string): Promise<ArticleAudioRedi
     }
     const parsed = articleAudioRedisPayloadSchema.safeParse(JSON.parse(raw) as unknown);
     if (!parsed.success) {
-      articleAudioLogger.warn({ articleId, key }, 'Invalid article audio Redis payload; ignoring');
+      articleAudioLogger.warn({ articleId, role, key }, 'Invalid article audio Redis payload; ignoring');
       return null;
     }
     return parsed.data;
   } catch (error) {
-    articleAudioLogger.warn({ err: error, articleId }, 'Redis article audio read failed');
+    articleAudioLogger.warn({ err: error, articleId, role }, 'Redis article audio read failed');
     return null;
   }
 }
 
-async function writeArticleAudioBlob(articleId: string, payload: ArticleAudioRedisPayload): Promise<void> {
-  const key = articleAudioRedisKey(articleId);
+async function writeArticleAudioBlob(
+  articleId: string,
+  role: ArticleAudioRole,
+  payload: ArticleAudioRedisPayload,
+): Promise<void> {
+  const key = articleAudioRedisKey(articleId, role);
   try {
     await getRedis().set(key, JSON.stringify(payload), 'EX', ARTICLE_AUDIO_TTL_SECONDS);
   } catch (error) {
-    articleAudioLogger.warn({ err: error, articleId }, 'Redis article audio write failed');
+    articleAudioLogger.warn({ err: error, articleId, role }, 'Redis article audio write failed');
     throw new AppError(HTTP_STATUS.SERVICE_UNAVAILABLE, 'Failed to store article audio');
   }
 }
 
-type MetaRow = typeof articleAudioTable.$inferSelect;
+function emptyTrack(role: ArticleAudioRole): ArticleAudioTrack {
+  return {
+    role,
+    status: 'none',
+    voice: null,
+    contentHash: null,
+    contentStale: false,
+    mimeType: null,
+    lastError: null,
+    generatedAt: null,
+    updatedAt: null,
+    audioAvailable: false,
+    expired: false,
+    audioBase64: null,
+    wordTimings: undefined,
+  };
+}
 
-function toView(input: {
-  article: { id: string; title: string };
+function toTrack(input: {
+  role: ArticleAudioRole;
   currentContentHash: string;
   meta: MetaRow | null;
   blob: ArticleAudioRedisPayload | null;
-}): ArticleAudioView {
-  const { article, currentContentHash, meta, blob } = input;
+}): ArticleAudioTrack {
+  const { role, currentContentHash, meta, blob } = input;
   if (!meta) {
-    return {
-      articleId: article.id,
-      title: article.title,
-      status: 'none',
-      voice: null,
-      role: null,
-      contentHash: null,
-      currentContentHash,
-      contentStale: false,
-      mimeType: null,
-      lastError: null,
-      generatedAt: null,
-      updatedAt: null,
-      audioAvailable: false,
-      expired: false,
-      audioBase64: null,
-      wordTimings: undefined,
-    };
+    return emptyTrack(role);
   }
 
   const status = meta.status === 'failed' ? 'failed' : 'ready';
   const audioAvailable = Boolean(blob);
   const expired = status === 'ready' && !audioAvailable;
-  const contentStale = meta.contentHash !== currentContentHash;
 
   return {
-    articleId: article.id,
-    title: article.title,
+    role,
     status,
     voice: meta.voice,
-    role: meta.role === 'us' || meta.role === 'uk' ? meta.role : null,
     contentHash: meta.contentHash,
-    currentContentHash,
-    contentStale,
+    contentStale: meta.contentHash !== currentContentHash,
     mimeType: meta.mimeType,
     lastError: meta.lastError,
     generatedAt: meta.generatedAt?.toISOString() ?? null,
@@ -153,10 +167,165 @@ function toView(input: {
 export async function getArticleAudio(articleId: string): Promise<ArticleAudioView> {
   const article = await loadArticle(articleId);
   const currentContentHash = hashArticleAudioContent(article.title, article.body);
-  const metaRows = await db.select().from(articleAudioTable).where(eq(articleAudioTable.articleId, articleId)).limit(1);
-  const meta = metaRows[0] ?? null;
-  const blob = meta ? await readArticleAudioBlob(articleId) : null;
-  return toView({ article, currentContentHash, meta, blob });
+  const metaRows = await db.select().from(articleAudioTable).where(eq(articleAudioTable.articleId, articleId));
+  const metaByRole = new Map<string, MetaRow>();
+  for (const row of metaRows) {
+    if (row.role === 'us' || row.role === 'uk') {
+      metaByRole.set(row.role, row);
+    }
+  }
+
+  const tracks = {
+    us: toTrack({
+      role: 'us',
+      currentContentHash,
+      meta: metaByRole.get('us') ?? null,
+      blob: metaByRole.has('us') ? await readArticleAudioBlob(articleId, 'us') : null,
+    }),
+    uk: toTrack({
+      role: 'uk',
+      currentContentHash,
+      meta: metaByRole.get('uk') ?? null,
+      blob: metaByRole.has('uk') ? await readArticleAudioBlob(articleId, 'uk') : null,
+    }),
+  };
+
+  return {
+    articleId: article.id,
+    title: article.title,
+    currentContentHash,
+    tracks,
+  };
+}
+
+async function generateOneRole(input: {
+  articleId: string;
+  role: ArticleAudioRole;
+  text: string;
+  contentHash: string;
+  userId?: string;
+}): Promise<GenerateArticleAudioRoleResult> {
+  const { articleId, role, text, contentHash, userId } = input;
+  const redisKey = articleAudioRedisKey(articleId, role);
+  const existingRows = await db
+    .select()
+    .from(articleAudioTable)
+    .where(and(eq(articleAudioTable.articleId, articleId), eq(articleAudioTable.role, role)))
+    .limit(1);
+  const existing = existingRows[0] ?? null;
+  const started = Date.now();
+
+  try {
+    const result = await synthesizeTts({
+      text,
+      role,
+      source: 'admin.article_audio',
+      userId,
+    });
+    const latencyMs = Date.now() - started;
+
+    await writeArticleAudioBlob(articleId, role, {
+      mimeType: result.mimeType,
+      voice: result.voice,
+      audioBase64: result.audio.toString('base64'),
+      wordTimings: result.wordTimings,
+      contentHash,
+    });
+
+    const generatedAt = new Date();
+    await db
+      .insert(articleAudioTable)
+      .values({
+        articleId,
+        role,
+        status: 'ready',
+        voice: result.voice,
+        contentHash,
+        redisKey,
+        mimeType: result.mimeType,
+        durationMs: null,
+        lastError: null,
+        generatedAt,
+      })
+      .onConflictDoUpdate({
+        target: [articleAudioTable.articleId, articleAudioTable.role],
+        set: {
+          status: 'ready',
+          voice: result.voice,
+          contentHash,
+          redisKey,
+          mimeType: result.mimeType,
+          durationMs: null,
+          lastError: null,
+          generatedAt,
+        },
+      });
+
+    await recordTtsInvocation({
+      status: 'success',
+      source: 'admin.article_audio',
+      userId,
+      articleId,
+      voice: result.voice,
+      role,
+      textPreview: text,
+      textLength: text.length,
+      latencyMs,
+      cached: result.cached,
+    });
+
+    return { role, ok: true, latencyMs, cached: result.cached, error: null };
+  } catch (error) {
+    const latencyMs = Date.now() - started;
+    const message = error instanceof Error ? error.message : String(error);
+    const errorCode = error instanceof AppError ? String(error.statusCode) : '500';
+
+    if (existing?.status === 'ready') {
+      await db
+        .update(articleAudioTable)
+        .set({ lastError: message })
+        .where(and(eq(articleAudioTable.articleId, articleId), eq(articleAudioTable.role, role)));
+    } else {
+      await db
+        .insert(articleAudioTable)
+        .values({
+          articleId,
+          role,
+          status: 'failed',
+          voice: existing?.voice ?? 'unknown',
+          contentHash: existing?.contentHash ?? contentHash,
+          redisKey: existing?.redisKey ?? redisKey,
+          mimeType: existing?.mimeType ?? 'audio/mpeg',
+          durationMs: existing?.durationMs ?? null,
+          lastError: message,
+          generatedAt: existing?.generatedAt ?? null,
+        })
+        .onConflictDoUpdate({
+          target: [articleAudioTable.articleId, articleAudioTable.role],
+          set: {
+            status: 'failed',
+            lastError: message,
+          },
+        });
+    }
+
+    await recordTtsInvocation({
+      status: 'failure',
+      errorCode,
+      errorMessage: message,
+      source: 'admin.article_audio',
+      userId,
+      articleId,
+      voice: existing?.voice ?? null,
+      role,
+      textPreview: text,
+      textLength: text.length,
+      latencyMs,
+      cached: null,
+    });
+
+    return { role, ok: false, latencyMs, cached: null, error: message };
+  }
 }
 
 export async function generateArticleAudio(
@@ -171,125 +340,21 @@ export async function generateArticleAudio(
   }
 
   const contentHash = hashArticleAudioContent(article.title, article.body);
-  const role: TtsVoiceRole | undefined = body.role;
-  const redisKey = articleAudioRedisKey(articleId);
-  const existingRows = await db
-    .select()
-    .from(articleAudioTable)
-    .where(eq(articleAudioTable.articleId, articleId))
-    .limit(1);
-  const existing = existingRows[0] ?? null;
+  const roles = resolveGenerateRoles(body);
+  const results: GenerateArticleAudioRoleResult[] = [];
 
-  const started = Date.now();
-  try {
-    const result = await synthesizeTts({
-      text,
-      role,
-      source: 'admin.article_audio',
-      userId: options.userId,
-    });
-    const latencyMs = Date.now() - started;
-
-    await writeArticleAudioBlob(articleId, {
-      mimeType: result.mimeType,
-      voice: result.voice,
-      audioBase64: result.audio.toString('base64'),
-      wordTimings: result.wordTimings,
-      contentHash,
-    });
-
-    const generatedAt = new Date();
-    await db
-      .insert(articleAudioTable)
-      .values({
+  for (const role of roles) {
+    results.push(
+      await generateOneRole({
         articleId,
-        status: 'ready',
-        voice: result.voice,
-        role: role ?? null,
+        role,
+        text,
         contentHash,
-        redisKey,
-        mimeType: result.mimeType,
-        durationMs: null,
-        lastError: null,
-        generatedAt,
-      })
-      .onConflictDoUpdate({
-        target: articleAudioTable.articleId,
-        set: {
-          status: 'ready',
-          voice: result.voice,
-          role: role ?? null,
-          contentHash,
-          redisKey,
-          mimeType: result.mimeType,
-          durationMs: null,
-          lastError: null,
-          generatedAt,
-        },
-      });
-
-    await recordTtsInvocation({
-      status: 'success',
-      source: 'admin.article_audio',
-      userId: options.userId,
-      articleId,
-      voice: result.voice,
-      role: role ?? null,
-      textPreview: text,
-      textLength: text.length,
-      latencyMs,
-      cached: result.cached,
-    });
-
-    const view = await getArticleAudio(articleId);
-    return { ...view, latencyMs, cached: result.cached };
-  } catch (error) {
-    const latencyMs = Date.now() - started;
-    const message = error instanceof Error ? error.message : String(error);
-    const errorCode = error instanceof AppError ? String(error.statusCode) : '500';
-
-    if (existing?.status === 'ready') {
-      await db.update(articleAudioTable).set({ lastError: message }).where(eq(articleAudioTable.articleId, articleId));
-    } else {
-      await db
-        .insert(articleAudioTable)
-        .values({
-          articleId,
-          status: 'failed',
-          voice: existing?.voice ?? 'unknown',
-          role: role ?? existing?.role ?? null,
-          contentHash: existing?.contentHash ?? contentHash,
-          redisKey: existing?.redisKey ?? redisKey,
-          mimeType: existing?.mimeType ?? 'audio/mpeg',
-          durationMs: existing?.durationMs ?? null,
-          lastError: message,
-          generatedAt: existing?.generatedAt ?? null,
-        })
-        .onConflictDoUpdate({
-          target: articleAudioTable.articleId,
-          set: {
-            status: 'failed',
-            lastError: message,
-            role: role ?? existing?.role ?? null,
-          },
-        });
-    }
-
-    await recordTtsInvocation({
-      status: 'failure',
-      errorCode,
-      errorMessage: message,
-      source: 'admin.article_audio',
-      userId: options.userId,
-      articleId,
-      voice: existing?.voice ?? null,
-      role: role ?? null,
-      textPreview: text,
-      textLength: text.length,
-      latencyMs,
-      cached: null,
-    });
-
-    throw error instanceof AppError ? error : new AppError(HTTP_STATUS.SERVICE_UNAVAILABLE, message);
+        userId: options.userId,
+      }),
+    );
   }
+
+  const view = await getArticleAudio(articleId);
+  return { ...view, results };
 }

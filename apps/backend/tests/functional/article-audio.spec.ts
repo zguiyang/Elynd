@@ -144,7 +144,7 @@ afterAll(async () => {
 });
 
 describe('admin article audio', () => {
-  it('generates, serves, regenerates, marks expired, and filters logs', async () => {
+  it('generates both roles, supports single regenerate, expired, and logs', async () => {
     const admin = await createSession('admin');
     await ensureTtsConfig();
 
@@ -163,98 +163,95 @@ describe('admin article audio', () => {
 
     const memory = createMemoryRedis();
     const redisSpy = vi.spyOn(redisLib, 'getRedis').mockReturnValue(memory.client as never);
-    const synthesizeSpy = vi.spyOn(azureTts, 'synthesizeAzureTts').mockResolvedValue({
-      audio: Buffer.from('article-mp3-v1'),
+    const synthesizeSpy = vi.spyOn(azureTts, 'synthesizeAzureTts').mockImplementation(async (input) => ({
+      audio: Buffer.from(`mp3-${input.voice}`),
       mimeType: 'audio/mpeg',
       wordTimings: [{ text: 'Hello', audioOffsetMs: 0, durationMs: 100, textOffset: 0 }],
-    });
+    }));
 
     const empty = await app.request(`/api/admin/articles/${article.id}/audio`, {
       headers: { Cookie: admin.cookie },
     });
     expect(empty.status).toBe(200);
     const emptyBody = (await empty.json()) as ArticleAudioView;
-    expect(emptyBody.status).toBe('none');
-    expect(emptyBody.audioAvailable).toBe(false);
+    expect(emptyBody.tracks.us.status).toBe('none');
+    expect(emptyBody.tracks.uk.status).toBe('none');
 
     const generated = await app.request(`/api/admin/articles/${article.id}/audio/generate`, {
       method: 'POST',
       headers: { Cookie: admin.cookie, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: 'us' }),
+      body: JSON.stringify({}),
     });
     expect(generated.status).toBe(200);
     const generatedBody = (await generated.json()) as GenerateArticleAudioResult;
-    expect(generatedBody.status).toBe('ready');
-    expect(generatedBody.voice).toBe('en-US-GuyNeural');
-    expect(generatedBody.role).toBe('us');
-    expect(generatedBody.audioAvailable).toBe(true);
-    expect(generatedBody.audioBase64).toBe(Buffer.from('article-mp3-v1').toString('base64'));
-    expect(generatedBody.cached).toBe(false);
-    expect(synthesizeSpy).toHaveBeenCalledTimes(1);
-    expect(memory.store.has(`elynd:article-audio:v1:${article.id}`)).toBe(true);
+    expect(generatedBody.results).toHaveLength(2);
+    expect(generatedBody.results.every((item) => item.ok)).toBe(true);
+    expect(generatedBody.tracks.us.status).toBe('ready');
+    expect(generatedBody.tracks.uk.status).toBe('ready');
+    expect(generatedBody.tracks.us.voice).toBe('en-US-GuyNeural');
+    expect(generatedBody.tracks.uk.voice).toBe('en-GB-SoniaNeural');
+    expect(synthesizeSpy).toHaveBeenCalledTimes(2);
+    expect(memory.store.has(`elynd:article-audio:v1:${article.id}:us`)).toBe(true);
+    expect(memory.store.has(`elynd:article-audio:v1:${article.id}:uk`)).toBe(true);
 
-    const metaRows = await db
-      .select()
-      .from(articleAudioTable)
-      .where(eq(articleAudioTable.articleId, article.id))
-      .limit(1);
-    expect(metaRows[0]?.status).toBe('ready');
+    const metaRows = await db.select().from(articleAudioTable).where(eq(articleAudioTable.articleId, article.id));
+    expect(metaRows).toHaveLength(2);
 
-    const logs = await app.request('/api/admin/tts/invocations?pageSize=20&status=success', {
-      headers: { Cookie: admin.cookie },
-    });
+    const logs = await app.request(
+      `/api/admin/tts/invocations?pageSize=20&status=success&articleId=${encodeURIComponent(article.id)}`,
+      { headers: { Cookie: admin.cookie } },
+    );
     expect(logs.status).toBe(200);
     const logsBody = (await logs.json()) as TtsInvocationListData;
-    expect(logsBody.items.some((item) => item.articleId === article.id && item.source === 'admin.article_audio')).toBe(
-      true,
-    );
+    expect(logsBody.items.filter((item) => item.source === 'admin.article_audio')).toHaveLength(2);
 
     const stats = await app.request('/api/admin/tts/invocations/stats', {
       headers: { Cookie: admin.cookie },
     });
     expect(stats.status).toBe(200);
     const statsBody = (await stats.json()) as TtsInvocationStats;
-    expect(statsBody.successCount).toBeGreaterThanOrEqual(1);
+    expect(statsBody.successCount).toBeGreaterThanOrEqual(2);
 
-    synthesizeSpy.mockResolvedValue({
-      audio: Buffer.from('article-mp3-v2'),
-      mimeType: 'audio/mpeg',
-      wordTimings: [{ text: 'Hello', audioOffsetMs: 0, durationMs: 110, textOffset: 0 }],
-    });
-    const regenerated = await app.request(`/api/admin/articles/${article.id}/audio/generate`, {
+    synthesizeSpy.mockClear();
+    const usOnly = await app.request(`/api/admin/articles/${article.id}/audio/generate`, {
       method: 'POST',
       headers: { Cookie: admin.cookie, 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
+      body: JSON.stringify({ roles: ['us'] }),
     });
-    expect(regenerated.status).toBe(200);
-    const regeneratedBody = (await regenerated.json()) as GenerateArticleAudioResult;
-    expect(regeneratedBody.audioBase64).toBe(Buffer.from('article-mp3-v2').toString('base64'));
-    expect(regeneratedBody.voice).toBe('en-US-JennyNeural');
+    expect(usOnly.status).toBe(200);
+    const usOnlyBody = (await usOnly.json()) as GenerateArticleAudioResult;
+    expect(usOnlyBody.results).toHaveLength(1);
+    expect(usOnlyBody.results[0]?.role).toBe('us');
+    expect(usOnlyBody.results[0]?.ok).toBe(true);
+    expect(usOnlyBody.results[0]?.cached).toBe(true);
+    expect(synthesizeSpy).not.toHaveBeenCalled();
 
-    memory.store.delete(`elynd:article-audio:v1:${article.id}`);
+    memory.store.delete(`elynd:article-audio:v1:${article.id}:uk`);
+    for (const key of [...memory.store.keys()]) {
+      if (key.startsWith('elynd:tts:v1:')) {
+        memory.store.delete(key);
+      }
+    }
     const expired = await app.request(`/api/admin/articles/${article.id}/audio`, {
       headers: { Cookie: admin.cookie },
     });
     expect(expired.status).toBe(200);
     const expiredBody = (await expired.json()) as ArticleAudioView;
-    expect(expiredBody.status).toBe('ready');
-    expect(expiredBody.expired).toBe(true);
-    expect(expiredBody.audioAvailable).toBe(false);
+    expect(expiredBody.tracks.uk.expired).toBe(true);
+    expect(expiredBody.tracks.us.audioAvailable).toBe(true);
 
     synthesizeSpy.mockRejectedValueOnce(new Error('azure down'));
     const failed = await app.request(`/api/admin/articles/${article.id}/audio/generate`, {
       method: 'POST',
       headers: { Cookie: admin.cookie, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: 'uk' }),
+      body: JSON.stringify({ roles: ['uk'] }),
     });
-    expect(failed.status).toBe(503);
-    const afterFailMeta = await db
-      .select()
-      .from(articleAudioTable)
-      .where(eq(articleAudioTable.articleId, article.id))
-      .limit(1);
-    expect(afterFailMeta[0]?.status).toBe('ready');
-    expect(afterFailMeta[0]?.lastError).toContain('azure down');
+    expect(failed.status).toBe(200);
+    const failedBody = (await failed.json()) as GenerateArticleAudioResult;
+    expect(failedBody.results[0]?.ok).toBe(false);
+    expect(failedBody.tracks.uk.status).toBe('ready');
+    expect(failedBody.tracks.uk.lastError).toContain('azure down');
+    expect(failedBody.tracks.us.status).toBe('ready');
 
     const failLogs = await app.request(
       `/api/admin/tts/invocations?status=failure&articleId=${encodeURIComponent(article.id)}`,

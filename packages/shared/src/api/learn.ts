@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { ARTICLE_LEVELS } from '@elynd/shared/api/articles';
+import { ttsVoiceRoleValues } from '@elynd/shared/api/tts';
 
 export const READING_PROGRESS_STATUSES = ['in_progress', 'completed'] as const;
 export type ReadingProgressStatus = (typeof READING_PROGRESS_STATUSES)[number];
@@ -121,6 +122,13 @@ export const learnTodayDataSchema = z.object({
 
 export type LearnTodayData = z.infer<typeof learnTodayDataSchema>;
 
+export const learnAudioAvailabilitySchema = z.object({
+  us: z.boolean(),
+  uk: z.boolean(),
+});
+
+export type LearnAudioAvailability = z.infer<typeof learnAudioAvailabilitySchema>;
+
 export const learnArticleDataSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -130,9 +138,26 @@ export const learnArticleDataSchema = z.object({
   estimatedMinutes: z.number().int().nullable(),
   progress: readingProgressSchema,
   practiceAvailable: z.boolean(),
+  /** Ready tracks with Redis bytes still present. */
+  audioAvailable: learnAudioAvailabilitySchema,
 });
 
 export type LearnArticleData = z.infer<typeof learnArticleDataSchema>;
+
+export const learnArticleAudioQuerySchema = z.object({
+  role: z.enum(ttsVoiceRoleValues),
+});
+
+export type LearnArticleAudioQuery = z.infer<typeof learnArticleAudioQuerySchema>;
+
+export const learnArticleAudioTrackSchema = z.object({
+  role: z.enum(ttsVoiceRoleValues),
+  mimeType: z.string().min(1),
+  voice: z.string().min(1),
+  audioBase64: z.string().min(1),
+});
+
+export type LearnArticleAudioTrack = z.infer<typeof learnArticleAudioTrackSchema>;
 
 export const updateReadingProgressBodySchema = z
   .object({

@@ -43,6 +43,13 @@
       "when": 1786935563447,
       "tag": "0005_nasty_power_pack",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786939434485,
+      "tag": "0006_uneven_roulette",
+      "breakpoints": true
     }
   ]
 }

@@ -327,6 +327,52 @@ export const ttsConfig = pgTable('tts_config', {
     .notNull(),
 });
 
+/** Per-article TTS audio metadata (bytes live in Redis with 30-day TTL). */
+export const articleAudio = pgTable('article_audio', {
+  articleId: text('article_id')
+    .primaryKey()
+    .references(() => article.id, { onDelete: 'cascade' }),
+  status: text('status').notNull(),
+  voice: text('voice').notNull(),
+  role: text('role'),
+  contentHash: text('content_hash').notNull(),
+  redisKey: text('redis_key').notNull(),
+  mimeType: text('mime_type').notNull(),
+  durationMs: integer('duration_ms'),
+  lastError: text('last_error'),
+  generatedAt: timestamp('generated_at'),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
+/** Append-only TTS synthesis audit log (article generate / admin test). */
+export const ttsInvocationLog = pgTable(
+  'tts_invocation_log',
+  {
+    id: text('id').primaryKey(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    status: text('status').notNull(),
+    errorCode: text('error_code'),
+    errorMessage: text('error_message'),
+    source: text('source').notNull(),
+    userId: text('user_id'),
+    articleId: text('article_id'),
+    voice: text('voice'),
+    role: text('role'),
+    textPreview: text('text_preview'),
+    textLength: integer('text_length'),
+    latencyMs: integer('latency_ms'),
+    cached: boolean('cached'),
+  },
+  (table) => [
+    index('tts_invocation_log_created_at_idx').on(table.createdAt),
+    index('tts_invocation_log_status_created_idx').on(table.status, table.createdAt),
+    index('tts_invocation_log_article_created_idx').on(table.articleId, table.createdAt),
+  ],
+);
+
 export type AiInvocationRequestSummary = {
   messageCount?: number;
   selectionPreview?: string;

@@ -27,6 +27,7 @@
     "hono-rate-limiter": "^0.4.2",
     "ioredis": "^5.6.1",
     "langchain": "^1.5.6",
+    "microsoft-cognitiveservices-speech-sdk": "^1.51.0",
     "pg": "^8.22.0",
     "pino": "^9.9.0",
     "resend": "^4.8.0",

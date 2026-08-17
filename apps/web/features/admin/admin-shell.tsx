@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, FileText, ScrollText, Sparkles, Volume2 } from 'lucide-react';
+import { ArrowLeft, AudioLines, FileText, ScrollText, Sparkles, Volume2 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { type ReactNode, useEffect } from 'react';
@@ -68,6 +68,7 @@ export function AdminShell({ children }: AdminShellProps) {
   const isAiActive = pathname === ADMIN_ROUTES.ai || pathname.startsWith(`${ADMIN_ROUTES.ai}/`);
   const isAiLogsActive = pathname === ADMIN_ROUTES.aiLogs || pathname.startsWith(`${ADMIN_ROUTES.aiLogs}/`);
   const isTtsActive = pathname === ADMIN_ROUTES.tts || pathname.startsWith(`${ADMIN_ROUTES.tts}/`);
+  const isTtsLogsActive = pathname === ADMIN_ROUTES.ttsLogs || pathname.startsWith(`${ADMIN_ROUTES.ttsLogs}/`);
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden md:flex-row">
@@ -145,6 +146,20 @@ export function AdminShell({ children }: AdminShellProps) {
             >
               <Volume2 data-icon="inline-start" />
               语音配置
+            </Button>
+            <Button
+              variant="ghost"
+              nativeButton={false}
+              className={cn(
+                'h-auto justify-start gap-3 rounded-xl px-4 py-3 text-base font-normal transition-colors duration-300 ease-out-soft',
+                isTtsLogsActive
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+              )}
+              render={<Link href={ADMIN_ROUTES.ttsLogs} />}
+            >
+              <AudioLines data-icon="inline-start" />
+              音频日志
             </Button>
           </nav>
         </div>

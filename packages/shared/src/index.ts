@@ -7,4 +7,5 @@ export * from './api/llm-config.ts';
 export * from './api/llm-config-keys.ts';
 export * from './api/pagination.ts';
 export * from './api/translate.ts';
+export * from './api/tts.ts';
 export * from './auth/policy.ts';

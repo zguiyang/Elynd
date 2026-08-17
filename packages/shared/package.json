@@ -15,7 +15,8 @@
     "./api/llm-config": "./src/api/llm-config.ts",
     "./api/llm-config-keys": "./src/api/llm-config-keys.ts",
     "./api/pagination": "./src/api/pagination.ts",
-    "./api/translate": "./src/api/translate.ts"
+    "./api/translate": "./src/api/translate.ts",
+    "./api/tts": "./src/api/tts.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

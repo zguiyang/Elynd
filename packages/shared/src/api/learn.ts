@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { ARTICLE_LEVELS } from '@elynd/shared/api/articles';
-import { ttsVoiceRoleValues } from '@elynd/shared/api/tts';
+import { ttsVoiceRoleValues, ttsWordTimingSchema } from '@elynd/shared/api/tts';
 
 export const READING_PROGRESS_STATUSES = ['in_progress', 'completed'] as const;
 export type ReadingProgressStatus = (typeof READING_PROGRESS_STATUSES)[number];
@@ -155,6 +155,7 @@ export const learnArticleAudioTrackSchema = z.object({
   mimeType: z.string().min(1),
   voice: z.string().min(1),
   audioBase64: z.string().min(1),
+  wordTimings: z.array(ttsWordTimingSchema),
 });
 
 export type LearnArticleAudioTrack = z.infer<typeof learnArticleAudioTrackSchema>;

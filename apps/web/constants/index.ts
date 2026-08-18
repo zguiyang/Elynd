@@ -10,6 +10,7 @@ export const AUTH_ROUTES = {
   verifyEmail: '/verify-email',
   dashboard: '/dashboard',
   library: '/library',
+  review: '/review',
   learn: '/learn',
   learnArticle: (id: string) => `/learn/${id}` as const,
   learnPractice: (id: string) => `/learn/${id}/practice` as const,

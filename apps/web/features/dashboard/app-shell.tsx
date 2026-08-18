@@ -59,7 +59,13 @@ function buildLearnerNavItems(pathname: string): NavItem[] {
       active: matchesPath(pathname, AUTH_ROUTES.library),
       disabled: false,
     },
-    { href: '#', label: '复习', icon: RotateCcw, active: false, disabled: true },
+    {
+      href: AUTH_ROUTES.review,
+      label: '复习',
+      icon: RotateCcw,
+      active: matchesPath(pathname, AUTH_ROUTES.review),
+      disabled: false,
+    },
     { href: '#', label: '成长', icon: TrendingUp, active: false, disabled: true },
   ];
 }

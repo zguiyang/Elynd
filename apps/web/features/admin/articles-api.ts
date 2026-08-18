@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import {
   adminArticleListDataSchema,
   type AdminArticleListQuery,
@@ -96,6 +98,13 @@ export async function unpublishAdminArticle(id: string): Promise<AdminArticle> {
     schema: adminArticleSchema,
   });
   return normalizeAdminArticle(article);
+}
+
+export async function deleteAdminArticle(id: string): Promise<void> {
+  await apiRequest(`/api/admin/articles/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    schema: z.void(),
+  });
 }
 
 export const formatAdminApiError = formatApiError;

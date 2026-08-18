@@ -14,6 +14,16 @@ import {
 } from '@elynd/shared/api/articles';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -29,6 +39,7 @@ import {
   type AdminArticle,
   adminArticlesQueryKey,
   createAdminArticle,
+  deleteAdminArticle,
   formatAdminApiError,
   publishAdminArticle,
   unpublishAdminArticle,
@@ -120,6 +131,8 @@ export function ArticleFormEditor({ mode, articleId, initialArticle }: ArticleFo
   const [values, setValues] = useState<ArticleFormValues>(() =>
     initialArticle ? toFormValues(initialArticle) : emptyFormValues(),
   );
+  const [status, setStatus] = useState(initialArticle?.status ?? 'draft');
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   const wordCount = useMemo(() => countArticleWords(values.body), [values.body]);
   const estimatedMinutes = parseOptionalInt(values.estimatedMinutes);
@@ -193,6 +206,7 @@ export function ArticleFormEditor({ mode, articleId, initialArticle }: ArticleFo
     onSuccess: async (article) => {
       await invalidateArticles(article.id);
       toast.success('已发布');
+      setStatus(article.status);
       if (mode === 'create') {
         router.replace(ADMIN_ROUTES.articleEdit(article.id));
       } else {
@@ -219,7 +233,25 @@ export function ArticleFormEditor({ mode, articleId, initialArticle }: ArticleFo
     onSuccess: async (article) => {
       await invalidateArticles(article.id);
       toast.success('已下架');
+      setStatus(article.status);
       setValues(toFormValues(article));
+    },
+    onError: (error) => {
+      toast.error(formatAdminApiError(error));
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (!articleId) {
+        throw new Error('缺少文章 ID');
+      }
+      await deleteAdminArticle(articleId);
+    },
+    onSuccess: async () => {
+      await invalidateArticles(articleId);
+      toast.success('已删除');
+      router.replace(ADMIN_ROUTES.articles);
     },
     onError: (error) => {
       toast.error(formatAdminApiError(error));
@@ -231,7 +263,8 @@ export function ArticleFormEditor({ mode, articleId, initialArticle }: ArticleFo
   }
 
   const heading = mode === 'create' ? '新建文章' : '编辑文章';
-  const isBusy = saveDraftMutation.isPending || publishMutation.isPending || unpublishMutation.isPending;
+  const isBusy =
+    saveDraftMutation.isPending || publishMutation.isPending || unpublishMutation.isPending || deleteMutation.isPending;
 
   return (
     <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700 mx-auto max-w-3xl">
@@ -463,15 +496,26 @@ export function ArticleFormEditor({ mode, articleId, initialArticle }: ArticleFo
               >
                 {publishMutation.isPending ? '发布中…' : '发布'}
               </Button>
-              {mode === 'edit' ? (
+              {mode === 'edit' && status === 'published' ? (
                 <Button
                   type="button"
-                  variant="destructive"
+                  variant="outline"
                   className="h-11 rounded-xl px-6"
                   disabled={isBusy}
                   onClick={() => unpublishMutation.mutate()}
                 >
                   {unpublishMutation.isPending ? '下架中…' : '下架'}
+                </Button>
+              ) : null}
+              {mode === 'edit' && status === 'draft' ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="h-11 rounded-xl px-6"
+                  disabled={isBusy}
+                  onClick={() => setIsDeleteOpen(true)}
+                >
+                  删除
                 </Button>
               ) : null}
             </CardFooter>
@@ -488,6 +532,27 @@ export function ArticleFormEditor({ mode, articleId, initialArticle }: ArticleFo
           />
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>永久删除这篇文章？</AlertDialogTitle>
+            <AlertDialogDescription>
+              不可恢复。将清除正文、练习题、音频、对照缓存和该文的帮助对话。若已有人读过或做过练习，其进度也会一并消失。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate()}
+            >
+              {deleteMutation.isPending ? '删除中…' : '确认删除'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

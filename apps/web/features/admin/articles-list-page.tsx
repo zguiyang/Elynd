@@ -1,13 +1,25 @@
 'use client';
 
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { FileTextIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 import { type ArticleStatus } from '@elynd/shared/api/articles';
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from '@elynd/shared/api/pagination';
 
 import { LoadingOverlay } from '@/components/loading-overlay';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
@@ -28,6 +40,7 @@ import {
   adminArticlesQueryKey,
   type AdminListParams,
   type AdminListResult,
+  deleteAdminArticle,
   formatAdminApiError,
   listAdminArticles,
 } from '@/features/admin/articles-api';
@@ -100,8 +113,10 @@ function ArticlesTableSkeleton({ rows }: { rows: number }) {
 }
 
 export function ArticlesListPage() {
+  const queryClient = useQueryClient();
   const [status, setStatus] = useState<StatusFilter>('all');
   const [page, setPage] = useState<number>(DEFAULT_PAGE);
+  const [deleteTarget, setDeleteTarget] = useState<AdminArticle | null>(null);
 
   const listParams: AdminListParams = {
     page,
@@ -115,6 +130,18 @@ export function ArticlesListPage() {
     page,
     onPageChange: setPage,
     softRefreshMinMs: TABLE_REFRESH_MIN_MS,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteAdminArticle(id),
+    onSuccess: async () => {
+      setDeleteTarget(null);
+      await queryClient.invalidateQueries({ queryKey: adminArticlesQueryKey.all });
+      toast.success('已删除');
+    },
+    onError: (error) => {
+      toast.error(formatAdminApiError(error));
+    },
   });
 
   const emptyTitle = list.total === 0 && status !== 'all' ? '当前筛选下没有文章' : '还没有文章';
@@ -258,6 +285,16 @@ export function ArticlesListPage() {
                           >
                             音频
                           </Button>
+                          {article.status === 'draft' ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="rounded-xl text-destructive hover:text-destructive"
+                              onClick={() => setDeleteTarget(article)}
+                            >
+                              删除
+                            </Button>
+                          ) : null}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -313,6 +350,31 @@ export function ArticlesListPage() {
           ) : null}
         </div>
       ) : null}
+
+      <AlertDialog open={deleteTarget != null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>永久删除这篇文章？</AlertDialogTitle>
+            <AlertDialogDescription>
+              不可恢复。将清除正文、练习题、音频、对照缓存和该文的帮助对话。若已有人读过或做过练习，其进度也会一并消失。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deleteMutation.isPending || deleteTarget == null}
+              onClick={() => {
+                if (deleteTarget) {
+                  deleteMutation.mutate(deleteTarget.id);
+                }
+              }}
+            >
+              {deleteMutation.isPending ? '删除中…' : '确认删除'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

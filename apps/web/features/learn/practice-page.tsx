@@ -26,6 +26,7 @@ import {
   startLearnPracticeAttempt,
   updateLearnPracticeAttempt,
 } from '@/features/learn/learn-api';
+import { LearnUnavailable } from '@/features/learn/learn-unavailable';
 import { PracticeSummary } from '@/features/learn/practice-summary';
 import { ApiRequestError } from '@/lib/api-request';
 import { cn } from '@/lib/utils';
@@ -99,26 +100,7 @@ export function LearnPracticePage({ articleId }: LearnPracticePageProps) {
   }
 
   if (isNotFound) {
-    return (
-      <div className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col justify-center px-6 py-16">
-        <Empty className="border border-dashed border-border bg-card/50 py-16">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <BookOpenIcon />
-            </EmptyMedia>
-            <EmptyTitle>找不到这篇练习</EmptyTitle>
-            <EmptyDescription>回今日重新打开一篇阅读即可。</EmptyDescription>
-          </EmptyHeader>
-          <Button
-            nativeButton={false}
-            className="mt-6 h-11 rounded-xl px-6 hover:bg-brand-deep"
-            render={<Link href={AUTH_ROUTES.dashboard} />}
-          >
-            回今日
-          </Button>
-        </Empty>
-      </div>
-    );
+    return <LearnUnavailable />;
   }
 
   if (practiceQuery.isError) {

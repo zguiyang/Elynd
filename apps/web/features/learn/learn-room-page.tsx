@@ -18,6 +18,7 @@ import { type BilingualReaderState, LearnArticleReader } from '@/features/learn/
 import { hasAnyLearnAudio } from '@/features/learn/learn-audio-api';
 import { LearnAudioBar } from '@/features/learn/learn-audio-bar';
 import { LearnHelpRail, type PendingAssist } from '@/features/learn/learn-help-rail';
+import { LearnUnavailable } from '@/features/learn/learn-unavailable';
 import { formatTranslateLearnerError, streamTranslateArticle } from '@/features/learn/translate-api';
 import { ApiRequestError } from '@/lib/api-request';
 import { cn } from '@/lib/utils';
@@ -167,26 +168,7 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
   }
 
   if (isNotFound) {
-    return (
-      <div className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col justify-center px-6 py-16">
-        <Empty className="border border-dashed border-border bg-card/50 py-16">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <BookOpenIcon />
-            </EmptyMedia>
-            <EmptyTitle>找不到这篇文章</EmptyTitle>
-            <EmptyDescription>可能已下架或链接无效。</EmptyDescription>
-          </EmptyHeader>
-          <Button
-            nativeButton={false}
-            className="mt-6 h-11 rounded-xl px-6 hover:bg-brand-deep"
-            render={<Link href={AUTH_ROUTES.dashboard} />}
-          >
-            回今日
-          </Button>
-        </Empty>
-      </div>
-    );
+    return <LearnUnavailable />;
   }
 
   if (articleQuery.isError || !article) {

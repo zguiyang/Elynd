@@ -9,6 +9,7 @@ import {
   user as userTable,
 } from '@elynd/db';
 import type { ArticleAudioView, GenerateArticleAudioResult } from '@elynd/shared/api/article-audio';
+import type { AdminArticle } from '@elynd/shared/api/articles';
 import type { TtsInvocationListData, TtsInvocationStats } from '@elynd/shared/api/tts-invocations';
 import { AUTH_ADMIN_ROLE } from '@elynd/shared/auth/policy';
 
@@ -17,7 +18,12 @@ import { db } from '@/db';
 import { encryptApiKey } from '@/lib/llm';
 import * as redisLib from '@/lib/redis';
 import * as azureTts from '@/lib/tts/azure';
+import { articleAudioObjectKey } from '@/modules/article-audio/service';
+import { hashArticleContent } from '@/modules/articles/content-hash';
+import { resetObjectStoreCache, setObjectStoreForTests } from '@/modules/oss';
 import { TTS_CONFIG_ID } from '@/modules/tts/service';
+
+import { createMemoryObjectStore } from '../helpers/memory-oss';
 
 const password = 'password123';
 
@@ -141,6 +147,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await restorePriorConfig();
+  resetObjectStoreCache();
 });
 
 describe('admin article audio', () => {
@@ -159,10 +166,13 @@ describe('admin article audio', () => {
       }),
     });
     expect(create.status).toBe(201);
-    const article = (await create.json()) as { id: string };
+    const article = (await create.json()) as AdminArticle;
+    expect(article.derivedFreshness.audio).toBe('missing');
 
-    const memory = createMemoryRedis();
-    const redisSpy = vi.spyOn(redisLib, 'getRedis').mockReturnValue(memory.client as never);
+    const memoryRedis = createMemoryRedis();
+    const objectStore = createMemoryObjectStore();
+    setObjectStoreForTests(objectStore);
+    const redisSpy = vi.spyOn(redisLib, 'getRedis').mockReturnValue(memoryRedis.client as never);
     const synthesizeSpy = vi.spyOn(azureTts, 'synthesizeAzureTts').mockImplementation(async (input) => ({
       audio: Buffer.from(`mp3-${input.voice}`),
       mimeType: 'audio/mpeg',
@@ -191,11 +201,20 @@ describe('admin article audio', () => {
     expect(generatedBody.tracks.us.voice).toBe('en-US-GuyNeural');
     expect(generatedBody.tracks.uk.voice).toBe('en-GB-SoniaNeural');
     expect(synthesizeSpy).toHaveBeenCalledTimes(2);
-    expect(memory.store.has(`elynd:article-audio:v1:${article.id}:us`)).toBe(true);
-    expect(memory.store.has(`elynd:article-audio:v1:${article.id}:uk`)).toBe(true);
+
+    const contentHash = hashArticleContent('Audio Title', 'Hello audio body.');
+    expect(objectStore.store.has(articleAudioObjectKey(article.id, 'us', contentHash))).toBe(true);
+    expect(objectStore.store.has(articleAudioObjectKey(article.id, 'uk', contentHash))).toBe(true);
 
     const metaRows = await db.select().from(articleAudioTable).where(eq(articleAudioTable.articleId, article.id));
     expect(metaRows).toHaveLength(2);
+    expect(metaRows[0]?.wordTimings.length).toBeGreaterThan(0);
+
+    const detail = await app.request(`/api/admin/articles/${article.id}`, {
+      headers: { Cookie: admin.cookie },
+    });
+    expect(detail.status).toBe(200);
+    expect(((await detail.json()) as AdminArticle).derivedFreshness.audio).toBe('fresh');
 
     const logs = await app.request(
       `/api/admin/tts/invocations?pageSize=20&status=success&articleId=${encodeURIComponent(article.id)}`,
@@ -226,10 +245,10 @@ describe('admin article audio', () => {
     expect(usOnlyBody.results[0]?.cached).toBe(true);
     expect(synthesizeSpy).not.toHaveBeenCalled();
 
-    memory.store.delete(`elynd:article-audio:v1:${article.id}:uk`);
-    for (const key of [...memory.store.keys()]) {
+    objectStore.store.delete(articleAudioObjectKey(article.id, 'uk', contentHash));
+    for (const key of [...memoryRedis.store.keys()]) {
       if (key.startsWith('elynd:tts:v1:')) {
-        memory.store.delete(key);
+        memoryRedis.store.delete(key);
       }
     }
     const expired = await app.request(`/api/admin/articles/${article.id}/audio`, {
@@ -261,11 +280,26 @@ describe('admin article audio', () => {
     const failLogsBody = (await failLogs.json()) as TtsInvocationListData;
     expect(failLogsBody.items.length).toBeGreaterThanOrEqual(1);
 
+    expect(
+      (
+        await app.request(`/api/admin/articles/${article.id}`, {
+          method: 'PATCH',
+          headers: { Cookie: admin.cookie, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ body: 'Hello audio body changed.' }),
+        })
+      ).status,
+    ).toBe(200);
+    const staleDetail = await app.request(`/api/admin/articles/${article.id}`, {
+      headers: { Cookie: admin.cookie },
+    });
+    expect(((await staleDetail.json()) as AdminArticle).derivedFreshness.audio).toBe('stale');
+
     await db.delete(ttsInvocationLogTable).where(eq(ttsInvocationLogTable.articleId, article.id));
     await db.delete(articleAudioTable).where(eq(articleAudioTable.articleId, article.id));
     await db.delete(articleTable).where(eq(articleTable.id, article.id));
 
     synthesizeSpy.mockRestore();
     redisSpy.mockRestore();
+    resetObjectStoreCache();
   });
 });

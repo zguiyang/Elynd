@@ -15,7 +15,12 @@ import { db } from '@/db';
 import { encryptApiKey } from '@/lib/llm';
 import * as redisLib from '@/lib/redis';
 import * as azureTts from '@/lib/tts/azure';
+import { articleAudioObjectKey } from '@/modules/article-audio/service';
+import { hashArticleContent } from '@/modules/articles/content-hash';
+import { resetObjectStoreCache, setObjectStoreForTests } from '@/modules/oss';
 import { TTS_CONFIG_ID } from '@/modules/tts/service';
+
+import { createMemoryObjectStore } from '../helpers/memory-oss';
 
 const password = 'password123';
 
@@ -135,10 +140,11 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await restorePriorConfig();
+  resetObjectStoreCache();
 });
 
 describe('learner article audio', () => {
-  it('exposes availability and serves published tracks only', async () => {
+  it('exposes availability and serves published fresh tracks only', async () => {
     const admin = await createSession('admin');
     const learner = await createSession('user');
     await ensureTtsConfig();
@@ -158,8 +164,10 @@ describe('learner article audio', () => {
     expect(create.status).toBe(201);
     const article = (await create.json()) as { id: string };
 
-    const memory = createMemoryRedis();
-    const redisSpy = vi.spyOn(redisLib, 'getRedis').mockReturnValue(memory.client as never);
+    const memoryRedis = createMemoryRedis();
+    const objectStore = createMemoryObjectStore();
+    setObjectStoreForTests(objectStore);
+    const redisSpy = vi.spyOn(redisLib, 'getRedis').mockReturnValue(memoryRedis.client as never);
     vi.spyOn(azureTts, 'synthesizeAzureTts').mockImplementation(async (input) => ({
       audio: Buffer.from(`mp3-${input.voice}`),
       mimeType: 'audio/mpeg',
@@ -218,7 +226,8 @@ describe('learner article audio', () => {
       textOffset: 0,
     });
 
-    memory.store.delete(`elynd:article-audio:v1:${article.id}:uk`);
+    const contentHash = hashArticleContent('Listen Title', 'Listen body here.');
+    objectStore.store.delete(articleAudioObjectKey(article.id, 'uk', contentHash));
     const ukGone = await app.request(`/api/learn/articles/${article.id}/audio?role=uk`, {
       headers: { Cookie: learner.cookie },
     });
@@ -229,9 +238,30 @@ describe('learner article audio', () => {
     });
     expect(((await avail.json()) as LearnArticleData).audioAvailable).toEqual({ us: true, uk: false });
 
+    expect(
+      (
+        await app.request(`/api/admin/articles/${article.id}`, {
+          method: 'PATCH',
+          headers: { Cookie: admin.cookie, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ body: 'Listen body changed.' }),
+        })
+      ).status,
+    ).toBe(200);
+
+    const staleAvail = await app.request(`/api/learn/articles/${article.id}`, {
+      headers: { Cookie: learner.cookie },
+    });
+    expect(((await staleAvail.json()) as LearnArticleData).audioAvailable).toEqual({ us: false, uk: false });
+
+    const staleTrack = await app.request(`/api/learn/articles/${article.id}/audio?role=us`, {
+      headers: { Cookie: learner.cookie },
+    });
+    expect(staleTrack.status).toBe(404);
+
     await db.delete(articleAudioTable).where(eq(articleAudioTable.articleId, article.id));
     await db.delete(articleTable).where(eq(articleTable.id, article.id));
     redisSpy.mockRestore();
     vi.restoreAllMocks();
+    resetObjectStoreCache();
   });
 });

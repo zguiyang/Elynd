@@ -1,7 +1,4 @@
-import { createHash } from 'node:crypto';
-
 import { and, eq } from 'drizzle-orm';
-import { z } from 'zod';
 
 import { article as articleTable, articleAudio as articleAudioTable } from '@elynd/db';
 import {
@@ -13,38 +10,25 @@ import {
   type GenerateArticleAudioResult,
   type GenerateArticleAudioRoleResult,
 } from '@elynd/shared/api/article-audio';
-import { type TtsWordTiming, ttsWordTimingSchema } from '@elynd/shared/api/tts';
+import { type TtsWordTiming } from '@elynd/shared/api/tts';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';
 import { AppError, NotFoundError } from '@/lib/errors';
 import { rootLogger } from '@/lib/logger';
-import { getRedis } from '@/lib/redis';
+import { hashArticleContent } from '@/modules/articles/content-hash';
+import { deleteObject, getObject, objectExists, putObject } from '@/modules/oss';
 import { recordTtsInvocation } from '@/modules/tts/log';
 import { synthesizeTts } from '@/modules/tts/service';
 
 const articleAudioLogger = rootLogger.child({ module: 'ArticleAudio' });
 
-const ARTICLE_AUDIO_TTL_SECONDS = 30 * 24 * 60 * 60;
 const ALL_ROLES: ArticleAudioRole[] = ['us', 'uk'];
 
-const articleAudioRedisPayloadSchema = z.object({
-  mimeType: z.string().min(1),
-  voice: z.string().min(1),
-  audioBase64: z.string().min(1),
-  wordTimings: z.array(ttsWordTimingSchema),
-  contentHash: z.string().min(1),
-});
-
-type ArticleAudioRedisPayload = z.infer<typeof articleAudioRedisPayloadSchema>;
 type MetaRow = typeof articleAudioTable.$inferSelect;
 
-function articleAudioRedisKey(articleId: string, role: ArticleAudioRole): string {
-  return `elynd:article-audio:v1:${articleId}:${role}`;
-}
-
-export function hashArticleAudioContent(title: string, body: string): string {
-  return createHash('sha256').update(buildArticleAudioText(title, body), 'utf8').digest('hex');
+export function articleAudioObjectKey(articleId: string, role: ArticleAudioRole, contentHash: string): string {
+  return `article-audio/${articleId}/${role}/${contentHash}.mp3`;
 }
 
 function resolveGenerateRoles(body: GenerateArticleAudioBody): ArticleAudioRole[] {
@@ -67,39 +51,19 @@ async function loadArticle(articleId: string): Promise<{ id: string; title: stri
   return row;
 }
 
-async function readArticleAudioBlob(
-  articleId: string,
-  role: ArticleAudioRole,
-): Promise<ArticleAudioRedisPayload | null> {
-  const key = articleAudioRedisKey(articleId, role);
+async function readArticleAudioBytes(storageKey: string): Promise<{ audioBase64: string; mimeType: string } | null> {
   try {
-    const raw = await getRedis().get(key);
-    if (!raw) {
+    const object = await getObject(storageKey);
+    if (!object) {
       return null;
     }
-    const parsed = articleAudioRedisPayloadSchema.safeParse(JSON.parse(raw) as unknown);
-    if (!parsed.success) {
-      articleAudioLogger.warn({ articleId, role, key }, 'Invalid article audio Redis payload; ignoring');
-      return null;
-    }
-    return parsed.data;
+    return {
+      audioBase64: object.body.toString('base64'),
+      mimeType: object.contentType,
+    };
   } catch (error) {
-    articleAudioLogger.warn({ err: error, articleId, role }, 'Redis article audio read failed');
+    articleAudioLogger.warn({ err: error, storageKey }, 'Object storage article audio read failed');
     return null;
-  }
-}
-
-async function writeArticleAudioBlob(
-  articleId: string,
-  role: ArticleAudioRole,
-  payload: ArticleAudioRedisPayload,
-): Promise<void> {
-  const key = articleAudioRedisKey(articleId, role);
-  try {
-    await getRedis().set(key, JSON.stringify(payload), 'EX', ARTICLE_AUDIO_TTL_SECONDS);
-  } catch (error) {
-    articleAudioLogger.warn({ err: error, articleId, role }, 'Redis article audio write failed');
-    throw new AppError(HTTP_STATUS.SERVICE_UNAVAILABLE, 'Failed to store article audio');
   }
 }
 
@@ -125,7 +89,7 @@ function toTrack(input: {
   role: ArticleAudioRole;
   currentContentHash: string;
   meta: MetaRow | null;
-  blob: ArticleAudioRedisPayload | null;
+  blob: { audioBase64: string; mimeType: string } | null;
 }): ArticleAudioTrack {
   const { role, currentContentHash, meta, blob } = input;
   if (!meta) {
@@ -149,13 +113,13 @@ function toTrack(input: {
     audioAvailable,
     expired,
     audioBase64: blob?.audioBase64 ?? null,
-    wordTimings: blob?.wordTimings,
+    wordTimings: meta.wordTimings,
   };
 }
 
 export async function getArticleAudio(articleId: string): Promise<ArticleAudioView> {
   const article = await loadArticle(articleId);
-  const currentContentHash = hashArticleAudioContent(article.title, article.body);
+  const currentContentHash = hashArticleContent(article.title, article.body);
   const metaRows = await db.select().from(articleAudioTable).where(eq(articleAudioTable.articleId, articleId));
   const metaByRole = new Map<string, MetaRow>();
   for (const row of metaRows) {
@@ -164,18 +128,21 @@ export async function getArticleAudio(articleId: string): Promise<ArticleAudioVi
     }
   }
 
+  const usMeta = metaByRole.get('us') ?? null;
+  const ukMeta = metaByRole.get('uk') ?? null;
+
   const tracks = {
     us: toTrack({
       role: 'us',
       currentContentHash,
-      meta: metaByRole.get('us') ?? null,
-      blob: metaByRole.has('us') ? await readArticleAudioBlob(articleId, 'us') : null,
+      meta: usMeta,
+      blob: usMeta ? await readArticleAudioBytes(usMeta.storageKey) : null,
     }),
     uk: toTrack({
       role: 'uk',
       currentContentHash,
-      meta: metaByRole.get('uk') ?? null,
-      blob: metaByRole.has('uk') ? await readArticleAudioBlob(articleId, 'uk') : null,
+      meta: ukMeta,
+      blob: ukMeta ? await readArticleAudioBytes(ukMeta.storageKey) : null,
     }),
   };
 
@@ -195,7 +162,7 @@ async function generateOneRole(input: {
   userId?: string;
 }): Promise<GenerateArticleAudioRoleResult> {
   const { articleId, role, text, contentHash, userId } = input;
-  const redisKey = articleAudioRedisKey(articleId, role);
+  const storageKey = articleAudioObjectKey(articleId, role, contentHash);
   const existingRows = await db
     .select()
     .from(articleAudioTable)
@@ -213,13 +180,22 @@ async function generateOneRole(input: {
     });
     const latencyMs = Date.now() - started;
 
-    await writeArticleAudioBlob(articleId, role, {
-      mimeType: result.mimeType,
-      voice: result.voice,
-      audioBase64: result.audio.toString('base64'),
-      wordTimings: result.wordTimings,
-      contentHash,
+    await putObject({
+      key: storageKey,
+      body: result.audio,
+      contentType: result.mimeType,
     });
+
+    if (existing?.storageKey && existing.storageKey !== storageKey) {
+      try {
+        await deleteObject(existing.storageKey);
+      } catch (error) {
+        articleAudioLogger.warn(
+          { err: error, articleId, role, key: existing.storageKey },
+          'Failed to delete previous article audio object',
+        );
+      }
+    }
 
     const generatedAt = new Date();
     await db
@@ -230,9 +206,10 @@ async function generateOneRole(input: {
         status: 'ready',
         voice: result.voice,
         contentHash,
-        redisKey,
+        storageKey,
         mimeType: result.mimeType,
         durationMs: null,
+        wordTimings: result.wordTimings,
         lastError: null,
         generatedAt,
       })
@@ -242,9 +219,10 @@ async function generateOneRole(input: {
           status: 'ready',
           voice: result.voice,
           contentHash,
-          redisKey,
+          storageKey,
           mimeType: result.mimeType,
           durationMs: null,
+          wordTimings: result.wordTimings,
           lastError: null,
           generatedAt,
         },
@@ -283,9 +261,10 @@ async function generateOneRole(input: {
           status: 'failed',
           voice: existing?.voice ?? 'unknown',
           contentHash: existing?.contentHash ?? contentHash,
-          redisKey: existing?.redisKey ?? redisKey,
+          storageKey: existing?.storageKey ?? storageKey,
           mimeType: existing?.mimeType ?? 'audio/mpeg',
           durationMs: existing?.durationMs ?? null,
+          wordTimings: existing?.wordTimings ?? [],
           lastError: message,
           generatedAt: existing?.generatedAt ?? null,
         })
@@ -328,7 +307,7 @@ export async function generateArticleAudio(
     throw new AppError(HTTP_STATUS.BAD_REQUEST, 'Article has no text to synthesize');
   }
 
-  const contentHash = hashArticleAudioContent(article.title, article.body);
+  const contentHash = hashArticleContent(article.title, article.body);
   const roles = resolveGenerateRoles(body);
   const results: GenerateArticleAudioRoleResult[] = [];
 
@@ -350,26 +329,39 @@ export async function generateArticleAudio(
 
 export type ArticleAudioAvailability = { us: boolean; uk: boolean };
 
-async function isTrackPlayable(articleId: string, role: ArticleAudioRole): Promise<boolean> {
+async function isTrackPlayable(
+  article: { title: string; body: string },
+  articleId: string,
+  role: ArticleAudioRole,
+): Promise<boolean> {
+  const sourceHash = hashArticleContent(article.title, article.body);
   const [meta] = await db
     .select()
     .from(articleAudioTable)
     .where(and(eq(articleAudioTable.articleId, articleId), eq(articleAudioTable.role, role)))
     .limit(1);
-  if (!meta || meta.status !== 'ready') {
+  if (!meta || meta.status !== 'ready' || meta.contentHash !== sourceHash) {
     return false;
   }
-  const blob = await readArticleAudioBlob(articleId, role);
-  return Boolean(blob);
+  try {
+    return await objectExists(meta.storageKey);
+  } catch (error) {
+    articleAudioLogger.warn({ err: error, articleId, role }, 'Object storage exists check failed');
+    return false;
+  }
 }
 
-/** Learner: which accent tracks are ready with Redis bytes present. */
+/** Learner: which accent tracks are ready, content-fresh, and present in object storage. */
 export async function getArticleAudioAvailability(articleId: string): Promise<ArticleAudioAvailability> {
-  const [us, uk] = await Promise.all([isTrackPlayable(articleId, 'us'), isTrackPlayable(articleId, 'uk')]);
+  const article = await loadArticle(articleId);
+  const [us, uk] = await Promise.all([
+    isTrackPlayable(article, articleId, 'us'),
+    isTrackPlayable(article, articleId, 'uk'),
+  ]);
   return { us, uk };
 }
 
-/** Learner: published article only; returns one track blob or NotFound. */
+/** Learner: published article only; refuses stale or missing objects. */
 export async function getPublishedArticleAudioTrack(
   articleId: string,
   role: ArticleAudioRole,
@@ -381,7 +373,7 @@ export async function getPublishedArticleAudioTrack(
   wordTimings: TtsWordTiming[];
 }> {
   const [article] = await db
-    .select({ id: articleTable.id })
+    .select({ id: articleTable.id, title: articleTable.title, body: articleTable.body })
     .from(articleTable)
     .where(and(eq(articleTable.id, articleId), eq(articleTable.status, 'published')))
     .limit(1);
@@ -389,16 +381,17 @@ export async function getPublishedArticleAudioTrack(
     throw new NotFoundError('Article');
   }
 
+  const sourceHash = hashArticleContent(article.title, article.body);
   const [meta] = await db
     .select()
     .from(articleAudioTable)
     .where(and(eq(articleAudioTable.articleId, articleId), eq(articleAudioTable.role, role)))
     .limit(1);
-  if (!meta || meta.status !== 'ready') {
+  if (!meta || meta.status !== 'ready' || meta.contentHash !== sourceHash) {
     throw new NotFoundError('Article audio');
   }
 
-  const blob = await readArticleAudioBlob(articleId, role);
+  const blob = await readArticleAudioBytes(meta.storageKey);
   if (!blob) {
     throw new NotFoundError('Article audio');
   }
@@ -406,8 +399,8 @@ export async function getPublishedArticleAudioTrack(
   return {
     role,
     mimeType: blob.mimeType,
-    voice: blob.voice,
+    voice: meta.voice,
     audioBase64: blob.audioBase64,
-    wordTimings: blob.wordTimings,
+    wordTimings: meta.wordTimings,
   };
 }

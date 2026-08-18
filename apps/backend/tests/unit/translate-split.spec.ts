@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  createTranslateLineParser,
-  hashArticleContent,
-  parseTranslateOutputLine,
-  splitArticleSentences,
-} from '@/modules/translate/split';
+import { hashArticleContent } from '@/modules/articles/content-hash';
+import { createTranslateLineParser, parseTranslateOutputLine, splitArticleSentences } from '@/modules/translate/split';
 
 describe('hashArticleContent', () => {
   it('is stable for equivalent whitespace', () => {

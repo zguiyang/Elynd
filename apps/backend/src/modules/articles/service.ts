@@ -4,11 +4,13 @@ import { and, asc, count, desc, eq, ilike, or, type SQL, sql } from 'drizzle-orm
 
 import { article as articleTable } from '@elynd/db';
 import {
+  type AdminArticle,
   type AdminArticleListData,
   type AdminArticleListQuery,
   type Article,
   buildPaginationMeta,
   type CreateArticleBody,
+  type DerivedFreshness,
   getPublishArticleIssues,
   type LibraryArticleListData,
   type LibraryArticleListQuery,
@@ -17,6 +19,7 @@ import {
 
 import { db } from '@/db';
 import { AppError, NotFoundError, ValidationFailedError } from '@/lib/errors';
+import { getArticleDerivedFreshness, getArticlesDerivedFreshness } from '@/modules/derived-freshness';
 
 type ArticleRow = typeof articleTable.$inferSelect;
 
@@ -35,6 +38,15 @@ function toArticle(row: ArticleRow): Article {
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     publishedAt: row.publishedAt ? row.publishedAt.toISOString() : null,
+  };
+}
+
+async function toAdminArticle(row: ArticleRow, freshness?: DerivedFreshness): Promise<AdminArticle> {
+  const derivedFreshness =
+    freshness ?? (await getArticleDerivedFreshness({ id: row.id, title: row.title, body: row.body }));
+  return {
+    ...toArticle(row),
+    derivedFreshness,
   };
 }
 
@@ -84,7 +96,7 @@ function aggregateThemes(rows: { themes: string[] }[]): string[] {
   return ordered;
 }
 
-export async function createArticle(input: CreateArticleBody) {
+export async function createArticle(input: CreateArticleBody): Promise<AdminArticle> {
   const id = randomUUID();
   const [row] = await db
     .insert(articleTable)
@@ -106,7 +118,7 @@ export async function createArticle(input: CreateArticleBody) {
   if (!row) {
     throw new AppError(500, 'Failed to create article');
   }
-  return toArticle(row);
+  return toAdminArticle(row, { audio: 'missing' });
 }
 
 export async function listAdminArticles(query: AdminArticleListQuery): Promise<AdminArticleListData> {
@@ -129,8 +141,12 @@ export async function listAdminArticles(query: AdminArticleListQuery): Promise<A
         .offset(offset)
     : await db.select().from(articleTable).orderBy(primary, desc(articleTable.id)).limit(query.pageSize).offset(offset);
 
+  const freshnessMap = await getArticlesDerivedFreshness(
+    rows.map((row) => ({ id: row.id, title: row.title, body: row.body })),
+  );
+
   return {
-    items: rows.map(toArticle),
+    items: await Promise.all(rows.map((row) => toAdminArticle(row, freshnessMap.get(row.id)))),
     pagination: buildPaginationMeta({
       page: query.page,
       pageSize: query.pageSize,
@@ -141,15 +157,15 @@ export async function listAdminArticles(query: AdminArticleListQuery): Promise<A
   };
 }
 
-export async function getAdminArticle(id: string) {
+export async function getAdminArticle(id: string): Promise<AdminArticle> {
   const [row] = await db.select().from(articleTable).where(eq(articleTable.id, id)).limit(1);
   if (!row) {
     throw new NotFoundError('Article');
   }
-  return toArticle(row);
+  return toAdminArticle(row);
 }
 
-export async function updateArticle(id: string, input: UpdateArticleBody) {
+export async function updateArticle(id: string, input: UpdateArticleBody): Promise<AdminArticle> {
   const [existing] = await db.select().from(articleTable).where(eq(articleTable.id, id)).limit(1);
   if (!existing) {
     throw new NotFoundError('Article');
@@ -166,17 +182,17 @@ export async function updateArticle(id: string, input: UpdateArticleBody) {
   if (input.estimatedMinutes !== undefined) patch.estimatedMinutes = input.estimatedMinutes;
 
   if (Object.keys(patch).length === 0) {
-    return toArticle(existing);
+    return toAdminArticle(existing);
   }
 
   const [row] = await db.update(articleTable).set(patch).where(eq(articleTable.id, id)).returning();
   if (!row) {
     throw new NotFoundError('Article');
   }
-  return toArticle(row);
+  return toAdminArticle(row);
 }
 
-export async function publishArticle(id: string) {
+export async function publishArticle(id: string): Promise<AdminArticle> {
   const [existing] = await db.select().from(articleTable).where(eq(articleTable.id, id)).limit(1);
   if (!existing) {
     throw new NotFoundError('Article');
@@ -204,10 +220,10 @@ export async function publishArticle(id: string) {
   if (!row) {
     throw new NotFoundError('Article');
   }
-  return toArticle(row);
+  return toAdminArticle(row);
 }
 
-export async function unpublishArticle(id: string) {
+export async function unpublishArticle(id: string): Promise<AdminArticle> {
   const [existing] = await db.select().from(articleTable).where(eq(articleTable.id, id)).limit(1);
   if (!existing) {
     throw new NotFoundError('Article');
@@ -222,7 +238,7 @@ export async function unpublishArticle(id: string) {
   if (!row) {
     throw new NotFoundError('Article');
   }
-  return toArticle(row);
+  return toAdminArticle(row);
 }
 
 export async function listPublishedArticles(query: LibraryArticleListQuery): Promise<LibraryArticleListData> {

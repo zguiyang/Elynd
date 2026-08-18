@@ -10,13 +10,13 @@ import { AUTH_ROUTES } from '@/constants';
 /** Shared 404 when a learner article is unpublished or gone. */
 export function LearnUnavailable() {
   return (
-    <div className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col justify-center px-6 py-16">
-      <Empty className="border border-dashed border-border bg-card/50 py-16">
-        <EmptyHeader>
+    <div className="flex min-h-[100dvh] w-full flex-col items-center justify-center bg-background px-6 py-16">
+      <Empty className="w-full max-w-md flex-none border-0 py-4">
+        <EmptyHeader className="max-w-none">
           <EmptyMedia variant="icon">
             <BookOpenIcon />
           </EmptyMedia>
-          <EmptyTitle>这篇已下架</EmptyTitle>
+          <EmptyTitle className="text-2xl">这篇已下架</EmptyTitle>
           <EmptyDescription>可能涉及版权或其他原因。抱歉给你添麻烦了。</EmptyDescription>
         </EmptyHeader>
         <div className="mt-6 flex flex-wrap justify-center gap-3">

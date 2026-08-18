@@ -161,7 +161,7 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
 
   if (articleQuery.isPending) {
     return (
-      <div className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col justify-center px-6 py-16">
+      <div className="mx-auto flex min-h-[100dvh] w-full max-w-3xl flex-col justify-center px-6 py-16">
         <p className="text-sm text-muted-foreground">加载中…</p>
       </div>
     );
@@ -173,7 +173,7 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
 
   if (articleQuery.isError || !article) {
     return (
-      <div className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col justify-center px-6 py-16">
+      <div className="mx-auto flex min-h-[100dvh] w-full max-w-3xl flex-col justify-center px-6 py-16">
         <Empty className="border border-dashed border-border bg-card/50 py-16">
           <EmptyHeader>
             <EmptyMedia variant="icon">

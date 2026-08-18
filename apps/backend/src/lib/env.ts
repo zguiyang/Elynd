@@ -9,28 +9,49 @@ const envFilePath = resolve(dirname(fileURLToPath(import.meta.url)), '../../.env
 /** Empty string in `.env` → treat as unset. */
 const emptyToUndefined = (value: unknown) => (value === '' || value === undefined ? undefined : value);
 
-const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  PORT: z.coerce.number().int().positive().default(3333),
-  HOST: z.string().min(1).default('localhost'),
-  LOG_LEVEL: z.string().min(1).default('info'),
+const optionalNonEmpty = z.preprocess(emptyToUndefined, z.string().min(1).optional());
 
-  FRONTEND_URL: z.string().url(),
-  BETTER_AUTH_SECRET: z.string().min(16),
+const envSchema = z
+  .object({
+    NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+    PORT: z.coerce.number().int().positive().default(3333),
+    HOST: z.string().min(1).default('localhost'),
+    LOG_LEVEL: z.string().min(1).default('info'),
 
-  DATABASE_URL: z.string().url(),
-  REDIS_URL: z.string().url(),
+    FRONTEND_URL: z.string().url(),
+    BETTER_AUTH_SECRET: z.string().min(16),
 
-  RESEND_API_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
-  MAIL_FROM_ADDRESS: z.string().email(),
-  MAIL_FROM_NAME: z.string().min(1),
+    DATABASE_URL: z.string().url(),
+    REDIS_URL: z.string().url(),
 
-  /**
-   * 32-byte key material as base64 or 64-char hex — used to encrypt LLM API keys at rest.
-   * Generate: `openssl rand -base64 32`
-   */
-  LLM_CONFIG_ENCRYPTION_KEY: z.string().min(1),
-});
+    RESEND_API_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    MAIL_FROM_ADDRESS: z.string().email(),
+    MAIL_FROM_NAME: z.string().min(1),
+
+    /**
+     * 32-byte key material as base64 or 64-char hex — used to encrypt LLM API keys at rest.
+     * Generate: `openssl rand -base64 32`
+     */
+    LLM_CONFIG_ENCRYPTION_KEY: z.string().min(1),
+
+    /** Object storage driver — only `r2` is implemented today. */
+    OSS_DRIVER: z.enum(['r2']).default('r2'),
+    R2_ACCOUNT_ID: optionalNonEmpty,
+    R2_BUCKET: optionalNonEmpty,
+    R2_ACCESS_KEY_ID: optionalNonEmpty,
+    R2_SECRET_ACCESS_KEY: optionalNonEmpty,
+  })
+  .superRefine((data, ctx) => {
+    const r2Fields = [data.R2_ACCOUNT_ID, data.R2_BUCKET, data.R2_ACCESS_KEY_ID, data.R2_SECRET_ACCESS_KEY];
+    const setCount = r2Fields.filter(Boolean).length;
+    if (setCount > 0 && setCount < 4) {
+      ctx.addIssue({
+        code: 'custom',
+        message:
+          'R2_ACCOUNT_ID, R2_BUCKET, R2_ACCESS_KEY_ID, and R2_SECRET_ACCESS_KEY must all be set together (or all omitted)',
+      });
+    }
+  });
 
 export type Env = z.infer<typeof envSchema>;
 
@@ -44,3 +65,7 @@ function getEnvConfig(processEnv: NodeJS.ProcessEnv = process.env): Env {
 }
 
 export const env = getEnvConfig();
+
+export function isR2ObjectStorageConfigured(config: Env = env): boolean {
+  return Boolean(config.R2_ACCOUNT_ID && config.R2_BUCKET && config.R2_ACCESS_KEY_ID && config.R2_SECRET_ACCESS_KEY);
+}

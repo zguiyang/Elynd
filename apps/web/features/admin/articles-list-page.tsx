@@ -203,7 +203,19 @@ export function ArticlesListPage() {
                       className="border-border transition-colors duration-300 ease-out-soft hover:bg-muted/30"
                     >
                       <TableCell className="max-w-xs px-5 py-4 font-medium whitespace-normal text-foreground">
-                        {article.title}
+                        <div className="flex flex-col gap-2">
+                          <span>{article.title}</span>
+                          {article.derivedFreshness.audio === 'missing' ? (
+                            <Badge variant="outline" className="w-fit font-normal">
+                              音频未生成
+                            </Badge>
+                          ) : null}
+                          {article.derivedFreshness.audio === 'stale' ? (
+                            <Badge variant="secondary" className="w-fit font-normal">
+                              音频需更新
+                            </Badge>
+                          ) : null}
+                        </div>
                       </TableCell>
                       <TableCell className="px-5 py-4">
                         <Badge variant={article.status === 'published' ? 'secondary' : 'outline'}>

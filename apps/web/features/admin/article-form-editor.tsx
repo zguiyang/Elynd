@@ -13,6 +13,7 @@ import {
   getPublishArticleIssues,
 } from '@elynd/shared/api/articles';
 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -270,6 +271,32 @@ export function ArticleFormEditor({ mode, articleId, initialArticle }: ArticleFo
           </div>
         ) : null}
       </div>
+
+      {mode === 'edit' && initialArticle?.derivedFreshness.audio === 'stale' ? (
+        <Alert className="mt-6 rounded-2xl border-border bg-muted/40 px-4 py-3">
+          <AlertTitle>音频需更新</AlertTitle>
+          <AlertDescription>
+            正文已变更，当前美音/英音对应旧内容。请打开
+            <Link href={ADMIN_ROUTES.articleAudio(articleId!)} className="mx-1 font-medium text-foreground">
+              音频工作台
+            </Link>
+            重新生成。
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {mode === 'edit' && initialArticle?.derivedFreshness.audio === 'missing' ? (
+        <Alert className="mt-6 rounded-2xl border-border bg-muted/40 px-4 py-3">
+          <AlertTitle>音频未生成</AlertTitle>
+          <AlertDescription>
+            这篇短文还没有美音/英音。可在
+            <Link href={ADMIN_ROUTES.articleAudio(articleId!)} className="mx-1 font-medium text-foreground">
+              音频工作台
+            </Link>
+            生成。
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       <Tabs defaultValue="edit" className="mt-10">
         <AdminSegmentedTabsList aria-label="编辑或预览">

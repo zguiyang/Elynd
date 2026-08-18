@@ -1,16 +1,16 @@
 import {
   adminArticleListDataSchema,
   type AdminArticleListQuery,
-  articleSchema,
+  adminArticleSchema,
   type CreateArticleBody,
   type UpdateArticleBody,
 } from '@elynd/shared/api/articles';
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, type PaginationMeta } from '@elynd/shared/api/pagination';
 
-import { type ArticleView, normalizeArticle } from '@/features/articles-http';
+import { type AdminArticleView, normalizeAdminArticle } from '@/features/articles-http';
 import { apiRequest, formatApiError } from '@/lib/api-request';
 
-export type AdminArticle = ArticleView;
+export type AdminArticle = AdminArticleView;
 
 export type AdminListResult = {
   items: AdminArticle[];
@@ -51,51 +51,51 @@ export async function listAdminArticles(
     signal: init?.signal,
   });
   return {
-    items: body.items.map(normalizeArticle),
+    items: body.items.map(normalizeAdminArticle),
     pagination: body.pagination,
   };
 }
 
 export async function getAdminArticle(id: string, init?: { signal?: AbortSignal }): Promise<AdminArticle> {
   const article = await apiRequest(`/api/admin/articles/${encodeURIComponent(id)}`, {
-    schema: articleSchema,
+    schema: adminArticleSchema,
     signal: init?.signal,
   });
-  return normalizeArticle(article);
+  return normalizeAdminArticle(article);
 }
 
 export async function createAdminArticle(input: CreateArticleBody): Promise<AdminArticle> {
   const article = await apiRequest(`/api/admin/articles`, {
     method: 'POST',
-    schema: articleSchema,
+    schema: adminArticleSchema,
     json: input,
   });
-  return normalizeArticle(article);
+  return normalizeAdminArticle(article);
 }
 
 export async function updateAdminArticle(id: string, input: UpdateArticleBody): Promise<AdminArticle> {
   const article = await apiRequest(`/api/admin/articles/${encodeURIComponent(id)}`, {
     method: 'PATCH',
-    schema: articleSchema,
+    schema: adminArticleSchema,
     json: input,
   });
-  return normalizeArticle(article);
+  return normalizeAdminArticle(article);
 }
 
 export async function publishAdminArticle(id: string): Promise<AdminArticle> {
   const article = await apiRequest(`/api/admin/articles/${encodeURIComponent(id)}/publish`, {
     method: 'POST',
-    schema: articleSchema,
+    schema: adminArticleSchema,
   });
-  return normalizeArticle(article);
+  return normalizeAdminArticle(article);
 }
 
 export async function unpublishAdminArticle(id: string): Promise<AdminArticle> {
   const article = await apiRequest(`/api/admin/articles/${encodeURIComponent(id)}/unpublish`, {
     method: 'POST',
-    schema: articleSchema,
+    schema: adminArticleSchema,
   });
-  return normalizeArticle(article);
+  return normalizeAdminArticle(article);
 }
 
 export const formatAdminApiError = formatApiError;

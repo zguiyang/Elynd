@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 
 import { type ArticleAudioRole, type ArticleAudioTrack } from '@elynd/shared/api/article-audio';
 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
@@ -61,7 +62,7 @@ function statusPresentation(track: ArticleAudioTrack): {
     return { label: '失败', variant: 'destructive', detail: track.lastError ?? undefined };
   }
   if (track.expired) {
-    return { label: '已过期', variant: 'outline', detail: 'Redis 中已无音频，请重新生成' };
+    return { label: '已过期', variant: 'outline', detail: '对象存储中已无音频，请重新生成' };
   }
   if (track.contentStale) {
     return { label: '原文已变更', variant: 'secondary', detail: '当前音频对应旧正文，建议重新生成' };
@@ -187,6 +188,13 @@ export function ArticleAudioPage({ articleId }: ArticleAudioPageProps) {
         <h1 className="font-heading text-4xl font-bold tracking-tight md:text-5xl">{article.title}</h1>
         <p className="mt-3 text-lg text-muted-foreground">短文音频工作台 · 美音与英音各一条</p>
       </div>
+
+      {article.derivedFreshness.audio === 'stale' ? (
+        <Alert className="mt-6 rounded-2xl border-border bg-muted/40 px-4 py-3">
+          <AlertTitle>音频需更新</AlertTitle>
+          <AlertDescription>正文已变更，请重新生成美音与英音以保持与短文一致。</AlertDescription>
+        </Alert>
+      ) : null}
 
       <section className="mt-8 rounded-3xl border border-border bg-card px-5 py-5 md:px-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

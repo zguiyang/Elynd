@@ -1,4 +1,4 @@
-import type { Article } from '@elynd/shared/api/articles';
+import type { AdminArticle, Article, DerivedFreshness } from '@elynd/shared/api/articles';
 
 /** Article view model: same fields as shared `Article`, dates as ISO strings. */
 export type ArticleView = {
@@ -15,6 +15,10 @@ export type ArticleView = {
   createdAt: string;
   updatedAt: string;
   publishedAt: string | null;
+};
+
+export type AdminArticleView = ArticleView & {
+  derivedFreshness: DerivedFreshness;
 };
 
 function toIso(value: string | Date): string {
@@ -36,5 +40,12 @@ export function normalizeArticle(raw: Article): ArticleView {
     createdAt: toIso(raw.createdAt),
     updatedAt: toIso(raw.updatedAt),
     publishedAt: raw.publishedAt == null ? null : toIso(raw.publishedAt),
+  };
+}
+
+export function normalizeAdminArticle(raw: AdminArticle): AdminArticleView {
+  return {
+    ...normalizeArticle(raw),
+    derivedFreshness: raw.derivedFreshness,
   };
 }

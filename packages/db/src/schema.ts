@@ -328,7 +328,15 @@ export const ttsConfig = pgTable('tts_config', {
     .notNull(),
 });
 
-/** Per-article per-role TTS audio metadata (bytes live in Redis with 30-day TTL). */
+/** Word boundary timings for article audio (mirrors TTS wordTimings). */
+export type ArticleAudioWordTiming = {
+  text: string;
+  audioOffsetMs: number;
+  durationMs: number;
+  textOffset: number;
+};
+
+/** Per-article per-role TTS audio metadata (bytes live in object storage). */
 export const articleAudio = pgTable(
   'article_audio',
   {
@@ -340,9 +348,10 @@ export const articleAudio = pgTable(
     status: text('status').notNull(),
     voice: text('voice').notNull(),
     contentHash: text('content_hash').notNull(),
-    redisKey: text('redis_key').notNull(),
+    storageKey: text('storage_key').notNull(),
     mimeType: text('mime_type').notNull(),
     durationMs: integer('duration_ms'),
+    wordTimings: jsonb('word_timings').$type<ArticleAudioWordTiming[]>().notNull().default([]),
     lastError: text('last_error'),
     generatedAt: timestamp('generated_at'),
     updatedAt: timestamp('updated_at')

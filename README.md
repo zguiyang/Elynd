@@ -105,7 +105,7 @@ pnpm run build
 
 ## 生产部署
 
-Hono / Next 的生产部署流水线尚未纳入本仓库。
+流水线尚未纳入本仓库。已锁定的部署目标（Workers + Node/VPS，产品做完后再做）：[`docs/deploy-targets.md`](./docs/deploy-targets.md)。
 
 ## License
 

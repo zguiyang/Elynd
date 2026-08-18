@@ -105,7 +105,7 @@ pnpm run build
 
 ## Production deploy
 
-A Hono / Next production deploy pipeline is not in this repository yet.
+Pipeline is not in the repo yet. Locked targets (Workers + Node/VPS, after product work): [`docs/deploy-targets.md`](./docs/deploy-targets.md).
 
 ## License
 

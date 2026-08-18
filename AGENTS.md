@@ -71,7 +71,9 @@ Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root).
 ## Language
 
 - Conversation: Chinese when the user writes Chinese
-- Documentation, commits, code identifiers: English
+- Plans (generate / present / review with the user): Chinese
+- Code comments, identifiers, commits: English
+- Repo docs (`docs/`, README): English by default; follow the user's language when they specify one
 
 ## Common commands
 

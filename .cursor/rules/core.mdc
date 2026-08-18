@@ -7,7 +7,7 @@ alwaysApply: true
 
 Elynd: English **learning space** for adults who struggle to persist—interesting, mostly understandable real content (read + listen); AI/tools lower friction. Not a course, vocab pack, or chatbot. Monorepo: `apps/backend` (Hono **3333**), `apps/web` (Next **3000**), `packages/shared`, `packages/db` (Drizzle).
 
-Product SSOT: `docs/product/`. Prototypes: `prd/`. Language: user Chinese → reply Chinese; **code, docs, comments, commits in English**.
+Product SSOT: `docs/product/`. Prototypes: `prd/`. Language: user Chinese → reply Chinese and write plans in Chinese; **code, comments, commits in English**. Repo docs (`docs/`, README) default to English unless the user specifies another language.
 
 ## Principles
 

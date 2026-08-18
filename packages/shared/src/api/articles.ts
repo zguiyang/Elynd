@@ -70,6 +70,26 @@ export const articleSchema = z.object({
 
 export type Article = z.infer<typeof articleSchema>;
 
+/** Registered derived projection kinds (extend when practice/glossary store a source hash). */
+export const DERIVED_KINDS = ['audio'] as const;
+export type DerivedKind = (typeof DERIVED_KINDS)[number];
+
+export const DERIVED_STATES = ['missing', 'fresh', 'stale'] as const;
+export type DerivedState = (typeof DERIVED_STATES)[number];
+
+export const derivedFreshnessSchema = z.object({
+  audio: z.enum(DERIVED_STATES),
+});
+
+export type DerivedFreshness = z.infer<typeof derivedFreshnessSchema>;
+
+/** Admin article JSON includes derived projection freshness for ops reminders. */
+export const adminArticleSchema = articleSchema.extend({
+  derivedFreshness: derivedFreshnessSchema,
+});
+
+export type AdminArticle = z.infer<typeof adminArticleSchema>;
+
 export const createArticleBodySchema = z
   .object({
     title: z.string().trim().min(1).max(ARTICLE_TITLE_MAX),
@@ -114,7 +134,7 @@ export const adminArticleListQuerySchema = paginationQuerySchema.extend({
 export type AdminArticleListQuery = z.infer<typeof adminArticleListQuerySchema>;
 
 export const adminArticleListDataSchema = z.object({
-  items: z.array(articleSchema),
+  items: z.array(adminArticleSchema),
   pagination: paginationMetaSchema,
 });
 

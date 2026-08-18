@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   adminArticleListQuerySchema,
+  adminArticleSchema,
   ARTICLE_BODY_MAX_WORDS,
   countArticleWords,
   createArticleBodySchema,
@@ -153,5 +154,25 @@ describe('article api contracts', () => {
       theme: 'science',
       q: 'rain',
     });
+  });
+
+  it('requires derivedFreshness on admin articles', () => {
+    const parsed = adminArticleSchema.parse({
+      id: 'a1',
+      title: 'T',
+      body: 'B',
+      level: 'easy',
+      themes: [],
+      sourceNote: '',
+      status: 'draft',
+      seriesId: null,
+      seriesOrder: null,
+      estimatedMinutes: null,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      publishedAt: null,
+      derivedFreshness: { audio: 'missing' },
+    });
+    expect(parsed.derivedFreshness.audio).toBe('missing');
   });
 });

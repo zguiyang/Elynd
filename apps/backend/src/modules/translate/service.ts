@@ -61,6 +61,27 @@ function cacheKey(articleId: string, contentHash: string): string {
   return `elynd:bilingual:v1:${articleId}:${contentHash}`;
 }
 
+function bilingualCacheMatch(articleId: string): string {
+  return `elynd:bilingual:v1:${articleId}:*`;
+}
+
+/** Best-effort: drop cached bilingual payloads for this article. */
+export async function deleteBilingualCacheForArticle(articleId: string): Promise<void> {
+  try {
+    const redis = getRedis();
+    let cursor = '0';
+    do {
+      const [next, keys] = await redis.scan(cursor, 'MATCH', bilingualCacheMatch(articleId), 'COUNT', 100);
+      cursor = next;
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
+    } while (cursor !== '0');
+  } catch (error) {
+    translateLogger.warn({ err: error, articleId }, 'Redis bilingual cache delete failed');
+  }
+}
+
 async function loadPublishedArticle(articleId: string): Promise<{ id: string; title: string; body: string }> {
   const rows = await db
     .select({

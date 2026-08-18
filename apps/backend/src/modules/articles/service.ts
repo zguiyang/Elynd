@@ -2,7 +2,11 @@ import { randomUUID } from 'node:crypto';
 
 import { and, asc, count, desc, eq, ilike, or, type SQL, sql } from 'drizzle-orm';
 
-import { article as articleTable } from '@elynd/db';
+import {
+  article as articleTable,
+  articleAudio as articleAudioTable,
+  conversation as conversationTable,
+} from '@elynd/db';
 import {
   type AdminArticle,
   type AdminArticleListData,
@@ -17,9 +21,12 @@ import {
   type UpdateArticleBody,
 } from '@elynd/shared/api/articles';
 
+import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';
 import { AppError, NotFoundError, ValidationFailedError } from '@/lib/errors';
 import { getArticleDerivedFreshness, getArticlesDerivedFreshness } from '@/modules/derived-freshness';
+import { deleteObject } from '@/modules/oss';
+import { deleteBilingualCacheForArticle } from '@/modules/translate/service';
 
 type ArticleRow = typeof articleTable.$inferSelect;
 
@@ -239,6 +246,34 @@ export async function unpublishArticle(id: string): Promise<AdminArticle> {
     throw new NotFoundError('Article');
   }
   return toAdminArticle(row);
+}
+
+export async function deleteArticle(id: string): Promise<void> {
+  const [existing] = await db.select().from(articleTable).where(eq(articleTable.id, id)).limit(1);
+  if (!existing) {
+    throw new NotFoundError('Article');
+  }
+  if (existing.status === 'published') {
+    throw new AppError(HTTP_STATUS.CONFLICT, '请先下架');
+  }
+
+  const audioRows = await db
+    .select({ storageKey: articleAudioTable.storageKey })
+    .from(articleAudioTable)
+    .where(eq(articleAudioTable.articleId, id));
+  for (const row of audioRows) {
+    if (row.storageKey) {
+      await deleteObject(row.storageKey);
+    }
+  }
+
+  await deleteBilingualCacheForArticle(id);
+
+  await db
+    .delete(conversationTable)
+    .where(and(eq(conversationTable.subjectType, 'article'), eq(conversationTable.subjectId, id)));
+
+  await db.delete(articleTable).where(eq(articleTable.id, id));
 }
 
 export async function listPublishedArticles(query: LibraryArticleListQuery): Promise<LibraryArticleListData> {

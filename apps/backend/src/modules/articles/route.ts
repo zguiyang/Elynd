@@ -43,6 +43,11 @@ articlesRoutes.post('/api/admin/articles/:id/unpublish', requireAdmin, async (c)
   return c.json(article);
 });
 
+articlesRoutes.delete('/api/admin/articles/:id', requireAdmin, async (c) => {
+  await articlesService.deleteArticle(c.req.param('id'));
+  return c.body(null, HTTP_STATUS.NO_CONTENT);
+});
+
 articlesRoutes.get('/api/articles', requireAuth, validateLibraryArticleListQuery, async (c) => {
   const data = await articlesService.listPublishedArticles(c.req.valid('query'));
   return c.json(data);

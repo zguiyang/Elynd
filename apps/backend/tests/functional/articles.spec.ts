@@ -1,7 +1,18 @@
-import { eq, inArray } from 'drizzle-orm';
-import { afterAll, describe, expect, it } from 'vitest';
+import { randomUUID } from 'node:crypto';
 
-import { article as articleTable, user as userTable } from '@elynd/db';
+import { eq, inArray } from 'drizzle-orm';
+import { afterAll, describe, expect, it, vi } from 'vitest';
+
+import {
+  article as articleTable,
+  articleAudio as articleAudioTable,
+  conversation as conversationTable,
+  conversationMessage as conversationMessageTable,
+  practiceAttempt as practiceAttemptTable,
+  practiceItem as practiceItemTable,
+  readingProgress as readingProgressTable,
+  user as userTable,
+} from '@elynd/db';
 import {
   type AdminArticleListData,
   type Article,
@@ -13,6 +24,10 @@ import { AUTH_ADMIN_ROLE } from '@elynd/shared/auth/policy';
 
 import app from '@/app';
 import { db } from '@/db';
+import * as redisLib from '@/lib/redis';
+import { resetObjectStoreCache, setObjectStoreForTests } from '@/modules/oss';
+
+import { createMemoryObjectStore } from '../helpers/memory-oss';
 
 const password = 'password123';
 
@@ -69,6 +84,40 @@ async function createSession(role: 'user' | 'admin' = 'user') {
   const login = await signInEmail(email);
   expect(login.status).toBe(200);
   return { email, cookie: cookieHeader(login) };
+}
+
+async function userIdForEmail(email: string): Promise<string> {
+  const [row] = await db.select({ id: userTable.id }).from(userTable).where(eq(userTable.email, email)).limit(1);
+  expect(row?.id).toBeTruthy();
+  return row!.id;
+}
+
+function createMemoryRedis() {
+  const store = new Map<string, string>();
+  return {
+    store,
+    client: {
+      get: vi.fn(async (key: string) => store.get(key) ?? null),
+      set: vi.fn(async (key: string, value: string) => {
+        store.set(key, value);
+        return 'OK';
+      }),
+      del: vi.fn(async (...keys: string[]) => {
+        let removed = 0;
+        for (const key of keys) {
+          if (store.delete(key)) {
+            removed += 1;
+          }
+        }
+        return removed;
+      }),
+      scan: vi.fn(async (_cursor: string, matchToken?: string, pattern?: string) => {
+        const match = matchToken === 'MATCH' && pattern ? pattern : '*';
+        const regex = new RegExp(`^${match.replaceAll(/[.+^${}()|[\]\\]/g, '\\$&').replaceAll('*', '.*')}$`);
+        return ['0', [...store.keys()].filter((key) => regex.test(key))];
+      }),
+    },
+  };
 }
 
 describe('Articles HTTP', () => {
@@ -378,5 +427,203 @@ describe('Articles HTTP', () => {
     expect(publish.status).toBe(400);
     const body = (await publish.json()) as { details: { path: string; message: string }[] };
     expect(body.details.some((d) => d.path === 'body')).toBe(true);
+  });
+
+  it('refuses to delete a published article', async () => {
+    const admin = await createSession('admin');
+    createdEmails.push(admin.email);
+
+    const create = await app.request('/api/admin/articles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+      body: JSON.stringify({
+        title: 'Keep Live',
+        body: 'A short published piece that must be unpublished first.',
+        themes: ['故事'],
+        sourceNote: '测试',
+      }),
+    });
+    expect(create.status).toBe(201);
+    const created = (await create.json()) as Article;
+    createdArticleIds.push(created.id);
+
+    const publish = await app.request(`/api/admin/articles/${created.id}/publish`, {
+      method: 'POST',
+      headers: { cookie: admin.cookie },
+    });
+    expect(publish.status).toBe(200);
+
+    const del = await app.request(`/api/admin/articles/${created.id}`, {
+      method: 'DELETE',
+      headers: { cookie: admin.cookie },
+    });
+    expect(del.status).toBe(409);
+    const delBody = (await del.json()) as { error: string };
+    expect(delBody.error).toBe('请先下架');
+
+    const stillThere = await app.request(`/api/admin/articles/${created.id}`, {
+      headers: { cookie: admin.cookie },
+    });
+    expect(stillThere.status).toBe(200);
+  });
+
+  it('deletes an unpublished article and related learner content', async () => {
+    const admin = await createSession('admin');
+    const learner = await createSession('user');
+    createdEmails.push(admin.email, learner.email);
+    const learnerId = await userIdForEmail(learner.email);
+
+    const create = await app.request('/api/admin/articles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+      body: JSON.stringify({
+        title: 'Take Down',
+        body: 'A piece that will be unpublished then deleted.',
+        themes: ['故事'],
+        sourceNote: '测试',
+      }),
+    });
+    expect(create.status).toBe(201);
+    const created = (await create.json()) as Article;
+    createdArticleIds.push(created.id);
+
+    const publish = await app.request(`/api/admin/articles/${created.id}/publish`, {
+      method: 'POST',
+      headers: { cookie: admin.cookie },
+    });
+    expect(publish.status).toBe(200);
+
+    await db.insert(readingProgressTable).values({
+      id: randomUUID(),
+      userId: learnerId,
+      articleId: created.id,
+      status: 'in_progress',
+      progressRatio: 40,
+    });
+
+    const practiceItemId = randomUUID();
+    await db.insert(practiceItemTable).values({
+      id: practiceItemId,
+      articleId: created.id,
+      sortOrder: 0,
+      kind: 'comprehension',
+      payload: { prompt: 'Why rain?', options: ['Quiet', 'Loud'] },
+      correctOptionIndex: 0,
+    });
+    await db.insert(practiceAttemptTable).values({
+      id: randomUUID(),
+      userId: learnerId,
+      articleId: created.id,
+      status: 'in_progress',
+      currentIndex: 0,
+      answers: [],
+    });
+
+    const usKey = `article-audio/${created.id}/us/testhash.mp3`;
+    const ukKey = `article-audio/${created.id}/uk/testhash.mp3`;
+    await db.insert(articleAudioTable).values([
+      {
+        articleId: created.id,
+        role: 'us',
+        status: 'ready',
+        voice: 'en-US-JennyNeural',
+        contentHash: 'testhash',
+        storageKey: usKey,
+        mimeType: 'audio/mpeg',
+      },
+      {
+        articleId: created.id,
+        role: 'uk',
+        status: 'ready',
+        voice: 'en-GB-SoniaNeural',
+        contentHash: 'testhash',
+        storageKey: ukKey,
+        mimeType: 'audio/mpeg',
+      },
+    ]);
+
+    const conversationId = randomUUID();
+    await db.insert(conversationTable).values({
+      id: conversationId,
+      userId: learnerId,
+      surface: 'assist-read',
+      subjectType: 'article',
+      subjectId: created.id,
+      preview: 'quoted line',
+    });
+    await db.insert(conversationMessageTable).values({
+      id: randomUUID(),
+      conversationId,
+      role: 'assistant',
+      content: 'A quoted span from the article.',
+      status: 'complete',
+    });
+
+    const objectStore = createMemoryObjectStore();
+    await objectStore.put({ key: usKey, body: Buffer.from('us'), contentType: 'audio/mpeg' });
+    await objectStore.put({ key: ukKey, body: Buffer.from('uk'), contentType: 'audio/mpeg' });
+    setObjectStoreForTests(objectStore);
+
+    const memoryRedis = createMemoryRedis();
+    const bilingualKey = `elynd:bilingual:v1:${created.id}:testhash`;
+    const otherKey = 'elynd:bilingual:v1:other-article:testhash';
+    memoryRedis.store.set(bilingualKey, '{}');
+    memoryRedis.store.set(otherKey, '{}');
+    const redisSpy = vi.spyOn(redisLib, 'getRedis').mockReturnValue(memoryRedis.client as never);
+
+    const unpublish = await app.request(`/api/admin/articles/${created.id}/unpublish`, {
+      method: 'POST',
+      headers: { cookie: admin.cookie },
+    });
+    expect(unpublish.status).toBe(200);
+
+    try {
+      const del = await app.request(`/api/admin/articles/${created.id}`, {
+        method: 'DELETE',
+        headers: { cookie: admin.cookie },
+      });
+      expect(del.status).toBe(204);
+
+      const [articleRow] = await db.select().from(articleTable).where(eq(articleTable.id, created.id)).limit(1);
+      expect(articleRow).toBeUndefined();
+
+      const [progressCount] = await db
+        .select({ id: readingProgressTable.id })
+        .from(readingProgressTable)
+        .where(eq(readingProgressTable.articleId, created.id));
+      expect(progressCount).toBeUndefined();
+
+      const [attemptCount] = await db
+        .select({ id: practiceAttemptTable.id })
+        .from(practiceAttemptTable)
+        .where(eq(practiceAttemptTable.articleId, created.id));
+      expect(attemptCount).toBeUndefined();
+
+      const [itemCount] = await db
+        .select({ id: practiceItemTable.id })
+        .from(practiceItemTable)
+        .where(eq(practiceItemTable.articleId, created.id));
+      expect(itemCount).toBeUndefined();
+
+      const [audioCount] = await db
+        .select({ articleId: articleAudioTable.articleId })
+        .from(articleAudioTable)
+        .where(eq(articleAudioTable.articleId, created.id));
+      expect(audioCount).toBeUndefined();
+
+      const [conversationCount] = await db
+        .select({ id: conversationTable.id })
+        .from(conversationTable)
+        .where(eq(conversationTable.subjectId, created.id));
+      expect(conversationCount).toBeUndefined();
+
+      expect(objectStore.store.has(usKey)).toBe(false);
+      expect(objectStore.store.has(ukKey)).toBe(false);
+      expect(memoryRedis.store.has(bilingualKey)).toBe(false);
+      expect(memoryRedis.store.has(otherKey)).toBe(true);
+    } finally {
+      redisSpy.mockRestore();
+      resetObjectStoreCache();
+    }
   });
 });

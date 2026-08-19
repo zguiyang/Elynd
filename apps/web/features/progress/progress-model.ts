@@ -1,25 +1,19 @@
-import { calendarDateInTimeZone } from '@elynd/shared/api/review';
+import type { ProgressActivityDay, ProgressCompletion, ProgressPortrait } from '@elynd/shared/api/progress';
 
-export const PROGRESS_ACTIVITY_LOOKBACK_DAYS = 365 as const;
+export type { ProgressCompletion, ProgressPortrait };
+
 export const PROGRESS_HEATMAP_WEEKS = 53 as const;
-export const PROGRESS_HEATMAP_LEVEL_MAX = 4 as const;
 export const PROGRESS_CUSTOM_RANGE_MAX_DAYS = 90 as const;
 
 export const PROGRESS_RANGE_TABS = ['today', 'yesterday', '7', '30', 'custom'] as const;
 export type ProgressRangeTab = (typeof PROGRESS_RANGE_TABS)[number];
-export type HeatmapLevel = 0 | 1 | 2 | 3 | 4;
+export type HeatmapLevel = 0 | 1;
 
 export type CalendarDate = string;
 
 export type ProgressWindow = {
   from: CalendarDate;
   to: CalendarDate;
-};
-
-export type ProgressCompletion = {
-  date: CalendarDate;
-  title: string;
-  articleId: string | null;
 };
 
 export type HeatmapDay = {
@@ -33,35 +27,6 @@ export type HeatmapWeek = {
   sunday: CalendarDate;
   monthLabel: string | null;
   days: HeatmapDay[];
-};
-
-export type ProgressPortrait = {
-  consecutiveDays: number;
-  learningDays: number;
-  lookedUpWords: number;
-  completedArticles: number;
-  reviewCount: number;
-  practiceCount: number;
-};
-
-/** Example completed titles — not live progress. */
-export const PROGRESS_STUB_COMPLETIONS = [
-  { daysAgo: 1, title: 'The Hidden World of Oceans' },
-  { daysAgo: 3, title: 'The Psychology of Habits' },
-  { daysAgo: 8, title: 'A Warm Current' },
-  { daysAgo: 15, title: 'The Science of Sleep' },
-  { daysAgo: 28, title: 'Small Changes' },
-  { daysAgo: 45, title: 'A Quiet Station' },
-  { daysAgo: 70, title: 'Letters from the Coast' },
-  { daysAgo: 110, title: 'How Cities Remember' },
-] as const;
-
-export type ProgressStub = {
-  today: CalendarDate;
-  activity: ReadonlyMap<CalendarDate, HeatmapLevel>;
-  completions: ProgressCompletion[];
-  portrait: ProgressPortrait;
-  advice: string;
 };
 
 function parseYmd(value: CalendarDate): { y: number; m: number; d: number } {
@@ -213,35 +178,12 @@ export function relativeDateLabel(date: CalendarDate, today: CalendarDate): stri
   return formatMonthDay(date);
 }
 
-export function clampHeatmapLevel(value: number): HeatmapLevel {
-  if (value <= 0) {
-    return 0;
+export function activityToMap(rows: readonly ProgressActivityDay[]): Map<CalendarDate, HeatmapLevel> {
+  const activity = new Map<CalendarDate, HeatmapLevel>();
+  for (const row of rows) {
+    activity.set(row.date, 1);
   }
-  if (value >= PROGRESS_HEATMAP_LEVEL_MAX) {
-    return PROGRESS_HEATMAP_LEVEL_MAX;
-  }
-  return value as HeatmapLevel;
-}
-
-/** Deterministic example intensity — not live minutes. */
-export function stubActivityLevel(date: CalendarDate, today: CalendarDate): HeatmapLevel {
-  if (date > today) {
-    return 0;
-  }
-  const ago = diffCalendarDays(today, date);
-  if (ago === 4) {
-    return 0;
-  }
-  if (ago <= 3) {
-    const recent = [2, 3, 1, 4] as const;
-    return recent[ago] ?? 1;
-  }
-  const { y, m, d } = parseYmd(date);
-  const n = (y * 37 + m * 53 + d * 19) % 10;
-  if (n >= 6) {
-    return 0;
-  }
-  return clampHeatmapLevel((n % 4) + 1);
+  return activity;
 }
 
 export function consecutiveLearningDays(
@@ -253,16 +195,6 @@ export function consecutiveLearningDays(
   while ((activity.get(cursor) ?? 0) > 0) {
     count += 1;
     cursor = addCalendarDays(cursor, -1);
-  }
-  return count;
-}
-
-export function countLearningDays(activity: ReadonlyMap<CalendarDate, HeatmapLevel>): number {
-  let count = 0;
-  for (const level of activity.values()) {
-    if (level > 0) {
-      count += 1;
-    }
   }
   return count;
 }
@@ -315,42 +247,4 @@ export function buildHeatmapWeeks(
     });
   }
   return weeks;
-}
-
-function buildYearActivity(today: CalendarDate): Map<CalendarDate, HeatmapLevel> {
-  const activity = new Map<CalendarDate, HeatmapLevel>();
-  for (let daysAgo = 0; daysAgo < PROGRESS_ACTIVITY_LOOKBACK_DAYS; daysAgo += 1) {
-    const date = addCalendarDays(today, -daysAgo);
-    const level = stubActivityLevel(date, today);
-    if (level > 0) {
-      activity.set(date, level);
-    }
-  }
-  return activity;
-}
-
-export function buildProgressStub(now = new Date()): ProgressStub {
-  const today = calendarDateInTimeZone(now);
-  const activity = buildYearActivity(today);
-  const completions = PROGRESS_STUB_COMPLETIONS.map((row) => ({
-    date: addCalendarDays(today, -row.daysAgo),
-    title: row.title,
-    articleId: null,
-  }));
-  const learningDays = countLearningDays(activity);
-  const portrait: ProgressPortrait = {
-    consecutiveDays: consecutiveLearningDays(today, activity),
-    learningDays,
-    lookedUpWords: learningDays * 2 + 14,
-    completedArticles: completions.length,
-    reviewCount: Math.max(3, Math.round(completions.length * 1.5)),
-    practiceCount: completions.length * 3,
-  };
-  return {
-    today,
-    activity,
-    completions,
-    portrait,
-    advice: progressAdvice(portrait),
-  };
 }

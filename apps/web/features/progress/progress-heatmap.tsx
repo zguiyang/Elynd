@@ -4,7 +4,6 @@ import {
   countLearningDaysInWindow,
   type HeatmapLevel,
   inclusiveDayCount,
-  PROGRESS_HEATMAP_LEVEL_MAX,
   type ProgressWindow,
 } from '@/features/progress/progress-model';
 import { cn } from '@/lib/utils';
@@ -14,9 +13,6 @@ const WEEKDAY_LABELS = ['', '一', '', '三', '', '五', ''] as const;
 const LEVEL_CLASS: Record<HeatmapLevel, string> = {
   0: 'bg-muted',
   1: 'bg-primary/25',
-  2: 'bg-primary/45',
-  3: 'bg-primary/70',
-  4: 'bg-primary',
 };
 
 type ProgressHeatmapProps = {
@@ -47,7 +43,7 @@ function rangeCaption(window: ProgressWindow, today: CalendarDate, learningDays:
 }
 
 /**
- * GitHub contribution graph: 53 Sunday-start weeks. Selected date range stays full color.
+ * GitHub contribution graph: 53 Sunday-start weeks. Presence only (opened / not).
  */
 export function ProgressHeatmap({ today, activity, selectedWindow }: ProgressHeatmapProps) {
   const weeks = buildHeatmapWeeks(today, activity, selectedWindow);
@@ -101,15 +97,10 @@ export function ProgressHeatmap({ today, activity, selectedWindow }: ProgressHea
         </div>
 
         <p className="mt-3 flex items-center justify-end gap-1 text-[11px] text-muted-foreground">
-          <span>少</span>
-          {Array.from({ length: PROGRESS_HEATMAP_LEVEL_MAX + 1 }, (_, level) => (
-            <span
-              key={level}
-              className={cn('size-[11px] rounded-[2px]', LEVEL_CLASS[level as HeatmapLevel])}
-              aria-hidden
-            />
-          ))}
-          <span>多</span>
+          <span>无</span>
+          <span className={cn('size-[11px] rounded-[2px]', LEVEL_CLASS[0])} aria-hidden />
+          <span className={cn('size-[11px] rounded-[2px]', LEVEL_CLASS[1])} aria-hidden />
+          <span>有</span>
         </p>
       </div>
     </section>

@@ -30,6 +30,12 @@ reviewRoutes.post('/api/review/today/leave', requireAuth, async (c) => {
   return c.json(data);
 });
 
+reviewRoutes.post('/api/review/today/feedback', requireAuth, async (c) => {
+  const user = c.get('user')!;
+  const data = await reviewService.getReviewTodayFeedback(user.id);
+  return c.json(data);
+});
+
 reviewRoutes.get('/api/admin/articles/:id/review-items', requireAdmin, async (c) => {
   const data = await reviewService.getAdminReviewItems(c.req.param('id'));
   return c.json(data);

@@ -7,6 +7,7 @@ import type {
   AdminReviewItemsData,
   GenerateReviewItemsResponse,
   ReviewAnswerResponse,
+  ReviewFeedbackResponse,
   ReviewTodayData,
 } from '@elynd/shared/api/review';
 import { AUTH_ADMIN_ROLE } from '@elynd/shared/auth/policy';
@@ -145,6 +146,7 @@ describe('Review HTTP', () => {
     const body = (await today.json()) as ReviewTodayData;
     expect(body.queueStatus).toBe('need_completion');
     expect(body.items).toEqual([]);
+    expect(body.result).toBeNull();
   });
 
   it('saves an admin review bank and drafts generate without writing rows', async () => {
@@ -276,6 +278,7 @@ describe('Review HTTP', () => {
     const readyBody = (await ready.json()) as ReviewTodayData;
     expect(readyBody.queueStatus).toBe('ready');
     expect(readyBody.items).toHaveLength(2);
+    expect(readyBody.result).toBeNull();
     expect(readyBody.items[0]).not.toHaveProperty('correctIndex');
     expect(readyBody.items[0]).not.toHaveProperty('correctOptionIndex');
 
@@ -289,6 +292,13 @@ describe('Review HTTP', () => {
     expect(missBody.isHit).toBe(false);
     expect(missBody.hint).toContain('不是');
     expect(missBody.queueStatus).toBe('ready');
+    expect(missBody.result).toBeNull();
+
+    const tooEarlyFeedback = await app.request('/api/review/today/feedback', {
+      method: 'POST',
+      headers: { cookie: learner.cookie },
+    });
+    expect(tooEarlyFeedback.status).toBe(HTTP_STATUS.BAD_REQUEST);
 
     const [learnerRow] = await db
       .select({ id: userTable.id })
@@ -312,10 +322,43 @@ describe('Review HTTP', () => {
       body: JSON.stringify({ itemId: readyBody.items[1]!.id, selectedIndex: 1 }),
     });
     expect(hit.status).toBe(200);
-    expect(((await hit.json()) as ReviewAnswerResponse).queueStatus).toBe('done');
+    const hitBody = (await hit.json()) as ReviewAnswerResponse;
+    expect(hitBody.queueStatus).toBe('done');
+    expect(hitBody.result?.totalCount).toBe(2);
+    expect(hitBody.result?.correctCount).toBe(1);
+    expect(hitBody.result?.items[0]?.correctOptionIndex).toBe(1);
+    expect(hitBody.result?.items[0]?.isCorrect).toBe(false);
 
     const done = await app.request('/api/review/today', { headers: { cookie: learner.cookie } });
-    expect(((await done.json()) as ReviewTodayData).queueStatus).toBe('done');
+    const doneBody = (await done.json()) as ReviewTodayData;
+    expect(doneBody.queueStatus).toBe('done');
+    expect(doneBody.outcome).toBe('completed');
+    expect(doneBody.result?.totalCount).toBe(2);
+    expect(doneBody.result?.correctCount).toBe(1);
+
+    const invokeSpy = vi.spyOn(aiService, 'invokeAi').mockResolvedValue({
+      content: JSON.stringify({ advice: '先回看海洋那一句，对照你选的选项就好。' }),
+      model: { rowId: 'mock-model', label: 'mock', modelId: 'mock' },
+      usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+    });
+    try {
+      const feedback = await app.request('/api/review/today/feedback', {
+        method: 'POST',
+        headers: { cookie: learner.cookie },
+      });
+      expect(feedback.status).toBe(200);
+      const feedbackBody = (await feedback.json()) as ReviewFeedbackResponse;
+      expect(feedbackBody.advice).toContain('海洋');
+      expect(invokeSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          purpose: 'practiceFeedback',
+          source: 'review.feedback',
+          thinking: 'disabled',
+        }),
+      );
+    } finally {
+      invokeSpy.mockRestore();
+    }
 
     const beforeManual = await db
       .select({ id: reviewSessionTable.id, source: reviewSessionTable.source })

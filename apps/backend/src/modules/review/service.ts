@@ -25,11 +25,14 @@ import {
   REVIEW_OPTIONS_MAX,
   REVIEW_SENTENCE_MAX,
   type ReviewAnswerResponse,
+  type ReviewFeedbackResponse,
+  reviewFeedbackResponseSchema,
   type ReviewItemKind,
   type ReviewItemWrite,
   type ReviewLeaveResponse,
   type ReviewQueueStatus,
   type ReviewSessionOutcome,
+  type ReviewSessionResult,
   type ReviewSessionSource,
   type ReviewTodayData,
 } from '@elynd/shared/api/review';
@@ -168,7 +171,28 @@ function emptyToday(
   queueStatus: Extract<ReviewQueueStatus, 'need_completion' | 'empty'>,
   date: string,
 ): ReviewTodayData {
-  return { queueStatus, date, outcome: null, items: [] };
+  return { queueStatus, date, outcome: null, items: [], result: null };
+}
+
+function buildSessionResult(rows: ReviewSessionItemRow[]): ReviewSessionResult {
+  const items = rows.map((row) => {
+    const selectedOptionIndex = row.selectedIndex ?? null;
+    return {
+      id: row.id,
+      kind: asKind(row.kind),
+      label: row.focus,
+      sentence: row.sentence,
+      options: row.options,
+      selectedOptionIndex,
+      correctOptionIndex: row.correctOptionIndex,
+      isCorrect: selectedOptionIndex === row.correctOptionIndex,
+    };
+  });
+  return {
+    correctCount: items.filter((item) => item.isCorrect).length,
+    totalCount: items.length,
+    items,
+  };
 }
 
 export async function getAdminReviewItems(articleId: string): Promise<AdminReviewItemsData> {
@@ -567,6 +591,7 @@ export async function getReviewToday(userId: string): Promise<ReviewTodayData> {
     date,
     outcome,
     items: rows.map(toLearnerQueueItem),
+    result: outcome === 'completed' ? buildSessionResult(rows) : null,
   };
 }
 
@@ -623,6 +648,7 @@ export async function answerReviewToday(
     hint: missHint(item.options, item.correctOptionIndex, selectedIndex, item.focus),
     correctIndex: item.correctOptionIndex,
     queueStatus,
+    result: queueStatus === 'done' ? buildSessionResult(items) : null,
   };
 }
 
@@ -641,4 +667,85 @@ export async function leaveReviewToday(userId: string): Promise<ReviewLeaveRespo
   }
 
   return { queueStatus: 'done' };
+}
+
+const reviewFeedbackLlmSchema = z.object({
+  advice: z.string().min(1).max(500),
+});
+
+function formatReviewDetailForPrompt(result: ReviewSessionResult): string {
+  return result.items
+    .map((item, index) => {
+      const selected = item.selectedOptionIndex == null ? '未作答' : (item.options[item.selectedOptionIndex] ?? '');
+      const correct = item.options[item.correctOptionIndex] ?? '';
+      return [
+        `${index + 1}. [${item.kind}] ${item.label} — ${item.sentence}`,
+        `   result: ${item.isCorrect ? 'correct' : 'incorrect'}`,
+        `   selected: ${selected}`,
+        `   correct: ${correct}`,
+      ].join('\n');
+    })
+    .join('\n');
+}
+
+function parseReviewFeedbackJson(raw: string): z.infer<typeof reviewFeedbackLlmSchema> {
+  const trimmed = raw.trim();
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = (fenced?.[1] ?? trimmed).trim();
+  const start = candidate.indexOf('{');
+  const end = candidate.lastIndexOf('}');
+  if (start < 0 || end <= start) {
+    throw new ValidationFailedError([{ path: 'advice', message: 'AI reply was not valid JSON' }]);
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(candidate.slice(start, end + 1)) as unknown;
+  } catch {
+    throw new ValidationFailedError([{ path: 'advice', message: 'AI reply was not valid JSON' }]);
+  }
+  const checked = reviewFeedbackLlmSchema.safeParse(parsed);
+  if (!checked.success) {
+    throw new ValidationFailedError(
+      checked.error.issues.map((issue) => ({
+        path: issue.path.join('.') || 'advice',
+        message: issue.message,
+      })),
+    );
+  }
+  return checked.data;
+}
+
+export async function getReviewTodayFeedback(userId: string): Promise<ReviewFeedbackResponse> {
+  const today = await getReviewToday(userId);
+  if (today.outcome !== 'completed' || !today.result) {
+    throw new ValidationFailedError([{ path: 'status', message: 'Feedback is only available after completing today' }]);
+  }
+
+  const titles = [...new Set(today.items.map((item) => item.articleTitle).filter(Boolean))];
+  const messages = await composePromptMessages({
+    roleId: PROMPT_ROLE.languageTeacher,
+    sceneId: PROMPT_SCENE.reviewFeedback,
+    actionId: 'advise',
+    vars: {
+      articleTitles: titles.join('；') || '今日复习',
+      correctCount: String(today.result.correctCount),
+      totalCount: String(today.result.totalCount),
+      attemptDetail: formatReviewDetailForPrompt(today.result),
+    },
+  });
+
+  const aiResult = await invokeAi({
+    purpose: 'practiceFeedback',
+    source: 'review.feedback',
+    userId,
+    messages,
+    timeoutMs: 45_000,
+    thinking: 'disabled',
+    requestSummaryExtra: {
+      correctCount: today.result.correctCount,
+      totalCount: today.result.totalCount,
+    },
+  });
+
+  return reviewFeedbackResponseSchema.parse(parseReviewFeedbackJson(aiResult.content));
 }

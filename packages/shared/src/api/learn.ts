@@ -21,6 +21,7 @@ export const PRACTICE_WORD_MAX = 80 as const;
 export const PRACTICE_HINT_MAX = 200 as const;
 export const PRACTICE_QUOTE_MAX = 400 as const;
 export const LEARN_CONTINUE_READING_LIMIT = 5 as const;
+export const LEARN_TODAY_RECOMMENDATIONS_LIMIT = 3 as const;
 
 /** Display label for a 0-based option index (A, B, C, …). */
 export function practiceOptionLetter(index: number): string {
@@ -118,6 +119,7 @@ export const learnTodayDataSchema = z.object({
   current: learnTodayEntrySchema.nullable(),
   continueReading: z.array(learnTodayEntrySchema),
   activePractice: learnActivePracticeSchema.nullable(),
+  recommendations: z.array(learnArticleSummarySchema).max(LEARN_TODAY_RECOMMENDATIONS_LIMIT),
 });
 
 export type LearnTodayData = z.infer<typeof learnTodayDataSchema>;

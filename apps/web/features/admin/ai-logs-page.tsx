@@ -52,6 +52,7 @@ const SOURCE_LABELS: Record<string, string> = {
   'translate.article': '双语翻译',
   'practice.generate': '练习出题',
   'practice.feedback': '练习反馈',
+  'review.generate': '复习出题',
   'admin.provider_test': '连通测试',
 };
 

@@ -297,6 +297,14 @@ export function ArticleFormEditor({ mode, articleId, initialArticle }: ArticleFo
               variant="outline"
               className="h-11 rounded-xl"
               nativeButton={false}
+              render={<Link href={ADMIN_ROUTES.articleReview(articleId)} />}
+            >
+              复习题工作台
+            </Button>
+            <Button
+              variant="outline"
+              className="h-11 rounded-xl"
+              nativeButton={false}
               render={<Link href={ADMIN_ROUTES.articleAudio(articleId)} />}
             >
               音频工作台

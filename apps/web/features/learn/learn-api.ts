@@ -9,9 +9,12 @@ import {
   practiceAttemptSchema,
   type PracticeFeedbackResponse,
   practiceFeedbackResponseSchema,
+  type ReadingProgress,
+  readingProgressSchema,
   type UpdatePracticeAttemptBody,
   type UpdatePracticeAttemptResponse,
   updatePracticeAttemptResponseSchema,
+  type UpdateReadingProgressBody,
 } from '@elynd/shared/api/learn';
 
 import { apiRequest, formatApiError } from '@/lib/api-request';
@@ -79,6 +82,17 @@ export async function requestPracticeFeedback(
       signal: init?.signal,
     },
   );
+}
+
+export async function updateLearnReadingProgress(
+  articleId: string,
+  body: UpdateReadingProgressBody,
+): Promise<ReadingProgress> {
+  return apiRequest(`/api/learn/articles/${encodeURIComponent(articleId)}/progress`, {
+    method: 'PATCH',
+    json: body,
+    schema: readingProgressSchema,
+  });
 }
 
 export const formatLearnApiError = formatApiError;

@@ -1,8 +1,9 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { ArrowLeftIcon, BookmarkIcon, BookOpenIcon, CheckIcon, LanguagesIcon } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 
@@ -13,7 +14,12 @@ import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AUTH_ROUTES } from '@/constants';
-import { formatLearnApiError, getLearnArticle, learnQueryKey } from '@/features/learn/learn-api';
+import {
+  formatLearnApiError,
+  getLearnArticle,
+  learnQueryKey,
+  updateLearnReadingProgress,
+} from '@/features/learn/learn-api';
 import { type BilingualReaderState, LearnArticleReader } from '@/features/learn/learn-article-reader';
 import { hasAnyLearnAudio } from '@/features/learn/learn-audio-api';
 import { LearnAudioBar } from '@/features/learn/learn-audio-bar';
@@ -58,6 +64,7 @@ function toastComingSoon(feature: string) {
  * Learning Room — calm editorial reader with collapsible help rail (SSE assist).
  */
 export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
+  const router = useRouter();
   const isAssistOpen = useSyncExternalStore(subscribeAssistOpen, readAssistOpenPreference, () => false);
   const [pendingAssist, setPendingAssist] = useState<PendingAssist | null>(null);
   const [isBilingualOn, setIsBilingualOn] = useState(false);
@@ -86,6 +93,16 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
   const articleQuery = useQuery({
     queryKey: learnQueryKey.article(articleId),
     queryFn: ({ signal }) => getLearnArticle(articleId, { signal }),
+  });
+
+  const completeAndPractice = useMutation({
+    mutationFn: () => updateLearnReadingProgress(articleId, { status: 'completed' }),
+    onSuccess: () => {
+      void router.push(AUTH_ROUTES.learnPractice(articleId));
+    },
+    onError: (error) => {
+      toast.error(formatLearnApiError(error));
+    },
   });
 
   const article = articleQuery.data;
@@ -303,13 +320,14 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
           <div className="flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-center sm:gap-4">
             {article.practiceAvailable ? (
               <Button
-                nativeButton={false}
+                type="button"
                 variant="outline"
                 className="h-11 gap-2 rounded-xl border-border bg-card px-5 shadow-none"
-                render={<Link href={AUTH_ROUTES.learnPractice(articleId)} />}
+                disabled={completeAndPractice.isPending}
+                onClick={() => completeAndPractice.mutate()}
               >
                 <CheckIcon className="size-4" strokeWidth={1.5} aria-hidden />
-                练几道小题
+                {completeAndPractice.isPending ? '记录中…' : '练几道小题'}
               </Button>
             ) : null}
             <Button

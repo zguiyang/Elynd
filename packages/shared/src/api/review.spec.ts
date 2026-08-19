@@ -5,6 +5,8 @@ import {
   generateReviewItemsResponseSchema,
   replaceReviewItemsBodySchema,
   reviewAnswerBodySchema,
+  reviewAnswerResponseSchema,
+  reviewFeedbackResponseSchema,
   reviewTodayDataSchema,
 } from './review.ts';
 
@@ -77,6 +79,7 @@ describe('review api contracts', () => {
         date: '2026-08-19',
         outcome: null,
         items: [],
+        result: null,
       }).queueStatus,
     ).toBe('need_completion');
 
@@ -84,5 +87,33 @@ describe('review api contracts', () => {
       itemId: 'a',
       selectedIndex: 0,
     });
+
+    expect(
+      reviewAnswerResponseSchema.parse({
+        isHit: true,
+        hint: null,
+        correctIndex: 1,
+        queueStatus: 'done',
+        result: {
+          correctCount: 1,
+          totalCount: 1,
+          items: [
+            {
+              id: 'item-1',
+              kind: 'cloze',
+              label: 'sea',
+              sentence: 'Deep blue sea.',
+              options: ['sky', 'sea'],
+              selectedOptionIndex: 1,
+              correctOptionIndex: 1,
+              isCorrect: true,
+            },
+          ],
+        },
+      }).result?.correctCount,
+    ).toBe(1);
+
+    expect(reviewFeedbackResponseSchema.parse({ advice: '先回看错的那句就好。' }).advice.length).toBeGreaterThan(0);
+    expect(reviewFeedbackResponseSchema.safeParse({ advice: '' }).success).toBe(false);
   });
 });

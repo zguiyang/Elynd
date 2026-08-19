@@ -102,11 +102,34 @@ export const learnerReviewQueueItemSchema = z.object({
 
 export type LearnerReviewQueueItem = z.infer<typeof learnerReviewQueueItemSchema>;
 
+/** Revealed after today's session is completed (not while answering). */
+export const reviewSessionResultItemSchema = z.object({
+  id: z.string(),
+  kind: z.enum(REVIEW_ITEM_KINDS),
+  label: z.string(),
+  sentence: z.string(),
+  options: z.array(z.string()),
+  selectedOptionIndex: z.number().int().min(0).nullable(),
+  correctOptionIndex: z.number().int().min(0),
+  isCorrect: z.boolean(),
+});
+
+export type ReviewSessionResultItem = z.infer<typeof reviewSessionResultItemSchema>;
+
+export const reviewSessionResultSchema = z.object({
+  correctCount: z.number().int().min(0),
+  totalCount: z.number().int().min(0),
+  items: z.array(reviewSessionResultItemSchema),
+});
+
+export type ReviewSessionResult = z.infer<typeof reviewSessionResultSchema>;
+
 export const reviewTodayDataSchema = z.object({
   queueStatus: z.enum(REVIEW_QUEUE_STATUSES),
   date: z.string().min(1),
   outcome: z.enum(REVIEW_SESSION_OUTCOMES).nullable(),
   items: z.array(learnerReviewQueueItemSchema),
+  result: reviewSessionResultSchema.nullable(),
 });
 
 export type ReviewTodayData = z.infer<typeof reviewTodayDataSchema>;
@@ -123,6 +146,7 @@ export const reviewAnswerResponseSchema = z.object({
   hint: z.string().nullable(),
   correctIndex: z.number().int().min(0),
   queueStatus: z.enum(REVIEW_QUEUE_STATUSES),
+  result: reviewSessionResultSchema.nullable(),
 });
 
 export type ReviewAnswerResponse = z.infer<typeof reviewAnswerResponseSchema>;
@@ -130,6 +154,12 @@ export type ReviewAnswerResponse = z.infer<typeof reviewAnswerResponseSchema>;
 export const reviewLeaveResponseSchema = z.object({
   queueStatus: z.literal('done'),
 });
+
+export const reviewFeedbackResponseSchema = z.object({
+  advice: z.string().trim().min(1).max(500),
+});
+
+export type ReviewFeedbackResponse = z.infer<typeof reviewFeedbackResponseSchema>;
 
 export type ReviewLeaveResponse = z.infer<typeof reviewLeaveResponseSchema>;
 

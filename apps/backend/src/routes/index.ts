@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 
+import { enqueuePing } from '@/lib/queue';
 import { redisPing } from '@/lib/redis';
 import { type AuthVariables, requireAdmin, requireAuth } from '@/middleware/auth';
 import { aiRoutes } from '@/modules/ai/route';
@@ -28,6 +29,11 @@ routes.get('/api/me', requireAuth, (c) => {
 /** Admin authorization probe — kept for auth smoke tests alongside CMS routes. */
 routes.get('/api/admin/probe', requireAdmin, (c) => {
   return c.json({ role: c.get('user')?.role });
+});
+
+routes.post('/api/admin/jobs/ping', requireAdmin, async (c) => {
+  const id = await enqueuePing();
+  return c.json({ id });
 });
 
 routes.route('/', articlesRoutes);

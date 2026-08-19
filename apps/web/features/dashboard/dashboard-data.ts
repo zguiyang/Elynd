@@ -13,11 +13,6 @@ export const DASHBOARD_FAKE = {
       coverAlt: 'Forest path in soft light',
     },
   ],
-  stats: [
-    { value: '12', label: '阅读天数' },
-    { value: '28', label: '读过篇数' },
-    { value: '6h', label: '阅读时长' },
-  ],
 } as const;
 
 export function greetingForHour(hour: number, name: string): string {

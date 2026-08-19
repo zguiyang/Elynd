@@ -17,7 +17,7 @@ export function DashboardHome() {
   const user = useAppUser();
   const name = user?.name?.trim() || user?.username || '读者';
   const greeting = greetingForHour(new Date().getHours(), name);
-  const { recommendations, stats } = DASHBOARD_FAKE;
+  const { recommendations } = DASHBOARD_FAKE;
 
   const todayQuery = useQuery({
     queryKey: learnQueryKey.today(),
@@ -161,19 +161,6 @@ export function DashboardHome() {
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      <section className="mt-12 rounded-3xl border border-border bg-card p-8">
-        <h3 className="text-xl font-semibold">阅读统计</h3>
-        <p className="mt-2 text-xs text-muted-foreground">示例</p>
-        <div className="mt-8 grid grid-cols-3 gap-4 text-foreground">
-          {stats.map((stat) => (
-            <div key={stat.label}>
-              <p className="text-2xl font-semibold">{stat.value}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{stat.label}</p>
-            </div>
-          ))}
         </div>
       </section>
     </div>

@@ -1,161 +1,215 @@
 'use client';
 
-import { useState, useSyncExternalStore } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
+import { type LearnerReviewQueueItem, REVIEW_DAILY_CAP, type ReviewTodayData } from '@elynd/shared/api/review';
+
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { AUTH_ROUTES } from '@/constants';
-import { ReviewFinish } from '@/features/review/review-finish';
 import {
-  checkLine,
-  dailyGatePayload,
-  isSameDayGate,
-  REVIEW_DAILY_CAP,
-  REVIEW_DAILY_GATE_KEY,
-  REVIEW_STUB,
-  type ReviewFinishVariant,
-  type ReviewMiss,
-  reviewQueue,
-  todayIso,
-} from '@/features/review/review-model';
+  answerReviewToday,
+  formatReviewApiError,
+  getReviewToday,
+  leaveReviewToday,
+  reviewQueryKey,
+} from '@/features/review/review-api';
+import { ReviewFinish } from '@/features/review/review-finish';
+import { type ReviewFinishVariant, type ReviewMiss } from '@/features/review/review-model';
 import { ReviewSession } from '@/features/review/review-session';
 
-type ReviewStatus = 'empty' | 'prompt' | 'check' | 'complete' | 'capped' | 'early';
-
-function readReviewGate(): boolean {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-  return isSameDayGate(sessionStorage.getItem(REVIEW_DAILY_GATE_KEY), todayIso());
-}
-
-function subscribeReviewGate(onStoreChange: () => void) {
-  window.addEventListener('storage', onStoreChange);
-  return () => window.removeEventListener('storage', onStoreChange);
-}
-
-function writeReviewGate() {
-  sessionStorage.setItem(REVIEW_DAILY_GATE_KEY, dailyGatePayload(todayIso()));
-  window.dispatchEvent(new Event('storage'));
-}
+type ReviewPlayStatus = 'prompt' | 'check' | 'complete' | 'early';
 
 /**
- * Review — re-meet sentences from a recent article. Manuscript layout, stub queue.
+ * Review — re-meet sentences from completed articles. Server-backed daily queue.
  */
 export function ReviewPage() {
-  const queue = reviewQueue(REVIEW_STUB.items);
-  const total = queue.length;
-  const sourceHref = AUTH_ROUTES.learnArticle(REVIEW_STUB.articleId);
-  const isCappedToday = useSyncExternalStore(subscribeReviewGate, readReviewGate, () => false);
+  const todayQuery = useQuery({
+    queryKey: reviewQueryKey.today,
+    queryFn: ({ signal }) => getReviewToday({ signal }),
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
 
-  const [status, setStatus] = useState<ReviewStatus>(() => (total === 0 ? 'empty' : 'prompt'));
-  const [itemIndex, setItemIndex] = useState(0);
+  if (todayQuery.isPending) {
+    return <p className="text-sm text-muted-foreground">加载中…</p>;
+  }
+
+  if (todayQuery.isError || !todayQuery.data) {
+    return (
+      <Empty className="border border-dashed border-border bg-card/50 py-16">
+        <EmptyHeader>
+          <EmptyTitle>无法加载今日复习</EmptyTitle>
+          <EmptyDescription>{formatReviewApiError(todayQuery.error ?? new Error('缺失'))}</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
+  return <ReviewTodayBody data={todayQuery.data} />;
+}
+
+function ReviewTodayBody({ data }: { data: ReviewTodayData }) {
+  const items = data.items;
+  const unanswered = items.findIndex((row) => row.selectedIndex == null);
+  const [status, setStatus] = useState<ReviewPlayStatus>('prompt');
+  const [itemIndex, setItemIndex] = useState(unanswered < 0 ? 0 : unanswered);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [revealedCorrectIndex, setRevealedCorrectIndex] = useState<number | null>(null);
   const [misses, setMisses] = useState<ReviewMiss[]>([]);
   const [isSourceOpen, setIsSourceOpen] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
 
-  const item = queue[itemIndex];
-  const screen = resolveReviewScreen(status, isCappedToday, total);
-  const finishVariant = finishVariantFor(screen, total);
+  const total = items.length;
+  const item = items[itemIndex];
+  const finishVariant = finishVariantFor(data.queueStatus, data.outcome, status, total);
+
+  const answerMutation = useMutation({
+    mutationFn: (input: { itemId: string; selectedIndex: number; item: LearnerReviewQueueItem }) =>
+      answerReviewToday({ itemId: input.itemId, selectedIndex: input.selectedIndex }),
+    onSuccess: (result, input) => {
+      setRevealedCorrectIndex(result.correctIndex);
+      setHint(result.hint);
+      if (!result.isHit) {
+        setMisses((current) => [...current, { item: toReviewItem(input.item), selectedIndex: input.selectedIndex }]);
+      }
+      setStatus('check');
+    },
+    onError: (error) => {
+      toast.error(formatReviewApiError(error));
+    },
+  });
+
+  const leaveMutation = useMutation({
+    mutationFn: leaveReviewToday,
+    onSuccess: () => {
+      setIsSourceOpen(false);
+      setStatus('early');
+    },
+    onError: (error) => {
+      toast.error(formatReviewApiError(error));
+    },
+  });
 
   function confirm() {
-    if (!item || selectedIndex == null || status !== 'prompt') {
+    if (!item || selectedIndex == null || status !== 'prompt' || answerMutation.isPending) {
       return;
     }
-    const result = checkLine(item, selectedIndex);
-    if (!result.isHit) {
-      setMisses((current) => [...current, { item, selectedIndex }]);
-    }
-    setHint(result.line);
-    setStatus('check');
+    answerMutation.mutate({ itemId: item.id, selectedIndex, item });
   }
 
   function goNext() {
     if (itemIndex >= total - 1) {
-      writeReviewGate();
       setStatus('complete');
       setIsSourceOpen(false);
       return;
     }
     setItemIndex((current) => current + 1);
     setSelectedIndex(null);
+    setRevealedCorrectIndex(null);
     setHint(null);
-    setStatus('prompt');
-  }
-
-  function goEarly() {
     setIsSourceOpen(false);
-    setStatus('early');
+    setStatus('prompt');
   }
 
   return (
     <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700 mx-auto w-full max-w-2xl">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-baseline sm:justify-between">
         <h1 className="font-heading text-4xl font-bold tracking-tight md:text-5xl">再碰一次</h1>
-        {item && (screen === 'prompt' || screen === 'check') ? (
+        {item && finishVariant == null ? (
           <p className="text-sm tabular-nums text-muted-foreground">
             {itemIndex + 1} / {total}
           </p>
         ) : null}
       </header>
-      <p className="mt-3 text-xs text-muted-foreground">示例内容</p>
 
       {finishVariant ? (
         <ReviewFinish
           variant={finishVariant}
-          articleTitle={REVIEW_STUB.articleTitle}
-          sourceHref={sourceHref}
+          articleTitle={finishArticleTitle(item, misses, items)}
+          sourceHref={AUTH_ROUTES.learnArticle(finishArticleId(item, misses, items))}
           misses={misses}
           total={total}
         />
       ) : item ? (
         <ReviewSession
-          articleTitle={REVIEW_STUB.articleTitle}
-          paragraphs={REVIEW_STUB.paragraphs}
-          item={item}
+          articleTitle={item.articleTitle}
+          paragraphs={item.paragraphs}
+          item={toReviewItem(item)}
           itemIndex={itemIndex}
           total={total}
           selectedIndex={selectedIndex}
-          isChecked={screen === 'check'}
+          correctIndex={revealedCorrectIndex}
+          isChecked={status === 'check'}
           isSourceOpen={isSourceOpen}
           hint={hint}
+          isSubmitting={answerMutation.isPending}
+          isLeaving={leaveMutation.isPending}
           onSelect={setSelectedIndex}
           onConfirm={confirm}
           onNext={goNext}
-          onEarly={goEarly}
+          onEarly={() => leaveMutation.mutate()}
           onSourceOpenChange={setIsSourceOpen}
         />
       ) : (
-        <ReviewFinish
-          variant="empty"
-          articleTitle={REVIEW_STUB.articleTitle}
-          sourceHref={sourceHref}
-          misses={[]}
-          total={0}
-        />
+        <ReviewFinish variant="empty" articleTitle="" sourceHref={AUTH_ROUTES.library} misses={[]} total={0} />
       )}
     </div>
   );
 }
 
-function resolveReviewScreen(status: ReviewStatus, isCappedToday: boolean, total: number): ReviewStatus {
-  if (total === 0) {
-    return 'empty';
-  }
-  if (status === 'complete' || status === 'early' || status === 'check') {
-    return status;
-  }
-  if (isCappedToday) {
-    return 'capped';
-  }
-  return status;
+function toReviewItem(item: LearnerReviewQueueItem) {
+  return {
+    id: item.id,
+    kind: item.kind,
+    sentence: item.sentence,
+    focus: item.focus,
+    options: item.options,
+    hintZh: item.hintZh,
+  };
 }
 
-function finishVariantFor(status: ReviewStatus, total: number): ReviewFinishVariant | null {
-  if (status === 'empty' || status === 'early' || status === 'capped') {
-    return status;
+function finishVariantFor(
+  queueStatus: ReviewTodayData['queueStatus'],
+  outcome: ReviewTodayData['outcome'],
+  status: ReviewPlayStatus,
+  total: number,
+): ReviewFinishVariant | null {
+  if (status === 'early') {
+    return 'early';
   }
   if (status === 'complete') {
-    return total < REVIEW_DAILY_CAP ? 'exhaust' : 'complete';
+    return total > 0 && total < REVIEW_DAILY_CAP ? 'exhaust' : 'complete';
+  }
+  if (queueStatus === 'need_completion') {
+    return 'need_completion';
+  }
+  if (queueStatus === 'empty') {
+    return 'empty';
+  }
+  if (queueStatus === 'done') {
+    return outcome === 'left' ? 'early' : 'capped';
   }
   return null;
+}
+
+function finishArticleTitle(
+  item: LearnerReviewQueueItem | undefined,
+  misses: ReviewMiss[],
+  items: LearnerReviewQueueItem[],
+): string {
+  const missId = misses[0]?.item.id;
+  const fromMiss = missId ? items.find((row) => row.id === missId) : undefined;
+  return fromMiss?.articleTitle ?? item?.articleTitle ?? items[0]?.articleTitle ?? '';
+}
+
+function finishArticleId(
+  item: LearnerReviewQueueItem | undefined,
+  misses: ReviewMiss[],
+  items: LearnerReviewQueueItem[],
+): string {
+  const missId = misses[0]?.item.id;
+  const fromMiss = missId ? items.find((row) => row.id === missId) : undefined;
+  return fromMiss?.articleId ?? item?.articleId ?? items[0]?.articleId ?? '';
 }

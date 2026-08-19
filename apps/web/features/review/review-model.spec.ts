@@ -1,22 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  checkLine,
-  finishCopy,
-  isSameDayGate,
-  REVIEW_DAILY_CAP,
-  REVIEW_STUB,
-  reviewQueue,
-  splitFocus,
-  todayIso,
-} from '@/features/review/review-model';
-
-describe('reviewQueue', () => {
-  it('caps at REVIEW_DAILY_CAP and does not pad', () => {
-    expect(reviewQueue(REVIEW_STUB.items)).toHaveLength(REVIEW_DAILY_CAP);
-    expect(reviewQueue(REVIEW_STUB.items.slice(0, 4))).toHaveLength(4);
-  });
-});
+import { finishCopy, splitFocus } from '@/features/review/review-model';
 
 describe('splitFocus', () => {
   it('splits the focus word out of the sentence', () => {
@@ -26,22 +10,6 @@ describe('splitFocus', () => {
       after: ' carries nutrients across the basin.',
     });
     expect(splitFocus('No match here.', 'current')).toBeNull();
-  });
-});
-
-describe('checkLine', () => {
-  const item = REVIEW_STUB.items[3];
-
-  it('stays quiet on a hit and only contrasts on a miss', () => {
-    expect(item).toBeDefined();
-    if (!item) {
-      return;
-    }
-    expect(checkLine(item, item.correctIndex)).toEqual({ isHit: true, line: null });
-    expect(checkLine(item, 0)).toEqual({
-      isHit: false,
-      line: '是「洋流」，不是「现在」。',
-    });
   });
 });
 
@@ -66,14 +34,5 @@ describe('finishCopy', () => {
       title: '今天够了',
       sub: '明天再来。',
     });
-  });
-});
-
-describe('daily gate', () => {
-  it('only matches the same local day', () => {
-    const today = todayIso(new Date('2026-08-18T15:00:00'));
-    expect(isSameDayGate(JSON.stringify({ day: today }), today)).toBe(true);
-    expect(isSameDayGate(JSON.stringify({ day: '2026-08-17' }), today)).toBe(false);
-    expect(isSameDayGate('nope', today)).toBe(false);
   });
 });

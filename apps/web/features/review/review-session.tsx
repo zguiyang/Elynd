@@ -15,9 +15,12 @@ type ReviewSessionProps = {
   itemIndex: number;
   total: number;
   selectedIndex: number | null;
+  correctIndex: number | null;
   isChecked: boolean;
   isSourceOpen: boolean;
   hint: string | null;
+  isSubmitting?: boolean;
+  isLeaving?: boolean;
   onSelect: (optionIndex: number) => void;
   onConfirm: () => void;
   onNext: () => void;
@@ -35,16 +38,19 @@ export function ReviewSession({
   itemIndex,
   total,
   selectedIndex,
+  correctIndex,
   isChecked,
   isSourceOpen,
   hint,
+  isSubmitting = false,
+  isLeaving = false,
   onSelect,
   onConfirm,
   onNext,
   onEarly,
   onSourceOpenChange,
 }: ReviewSessionProps) {
-  const filled = isChecked ? (item.options[item.correctIndex] ?? item.focus) : null;
+  const filled = isChecked && correctIndex != null ? (item.options[correctIndex] ?? item.focus) : null;
 
   return (
     <>
@@ -76,7 +82,7 @@ export function ReviewSession({
           <p
             className={cn(
               'motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200 mt-6 max-w-[36rem] text-base leading-relaxed',
-              selectedIndex === item.correctIndex ? 'text-muted-foreground' : 'text-foreground',
+              selectedIndex != null && selectedIndex === correctIndex ? 'text-muted-foreground' : 'text-foreground',
             )}
           >
             {hint}
@@ -109,8 +115,13 @@ export function ReviewSession({
       </div>
 
       <div className="flex items-center justify-between gap-4 border-t border-border pt-6">
-        <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={onEarly}>
-          先到这
+        <button
+          type="button"
+          className="text-sm text-muted-foreground hover:text-foreground"
+          disabled={isLeaving}
+          onClick={onEarly}
+        >
+          {isLeaving ? '记录中…' : '先到这'}
         </button>
         {isChecked ? (
           <Button type="button" className="h-11 rounded-xl px-7 hover:bg-brand-deep" onClick={onNext}>
@@ -120,10 +131,10 @@ export function ReviewSession({
           <Button
             type="button"
             className="h-11 rounded-xl px-7 hover:bg-brand-deep"
-            disabled={selectedIndex == null}
+            disabled={selectedIndex == null || isSubmitting}
             onClick={onConfirm}
           >
-            确定
+            {isSubmitting ? '记录中…' : '确定'}
           </Button>
         )}
       </div>

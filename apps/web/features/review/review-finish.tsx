@@ -16,6 +16,25 @@ type ReviewFinishProps = {
  * Empty / done / early-exit / same-day cap — same manuscript, different copy.
  */
 export function ReviewFinish({ variant, articleTitle, sourceHref, misses, total }: ReviewFinishProps) {
+  if (variant === 'need_completion') {
+    return (
+      <>
+        <p className="mt-16 max-w-[36rem] text-xl leading-relaxed text-foreground">
+          先去图书馆读完一篇短文，再回来碰一碰。
+        </p>
+        <div className="mt-10">
+          <Button
+            nativeButton={false}
+            className="h-11 rounded-xl px-7 hover:bg-brand-deep"
+            render={<Link href={AUTH_ROUTES.library} />}
+          >
+            去图书馆
+          </Button>
+        </div>
+      </>
+    );
+  }
+
   if (variant === 'empty') {
     return (
       <>

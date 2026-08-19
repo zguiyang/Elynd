@@ -6,6 +6,8 @@
 
 Today the Node adapter already exists (`src/index.ts` + `@hono/node-server`). Workers is a second entry later. Local/VPS stay Docker Postgres + Redis + Node.
 
+**Current online path:** VPS Node — Compose for Postgres/Redis, HTTP API + a BullMQ worker process. Cloudflare dual-entry remains deferred. How to run the two processes: [`docs/vps-run.md`](./vps-run.md).
+
 ## Locked
 
 | Decision                    | Choice                                                                                                                       |

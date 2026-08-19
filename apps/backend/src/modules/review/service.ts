@@ -41,6 +41,7 @@ import { db } from '@/db';
 import { AppError, NotFoundError, ValidationFailedError } from '@/lib/errors';
 import { composePromptMessages, PROMPT_ROLE, PROMPT_SCENE } from '@/lib/prompts';
 import { invokeAi } from '@/modules/ai';
+import { touchLearnerDay } from '@/modules/progress/service';
 import { pickDailyReviewItems } from '@/modules/review/pick';
 
 type ArticleRow = typeof articleTable.$inferSelect;
@@ -569,6 +570,7 @@ async function assembleUserTodaySession(userId: string, date: string, source: Re
 }
 
 export async function getReviewToday(userId: string): Promise<ReviewTodayData> {
+  await touchLearnerDay(userId);
   const date = calendarDateInTimeZone();
   const completedCount = await countCompletedArticles(userId);
   if (completedCount === 0) {

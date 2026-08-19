@@ -39,6 +39,7 @@ import { AppError, NotFoundError, ValidationFailedError } from '@/lib/errors';
 import { composePromptMessages, PROMPT_ROLE, PROMPT_SCENE } from '@/lib/prompts';
 import { invokeAi } from '@/modules/ai';
 import { getArticleAudioAvailability } from '@/modules/article-audio/service';
+import { touchLearnerDay } from '@/modules/progress/service';
 
 type ArticleRow = typeof articleTable.$inferSelect;
 type ProgressRow = typeof readingProgressTable.$inferSelect;
@@ -289,6 +290,7 @@ export async function getLearnArticle(userId: string, articleId: string): Promis
 
   const practiceAvailable = (await countPracticeItems(articleId)) > 0;
   const audioAvailable = await getArticleAudioAvailability(articleId);
+  await touchLearnerDay(userId);
 
   return {
     id: article.id,
@@ -564,6 +566,7 @@ export async function getLearnPractice(userId: string, articleId: string): Promi
   const article = await requirePublishedArticle(articleId);
   const rows = await listPracticeItemRows(articleId);
   const attempt = await findInProgressAttempt(userId, articleId);
+  await touchLearnerDay(userId);
 
   return {
     articleId: article.id,
@@ -579,6 +582,8 @@ export async function startOrResumePracticeAttempt(userId: string, articleId: st
   if (itemCount < 1) {
     throw new NotFoundError('Practice');
   }
+
+  await touchLearnerDay(userId);
 
   const existing = await findInProgressAttempt(userId, articleId);
   if (existing) {

@@ -12,6 +12,7 @@ import {
   resolveActiveDisplayTextOffset,
   resolveAudioHighlightPhase,
   resolveTimingDisplayOffsets,
+  sentencePlaybackWindow,
   tokenContainsTextOffset,
 } from './learn-audio-sync.ts';
 
@@ -107,5 +108,20 @@ describe('learn audio sync', () => {
     expect(map.get('16:800:sea.')).toBe(17);
     expect(resolveActiveDisplayTextOffset(title, body, azureAsSingleSpace, 450)).toBe(7);
     expect(resolveAudioHighlightPhase(title, body, azureAsSingleSpace, 450)).toBe('body');
+  });
+
+  it('clips a body sentence to its word-timing window', () => {
+    const title = 'Ocean';
+    const body = 'Deep blue sea. More later.';
+    const window = sentencePlaybackWindow(title, body, 'Deep blue sea.', [
+      { text: 'Ocean', audioOffsetMs: 0, durationMs: 200, textOffset: 0 },
+      { text: 'Deep', audioOffsetMs: 400, durationMs: 180, textOffset: 7 },
+      { text: 'blue', audioOffsetMs: 600, durationMs: 160, textOffset: 12 },
+      { text: 'sea.', audioOffsetMs: 800, durationMs: 200, textOffset: 17 },
+      { text: 'More', audioOffsetMs: 1100, durationMs: 160, textOffset: 22 },
+      { text: 'later.', audioOffsetMs: 1300, durationMs: 180, textOffset: 27 },
+    ]);
+    expect(window).toEqual({ startMs: 400, endMs: 1000 });
+    expect(sentencePlaybackWindow(title, body, 'No such sentence.', timings)).toBeNull();
   });
 });

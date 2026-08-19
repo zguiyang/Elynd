@@ -1,19 +1,26 @@
 'use client';
 
 import { ChevronDownIcon, Volume2Icon } from 'lucide-react';
-import { type ReactNode, useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+import type { LearnArticleAudioTrack } from '@elynd/shared/api/learn';
+
 import { Button } from '@/components/ui/button';
+import { getLearnArticleAudioTrack } from '@/features/learn/learn-audio-api';
+import { sentencePlaybackWindow } from '@/features/learn/learn-audio-sync';
 import { type ReviewItem, splitFocus } from '@/features/review/review-model';
+import { ApiRequestError } from '@/lib/api-request';
 import { cn } from '@/lib/utils';
 
 type ReviewSessionProps = {
+  articleId: string;
   articleTitle: string;
   paragraphs: string[];
   item: ReviewItem;
   itemIndex: number;
   total: number;
+  isLast: boolean;
   selectedIndex: number | null;
   correctIndex: number | null;
   isChecked: boolean;
@@ -32,11 +39,13 @@ type ReviewSessionProps = {
  * One re-meet: sentence in view, inline listen, in-page source, options.
  */
 export function ReviewSession({
+  articleId,
   articleTitle,
   paragraphs,
   item,
   itemIndex,
   total,
+  isLast,
   selectedIndex,
   correctIndex,
   isChecked,
@@ -63,18 +72,12 @@ export function ReviewSession({
           item={item}
           filled={filled}
           listen={
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              aria-label="听原句"
-              className="ml-1 inline-flex translate-y-[-0.12em] align-middle text-muted-foreground hover:text-foreground"
-              onClick={() => {
-                toast('暂时还没法读。');
-              }}
-            >
-              <Volume2Icon strokeWidth={1.5} />
-            </Button>
+            <ReviewSentenceListen
+              articleId={articleId}
+              title={articleTitle}
+              paragraphs={paragraphs}
+              sentence={item.sentence}
+            />
           }
         />
 
@@ -125,7 +128,7 @@ export function ReviewSession({
         </button>
         {isChecked ? (
           <Button type="button" className="h-11 rounded-xl px-7 hover:bg-brand-deep" onClick={onNext}>
-            下一条
+            {isLast ? '看总结' : '下一条'}
           </Button>
         ) : (
           <Button
@@ -143,6 +146,153 @@ export function ReviewSession({
       </p>
     </>
   );
+}
+
+function ReviewSentenceListen({
+  articleId,
+  title,
+  paragraphs,
+  sentence,
+}: {
+  articleId: string;
+  title: string;
+  paragraphs: string[];
+  sentence: string;
+}) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const clipEndMsRef = useRef<number | null>(null);
+  const loadedKeyRef = useRef<string | null>(null);
+  const trackRef = useRef<LearnArticleAudioTrack | null>(null);
+  const trackArticleRef = useRef<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    clipEndMsRef.current = null;
+    audioRef.current?.pause();
+  }, [articleId, sentence]);
+
+  useEffect(() => {
+    const element = audioRef.current;
+    return () => {
+      if (element) {
+        element.pause();
+        element.removeAttribute('src');
+      }
+    };
+  }, []);
+
+  async function playSentence() {
+    const element = audioRef.current;
+    if (!element || isLoading) {
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const track = await loadReviewArticleTrack(articleId, trackRef, trackArticleRef);
+      const clip = sentencePlaybackWindow(title, paragraphs.join('\n\n'), sentence, track.wordTimings);
+      if (!clip) {
+        toast('暂时无法定位这句');
+        return;
+      }
+      const key = `${articleId}:${track.role}:${track.audioBase64.slice(0, 32)}`;
+      if (loadedKeyRef.current !== key) {
+        loadedKeyRef.current = key;
+        element.src = `data:${track.mimeType};base64,${track.audioBase64}`;
+        await waitForAudioReady(element);
+      }
+      clipEndMsRef.current = clip.endMs;
+      element.currentTime = clip.startMs / 1000;
+      await element.play();
+    } catch (error) {
+      if (error instanceof ApiRequestError && error.status === 404) {
+        toast('这句还没有录音');
+        return;
+      }
+      toast.error(error instanceof Error ? error.message : '音频播放失败');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  return (
+    <>
+      <audio
+        ref={audioRef}
+        className="hidden"
+        preload="metadata"
+        onTimeUpdate={(event) => {
+          const endMs = clipEndMsRef.current;
+          if (endMs == null) {
+            return;
+          }
+          if (event.currentTarget.currentTime * 1000 >= endMs) {
+            event.currentTarget.pause();
+            clipEndMsRef.current = null;
+          }
+        }}
+      />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        aria-label="听原句"
+        disabled={isLoading}
+        className="ml-1 inline-flex translate-y-[-0.12em] align-middle text-muted-foreground hover:text-foreground"
+        onClick={() => {
+          void playSentence();
+        }}
+      >
+        <Volume2Icon strokeWidth={1.5} />
+      </Button>
+    </>
+  );
+}
+
+async function loadReviewArticleTrack(
+  articleId: string,
+  trackRef: { current: LearnArticleAudioTrack | null },
+  trackArticleRef: { current: string | null },
+): Promise<LearnArticleAudioTrack> {
+  if (trackArticleRef.current === articleId && trackRef.current) {
+    return trackRef.current;
+  }
+  try {
+    const track = await getLearnArticleAudioTrack(articleId, 'us');
+    trackRef.current = track;
+    trackArticleRef.current = articleId;
+    return track;
+  } catch (error) {
+    if (!(error instanceof ApiRequestError) || error.status !== 404) {
+      throw error;
+    }
+    const track = await getLearnArticleAudioTrack(articleId, 'uk');
+    trackRef.current = track;
+    trackArticleRef.current = articleId;
+    return track;
+  }
+}
+
+function waitForAudioReady(element: HTMLAudioElement): Promise<void> {
+  if (element.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve, reject) => {
+    const onReady = () => {
+      cleanup();
+      resolve();
+    };
+    const onError = () => {
+      cleanup();
+      reject(new Error('音频播放失败'));
+    };
+    const cleanup = () => {
+      element.removeEventListener('canplay', onReady);
+      element.removeEventListener('error', onError);
+    };
+    element.addEventListener('canplay', onReady);
+    element.addEventListener('error', onError);
+    element.load();
+  });
 }
 
 function ReviewSentence({ item, filled, listen }: { item: ReviewItem; filled: string | null; listen: ReactNode }) {

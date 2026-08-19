@@ -53,6 +53,7 @@ const SOURCE_LABELS: Record<string, string> = {
   'practice.generate': '练习出题',
   'practice.feedback': '练习反馈',
   'review.generate': '复习出题',
+  'review.feedback': '复习反馈',
   'admin.provider_test': '连通测试',
 };
 

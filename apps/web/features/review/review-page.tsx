@@ -4,7 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-import { type LearnerReviewQueueItem, REVIEW_DAILY_CAP, type ReviewTodayData } from '@elynd/shared/api/review';
+import { type LearnerReviewQueueItem, type ReviewSessionResult, type ReviewTodayData } from '@elynd/shared/api/review';
 
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { AUTH_ROUTES } from '@/constants';
@@ -18,8 +18,9 @@ import {
 import { ReviewFinish } from '@/features/review/review-finish';
 import { type ReviewFinishVariant, type ReviewMiss } from '@/features/review/review-model';
 import { ReviewSession } from '@/features/review/review-session';
+import { ReviewSummary } from '@/features/review/review-summary';
 
-type ReviewPlayStatus = 'prompt' | 'check' | 'complete' | 'early';
+type ReviewPlayStatus = 'prompt' | 'check' | 'early';
 
 /**
  * Review — re-meet sentences from completed articles. Server-backed daily queue.
@@ -60,10 +61,13 @@ function ReviewTodayBody({ data }: { data: ReviewTodayData }) {
   const [misses, setMisses] = useState<ReviewMiss[]>([]);
   const [isSourceOpen, setIsSourceOpen] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
+  const [pendingResult, setPendingResult] = useState<ReviewSessionResult | null>(null);
+  const [isShowingSummary, setIsShowingSummary] = useState(data.outcome === 'completed');
 
   const total = items.length;
   const item = items[itemIndex];
-  const finishVariant = finishVariantFor(data.queueStatus, data.outcome, status, total);
+  const summaryResult = pendingResult ?? (data.outcome === 'completed' ? data.result : null);
+  const finishVariant = finishVariantFor(data.queueStatus, status, isShowingSummary);
 
   const answerMutation = useMutation({
     mutationFn: (input: { itemId: string; selectedIndex: number; item: LearnerReviewQueueItem }) =>
@@ -71,6 +75,9 @@ function ReviewTodayBody({ data }: { data: ReviewTodayData }) {
     onSuccess: (result, input) => {
       setRevealedCorrectIndex(result.correctIndex);
       setHint(result.hint);
+      if (result.result) {
+        setPendingResult(result.result);
+      }
       if (!result.isHit) {
         setMisses((current) => [...current, { item: toReviewItem(input.item), selectedIndex: input.selectedIndex }]);
       }
@@ -101,8 +108,8 @@ function ReviewTodayBody({ data }: { data: ReviewTodayData }) {
 
   function goNext() {
     if (itemIndex >= total - 1) {
-      setStatus('complete');
       setIsSourceOpen(false);
+      setIsShowingSummary(true);
       return;
     }
     setItemIndex((current) => current + 1);
@@ -117,7 +124,7 @@ function ReviewTodayBody({ data }: { data: ReviewTodayData }) {
     <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700 mx-auto w-full max-w-2xl">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-baseline sm:justify-between">
         <h1 className="font-heading text-4xl font-bold tracking-tight md:text-5xl">再碰一次</h1>
-        {item && finishVariant == null ? (
+        {item && finishVariant == null && !isShowingSummary ? (
           <p className="text-sm tabular-nums text-muted-foreground">
             {itemIndex + 1} / {total}
           </p>
@@ -132,13 +139,17 @@ function ReviewTodayBody({ data }: { data: ReviewTodayData }) {
           misses={misses}
           total={total}
         />
+      ) : isShowingSummary && summaryResult ? (
+        <ReviewSummary date={data.date} result={summaryResult} />
       ) : item ? (
         <ReviewSession
+          articleId={item.articleId}
           articleTitle={item.articleTitle}
           paragraphs={item.paragraphs}
           item={toReviewItem(item)}
           itemIndex={itemIndex}
           total={total}
+          isLast={itemIndex >= total - 1}
           selectedIndex={selectedIndex}
           correctIndex={revealedCorrectIndex}
           isChecked={status === 'check'}
@@ -172,24 +183,20 @@ function toReviewItem(item: LearnerReviewQueueItem) {
 
 function finishVariantFor(
   queueStatus: ReviewTodayData['queueStatus'],
-  outcome: ReviewTodayData['outcome'],
   status: ReviewPlayStatus,
-  total: number,
+  isShowingSummary: boolean,
 ): ReviewFinishVariant | null {
   if (status === 'early') {
     return 'early';
   }
-  if (status === 'complete') {
-    return total > 0 && total < REVIEW_DAILY_CAP ? 'exhaust' : 'complete';
+  if (isShowingSummary) {
+    return null;
   }
   if (queueStatus === 'need_completion') {
     return 'need_completion';
   }
   if (queueStatus === 'empty') {
     return 'empty';
-  }
-  if (queueStatus === 'done') {
-    return outcome === 'left' ? 'early' : 'capped';
   }
   return null;
 }

@@ -1,6 +1,8 @@
 import {
   type ReviewAnswerResponse,
   reviewAnswerResponseSchema,
+  type ReviewFeedbackResponse,
+  reviewFeedbackResponseSchema,
   type ReviewLeaveResponse,
   reviewLeaveResponseSchema,
   type ReviewTodayData,
@@ -12,6 +14,7 @@ import { apiRequest, formatApiError } from '@/lib/api-request';
 export const reviewQueryKey = {
   all: ['review'] as const,
   today: ['review', 'today'] as const,
+  feedback: (date: string, resultIds: string) => ['review', 'today', 'feedback', date, resultIds] as const,
 };
 
 export async function getReviewToday(init?: { signal?: AbortSignal }): Promise<ReviewTodayData> {
@@ -36,6 +39,14 @@ export async function leaveReviewToday(): Promise<ReviewLeaveResponse> {
   return apiRequest('/api/review/today/leave', {
     method: 'POST',
     schema: reviewLeaveResponseSchema,
+  });
+}
+
+export async function requestReviewFeedback(init?: { signal?: AbortSignal }): Promise<ReviewFeedbackResponse> {
+  return apiRequest('/api/review/today/feedback', {
+    method: 'POST',
+    schema: reviewFeedbackResponseSchema,
+    signal: init?.signal,
   });
 }
 

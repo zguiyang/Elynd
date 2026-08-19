@@ -11,6 +11,7 @@ export const AUTH_ROUTES = {
   dashboard: '/dashboard',
   library: '/library',
   review: '/review',
+  progress: '/progress',
   learn: '/learn',
   learnArticle: (id: string) => `/learn/${id}` as const,
   learnPractice: (id: string) => `/learn/${id}/practice` as const,

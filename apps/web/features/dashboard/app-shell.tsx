@@ -66,7 +66,13 @@ function buildLearnerNavItems(pathname: string): NavItem[] {
       active: matchesPath(pathname, AUTH_ROUTES.review),
       disabled: false,
     },
-    { href: '#', label: '成长', icon: TrendingUp, active: false, disabled: true },
+    {
+      href: AUTH_ROUTES.progress,
+      label: '成长',
+      icon: TrendingUp,
+      active: matchesPath(pathname, AUTH_ROUTES.progress),
+      disabled: false,
+    },
   ];
 }
 

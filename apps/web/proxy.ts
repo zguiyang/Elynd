@@ -36,6 +36,8 @@ export const config = {
     '/library/:path*',
     '/review',
     '/review/:path*',
+    '/progress',
+    '/progress/:path*',
     '/learn/:path*',
     '/admin/:path*',
     '/sign-in',

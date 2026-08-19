@@ -15,6 +15,7 @@
     "./api/llm-config": "./src/api/llm-config.ts",
     "./api/llm-config-keys": "./src/api/llm-config-keys.ts",
     "./api/pagination": "./src/api/pagination.ts",
+    "./api/progress": "./src/api/progress.ts",
     "./api/review": "./src/api/review.ts",
     "./api/translate": "./src/api/translate.ts",
     "./api/tts": "./src/api/tts.ts",

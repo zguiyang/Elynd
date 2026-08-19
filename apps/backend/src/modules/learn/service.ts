@@ -540,6 +540,7 @@ export async function generateAdminPracticeItems(
     ref: { type: 'article', id: article.id },
     messages,
     timeoutMs: 60_000,
+    thinking: 'disabled',
     requestSummaryExtra: { articleLevel: article.level },
   });
 
@@ -806,6 +807,7 @@ export async function getPracticeAttemptFeedback(
     ref: { type: 'practice_attempt', id: attempt.id },
     messages,
     timeoutMs: 45_000,
+    thinking: 'disabled',
     requestSummaryExtra: {
       correctCount: result.correctCount,
       totalCount: result.totalCount,

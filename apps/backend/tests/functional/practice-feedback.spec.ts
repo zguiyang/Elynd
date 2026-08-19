@@ -169,6 +169,7 @@ describe('Practice attempt feedback HTTP', () => {
         expect.objectContaining({
           purpose: 'practiceFeedback',
           source: 'practice.feedback',
+          thinking: 'disabled',
         }),
       );
       expect(invokeSpy.mock.calls[0]?.[0]).not.toHaveProperty('outputSchema');

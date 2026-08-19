@@ -142,6 +142,7 @@ describe('Admin practice generate HTTP', () => {
         expect.objectContaining({
           purpose: 'practice',
           source: 'practice.generate',
+          thinking: 'disabled',
         }),
       );
       expect(invokeSpy.mock.calls[0]?.[0]).not.toHaveProperty('outputSchema');

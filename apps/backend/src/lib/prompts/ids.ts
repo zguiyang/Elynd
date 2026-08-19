@@ -14,6 +14,7 @@ export const PROMPT_SCENE = {
   translateArticle: 'translate-article',
   practiceGenerate: 'practice-generate',
   practiceFeedback: 'practice-feedback',
+  reviewGenerate: 'review-generate',
 } as const;
 
 export type PromptSceneId = (typeof PROMPT_SCENE)[keyof typeof PROMPT_SCENE];

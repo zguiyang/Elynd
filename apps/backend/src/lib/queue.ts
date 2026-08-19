@@ -3,6 +3,8 @@ import { Redis } from 'ioredis';
 
 import type { PingJobData } from '@/jobs/ping';
 import { JOB_PING } from '@/jobs/ping';
+import type { ReviewMaterializeJobData } from '@/jobs/review-materialize';
+import { JOB_REVIEW_MATERIALIZE } from '@/jobs/review-materialize';
 import { env } from '@/lib/env';
 import { queueLogger } from '@/lib/logger';
 
@@ -49,6 +51,10 @@ export async function enqueue(name: string, data: unknown): Promise<string> {
 export async function enqueuePing(data?: PingJobData): Promise<string> {
   const payload: PingJobData = data ?? { requestedAt: new Date().toISOString() };
   return enqueue(JOB_PING, payload);
+}
+
+export async function enqueueReviewMaterialize(data: ReviewMaterializeJobData = { mode: 'manual' }): Promise<string> {
+  return enqueue(JOB_REVIEW_MATERIALIZE, data);
 }
 
 export async function closeQueue(): Promise<void> {

@@ -3,19 +3,39 @@ import { Worker } from 'bullmq';
 
 import type { PingJobData } from '@/jobs/ping';
 import { JOB_PING, processPing } from '@/jobs/ping';
+import type { ReviewMaterializeJobData } from '@/jobs/review-materialize';
+import {
+  JOB_REVIEW_MATERIALIZE,
+  processReviewMaterialize,
+  REVIEW_MATERIALIZE_CRON,
+  REVIEW_MATERIALIZE_SCHEDULER_ID,
+  REVIEW_MATERIALIZE_TZ,
+} from '@/jobs/review-materialize';
 import { workerLogger } from '@/lib/logger';
-import { closeQueue, getQueueConnection, QUEUE_NAME } from '@/lib/queue';
+import { closeQueue, getQueue, getQueueConnection, QUEUE_NAME } from '@/lib/queue';
 
-function processJob(job: Pick<Job, 'name' | 'data'>): unknown {
+async function processJob(job: Pick<Job, 'name' | 'data'>): Promise<unknown> {
   switch (job.name) {
     case JOB_PING:
       return processPing(job.data as PingJobData);
+    case JOB_REVIEW_MATERIALIZE:
+      return processReviewMaterialize(job.data as ReviewMaterializeJobData);
     default:
       throw new Error(`Unknown job name: ${job.name}`);
   }
 }
 
 async function main(): Promise<void> {
+  await getQueue().upsertJobScheduler(
+    REVIEW_MATERIALIZE_SCHEDULER_ID,
+    { pattern: REVIEW_MATERIALIZE_CRON, tz: REVIEW_MATERIALIZE_TZ },
+    { name: JOB_REVIEW_MATERIALIZE, data: { mode: 'cron' } },
+  );
+  workerLogger.info(
+    { scheduler: REVIEW_MATERIALIZE_SCHEDULER_ID, cron: REVIEW_MATERIALIZE_CRON, tz: REVIEW_MATERIALIZE_TZ },
+    'Review materialize scheduler upserted',
+  );
+
   const worker = new Worker(QUEUE_NAME, async (job) => processJob(job), {
     connection: getQueueConnection(),
   });

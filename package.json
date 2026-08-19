@@ -8,6 +8,7 @@
   "prettier": "./prettier.config.js",
   "scripts": {
     "dev:backend": "pnpm --filter @elynd/backend dev",
+    "dev:worker": "pnpm --filter @elynd/backend dev:worker",
     "dev:web": "pnpm --filter @elynd/web dev",
     "build": "pnpm --filter @elynd/backend build && pnpm --filter @elynd/web build",
     "build:backend": "pnpm --filter @elynd/backend build",

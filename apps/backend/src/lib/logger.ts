@@ -21,5 +21,7 @@ export const rootLogger = pino({
 
 export const dbLogger = rootLogger.child({ module: 'Database' });
 export const redisLogger = rootLogger.child({ module: 'Redis' });
+export const queueLogger = rootLogger.child({ module: 'Queue' });
+export const workerLogger = rootLogger.child({ module: 'Worker' });
 export const authLogger = rootLogger.child({ module: 'Auth' });
 export const serverLogger = rootLogger.child({ module: 'Server' });

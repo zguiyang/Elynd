@@ -5,7 +5,7 @@ import { redisLogger } from '@/lib/logger';
 
 let client: Redis | null = null;
 
-// ponytail: ceiling = health-only Redis use; upgrade = Redis store for rate limit (multi-instance)
+// Health / cache client. BullMQ uses a separate connection in `lib/queue.ts`.
 export function getRedis(): Redis {
   if (client) {
     return client;

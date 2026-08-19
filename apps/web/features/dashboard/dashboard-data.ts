@@ -1,20 +1,3 @@
-export const DASHBOARD_FAKE = {
-  recommendations: [
-    {
-      title: 'The Science of Sleep',
-      meta: 'B1 · 科学探索',
-      coverSrc: 'https://images.unsplash.com/photo-1516979187457-637abb4f9353?w=300',
-      coverAlt: 'Books stacked on a table',
-    },
-    {
-      title: 'Small Changes',
-      meta: 'A2 · 生活方式',
-      coverSrc: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=300',
-      coverAlt: 'Forest path in soft light',
-    },
-  ],
-} as const;
-
 export function greetingForHour(hour: number, name: string): string {
   if (hour < 5) {
     return `夜深了，${name}`;

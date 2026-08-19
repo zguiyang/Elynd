@@ -71,6 +71,13 @@
       "when": 1787106070730,
       "tag": "0009_modern_ego",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787114068683,
+      "tag": "0010_steady_hellcat",
+      "breakpoints": true
     }
   ]
 }

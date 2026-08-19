@@ -644,3 +644,24 @@ export const reviewSessionItemRelations = relations(reviewSessionItem, ({ one })
     references: [reviewItem.id],
   }),
 }));
+
+/** One Shanghai calendar day the learner opened the room, review, or practice. */
+export const learnerDay = pgTable(
+  'learner_day',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    localDate: date('local_date', { mode: 'string' }).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [unique('learner_day_user_date_uidx').on(table.userId, table.localDate)],
+);
+
+export const learnerDayRelations = relations(learnerDay, ({ one }) => ({
+  user: one(user, {
+    fields: [learnerDay.userId],
+    references: [user.id],
+  }),
+}));

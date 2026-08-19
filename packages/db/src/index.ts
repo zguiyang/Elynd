@@ -16,6 +16,8 @@ export {
   conversationMessage,
   conversationMessageRelations,
   conversationRelations,
+  learnerDay,
+  learnerDayRelations,
   llmAppSetting,
   llmModel,
   llmModelRelations,

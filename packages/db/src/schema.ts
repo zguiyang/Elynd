@@ -1,6 +1,7 @@
 import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
+  date,
   doublePrecision,
   index,
   integer,
@@ -533,5 +534,113 @@ export const conversationMessageRelations = relations(conversationMessage, ({ on
   conversation: one(conversation, {
     fields: [conversationMessage.conversationId],
     references: [conversation.id],
+  }),
+}));
+
+/** Curated cloze/sense item bound to an article (review bank, not practice). */
+export const reviewItem = pgTable(
+  'review_item',
+  {
+    id: text('id').primaryKey(),
+    articleId: text('article_id')
+      .notNull()
+      .references(() => article.id, { onDelete: 'cascade' }),
+    sortOrder: integer('sort_order').notNull(),
+    kind: text('kind').notNull(),
+    sentence: text('sentence').notNull(),
+    focus: text('focus').notNull(),
+    options: jsonb('options').$type<string[]>().notNull(),
+    hintZh: text('hint_zh').notNull(),
+    correctOptionIndex: integer('correct_option_index').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [
+    unique('review_item_article_sort_uidx').on(table.articleId, table.sortOrder),
+    index('review_item_article_idx').on(table.articleId),
+  ],
+);
+
+/** One learner review queue for a Shanghai calendar date. */
+export const reviewSession = pgTable(
+  'review_session',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    localDate: date('local_date', { mode: 'string' }).notNull(),
+    source: text('source').notNull(),
+    outcome: text('outcome').notNull().default('in_progress'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [
+    unique('review_session_user_date_uidx').on(table.userId, table.localDate),
+    index('review_session_date_idx').on(table.localDate),
+  ],
+);
+
+/** Snapshotted queue row for a daily session. */
+export const reviewSessionItem = pgTable(
+  'review_session_item',
+  {
+    id: text('id').primaryKey(),
+    sessionId: text('session_id')
+      .notNull()
+      .references(() => reviewSession.id, { onDelete: 'cascade' }),
+    reviewItemId: text('review_item_id').references(() => reviewItem.id, { onDelete: 'set null' }),
+    sortOrder: integer('sort_order').notNull(),
+    articleId: text('article_id').notNull(),
+    articleTitle: text('article_title').notNull(),
+    articleBody: text('article_body').notNull(),
+    kind: text('kind').notNull(),
+    sentence: text('sentence').notNull(),
+    focus: text('focus').notNull(),
+    options: jsonb('options').$type<string[]>().notNull(),
+    hintZh: text('hint_zh').notNull(),
+    correctOptionIndex: integer('correct_option_index').notNull(),
+    selectedIndex: integer('selected_index'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [
+    unique('review_session_item_session_sort_uidx').on(table.sessionId, table.sortOrder),
+    index('review_session_item_session_idx').on(table.sessionId),
+  ],
+);
+
+export const reviewItemRelations = relations(reviewItem, ({ one }) => ({
+  article: one(article, {
+    fields: [reviewItem.articleId],
+    references: [article.id],
+  }),
+}));
+
+export const reviewSessionRelations = relations(reviewSession, ({ one, many }) => ({
+  user: one(user, {
+    fields: [reviewSession.userId],
+    references: [user.id],
+  }),
+  items: many(reviewSessionItem),
+}));
+
+export const reviewSessionItemRelations = relations(reviewSessionItem, ({ one }) => ({
+  session: one(reviewSession, {
+    fields: [reviewSessionItem.sessionId],
+    references: [reviewSession.id],
+  }),
+  reviewItem: one(reviewItem, {
+    fields: [reviewSessionItem.reviewItemId],
+    references: [reviewItem.id],
   }),
 }));

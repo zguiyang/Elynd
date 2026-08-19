@@ -1,6 +1,6 @@
 import { randomInt, randomUUID } from 'node:crypto';
 
-import { and, asc, count, desc, eq } from 'drizzle-orm';
+import { and, asc, count, desc, eq, notExists } from 'drizzle-orm';
 import { z } from 'zod';
 
 import {
@@ -16,6 +16,7 @@ import {
   type GeneratePracticeItemsResponse,
   generatePracticeItemsResponseSchema,
   LEARN_CONTINUE_READING_LIMIT,
+  LEARN_TODAY_RECOMMENDATIONS_LIMIT,
   type LearnArticleData,
   type LearnArticleSummary,
   type LearnerPracticeItem,
@@ -233,6 +234,23 @@ export async function getToday(userId: string): Promise<LearnTodayData> {
     };
   }
 
+  const recommendationRows = await db
+    .select()
+    .from(articleTable)
+    .where(
+      and(
+        eq(articleTable.status, 'published'),
+        notExists(
+          db
+            .select({ id: readingProgressTable.id })
+            .from(readingProgressTable)
+            .where(and(eq(readingProgressTable.userId, userId), eq(readingProgressTable.articleId, articleTable.id))),
+        ),
+      ),
+    )
+    .orderBy(desc(articleTable.publishedAt), desc(articleTable.id))
+    .limit(LEARN_TODAY_RECOMMENDATIONS_LIMIT);
+
   return {
     current: currentRow ? { article: toSummary(currentRow.article), progress: toProgress(currentRow.progress) } : null,
     continueReading: continueRows.map((row) => ({
@@ -240,6 +258,7 @@ export async function getToday(userId: string): Promise<LearnTodayData> {
       progress: toProgress(row.progress),
     })),
     activePractice,
+    recommendations: recommendationRows.map((row) => toSummary(row)),
   };
 }
 

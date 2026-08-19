@@ -3,14 +3,15 @@ import { afterAll, describe, expect, it } from 'vitest';
 
 import { article as articleTable, user as userTable } from '@elynd/db';
 import type { Article } from '@elynd/shared/api/articles';
-import type {
-  AdminPracticeItemsData,
-  LearnArticleData,
-  LearnPracticeData,
-  LearnTodayData,
-  PracticeAttempt,
-  ReadingProgress,
-  UpdatePracticeAttemptResponse,
+import {
+  type AdminPracticeItemsData,
+  LEARN_TODAY_RECOMMENDATIONS_LIMIT,
+  type LearnArticleData,
+  type LearnPracticeData,
+  type LearnTodayData,
+  type PracticeAttempt,
+  type ReadingProgress,
+  type UpdatePracticeAttemptResponse,
 } from '@elynd/shared/api/learn';
 import { AUTH_ADMIN_ROLE } from '@elynd/shared/auth/policy';
 
@@ -179,6 +180,8 @@ describe('Learn HTTP', () => {
     const todayData = (await today.json()) as LearnTodayData;
     expect(todayData.current?.article.id).toBe(article.id);
     expect(todayData.current?.progress.progressRatio).toBe(40);
+    expect(Array.isArray(todayData.recommendations)).toBe(true);
+    expect(todayData.recommendations.some((row) => row.id === article.id)).toBe(false);
 
     const practiceGet = await app.request(`/api/learn/articles/${article.id}/practice`, {
       headers: { cookie: learner.cookie },
@@ -260,6 +263,71 @@ describe('Learn HTTP', () => {
       body: JSON.stringify({ status: 'completed' }),
     });
     expect(otherTouch.status).toBe(404);
+  });
+
+  it('recommends unread published articles and excludes opened or draft ones', async () => {
+    const admin = await createSession('admin');
+    const learner = await createSession('user');
+    createdEmails.push(admin.email, learner.email);
+
+    async function createAndPublish(title: string): Promise<Article> {
+      const create = await app.request('/api/admin/articles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+        body: JSON.stringify({
+          title,
+          body: `${title} body.`,
+          level: 'mid',
+          themes: ['science'],
+          sourceNote: 'demo',
+          estimatedMinutes: 5,
+        }),
+      });
+      expect(create.status).toBe(201);
+      const article = (await create.json()) as Article;
+      expect(
+        (
+          await app.request(`/api/admin/articles/${article.id}/publish`, {
+            method: 'POST',
+            headers: { cookie: admin.cookie },
+          })
+        ).status,
+      ).toBe(200);
+      return article;
+    }
+
+    const unreadA = await createAndPublish('Unread Alpha');
+    const unreadB = await createAndPublish('Unread Beta');
+    const opened = await createAndPublish('Opened Gamma');
+    createdArticleIds.push(unreadA.id, unreadB.id, opened.id);
+
+    const draftCreate = await app.request('/api/admin/articles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+      body: JSON.stringify({
+        title: 'Draft Delta',
+        body: 'Still a draft.',
+        themes: ['story'],
+        sourceNote: 'demo',
+      }),
+    });
+    expect(draftCreate.status).toBe(201);
+    const draft = (await draftCreate.json()) as Article;
+    createdArticleIds.push(draft.id);
+
+    expect(
+      (await app.request(`/api/learn/articles/${opened.id}`, { headers: { cookie: learner.cookie } })).status,
+    ).toBe(200);
+
+    const today = await app.request('/api/learn/today', { headers: { cookie: learner.cookie } });
+    expect(today.status).toBe(200);
+    const body = (await today.json()) as LearnTodayData;
+    expect(body.current?.article.id).toBe(opened.id);
+    expect(body.recommendations.length).toBeLessThanOrEqual(LEARN_TODAY_RECOMMENDATIONS_LIMIT);
+    const recIds = body.recommendations.map((row) => row.id);
+    expect(recIds).not.toContain(opened.id);
+    expect(recIds).not.toContain(draft.id);
+    expect(recIds).toEqual(expect.arrayContaining([unreadA.id, unreadB.id]));
   });
 
   it('allows published articles without practice items', async () => {

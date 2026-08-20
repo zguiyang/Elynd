@@ -42,9 +42,23 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+
+  /* Design-system surfaces & accent aliases — SSOT: /DESIGN.md */
   --color-paper: var(--paper);
   --color-brand-soft: var(--brand-soft);
   --color-brand-deep: var(--brand-deep);
+  --color-surface-container-lowest: var(--surface-container-lowest);
+  --color-surface-container-low: var(--surface-container-low);
+  --color-surface-container: var(--surface-container);
+  --color-surface-container-high: var(--surface-container-high);
+  --color-surface-container-highest: var(--surface-container-highest);
+  --color-surface-variant: var(--surface-variant);
+  --color-on-surface-variant: var(--on-surface-variant);
+  --color-outline: var(--outline);
+  --color-outline-variant: var(--outline-variant);
+  --color-primary-container: var(--primary-container);
+  --color-surface-tint: var(--surface-tint);
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -56,6 +70,8 @@
   --ease-out-soft: var(--ease-out);
   --animate-loading-soft-ring: loading-soft-ring 2.2s var(--ease-out) infinite;
   --animate-loading-page: loading-page 1.15s ease-in-out infinite;
+  --max-width-reading-column: var(--reading-column);
+  --max-width-container-max: var(--container-max);
 }
 
 @keyframes loading-soft-ring {
@@ -83,68 +99,128 @@
 }
 
 /*
-  Light theme tokens — SSOT: /DESIGN.md
+  Light theme tokens — SSOT: /DESIGN.md (MVP Stitch palette)
   Dark / night-reading theme is deferred; do not invent .dark values here.
+  Hex literals are allowed only in this :root primitive block.
 */
 :root {
-  /* Primitives */
-  --canvas: #faf9f6;
-  --paper: #f3eee2;
-  --sidebar-wash: #fcfbf8;
-  --ink: #1c1917;
-  --surface: #ffffff;
-  --brand: #c2410c;
-  --brand-soft: #fff7ed;
-  --brand-deep: #9a3412;
-  --muted-wash: #f5f2eb;
-  --muted-ink: #57534e;
-  --border-warm: #e7e5e4;
+  /* --- MD3 / design primitives (hex only here) --- */
+  --surface: #fff8f5;
+  --surface-dim: #e0d8d5;
+  --surface-bright: #fff8f5;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #faf2ee;
+  --surface-container: #f4ece8;
+  --surface-container-high: #eee7e3;
+  --surface-container-highest: #e9e1dd;
+  --surface-variant: #e9e1dd;
+  --on-surface: #1e1b19;
+  --on-surface-variant: #59413a;
+  --inverse-surface: #33302d;
+  --inverse-on-surface: #f7efeb;
+  --outline: #8d7168;
+  --outline-variant: #e1bfb5;
+  --surface-tint: #ac3400;
 
-  /* Semantic (shadcn) */
-  --background: var(--canvas);
-  --foreground: var(--ink);
-  --card: var(--surface);
-  --card-foreground: var(--ink);
-  --popover: var(--surface);
-  --popover-foreground: var(--ink);
-  --primary: var(--brand);
-  --primary-foreground: #ffffff;
-  --secondary: var(--paper);
-  --secondary-foreground: var(--ink);
+  /* MD3 primary = deep ember; primary-container = CTA fill */
+  --md-primary: #9b2f00;
+  --on-primary: #ffffff;
+  --primary-container: #c2410c;
+  --on-primary-container: #ffece7;
+  --inverse-primary: #ffb59d;
+
+  --md-secondary: #615e55;
+  --on-secondary: #ffffff;
+  --secondary-container: #e7e2d6;
+  --on-secondary-container: #67645b;
+
+  --tertiary: #545553;
+  --on-tertiary: #ffffff;
+  --tertiary-container: #6c6d6b;
+  --on-tertiary-container: #f1f0ed;
+
+  --error: #ba1a1a;
+  --on-error: #ffffff;
+  --error-container: #ffdad6;
+  --on-error-container: #93000a;
+
+  --primary-fixed: #ffdbd0;
+  --primary-fixed-dim: #ffb59d;
+  --on-primary-fixed: #390c00;
+  --on-primary-fixed-variant: #832600;
+  --secondary-fixed: #e7e2d6;
+  --secondary-fixed-dim: #cac6bb;
+  --on-secondary-fixed: #1d1c15;
+  --on-secondary-fixed-variant: #49473e;
+  --tertiary-fixed: #e3e2e0;
+  --tertiary-fixed-dim: #c7c6c4;
+  --on-tertiary-fixed: #1a1c1a;
+  --on-tertiary-fixed-variant: #464745;
+
+  --md-background: #fff8f5;
+  --on-background: #1e1b19;
+
+  /* --- Compat aliases (resolve to primitives; no new hex) --- */
+  --canvas: var(--md-background);
+  --paper: var(--secondary-container);
+  --sidebar-wash: var(--surface-container-low);
+  --ink: var(--on-surface);
+  --brand: var(--primary-container);
+  --brand-soft: var(--primary-fixed);
+  --brand-deep: var(--md-primary);
+  --muted-wash: var(--surface-container);
+  --muted-ink: var(--on-surface-variant);
+  --border-warm: var(--outline-variant);
+
+  /* --- Semantic (shadcn) --- */
+  --background: var(--md-background);
+  --foreground: var(--on-surface);
+  --card: var(--surface-container-lowest);
+  --card-foreground: var(--on-surface);
+  --popover: var(--surface-container-lowest);
+  --popover-foreground: var(--on-surface);
+  --primary: var(--primary-container);
+  --primary-foreground: var(--on-primary);
+  --secondary: var(--secondary-container);
+  --secondary-foreground: var(--on-surface);
   --muted: var(--muted-wash);
   --muted-foreground: var(--muted-ink);
   --accent: var(--brand-soft);
   --accent-foreground: var(--brand-deep);
-  --destructive: #dc2626;
+  --destructive: var(--error);
   --border: var(--border-warm);
   --input: var(--border-warm);
-  --ring: var(--brand);
+  --ring: var(--primary-container);
 
-  /* Text selection — soft ember wash (not system blue; not solid brand) */
-  --selection: color-mix(in oklab, var(--brand) 22%, transparent);
-  --selection-foreground: var(--ink);
+  /* Text selection — soft ember wash */
+  --selection: color-mix(in oklab, var(--primary-container) 22%, transparent);
+  --selection-foreground: var(--on-surface);
 
-  /* Charts — warm neutrals only (not frozen in DESIGN.md; keep non-purple) */
-  --chart-1: #c2410c;
-  --chart-2: #9a3412;
-  --chart-3: #78716c;
-  --chart-4: #a8a29e;
-  --chart-5: #44403c;
+  /* Charts — warm neutrals only */
+  --chart-1: var(--primary-container);
+  --chart-2: var(--md-primary);
+  --chart-3: var(--md-secondary);
+  --chart-4: var(--secondary-fixed-dim);
+  --chart-5: var(--on-secondary-fixed-variant);
 
   /* Sidebar */
   --sidebar: var(--sidebar-wash);
-  --sidebar-foreground: var(--ink);
-  --sidebar-primary: var(--brand);
-  --sidebar-primary-foreground: #ffffff;
+  --sidebar-foreground: var(--on-surface);
+  --sidebar-primary: var(--primary-container);
+  --sidebar-primary-foreground: var(--on-primary);
   --sidebar-accent: var(--brand-soft);
   --sidebar-accent-foreground: var(--brand-deep);
   --sidebar-border: var(--border-warm);
-  --sidebar-ring: var(--brand);
+  --sidebar-ring: var(--primary-container);
 
-  /* Geometry & motion */
-  --radius: 0.8rem;
-  --gloaming-shadow-card: 0 12px 40px -24px rgb(28 25 23 / 0.12);
-  --gloaming-shadow-float: 0 2px 6px -2px rgb(28 25 23 / 0.08), 0 14px 32px -10px rgb(28 25 23 / 0.18);
+  /* Geometry, layout & motion */
+  --radius: 0.75rem;
+  --reading-column: 680px;
+  --container-max: 1024px;
+  --gloaming-shadow-card: 0 4px 20px color-mix(in oklab, var(--on-surface) 8%, transparent);
+  --gloaming-shadow-float:
+    0 2px 6px color-mix(in oklab, var(--on-surface) 6%, transparent),
+    0 14px 32px color-mix(in oklab, var(--on-surface) 10%, transparent);
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 
   /* Fonts — DESIGN.md stacks via Fontsource variable packages + OS fallbacks */

@@ -10,19 +10,19 @@ English is the **single language** for product and engineering documentation in 
 | 2     | [`product-principles.md`](./product-principles.md)         | Reading first, real content, AI companion, calm UI                     |
 | 3     | [`mvp-scope.md`](./mvp-scope.md)                           | **V1 feature specification** — must / must-not                         |
 | 4     | [`roadmap.md`](./roadmap.md)                               | Phase 1–3 outcomes only                                                |
-| 5     | [`feature-audit.md`](./feature-audit.md)                   | Current code: KEEP / REFACTOR / POSTPONE / DEPRECATED + migration      |
+| 5     | [`feature-audit.md`](./feature-audit.md)                   | Current code: KEEP / REFACTOR / POSTPONE / REMOVED + migration         |
 | 6     | [`learning-philosophy.md`](./learning-philosophy.md)       | Why authentic reading (research)                                       |
 | 7     | [`content-strategy.md`](./content-strategy.md)             | Import-first; real content pipeline                                    |
-| 8     | [`prototype-flows.md`](./prototype-flows.md)               | First-time + daily loop; nav SSOT                                      |
+| 8     | [`prototype-flows.md`](./prototype-flows.md)               | First-time + daily reading loop; nav SSOT                              |
 | 9     | [`success-metrics.md`](./success-metrics.md)               | North star: engaged reading minutes                                    |
 | 10    | [`feature-decision-guide.md`](./feature-decision-guide.md) | Before building a feature                                              |
 | 11    | [`design-guardrails.md`](./design-guardrails.md)           | Reviews, walkthroughs, retros                                          |
 
 Historical (superseded, do not use as V1 scope): [`feature-short-article-library-v1.md`](./feature-short-article-library-v1.md).
 
-## Prototypes
+## Screen flows
 
-HTML prototypes live in [`../../prd/`](../../prd/). They are **design references**, not production UI. Auth and reader chrome may still inform UI. **Practice / Review / Progress HTML is stale** (old learning-platform loop). Navigation: [`prototype-flows.md`](./prototype-flows.md) wins over ad-hoc HTML links.
+Navigation and journeys: [`prototype-flows.md`](./prototype-flows.md). Visual tokens: [`DESIGN.md`](../../DESIGN.md). Legacy HTML prototypes under `prd/` were removed (2026-08-20); do not recreate the old study-loop screens from memory.
 
 ## One-liner (SSOT)
 

@@ -62,7 +62,7 @@ Agent-facing visual identity. Normative values live in the YAML front matter; pr
 
 **Status:** Partial v1 (light theme foundations). Expand as screens are designed.
 
-**Related:** `prd/` prototypes (visual reference) · `docs/product/` (product philosophy, not visual tokens) · early interaction references: Apple Books, TextStack, Readest — [`docs/product/product-vision.md`](docs/product/product-vision.md) §8 (borrow patterns; `DESIGN.md` still wins on color, type, shape).
+**Related:** `docs/product/` (product philosophy + screen flows, not visual tokens) · early interaction references: Apple Books, TextStack, Readest — [`docs/product/product-vision.md`](docs/product/product-vision.md) §8 (borrow patterns; `DESIGN.md` still wins on color, type, shape).
 
 ---
 
@@ -177,7 +177,7 @@ Hierarchy comes mainly from **tonal layers** (canvas → paper → white surface
 - Don’t fill large regions with brand-soft or saturated orange.
 - Don’t add heavy shadows, glow, mesh gradients, floating island nav, or cinematic scroll theater.
 - Don’t implement dark mode values until a night-reading theme is explicitly designed.
-- Don’t treat `prd/` HTML as pixel law — it defines elements and intent; layout may be refined, tokens in this file win for color/type/shape.
+- Don’t invent a parallel token set in feature CSS — extend this file / `globals.css` first.
 - Don’t invent a second Admin color theme — same tokens; denser workbench layout is OK.
 
 **UI composition:** Prefer shadcn atoms, then Tailwind polish, then limited native markup — aesthetics over atom purity. Ladder and Base UI gotchas: `.cursor/rules/frontend.mdc`.

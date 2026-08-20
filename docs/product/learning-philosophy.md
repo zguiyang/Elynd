@@ -103,9 +103,9 @@ High anxiety blocks usable input. Compelling content and low pressure increase t
 
 ### 4.7 Output and spacing (honest, deprioritized for V1)
 
-**Swain (output):** Production can push noticing. Valid later—**not** the V1 identity. Practice modules in the current codebase are a drift risk, not a philosophy requirement.
+**Swain (output):** Production can push noticing. Valid later—**not** the V1 identity. Do not reintroduce Practice modules as a philosophy requirement.
 
-**Spacing (Ebbinghaus / Cepeda):** Distributed encounters help memory. In a reader, that should mean **meeting language again in books**, not a daily review queue. Review/SRS in the current codebase is postponed/deprecated for V1. See [`feature-audit.md`](./feature-audit.md).
+**Spacing (Ebbinghaus / Cepeda):** Distributed encounters help memory. In a reader, that should mean **meeting language again in books**, not a daily review queue. Review/SRS was removed from the codebase for V1. See [`feature-audit.md`](./feature-audit.md).
 
 **Interaction (Long):** Negotiation of meaning is secondary. If it appears, it is clarification **about this page**, not a conversation product.
 
@@ -132,7 +132,7 @@ High anxiety blocks usable input. Compelling content and low pressure increase t
 | Low-pressure persistence                 | Resume position; no quiz gate                                                    |
 | Growth from volume                       | North star = engaged reading time ([`success-metrics.md`](./success-metrics.md)) |
 
-Surfaces we **do not** map philosophy onto in V1: Practice, Review, Progress-as-score, chatbot home.
+Surfaces we **do not** map philosophy onto in V1: Practice, Review, Progress-as-scoreboard, chatbot home. Progress as **reading history** (heatmap / volume) is allowed.
 
 ---
 

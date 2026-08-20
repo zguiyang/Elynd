@@ -21,8 +21,6 @@ Canonical product docs (English): [`docs/product/`](docs/product/).
 | [`docs/product/feature-decision-guide.md`](docs/product/feature-decision-guide.md) | Should we build this?                                      |
 | [`docs/product/design-guardrails.md`](docs/product/design-guardrails.md)           | Anti-drift review                                          |
 
-HTML prototypes: [`prd/`](prd/) (references only; Practice/Review/Progress HTML is stale).
-
 **One-liner:** Gloaming is an AI Native Language Reading Environment—read authentic English like a modern ebook reader, with contextual AI when you get stuck. Not a course, not drills, not a chatbot. The core is helping people keep reading English they actually want to read.
 
 ## Visual design (UI)
@@ -31,7 +29,7 @@ Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root).
 
 - **Before** generating or restyling UI in `apps/web`, read `DESIGN.md` and follow its tokens, usage rules, and Do's / Don'ts.
 - Implement appearance via CSS variables / semantic utilities in `apps/web/app/globals.css` — do not hardcode theme colors in feature code.
-- `prd/` shows screen intent and elements; **`DESIGN.md` wins** for color, type, shape, and elevation.
+- Screen flows: [`docs/product/prototype-flows.md`](docs/product/prototype-flows.md). Visual tokens: **`DESIGN.md`**.
 - Product philosophy / anti-drift (non-visual): [`docs/product/`](docs/product/) — especially [`design-guardrails.md`](docs/product/design-guardrails.md).
 
 ## Rules source of truth

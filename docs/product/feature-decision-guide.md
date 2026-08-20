@@ -46,18 +46,18 @@ If you cannot place it, it is a side quest. Side quests are out of V1.
 
 ## 3. Feature types and default stance
 
-| Type                   | Examples                               | Default             | Design note                  |
-| ---------------------- | -------------------------------------- | ------------------- | ---------------------------- |
-| Main-loop strength     | Import, EPUB parse, typography, resume | **Prioritize**      | This _is_ V1                 |
-| Comprehension assist   | Inline explain, translation, TTS       | **Yes**             | On demand; do not hijack     |
-| Highlights / bookmarks | Save a line in the book                | **Later**           | Easy to become a vocab inbox |
-| Post-input quizzes     | Practice                               | **No for V1**       | Deprecated in current code   |
-| Daily review queue     | Review / SRS                           | **No for V1**       | Deprecated in current code   |
-| Growth dashboard       | Heatmaps, portraits                    | **No for V1 shell** | Postpone                     |
-| Social competition     | Leaderboards                           | **Default no**      |                              |
-| Courseification        | Syllabus, pass walls                   | **Default no**      |                              |
-| Free AI chat as home   | Chat without text                      | **Default no**      |                              |
-| AI-written library     | Generated stories                      | **Default no**      |                              |
+| Type                   | Examples                               | Default            | Design note                  |
+| ---------------------- | -------------------------------------- | ------------------ | ---------------------------- |
+| Main-loop strength     | Import, EPUB parse, typography, resume | **Prioritize**     | This _is_ V1                 |
+| Comprehension assist   | Inline explain, translation, TTS       | **Yes**            | On demand; do not hijack     |
+| Highlights / bookmarks | Save a line in the book                | **Later**          | Easy to become a vocab inbox |
+| Post-input quizzes     | Practice                               | **No for V1**      | Removed from codebase        |
+| Daily review queue     | Review / SRS                           | **No for V1**      | Removed from codebase        |
+| Growth dashboard       | Heatmaps, portraits                    | **Keep; optimize** | Reading-history overview     |
+| Social competition     | Leaderboards                           | **Default no**     |                              |
+| Courseification        | Syllabus, pass walls                   | **Default no**     |                              |
+| Free AI chat as home   | Chat without text                      | **Default no**     |                              |
+| AI-written library     | Generated stories                      | **Default no**     |                              |
 
 ---
 

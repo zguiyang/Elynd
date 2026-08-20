@@ -140,7 +140,7 @@ Large schema change → Ask before migrate (`core`).
 
 ### 4.3 Prototypes
 
-HTML under `prd/` still shows Library → Room → Practice → Review → Progress. [`prototype-flows.md`](./prototype-flows.md) wins. Do not implement new screens from stale Practice/Review HTML.
+Legacy HTML under `prd/` was **deleted** (2026-08-20). Flows SSOT is [`prototype-flows.md`](./prototype-flows.md); visuals are [`DESIGN.md`](../../DESIGN.md). Do not reintroduce study-loop prototype screens.
 
 ---
 
@@ -148,5 +148,6 @@ HTML under `prd/` still shows Library → Room → Practice → Review → Progr
 
 | Date       | Change                                                                                                                  |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-20 | Deleted `prd/` HTML prototypes; cleaned remaining study-loop copy in admin/progress.                                    |
 | 2026-08-20 | Removed Practice/Review full stack; Progress kept as reading-history overview.                                          |
 | 2026-08-20 | Initial audit against AI Native Language Reading Environment; freeze practice/review; V1 = import + reader + companion. |

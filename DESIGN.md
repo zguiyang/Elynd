@@ -2,7 +2,7 @@
 version: alpha
 name: Elynd
 description: >-
-  Calm editorial product UI for an English reading space —
+  Calm editorial product UI for an English reading environment —
   warm paper surfaces, single brand ember accent, light theme only.
 colors:
   canvas: '#FAF9F6'
@@ -62,20 +62,20 @@ Agent-facing visual identity. Normative values live in the YAML front matter; pr
 
 **Status:** Partial v1 (light theme foundations). Expand as screens are designed.
 
-**Related:** `prd/` prototypes (visual reference) · `docs/product/` (product philosophy, not visual tokens)
+**Related:** `prd/` prototypes (visual reference) · `docs/product/` (product philosophy, not visual tokens) · early interaction references: Apple Books, TextStack, Readest — [`docs/product/product-vision.md`](docs/product/product-vision.md) §8 (borrow patterns; `DESIGN.md` still wins on color, type, shape).
 
 ---
 
 ## Overview
 
-Elynd is a **calm editorial product shell** — a quiet paper reading room for adults who struggle to persist with English. The UI should feel warm, dry, and low-pressure: somewhere you can sit and read for a few minutes without being pushed, scored, or entertained into anxiety.
+Elynd is a **calm editorial product shell** — a quiet paper reading environment. The UI should feel warm, dry, and low-pressure: somewhere you come back to a book, not to a learning task.
 
 **Character**
 
 - Indie and human, not platform marketing
 - Editorial / manuscript-adjacent, never luxury fashion or SaaS cockpit
 - Restrained warmth: one ember accent as bookmark/firelight, not a dyed page
-- Adult-to-adult tone; no shame, streak theater, or gamified noise
+- Adult-to-adult tone; no shame, streak theater, or gamified noise. Copy may address students as well as adults.
 
 **User feeling to protect**
 
@@ -168,6 +168,7 @@ Hierarchy comes mainly from **tonal layers** (canvas → paper → white surface
 - Match Auth ↔ App shape rules above.
 - Preserve low-pressure copy and quiet composition when inventing system UI copy and layout.
 - Keep **system UI language Chinese** (labels, nav, empty states, toasts, placeholders) until product i18n is an explicit decision; learning content / operator-typed field values may be English or Chinese.
+- For reader chrome, selection help, shelf, and import flows, you may study Apple Books, TextStack, and Readest (`docs/product/product-vision.md` §8). Borrow interaction; do not copy their visual system or their study features (e.g. SRS).
 
 **Don't**
 

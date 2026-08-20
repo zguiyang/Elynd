@@ -6,23 +6,25 @@
 
 ## 产品简介
 
-**Elynd** 是面向「想学英语却难以长期坚持」的成年人的英语**学习空间**：以有趣、大部分能懂的真实内容（阅读 + 听力）为主，用工具（含 AI）**降低理解阻力**——不是课程平台、背词 App，也不是聊天机器人。
+**Elynd** 是 **AI Native Language Reading Environment**（AI 原生语言阅读环境）：像用现代电子书阅读器一样读真实英文，卡住时获得上下文相关的 AI 帮助。核心不是教语言，而是帮助用户**持续阅读他们真正想读的英文**。
 
-目标用户：英语基础一般、因工作/生活需要提升英语、却反复在课程与 App 上放弃的成年人。
+目标用户：不限年龄——学生、成人学习者、英语爱好者、高级读者。缺的不是资料，而是一个能读下去、卡住能获得帮助的环境。
 
 产品理念与决策文档（英文 SSOT）：[`docs/product/`](./docs/product/)。
 
 ### 产品方向（主循环）
 
-| 空间          | 说明                                     |
-| ------------- | ---------------------------------------- |
-| Library       | 发现难度合适、愿意读完的内容             |
-| Learning Room | 阅读 / 听力 + 按需理解辅助               |
-| Practice      | 读懂之后的轻量确认与表达                 |
-| Review        | 在语境中再次遇见重要表达                 |
-| Progress      | 看见与英语相处的时间与习惯（非考试排行） |
+```text
+选择真实英文内容 → 打开阅读 → 遇到语言障碍 → 获得上下文帮助 → 继续阅读
+```
 
-> 当前工程首个可用闭环是 **注册 / 登录（Better Auth session cookie）/ Dashboard**。学习闭环目标见 [`docs/product/mvp-scope.md`](./docs/product/mvp-scope.md)。
+| 表面   | 说明                           |
+| ------ | ------------------------------ |
+| Shelf  | 自己的书 / 文件 + 少量种子内容 |
+| Reader | 安静阅读；划词解释、翻译、TTS  |
+| AI     | 页内同伴，不需要时消失         |
+
+Elynd 不是 Duolingo、LingQ、Anki、ChatGPT 阅读插件，也不是 AI 内容工厂。V1 规格：[`docs/product/mvp-scope.md`](./docs/product/mvp-scope.md)。代码去留：[`docs/product/feature-audit.md`](./docs/product/feature-audit.md)。
 
 ## 技术栈
 

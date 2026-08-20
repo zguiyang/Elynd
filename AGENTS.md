@@ -6,20 +6,24 @@ Guidance for AI coding assistants in the Elynd repository.
 
 Canonical product docs (English): [`docs/product/`](docs/product/).
 
-| Doc                                                                                | Use                          |
-| ---------------------------------------------------------------------------------- | ---------------------------- |
-| [`docs/product/README.md`](docs/product/README.md)                                 | Index / read order           |
-| [`docs/product/product-vision.md`](docs/product/product-vision.md)                 | What Elynd is / is not       |
-| [`docs/product/learning-philosophy.md`](docs/product/learning-philosophy.md)       | Learning science stance      |
-| [`docs/product/mvp-scope.md`](docs/product/mvp-scope.md)                           | MVP, non-goals, module map   |
-| [`docs/product/content-strategy.md`](docs/product/content-strategy.md)             | Curated library, admin flow  |
-| [`docs/product/success-metrics.md`](docs/product/success-metrics.md)               | North star and drift metrics |
-| [`docs/product/feature-decision-guide.md`](docs/product/feature-decision-guide.md) | Should we build this?        |
-| [`docs/product/design-guardrails.md`](docs/product/design-guardrails.md)           | Anti-drift review            |
+| Doc                                                                                | Use                                                     |
+| ---------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| [`docs/product/README.md`](docs/product/README.md)                                 | Index / read order                                      |
+| [`docs/product/product-vision.md`](docs/product/product-vision.md)                 | What Elynd is / is not; personas; experience references |
+| [`docs/product/product-principles.md`](docs/product/product-principles.md)         | Reading-first decision rules                            |
+| [`docs/product/mvp-scope.md`](docs/product/mvp-scope.md)                           | V1 feature specification — must / must-not              |
+| [`docs/product/roadmap.md`](docs/product/roadmap.md)                               | Phase 1–3 outcomes                                      |
+| [`docs/product/feature-audit.md`](docs/product/feature-audit.md)                   | KEEP / hide / migrate existing code                     |
+| [`docs/product/learning-philosophy.md`](docs/product/learning-philosophy.md)       | Why authentic reading                                   |
+| [`docs/product/content-strategy.md`](docs/product/content-strategy.md)             | Import-first supply                                     |
+| [`docs/product/prototype-flows.md`](docs/product/prototype-flows.md)               | First-time + daily reading loop                         |
+| [`docs/product/success-metrics.md`](docs/product/success-metrics.md)               | North star and drift metrics                            |
+| [`docs/product/feature-decision-guide.md`](docs/product/feature-decision-guide.md) | Should we build this?                                   |
+| [`docs/product/design-guardrails.md`](docs/product/design-guardrails.md)           | Anti-drift review                                       |
 
-HTML prototypes: [`prd/`](prd/) (references only).
+HTML prototypes: [`prd/`](prd/) (references only; Practice/Review/Progress HTML is stale).
 
-**One-liner:** Elynd is an English learning space for adults who struggle to persist—interesting, mostly understandable real content (read + listen), with tools (including AI) that lower friction. Not a course, vocab pack, or chatbot.
+**One-liner:** Elynd is an AI Native Language Reading Environment—read authentic English like a modern ebook reader, with contextual AI when you get stuck. Not a course, not drills, not a chatbot. The core is helping people keep reading English they actually want to read.
 
 ## Visual design (UI)
 

@@ -6,23 +6,25 @@
 
 ## Product
 
-**Elynd** is an English **learning space** for adults who struggle to stick with learning. It centers interesting, mostly understandable real content (reading + listening). Tools—including AI—**lower friction**. It is not a course platform, vocab pack, or chatbot.
+**Elynd** is an **AI Native Language Reading Environment**: read authentic English the way you use a modern ebook reader, with contextual AI help when meaning breaks down. The core is not teaching language. The core is helping people **keep reading English they actually want to read**.
 
-Target users: adults with mid/weak English who need it for work or life, and who repeatedly abandon courses and apps.
+Who: **no age gate**—students, adult learners, enthusiasts, advanced readers. They are not short of materials. They are short of an environment that lets them keep reading, with help when stuck.
 
 Product vision and decision docs (English SSOT): [`docs/product/`](./docs/product/).
 
 ### Product direction (main loop)
 
-| Space         | Role                                                |
-| ------------- | --------------------------------------------------- |
-| Library       | Discover level-fit content worth finishing          |
-| Learning Room | Read / listen + on-demand comprehension help        |
-| Practice      | Light checks and expression **after** understanding |
-| Review        | Re-meet important expressions in context            |
-| Progress      | Time-with-language and habit (not exam ranks)       |
+```text
+Choose authentic English → Read → Contextual help when stuck → Keep reading
+```
 
-> The first **engineering** loop is **sign-up / sign-in (Better Auth session cookie) / dashboard**. Learning-loop targets: [`docs/product/mvp-scope.md`](./docs/product/mvp-scope.md).
+| Surface | Role                                          |
+| ------- | --------------------------------------------- |
+| Shelf   | Your books/files + a small seed library       |
+| Reader  | Calm reading; lookup, translation, TTS        |
+| AI      | In-page companion; disappears when not needed |
+
+Elynd is not Duolingo, LingQ, Anki, a ChatGPT reading plugin, or an AI content factory. V1 spec: [`docs/product/mvp-scope.md`](./docs/product/mvp-scope.md). Code vs bet: [`docs/product/feature-audit.md`](./docs/product/feature-audit.md).
 
 ## Stack
 

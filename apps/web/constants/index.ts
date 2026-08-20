@@ -1,6 +1,6 @@
-export { AUTH_ADMIN_ROLE } from '@elynd/shared/auth/policy';
+export { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 
-export const APP_NAME = 'Elynd' as const;
+export const APP_NAME = '书灯阅读' as const;
 
 export const AUTH_ROUTES = {
   signIn: '/sign-in',

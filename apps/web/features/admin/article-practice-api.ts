@@ -5,7 +5,7 @@ import {
   generatePracticeItemsResponseSchema,
   type PracticeItemWrite,
   type ReplacePracticeItemsBody,
-} from '@elynd/shared/api/learn';
+} from '@gloaming/shared/api/learn';
 
 import { formatAdminApiError } from '@/features/admin/articles-api';
 import { apiRequest } from '@/lib/api-request';

@@ -6,8 +6,8 @@ import {
   adminArticleSchema,
   type CreateArticleBody,
   type UpdateArticleBody,
-} from '@elynd/shared/api/articles';
-import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, type PaginationMeta } from '@elynd/shared/api/pagination';
+} from '@gloaming/shared/api/articles';
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, type PaginationMeta } from '@gloaming/shared/api/pagination';
 
 import { type AdminArticleView, normalizeAdminArticle } from '@/features/articles-http';
 import { apiRequest, formatApiError } from '@/lib/api-request';

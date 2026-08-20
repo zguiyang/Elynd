@@ -4,13 +4,13 @@ import { useQuery } from '@tanstack/react-query';
 import { Volume2 } from 'lucide-react';
 import { useState } from 'react';
 
-import { DEFAULT_PAGE } from '@elynd/shared/api/pagination';
+import { DEFAULT_PAGE } from '@gloaming/shared/api/pagination';
 import {
   TTS_INVOCATION_DEFAULT_PAGE_SIZE,
   type TtsInvocationLog,
   type TtsInvocationStats,
   ttsInvocationWindowForDays,
-} from '@elynd/shared/api/tts-invocations';
+} from '@gloaming/shared/api/tts-invocations';
 
 import { LoadingOverlay } from '@/components/loading-overlay';
 import { Badge } from '@/components/ui/badge';

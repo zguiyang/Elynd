@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { BookOpenIcon, Play } from 'lucide-react';
 import Link from 'next/link';
 
-import type { LearnArticleSummary, LearnTodayEntry } from '@elynd/shared/api/learn';
+import type { LearnArticleSummary, LearnTodayEntry } from '@gloaming/shared/api/learn';
 
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';

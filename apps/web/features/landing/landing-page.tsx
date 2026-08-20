@@ -291,7 +291,7 @@ export function LandingPage() {
         <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 px-6 py-10 text-sm text-muted-foreground sm:flex-row sm:items-center md:px-10">
           <BrandMark />
           <p>{c.footer.tagline}</p>
-          <p className="text-muted-foreground/70">© {new Date().getFullYear()} Elynd</p>
+          <p className="text-muted-foreground/70">© {new Date().getFullYear()} 书灯阅读</p>
         </div>
       </footer>
     </div>

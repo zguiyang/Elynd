@@ -7,7 +7,7 @@ import {
   generateReviewItemsResponseSchema,
   type ReplaceReviewItemsBody,
   type ReviewItemWrite,
-} from '@elynd/shared/api/review';
+} from '@gloaming/shared/api/review';
 
 import { formatAdminApiError } from '@/features/admin/articles-api';
 import { apiRequest } from '@/lib/api-request';

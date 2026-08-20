@@ -6,8 +6,8 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-import { type ArticleStatus } from '@elynd/shared/api/articles';
-import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from '@elynd/shared/api/pagination';
+import { type ArticleStatus } from '@gloaming/shared/api/articles';
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from '@gloaming/shared/api/pagination';
 
 import { LoadingOverlay } from '@/components/loading-overlay';
 import {

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { type PracticeItemKind, practiceOptionLetter } from '@elynd/shared/api/learn';
+import { type PracticeItemKind, practiceOptionLetter } from '@gloaming/shared/api/learn';
 
 import { Button } from '@/components/ui/button';
 import type { AdminPracticeDraftItem } from '@/features/admin/article-practice-api';

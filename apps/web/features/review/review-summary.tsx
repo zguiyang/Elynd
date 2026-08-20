@@ -4,8 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { CheckCircleIcon } from 'lucide-react';
 import Link from 'next/link';
 
-import { practiceOptionLetter } from '@elynd/shared/api/learn';
-import type { ReviewItemKind, ReviewSessionResult } from '@elynd/shared/api/review';
+import { practiceOptionLetter } from '@gloaming/shared/api/learn';
+import type { ReviewItemKind, ReviewSessionResult } from '@gloaming/shared/api/review';
 
 import { Button } from '@/components/ui/button';
 import { AUTH_ROUTES } from '@/constants';

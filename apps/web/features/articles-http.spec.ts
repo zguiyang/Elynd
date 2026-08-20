@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { Article } from '@elynd/shared/api/articles';
+import type { Article } from '@gloaming/shared/api/articles';
 
 import { normalizeArticle } from './articles-http';
 

@@ -11,7 +11,7 @@ if (!process.env.API_INTERNAL_URL?.trim()) {
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
-  transpilePackages: ['@elynd/shared'],
+  transpilePackages: ['@gloaming/shared'],
 };
 
 export default nextConfig;

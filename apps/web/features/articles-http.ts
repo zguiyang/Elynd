@@ -1,4 +1,4 @@
-import type { AdminArticle, Article, DerivedFreshness } from '@elynd/shared/api/articles';
+import type { AdminArticle, Article, DerivedFreshness } from '@gloaming/shared/api/articles';
 
 /** Article view model: same fields as shared `Article`, dates as ISO strings. */
 export type ArticleView = {

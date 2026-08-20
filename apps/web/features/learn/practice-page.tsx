@@ -12,8 +12,8 @@ import type {
   PracticeAttempt,
   PracticeAttemptResult,
   UpdatePracticeAttemptBody,
-} from '@elynd/shared/api/learn';
-import { practiceOptionLetter } from '@elynd/shared/api/learn';
+} from '@gloaming/shared/api/learn';
+import { practiceOptionLetter } from '@gloaming/shared/api/learn';
 
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';

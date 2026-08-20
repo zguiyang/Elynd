@@ -7,7 +7,7 @@ import {
   reviewLeaveResponseSchema,
   type ReviewTodayData,
   reviewTodayDataSchema,
-} from '@elynd/shared/api/review';
+} from '@gloaming/shared/api/review';
 
 import { apiRequest, formatApiError } from '@/lib/api-request';
 

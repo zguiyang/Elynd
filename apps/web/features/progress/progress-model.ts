@@ -1,4 +1,4 @@
-import type { ProgressActivityDay, ProgressCompletion, ProgressPortrait } from '@elynd/shared/api/progress';
+import type { ProgressActivityDay, ProgressCompletion, ProgressPortrait } from '@gloaming/shared/api/progress';
 
 export type { ProgressCompletion, ProgressPortrait };
 

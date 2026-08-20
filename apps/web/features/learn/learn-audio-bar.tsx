@@ -5,8 +5,8 @@ import { PauseIcon, PlayIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { type LearnAudioAvailability } from '@elynd/shared/api/learn';
-import { type TtsVoiceRole, type TtsWordTiming } from '@elynd/shared/api/tts';
+import { type LearnAudioAvailability } from '@gloaming/shared/api/learn';
+import { type TtsVoiceRole, type TtsWordTiming } from '@gloaming/shared/api/tts';
 
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';

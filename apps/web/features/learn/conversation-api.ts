@@ -6,7 +6,7 @@ import {
   type ConversationSummary,
   conversationSummarySchema,
   type CreateConversationBody,
-} from '@elynd/shared/api/conversations';
+} from '@gloaming/shared/api/conversations';
 
 import { apiRequest, formatApiError } from '@/lib/api-request';
 

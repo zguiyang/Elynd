@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-import { type ArticleAudioRole, type ArticleAudioTrack } from '@elynd/shared/api/article-audio';
+import { type ArticleAudioRole, type ArticleAudioTrack } from '@gloaming/shared/api/article-audio';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';

@@ -2,8 +2,8 @@ import {
   articleAudioBodyTextOffsetBase,
   buildArticleAudioText,
   normalizeArticleAudioWhitespace,
-} from '@elynd/shared/api/article-audio';
-import { type TtsWordTiming } from '@elynd/shared/api/tts';
+} from '@gloaming/shared/api/article-audio';
+import { type TtsWordTiming } from '@gloaming/shared/api/tts';
 
 export type AudioWordToken = {
   text: string;

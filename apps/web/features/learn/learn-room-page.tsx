@@ -7,8 +7,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 
-import { type TranslateSentenceEn } from '@elynd/shared/api/translate';
-import { type TtsWordTiming } from '@elynd/shared/api/tts';
+import { type TranslateSentenceEn } from '@gloaming/shared/api/translate';
+import { type TtsWordTiming } from '@gloaming/shared/api/tts';
 
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
@@ -29,7 +29,7 @@ import { formatTranslateLearnerError, streamTranslateArticle } from '@/features/
 import { ApiRequestError } from '@/lib/api-request';
 import { cn } from '@/lib/utils';
 
-const ASSIST_OPEN_STORAGE_KEY = 'elynd.learn.assistOpen';
+const ASSIST_OPEN_STORAGE_KEY = 'gloaming.learn.assistOpen';
 
 type LearnRoomPageProps = {
   articleId: string;

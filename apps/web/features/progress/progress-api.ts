@@ -1,4 +1,4 @@
-import { type ProgressData, progressDataSchema } from '@elynd/shared/api/progress';
+import { type ProgressData, progressDataSchema } from '@gloaming/shared/api/progress';
 
 import { apiRequest, formatApiError } from '@/lib/api-request';
 

@@ -6,7 +6,7 @@ import {
   PRACTICE_OPTIONS_MIN,
   type PracticeItemKind,
   practiceOptionLetter,
-} from '@elynd/shared/api/learn';
+} from '@gloaming/shared/api/learn';
 
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';

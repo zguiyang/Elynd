@@ -1,7 +1,7 @@
 'use client';
 
-import type { LlmAppSettingView, LlmModel, LlmProvider } from '@elynd/shared/api/llm-config';
-import type { AiSettingKey } from '@elynd/shared/api/llm-config-keys';
+import type { LlmAppSettingView, LlmModel, LlmProvider } from '@gloaming/shared/api/llm-config';
+import type { AiSettingKey } from '@gloaming/shared/api/llm-config-keys';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

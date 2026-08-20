@@ -1,14 +1,14 @@
-# `@elynd/web`
+# `@gloaming/web`
 
-Next.js App Router frontend for Elynd (port **3000**).
+Next.js App Router frontend for Gloaming (port **3000**).
 
 ## Scripts
 
 ```bash
-pnpm --filter @elynd/web dev
-pnpm --filter @elynd/web test
-pnpm --filter @elynd/web typecheck
-pnpm --filter @elynd/web lint
+pnpm --filter @gloaming/web dev
+pnpm --filter @gloaming/web test
+pnpm --filter @gloaming/web typecheck
+pnpm --filter @gloaming/web lint
 ```
 
 ## Auth (session, soft UX)

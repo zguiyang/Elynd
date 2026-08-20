@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { type ArticleLevel } from '@elynd/shared/api/articles';
-import { type TranslateSentenceEn } from '@elynd/shared/api/translate';
-import { type TtsWordTiming } from '@elynd/shared/api/tts';
+import { type ArticleLevel } from '@gloaming/shared/api/articles';
+import { type TranslateSentenceEn } from '@gloaming/shared/api/translate';
+import { type TtsWordTiming } from '@gloaming/shared/api/tts';
 
 import { Popover, PopoverArrow, PopoverContent, PopoverDescription, PopoverTitle } from '@/components/ui/popover';
 import {

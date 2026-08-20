@@ -5,8 +5,8 @@ import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-import type { LlmModel, LlmProvider } from '@elynd/shared/api/llm-config';
-import type { AiSettingKey } from '@elynd/shared/api/llm-config-keys';
+import type { LlmModel, LlmProvider } from '@gloaming/shared/api/llm-config';
+import type { AiSettingKey } from '@gloaming/shared/api/llm-config-keys';
 
 import {
   AlertDialog,

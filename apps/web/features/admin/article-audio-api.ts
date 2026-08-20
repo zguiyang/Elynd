@@ -4,7 +4,7 @@ import {
   type GenerateArticleAudioBody,
   type GenerateArticleAudioResult,
   generateArticleAudioResultSchema,
-} from '@elynd/shared/api/article-audio';
+} from '@gloaming/shared/api/article-audio';
 
 import { apiRequest, formatApiError } from '@/lib/api-request';
 

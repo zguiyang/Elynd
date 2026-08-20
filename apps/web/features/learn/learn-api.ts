@@ -15,7 +15,7 @@ import {
   type UpdatePracticeAttemptResponse,
   updatePracticeAttemptResponseSchema,
   type UpdateReadingProgressBody,
-} from '@elynd/shared/api/learn';
+} from '@gloaming/shared/api/learn';
 
 import { apiRequest, formatApiError } from '@/lib/api-request';
 

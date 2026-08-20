@@ -2,8 +2,8 @@ import {
   type LearnArticleAudioTrack,
   learnArticleAudioTrackSchema,
   type LearnAudioAvailability,
-} from '@elynd/shared/api/learn';
-import { type TtsVoiceRole } from '@elynd/shared/api/tts';
+} from '@gloaming/shared/api/learn';
+import { type TtsVoiceRole } from '@gloaming/shared/api/tts';
 
 import { learnQueryKey } from '@/features/learn/learn-api';
 import { apiRequest, formatApiError } from '@/lib/api-request';

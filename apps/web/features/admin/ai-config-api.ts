@@ -15,8 +15,8 @@ import {
   testLlmProviderResultSchema,
   type UpdateLlmModelBody,
   type UpdateLlmProviderBody,
-} from '@elynd/shared/api/llm-config';
-import type { AiSettingKey } from '@elynd/shared/api/llm-config-keys';
+} from '@gloaming/shared/api/llm-config';
+import type { AiSettingKey } from '@gloaming/shared/api/llm-config-keys';
 
 import { apiRequest, formatApiError } from '@/lib/api-request';
 

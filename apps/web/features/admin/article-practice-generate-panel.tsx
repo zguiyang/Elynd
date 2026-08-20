@@ -1,6 +1,6 @@
 'use client';
 
-import type { ArticleLevel } from '@elynd/shared/api/articles';
+import type { ArticleLevel } from '@gloaming/shared/api/articles';
 
 import { Button } from '@/components/ui/button';
 import { LEVEL_LABEL } from '@/features/library/library-model';

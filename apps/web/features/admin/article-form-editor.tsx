@@ -11,7 +11,7 @@ import {
   type ArticleLevel,
   countArticleWords,
   getPublishArticleIssues,
-} from '@elynd/shared/api/articles';
+} from '@gloaming/shared/api/articles';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {

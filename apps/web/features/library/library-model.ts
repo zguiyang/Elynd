@@ -2,8 +2,8 @@ import {
   type ArticleLevel,
   DEFAULT_LIBRARY_ARTICLE_SORT_BY,
   type LibraryArticleSortField,
-} from '@elynd/shared/api/articles';
-import { DEFAULT_SORT_ORDER, type SortOrder } from '@elynd/shared/api/pagination';
+} from '@gloaming/shared/api/articles';
+import { DEFAULT_SORT_ORDER, type SortOrder } from '@gloaming/shared/api/pagination';
 
 export const LIBRARY_THEME_ALL = 'all' as const;
 

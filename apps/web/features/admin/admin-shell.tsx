@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { type ReactNode, useEffect } from 'react';
 
-import { isAdminRole } from '@elynd/shared/auth/policy';
+import { isAdminRole } from '@gloaming/shared/auth/policy';
 
 import { BrandMark } from '@/components/brand-mark';
 import { GlobalLoading } from '@/components/global-loading';

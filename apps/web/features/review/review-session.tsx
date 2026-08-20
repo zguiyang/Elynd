@@ -4,7 +4,7 @@ import { ChevronDownIcon, Volume2Icon } from 'lucide-react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import type { LearnArticleAudioTrack } from '@elynd/shared/api/learn';
+import type { LearnArticleAudioTrack } from '@gloaming/shared/api/learn';
 
 import { Button } from '@/components/ui/button';
 import { getLearnArticleAudioTrack } from '@/features/learn/learn-audio-api';

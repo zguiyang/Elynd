@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import type { LlmProvider } from '@elynd/shared/api/llm-config';
+import type { LlmProvider } from '@gloaming/shared/api/llm-config';
 
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';

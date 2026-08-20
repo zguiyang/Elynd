@@ -1,5 +1,5 @@
-import { libraryArticleListDataSchema, type LibraryArticleListQuery } from '@elynd/shared/api/articles';
-import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, type PaginationMeta } from '@elynd/shared/api/pagination';
+import { libraryArticleListDataSchema, type LibraryArticleListQuery } from '@gloaming/shared/api/articles';
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, type PaginationMeta } from '@gloaming/shared/api/pagination';
 
 import { type ArticleView, normalizeArticle } from '@/features/articles-http';
 import { apiRequest, formatApiError } from '@/lib/api-request';

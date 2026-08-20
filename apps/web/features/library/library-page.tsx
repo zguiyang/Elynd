@@ -4,8 +4,8 @@ import { BookOpenIcon, ChevronLeftIcon, ChevronRightIcon, LibraryIcon, SearchIco
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-import { DEFAULT_LIBRARY_ARTICLE_SORT_BY, type LibraryArticleSortField } from '@elynd/shared/api/articles';
-import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEFAULT_SORT_ORDER, type SortOrder } from '@elynd/shared/api/pagination';
+import { DEFAULT_LIBRARY_ARTICLE_SORT_BY, type LibraryArticleSortField } from '@gloaming/shared/api/articles';
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEFAULT_SORT_ORDER, type SortOrder } from '@gloaming/shared/api/pagination';
 
 import { LoadingOverlay } from '@/components/loading-overlay';
 import { Button } from '@/components/ui/button';

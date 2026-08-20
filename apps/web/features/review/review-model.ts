@@ -1,4 +1,4 @@
-import { REVIEW_DAILY_CAP } from '@elynd/shared/api/review';
+import { REVIEW_DAILY_CAP } from '@gloaming/shared/api/review';
 
 export { REVIEW_DAILY_CAP };
 

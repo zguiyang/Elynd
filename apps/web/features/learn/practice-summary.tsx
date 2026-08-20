@@ -3,8 +3,8 @@
 import { CheckCircleIcon } from 'lucide-react';
 import Link from 'next/link';
 
-import type { PracticeAttemptResult } from '@elynd/shared/api/learn';
-import { practiceOptionLetter } from '@elynd/shared/api/learn';
+import type { PracticeAttemptResult } from '@gloaming/shared/api/learn';
+import { practiceOptionLetter } from '@gloaming/shared/api/learn';
 
 import { Button } from '@/components/ui/button';
 import { AUTH_ROUTES } from '@/constants';

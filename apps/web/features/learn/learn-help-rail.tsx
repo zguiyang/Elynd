@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Streamdown } from 'streamdown';
 
-import { type AssistActionId as SharedAssistActionId } from '@elynd/shared/api/assist';
+import { type AssistActionId as SharedAssistActionId } from '@gloaming/shared/api/assist';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

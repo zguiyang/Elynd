@@ -5,7 +5,7 @@ import {
   type AssistSseDone,
   assistSseDoneSchema,
   assistSseErrorSchema,
-} from '@elynd/shared/api/assist';
+} from '@gloaming/shared/api/assist';
 
 import { ApiRequestError, formatApiError } from '@/lib/api-request';
 

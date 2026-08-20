@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildArticleAudioText } from '@elynd/shared/api/article-audio';
+import { buildArticleAudioText } from '@gloaming/shared/api/article-audio';
 
 import {
   activeWordTextOffset,

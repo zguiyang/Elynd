@@ -2,7 +2,7 @@
 
 import { ChevronDown, Plus } from 'lucide-react';
 
-import type { LlmModel, LlmProvider } from '@elynd/shared/api/llm-config';
+import type { LlmModel, LlmProvider } from '@gloaming/shared/api/llm-config';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

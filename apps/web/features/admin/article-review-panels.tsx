@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 
-import type { ArticleLevel } from '@elynd/shared/api/articles';
-import { practiceOptionLetter } from '@elynd/shared/api/learn';
+import type { ArticleLevel } from '@gloaming/shared/api/articles';
+import { practiceOptionLetter } from '@gloaming/shared/api/learn';
 import {
   REVIEW_ITEMS_MAX,
   REVIEW_OPTIONS_MAX,
   REVIEW_OPTIONS_MIN,
   type ReviewItemKind,
-} from '@elynd/shared/api/review';
+} from '@gloaming/shared/api/review';
 
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';

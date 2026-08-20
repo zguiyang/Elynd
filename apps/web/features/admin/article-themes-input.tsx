@@ -4,7 +4,7 @@ import { Combobox } from '@base-ui/react/combobox';
 import { CheckIcon, PlusIcon, XIcon } from 'lucide-react';
 import { useId, useMemo, useRef, useState } from 'react';
 
-import { ARTICLE_THEME_MAX_ITEMS, ARTICLE_THEME_MAX_LEN } from '@elynd/shared/api/articles';
+import { ARTICLE_THEME_MAX_ITEMS, ARTICLE_THEME_MAX_LEN } from '@gloaming/shared/api/articles';
 
 import { cn } from '@/lib/utils';
 

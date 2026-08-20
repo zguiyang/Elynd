@@ -4,7 +4,11 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-import { type LearnerReviewQueueItem, type ReviewSessionResult, type ReviewTodayData } from '@elynd/shared/api/review';
+import {
+  type LearnerReviewQueueItem,
+  type ReviewSessionResult,
+  type ReviewTodayData,
+} from '@gloaming/shared/api/review';
 
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
 import { AUTH_ROUTES } from '@/constants';

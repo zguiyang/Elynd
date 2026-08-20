@@ -1,9 +1,15 @@
 # Feature: Short-article Library loop (v1)
 
-**Status:** Agreed in product discussion (2026-08-11). Independent feature brief—not a mandate to implement in one task.  
+> **Historical.** Superseded. Do **not** use as V1 scope.
+>
+> Current product: **AI Native Language Reading Environment**. EPUB import is **in** V1; curated short articles are seed/ops only.
+>
+> Current SSOT: [`content-strategy.md`](./content-strategy.md) · [`mvp-scope.md`](./mvp-scope.md) · [`feature-audit.md`](./feature-audit.md)
+
+**Status:** Shipped as the old content atom (admin paste → published catalog → short reader). Frozen as identity.  
 **Splits into:** multiple engineering tasks (see §6). Do not ship this whole brief as a single change set.
 
-Related SSOT: [`content-strategy.md`](./content-strategy.md) · [`mvp-scope.md`](./mvp-scope.md) · [`product-vision.md`](./product-vision.md)
+Related (current): [`content-strategy.md`](./content-strategy.md) · [`mvp-scope.md`](./mvp-scope.md) · [`product-vision.md`](./product-vision.md)
 
 ---
 
@@ -103,9 +109,8 @@ Optional later (not v1): in-app generate, EPUB chunk adapter, TTS, assist, pract
 
 ## 7. Doc ownership
 
-- **This file** = SSOT for **this feature point** (v1 short-article Library loop).
-- [`content-strategy.md`](./content-strategy.md) remains library/genre/supply philosophy; it should **point here** for the v1 paste→publish→read path.
-- When a slice ships, update this brief’s status or add a short revision-log row—do not fork a second conflicting v1 scope.
+- **This file** is **historical**. Current supply SSOT is [`content-strategy.md`](./content-strategy.md).
+- Keep it to explain what shipped (paste CMS + short reader). Do not extend this loop as the product.
 
 ---
 
@@ -117,3 +122,4 @@ Optional later (not v1): in-app generate, EPUB chunk adapter, TTS, assist, pract
 | 2026-08-11 | T1 shipped: article table + admin CRUD/publish + learner published reads (no UI wiring yet).                                        |
 | 2026-08-11 | T2 admin paste form wired to real article APIs (list/create/edit/publish/unpublish).                                                |
 | 2026-08-11 | T3 Library shelf + minimal T4 pure reader wired (`/library`, `/library/[id]`).                                                      |
+| 2026-08-20 | Marked historical: V1 is import + long-form reader, not this paste-only article loop.                                               |

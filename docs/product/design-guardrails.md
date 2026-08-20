@@ -2,7 +2,7 @@
 
 Use during **reviews, prototype walkthroughs, and post-ship retros** to catch drift early.
 
-Related: [`feature-decision-guide.md`](./feature-decision-guide.md) · [`product-vision.md`](./product-vision.md) · [`learning-philosophy.md`](./learning-philosophy.md)
+Related: [`feature-decision-guide.md`](./feature-decision-guide.md) · [`product-vision.md`](./product-vision.md) · [`product-principles.md`](./product-principles.md)
 
 ---
 
@@ -10,11 +10,11 @@ Related: [`feature-decision-guide.md`](./feature-decision-guide.md) · [`product
 
 Drift = a feature may be polished or metric-positive, but no longer serves:
 
-> Adults who fail to persist get low-pressure time understanding real English.
+> People read authentic English, with AI only when they get stuck.
 
-Common disguises: “industry standard,” “competitors have it,” “AI must be stronger,” “growth first, philosophy later.”
+Common disguises: “industry standard,” “competitors have it,” “we already built Practice,” “AI must be stronger,” “growth first, philosophy later.”
 
-Standards inform; they do not override philosophy.
+Standards inform; they do not override the reader bet.
 
 ---
 
@@ -22,65 +22,66 @@ Standards inform; they do not override philosophy.
 
 ### 2.1 Identity rewrite
 
-| Red light                               | Why                        | Pull back                                |
-| --------------------------------------- | -------------------------- | ---------------------------------------- |
-| Home CTA is “Start chat / Start course” | Chatbot or class identity  | CTA → continue reading / today’s content |
-| Users “check in” with almost no reading | Task replaces input        | Tie completion to reading/listening      |
-| Empty states push quiz/AI, not content  | Side loop owns the product | Guide to pick or resume a text           |
+| Red light                                                | Why                        | Pull back                         |
+| -------------------------------------------------------- | -------------------------- | --------------------------------- |
+| Home CTA is “Start chat / Start course / Start practice” | Wrong product              | CTA → continue this book          |
+| Users “check in” with almost no reading                  | Task replaces input        | Tie the day to opening the reader |
+| Empty states push quiz/AI, not import or a text          | Side loop owns the product | Guide to import or resume         |
 
-### 2.2 Pressure / willpower return
+### 2.2 Forbidden clones
 
-| Red light                                 | Why                       | Pull back                                   |
-| ----------------------------------------- | ------------------------- | ------------------------------------------- |
-| Streak shame, public failure              | Raises affective filter   | Mild nudges; allow breaks; ban shame copy   |
-| Default daily plan ≥ 60 min or many steps | Plan exceeds habit        | Default a 5–20 minute complete path         |
-| Hard walls “must finish to proceed”       | Learning as dungeon crawl | Allow skip / later; keep voluntary continue |
+| Red light                                 | Why                    | Pull back                                   |
+| ----------------------------------------- | ---------------------- | ------------------------------------------- |
+| Lesson tree, XP, shame streak             | Duolingo               | Reader chrome; no game layer in V1          |
+| Word-known % as the homepage              | LingQ                  | Stats never outrank the page                |
+| Daily card quota / SRS                    | Anki                   | No review queue in V1                       |
+| Chat as default home                      | ChatGPT reading plugin | Assist inside the book                      |
+| Kitchen-sink panels / learning-stats home | Control-panel product  | Reader chrome; stats never outrank the page |
 
-### 2.3 Input shredded
+### 2.3 Pressure / willpower return
 
-| Red light                                  | Why                              | Pull back                                  |
-| ------------------------------------------ | -------------------------------- | ------------------------------------------ |
-| Memorize N words before unlock reading     | Skill-building over meaning      | Words in context; pre-study minimal        |
-| Article broken into unrelated micro-drills | Breaks “one material, full loop” | Practice points back to the same text      |
-| Word cards only, no passage                | Becomes vocab app                | Review shows source sentence; jump to text |
+| Red light                          | Why              | Pull back                        |
+| ---------------------------------- | ---------------- | -------------------------------- |
+| Streak shame, public failure       | Affective filter | Ban shame copy                   |
+| Hard walls “must quiz to continue” | Dungeon crawl    | Reading continues without drills |
 
-### 2.4 AI overreach
+### 2.4 Input shredded
 
-| Red light                                    | Why                       | Pull back                                         |
-| -------------------------------------------- | ------------------------- | ------------------------------------------------- |
-| Chat is the default home                     | Elynd ≠ chatbot           | AI secondary; after content                       |
-| “Summarize so you needn’t read” as main path | Skips understanding       | Summary assist only; reading remains default      |
-| Selling “smartest model / agents”            | Sells tech, not mechanism | Talk friction reduction and reading companionship |
-| Core path unusable without AI                | Tool became the product   | Degraded reading still works                      |
+| Red light                                | Why                         | Pull back                          |
+| ---------------------------------------- | --------------------------- | ---------------------------------- |
+| Memorize N words before unlock reading   | Skill-building over meaning | Help in context                    |
+| Book chopped into unrelated micro-drills | Breaks reading              | Do not ship practice as the sequel |
+| Word cards only, no passage              | Vocab app                   | Always return to the page          |
 
-### 2.5 Output too early / too heavy
+### 2.5 AI overreach
 
-| Red light                            | Why                  | Pull back                                      |
-| ------------------------------------ | -------------------- | ---------------------------------------------- |
-| Force speak/write before reading     | Violates input-first | Gate output after comprehension                |
-| Harsh correction, high speaking cost | Anxiety              | Meaning first; correction optional             |
-| Practice time dwarfs reading         | Inverted priorities  | Reading primary; practice short and text-bound |
+| Red light                                    | Why                     | Pull back                               |
+| -------------------------------------------- | ----------------------- | --------------------------------------- |
+| Chat is the default home                     | Elynd ≠ chatbot         | AI secondary                            |
+| “Summarize so you needn’t read” as main path | Skips understanding     | Optional assist only                    |
+| Core path unusable without AI                | Tool became the product | Degraded reading still works            |
+| LLM rewrites the import into a course        | Generator               | Parse structure; keep the author’s text |
 
-### 2.6 Review becomes Anki
+### 2.6 Output / review too early
 
-| Red light                         | Why                   | Pull back                            |
-| --------------------------------- | --------------------- | ------------------------------------ |
-| Review shows words without source | Loses “re-meet”       | Always show sentence; link back      |
-| “Must memorize N today” KPI       | Willpower contest     | “Available to re-meet”; allow skip   |
-| Opaque schedule creates dread     | System feels coercive | Copy = “come back”; cap daily volume |
+| Red light                                           | Why                   | Pull back                                                       |
+| --------------------------------------------------- | --------------------- | --------------------------------------------------------------- |
+| Force speak/write/quiz before or instead of reading | Violates reader-first | Hide practice/review from V1 loop                               |
+| Practice time dwarfs reading                        | Inverted priorities   | Freeze those modules ([`feature-audit.md`](./feature-audit.md)) |
 
 ---
 
 ## 3. Yellow lights (allowed with constraints)
 
-| Yellow                             | Constraint                                                |
-| ---------------------------------- | --------------------------------------------------------- |
-| Points / light gamification        | Must not be the goal; no public humiliation               |
-| “Lesson N” framing                 | Optional path only; default remains self-selected content |
-| Social share                       | Share ok; crushing leaderboards no                        |
-| Exam-oriented topics (IELTS, etc.) | Content theme ok; product must not become test coach      |
-| Push notifications                 | Rare, dismissible, no guilt copy                          |
-| Fancy dashboards                   | Prefer time/items read; avoid fake “ability scores”       |
+| Yellow                                          | Constraint                                                                                       |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Seed library                                    | Must not become “the catalog is the product”                                                     |
+| Gist / summary assist                           | Must not be the default first action                                                             |
+| Patterns from Apple Books / TextStack / Readest | Reference only; still pass V1 and identity tests ([`product-vision.md`](./product-vision.md) §8) |
+| Points / light gamification                     | Not V1; if ever, not the goal                                                                    |
+| Exam-themed **texts**                           | Theme ok; product must not become test coach                                                     |
+| Push notifications                              | Rare, no guilt                                                                                   |
+| Fancy dashboards                                | Not in default nav; never fake ability scores                                                    |
 
 Yellow features need **success metrics + kill metrics** before ship.
 
@@ -90,58 +91,59 @@ Yellow features need **success metrics + kill metrics** before ship.
 
 **Identity**
 
-- [ ] First screen reads as reading/learning space, not chat or course
-- [ ] Tone is companion + reading, not efficiency SaaS
+- [ ] First screen reads as a **reader**, not a class, quiz, or chat
+- [ ] Tone is companion + book, not efficiency SaaS
 
 **Main loop**
 
-- [ ] User can touch real English content within ~30 seconds
+- [ ] User can touch real English within ~30 seconds (seed or resume; import when built)
 - [ ] Assist does not forcibly break immersion
-- [ ] If practice exists, it maps to a specific text
+- [ ] No required practice/review to “finish” a session
 
 **Pressure**
 
-- [ ] No streak shame, public failure, or mandatory giant tasks
-- [ ] A session can feel complete in ~5–20 minutes
+- [ ] No streak shame or mandatory giant tasks
+- [ ] Closing the book is a complete session
 
 **AI**
 
 - [ ] AI is assist, not home hero
-- [ ] Reading works with AI off (degrade path clear)
-
-**Memory**
-
-- [ ] Review returns to context, not isolated word lists
+- [ ] Reading works with AI off
 
 **Metrics**
 
-- [ ] Success includes input time / reading completion—not only clicks or chat turns
+- [ ] Success includes reading minutes / resume—not quiz or chat turns
 
 ---
 
 ## 5. Retro prompts (after ~2 weeks)
 
-1. Did users spend more time **reading**, or more time in menus/chat?
-2. Was first success “understood a passage” or “finished a task”?
-3. If we deleted the feature, does the main loop clearly weaken? If not, it may be noise.
-4. Any feedback like “exhausted / ashamed / don’t know what I’m learning”? Fix pressure and narrative first.
+1. Did users spend more time **in the book**, or in menus/chat/practice?
+2. Was first success “read a page” or “finished a task”?
+3. If we deleted the feature, does the reading loop clearly weaken? If not, it may be noise.
+4. Any feedback like “this is just another English app”? Fix identity first.
 
 ---
 
 ## 6. Competitor temptation table
 
-| They ship                  | Our first reaction                               |
-| -------------------------- | ------------------------------------------------ |
-| Heavy AI speaking coach    | Later, not home/identity                         |
-| Classic SRS vocab          | Spacing ok; narrative must be contextual re-meet |
-| Public streak leaderboards | Prefer private mild continuity                   |
-| Full course trees          | Not default path; library ≠ forced syllabus      |
-| “Improve 300%” claims      | Ban; explain mechanism and feeling instead       |
+| They ship                                  | Our first reaction                 |
+| ------------------------------------------ | ---------------------------------- |
+| Duolingo trees / streaks                   | No                                 |
+| LingQ word tracking as core                | Lookup yes; tracking as product no |
+| Anki / SRS                                 | No for V1                          |
+| Learning statistics as home                | No — stats never outrank the page  |
+| Kitchen-sink / multi-tool panels           | No                                 |
+| AI speaking coach / avatar / video         | No for V1                          |
+| AI-generated graded readers as the library | No                                 |
+| Full course trees                          | No                                 |
+
+**Different from the three early references.** Apple Books (typography, atmosphere, simple interaction), TextStack (AI-in-book stance, UI tone, content organization), and Readest (ebook engineering, reader implementation) may be **studied** ([`product-vision.md`](./product-vision.md) §8). Do not copy SRS, learning stats, or multi-tool panels.
 
 ---
 
 ## 7. Final vote
 
-> **Does this move users toward “willing to read a little English daily,” or toward “another study app to abandon”?**
+> **Does this help the user keep reading this page?**
 
-Former → proceed. Latter → change or cut.
+If yes, and it does not create another study task → proceed. If it creates another study task → cut.

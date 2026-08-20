@@ -1,68 +1,63 @@
 # Elynd Feature Decision Guide
 
 Use this when **planning or reviewing features**.  
-Goal: keep every feature serving **sustainable comprehensible input**—not quietly becoming a course, vocab pack, or chatbot.
+Goal: keep every feature serving **reading authentic English**—not quietly becoming Duolingo, LingQ, Anki, a chatbot, or a content factory.
 
-Related:
-
-- [`product-vision.md`](./product-vision.md)
-- [`learning-philosophy.md`](./learning-philosophy.md)
-- [`design-guardrails.md`](./design-guardrails.md)
-- [`mvp-scope.md`](./mvp-scope.md)
+Related: [`product-vision.md`](./product-vision.md) · [`product-principles.md`](./product-principles.md) · [`design-guardrails.md`](./design-guardrails.md) · [`mvp-scope.md`](./mvp-scope.md)
 
 ---
 
 ## 1. Problem we solve
 
-Users are not ignorant of English’s value. They:
+Users can already find courses, drills, and chatbots. They still cannot **comfortably read real English**.
 
-- Buy courses, install apps, save materials—then quit
-- Face content that is too hard or too boring
-- Lack right-level input, instant understanding help, gentle feedback, and re-meeting
-
-**Success is not feature count.** Success is whether users willingly spend **5–20 minutes a day understanding real English**.
+**Success is not feature count.** Success is whether they willingly **open a text and keep going**.
 
 ---
 
 ## 2. Four questions (required before build)
 
-### Q1. Does it increase time with understandable, interesting English?
+### Q1. Does this help the user keep reading this page?
 
-- Pass → candidate
-- Fail → default no (unless critical safety/infra), and must not steal the main loop
+- Pass → consider
+- If it creates another study task → **refuse**
+- Fail otherwise → default no (unless critical safety/infra)
 
-### Q2. Does it lower startup friction or anxiety?
+### Q2. Does it lower the cost of being stuck—without replacing reading?
 
-- Pass → aligns with low-pressure persistence
-- Shame, punishment, heavy plans → drift
+- Pass → companion
+- Shame, quizzes-as-gate, “summarize instead of read” as default → drift
 
-### Q3. Does it avoid turning Elynd into course / word list / chatbot?
+### Q3. Does it avoid the forbidden identities?
 
-- If users can “finish today’s task” with almost no reading → danger
-- AI assists comprehension; it is not the main stage
+Not: Duolingo, LingQ, Anki, ChatGPT reading plugin, AI content factory, course platform, practice system.
 
-### Q4. Where does it sit on the main loop?
+If users can “have a productive day in Elynd” with **almost no reading** → danger.
+
+### Q4. Where does it sit on the only loop?
 
 ```text
-Discover → Read/listen → (optional) confirm / light output → Re-meet → Habit
+Choose authentic English → Read → Contextual help if stuck → Keep reading
 ```
 
-If you cannot place it, it is probably a side quest.
+If you cannot place it, it is a side quest. Side quests are out of V1.
 
 ---
 
 ## 3. Feature types and default stance
 
-| Type                 | Examples                                            | Default          | Design note                               |
-| -------------------- | --------------------------------------------------- | ---------------- | ----------------------------------------- |
-| Main-loop strength   | Better reading, tap-to-explain, same-text listening | **Prioritize**   | Preserve immersion                        |
-| Comprehension assist | Gloss, sentence help, level-tuned explain           | **Yes**          | On demand / light; do not hijack          |
-| Post-input output    | Checks, text-grounded dialogue                      | **Yes, later**   | Only after understanding                  |
-| Re-meeting           | Review                                              | **Should build** | “Meet again,” not flashcard app           |
-| Habit visibility     | Progress                                            | **Yes**          | Time-with-language, not exam rank         |
-| Social competition   | Leaderboards, public shame                          | **Default no**   | Becomes willpower contest                 |
-| Courseification      | Fixed syllabus, pass walls                          | **Default no**   | Conflicts with “start reading, not class” |
-| Free AI chat as home | Chat without text context                           | **Default no**   | Becomes chatbot product                   |
+| Type                   | Examples                               | Default             | Design note                  |
+| ---------------------- | -------------------------------------- | ------------------- | ---------------------------- |
+| Main-loop strength     | Import, EPUB parse, typography, resume | **Prioritize**      | This _is_ V1                 |
+| Comprehension assist   | Inline explain, translation, TTS       | **Yes**             | On demand; do not hijack     |
+| Highlights / bookmarks | Save a line in the book                | **Later**           | Easy to become a vocab inbox |
+| Post-input quizzes     | Practice                               | **No for V1**       | Deprecated in current code   |
+| Daily review queue     | Review / SRS                           | **No for V1**       | Deprecated in current code   |
+| Growth dashboard       | Heatmaps, portraits                    | **No for V1 shell** | Postpone                     |
+| Social competition     | Leaderboards                           | **Default no**      |                              |
+| Courseification        | Syllabus, pass walls                   | **Default no**      |                              |
+| Free AI chat as home   | Chat without text                      | **Default no**      |                              |
+| AI-written library     | Generated stories                      | **Default no**      |                              |
 
 ---
 
@@ -71,16 +66,15 @@ If you cannot place it, it is probably a side quest.
 ```text
 Feature name:
 User scenario (who, what frustration):
-Main-loop stage:
-How it increases comprehensible-input time / lowers friction:
+Loop stage (import / read / unstick / resume):
+How it increases authentic reading time / lowers stuck-cost:
 Without it, what gets worse:
-Drift risks (course / vocab / chat / pressure):
-Success metrics (prefer behavior over vanity):
+Drift risks (Duolingo / LingQ / Anki / chat / generate / course):
+Success metrics (prefer reading minutes / resume):
 Explicit non-goals:
 ```
 
-Prefer behavioral metrics: weekly reading minutes, sessions started, abandon-from-difficulty rate, Review return rate.  
-Be careful with AI chat turn count (high turns may mean reading was stolen).
+Be careful with AI turn count (high turns may mean reading was stolen).
 
 ---
 
@@ -90,12 +84,12 @@ AI’s only legal job:
 
 > **Lower friction to stay inside real content.**
 
-| Legal                                | Illegal                                                  |
-| ------------------------------------ | -------------------------------------------------------- |
-| Explain words/sentences in this text | Default path that skips reading via summary              |
-| Tune explanation depth               | Free chat as the home screen                             |
-| Ask about this article               | Marketing “smarter models” instead of learning mechanism |
-| Mild feedback                        | Dependency: unusable without AI                          |
+| Legal                                | Illegal                                          |
+| ------------------------------------ | ------------------------------------------------ |
+| Explain words/sentences in this text | Default path that skips reading via summary      |
+| Translate this sentence / passage    | Free chat as the home screen                     |
+| TTS for this text                    | Marketing “smarter models” instead of the reader |
+| Parse EPUB into chapters             | Rewrite the user’s book into a course            |
 
 Extra check: **If AI is off, does reading still work?** If no, redesign.
 
@@ -103,27 +97,26 @@ Extra check: **If AI is off, does reading still work?** If no, redesign.
 
 ## 6. Priority heuristic
 
-1. Make it easier to **start and continue reading**
-2. Make what was read **stick** (Review)
-3. Light **output after understanding** (Practice)
-4. Show **habit**, not scores (Progress)
-5. Growth/social/gamification last—and only if it passes the four questions
+1. Make it possible to **bring and open** a real text
+2. Make it easier to **stay on the page** (reader + assist + translate + TTS)
+3. Make **resume** obvious
+4. Everything else waits for [`roadmap.md`](./roadmap.md) Phase 2+ **outcomes**, not a feature dump
 
-“Competitors have it” is not a reason.  
-“Our philosophy needs it” is.
+When stuck on **how** a reader control should feel, study Apple Books, TextStack, and Readest first ([`product-vision.md`](./product-vision.md) §8). Their existence is not a pass on Q1–Q4 or V1 non-goals.
+
+“We already built Practice” is not a reason to keep building Practice.
 
 ---
 
 ## 7. Philosophy → design cheat sheet
 
-| Belief                                     | Design implication                                |
-| ------------------------------------------ | ------------------------------------------------- |
-| Language grows from understanding messages | Home is content, not a quiz bank                  |
-| Interest beats grit                        | Choice and compelling topics > “must-learn” lists |
-| Mostly understandable, slightly hard       | Leveling + assist around i+1 / high coverage      |
-| Input before output                        | Practice does not outrank Learning Room           |
-| Small daily doses                          | A complete win in ~5–20 minutes                   |
-| Tools reduce friction                      | Lookup/explain fast, accurate, dismissible        |
+| Belief                                     | Design implication                           |
+| ------------------------------------------ | -------------------------------------------- |
+| Language grows from understanding messages | Home is the book, not a quiz bank            |
+| Authentic + chosen                         | Import > catalog of lessons                  |
+| Help on the page                           | i+1 via assist, not only via baby text       |
+| Input before output                        | No speaking/practice identity in V1          |
+| Tools reduce friction                      | Lookup/translate fast, accurate, dismissible |
 
 ---
 
@@ -131,9 +124,9 @@ Extra check: **If AI is off, does reading still work?** If no, redesign.
 
 Allowed only if all are true:
 
-1. Clear user harm to fix (crash, privacy, cannot start)
+1. Clear user harm (crash, privacy, cannot open a file)
 2. Marked **temporary** with an exit condition
-3. Does not rewrite the main-loop narrative
+3. Does not rewrite the reading-loop narrative
 
 Exception without exit = permanent drift.
 
@@ -141,6 +134,6 @@ Exception without exit = permanent drift.
 
 ## 9. One-line reset
 
-> **Are we helping them understand a bit more English—or complete another study task?**
+> **Does this help the user keep reading this page?**
 
-If the latter, stop and redesign.
+If it creates another study task, stop.

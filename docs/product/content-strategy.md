@@ -1,175 +1,172 @@
-# Elynd Content Strategy (MVP)
+# Elynd Content Strategy
 
-SSOT for **what content we ship**, **how we process it**, and **how it enters the product**—before the Library / admin module is built.
+SSOT for **what people read** and **how it enters Elynd**—under the AI Native Language Reading Environment bet.
 
-Related: [`mvp-scope.md`](./mvp-scope.md) · [`product-vision.md`](./product-vision.md) · [`learning-philosophy.md`](./learning-philosophy.md) · [`prototype-flows.md`](./prototype-flows.md) · [`success-metrics.md`](./success-metrics.md)
+Related: [`mvp-scope.md`](./mvp-scope.md) · [`product-vision.md`](./product-vision.md) · [`feature-audit.md`](./feature-audit.md)
 
 **Language:** Product docs are English. User-facing copy may be Chinese.
 
 ---
 
-## 1. Purpose of content in MVP
+## 1. Purpose of content
 
-Content exists so we can validate the product bet:
+Content exists so someone can **read real English**.
 
-1. Can a learner **actually learn** through this reading/listening loop?
-2. Will **we** (builders) want to open and use it regularly?
-3. Will **anyone else** willingly use it?
+Elynd is not a corpus-building project, not a course publisher, and not an AI writing mill.
 
-Content is **not** a corpus-building project. Prefer **few polished pieces** over many mediocre ones. Expand types and volume only after the loop proves itself.
-
----
-
-## 2. Scope decisions (locked 2026-08-05)
-
-| Decision                                 | MVP stance                                                                                                                                                                                            |
-| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Supply model                             | **Fixed curated library**—team-owned or clearly licensed texts                                                                                                                                        |
-| Scraping / scheduled crawl of public web | **Out** of MVP (revisit only with whitelist + legal review in a later phase)                                                                                                                          |
-| Full ebook / EPUB reader in-app          | **Out** of MVP                                                                                                                                                                                        |
-| User import (ebooks, links)              | **Defer** until curated loop works ([`mvp-scope.md`](./mvp-scope.md))                                                                                                                                 |
-| Memes / joke-pack / “梗” pieces          | **Out** of first batch; may return later as a small spice, not a pillar                                                                                                                               |
-| Primary genres                           | **Short narrative / modernized fable** + **a little situational** content                                                                                                                             |
-| Quantity                                 | **Lean**—start with a **validation set of ~5** articles, not a two-week flood                                                                                                                         |
-| Learning unit                            | **One short article = one unit** (no chapter tree / syllabus cut in MVP)                                                                                                                              |
-| Admin tooling                            | **Admin-only CMS** (draft → publish → unpublish); never exposed to learners                                                                                                                           |
-| v1 write path                            | **Paste / form entry only** (bodies may be drafted in an external AI). No EPUB upload and no in-app generate in v1—see [`feature-short-article-library-v1.md`](./feature-short-article-library-v1.md) |
-| When to write bodies                     | When implementing Library / content module—not during early platform work                                                                                                                             |
-| AI role on supply                        | AI may later **assist enrichment** (draft gloss, practice items); it does **not** invent a course or replace human selection of interesting text                                                      |
-| AI role at read time                     | In-text explain / optional practice from **this** article ([`mvp-scope.md`](./mvp-scope.md) §6)                                                                                                       |
+**Primary:** the user brings a text they want to read (books, novels, articles, news, technical docs, essays, or any English they chose).  
+**Secondary:** a small seed shelf so first-run is not blocked.  
+**Never:** generated “learning English” articles as the product. Elynd does not manufacture learning materials.
 
 ---
 
-## 3. Genre mix (first validation set)
+## 2. Scope decisions (locked 2026-08-20)
 
-| Genre                                            | Role                                                    | Share of first set |
-| ------------------------------------------------ | ------------------------------------------------------- | ------------------ |
-| Short narrative / modernized fable               | Main “want to finish” fuel                              | ~4 of 5            |
-| Situational (dialogue embedded in a short story) | Light real-life flavor without textbook role-play packs | ~1 of 5            |
-| Memes / pure joke bits                           | —                                                       | **0** for now      |
-| Raw news / novel excerpts / full ebooks          | —                                                       | **Not** first set  |
+| Decision                                          | V1 stance                                                                                                                                                  |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Supply model                                      | **User import first** (ebook / file → their library)                                                                                                       |
+| Real content pipeline                             | **In V1** — clean EPUB, organize chapters, present like a book. Do **not** rewrite into lessons                                                            |
+| Seed / demo texts                                 | Optional, small; team-owned or clearly licensed                                                                                                            |
+| Admin paste CMS                                   | **Keep as ops/seed** until import is real; not the identity ([`feature-short-article-library-v1.md`](./feature-short-article-library-v1.md) is historical) |
+| Scraping / crawl                                  | **Out**                                                                                                                                                    |
+| AI rewrite of the user’s book into graded lessons | **Out** — that is a content generator                                                                                                                      |
+| AI at read time                                   | Explain / translate / TTS on **this** document                                                                                                             |
+| Memes / joke packs / syllabus trees               | **Out** of identity                                                                                                                                        |
+| User-generated marketplace                        | **Out** of V1                                                                                                                                              |
 
-**Situational rule:** Prefer a **short story that contains** natural dialogue (e.g. trying on a jacket) over a pure “mall / restaurant dialogue drill.” Avoid course identity.
-
-**Tone:** Adult-friendly. If using fable or fairy-tale bones, **rewrite voice** so it does not feel like a children’s reader.
+Older lock (2026-08-05) said curated short articles in, user import deferred. **That lock is superseded.**
 
 ---
 
-## 4. Article shape (processing contract)
+## 3. What “authentic” means here
 
-Each published item is one **Article** aimed at a **5–20 minute** session.
+Authentic = **not manufactured as an Elynd lesson**.
 
-### 4.1 Suggested length
+Examples that fit:
 
-About **150–300 words** for the first validation set (upper bound ~400 if needed). Whole piece should be readable in one sitting.
+- A book the user already owns (EPUB)
+- An essay or article they saved (when file import supports it)
+- A seed short text that is still a _piece of writing_, not a worksheet
 
-### 4.2 Minimum fields (for later CMS / API)
+Examples that do not:
 
-| Field              | Required    | Notes                                                     |
-| ------------------ | ----------- | --------------------------------------------------------- |
-| `title`            | Yes         | English working title OK in MVP                           |
-| `body`             | Yes         | Full English text                                         |
-| `level`            | Yes         | Coarse bands, e.g. `easy` / `mid` / `stretch`             |
-| `themes` / tags    | Yes         | e.g. story, fable, situational                            |
-| `estimatedMinutes` | Recommended | ~5–15                                                     |
-| `sourceNote`       | Yes (admin) | e.g. original, rewrite of public-domain motif, licensed   |
-| `status`           | Yes         | `draft` \| `published` (learners see `published` only)    |
-| `audioUrl`         | Optional    | TTS or recorded; can ship after text loop                 |
-| Preloaded glossary | Optional    | Reading-time AI first; static gloss as degrade path later |
+- AI-written “B1 daily story” farms
+- Dialogue drills
+- Vocab-pack paragraphs
 
-### 4.3 How we “cut” content
+Difficulty is handled by **help on the page**, not by only shipping easy fables. Seed texts may still be shorter/easier so a first session is kind—without pretending the product is a graded reader catalog.
 
-MVP: **no multi-chapter cutting.**  
-One article → Library / Today → Learning Room → optional Practice on **same** `articleId` → expressions may feed Review ([`prototype-flows.md`](./prototype-flows.md)).
+---
 
-Ebooks (when used later) are a **source for selecting/rewriting short pieces**, not an in-app book shelf.
+## 4. Document shape (product contract)
+
+The reading atom is a **document they are in the middle of**, not “today’s 250-word unit.”
+
+### 4.1 V1 fields (intent)
+
+| Concern                          | V1 need                                                   |
+| -------------------------------- | --------------------------------------------------------- |
+| Title                            | Yes                                                       |
+| Body or ordered parts (chapters) | Yes — ebooks are not one blob if the format has structure |
+| Source                           | Import vs seed; rights/provenance for seed                |
+| Owner                            | User-owned import vs published seed                       |
+| Reading position                 | Per user × document (and chapter if parts exist)          |
+| Level / tags                     | Optional metadata; **not** a syllabus                     |
+
+Exact schema is an engineering decision ([`feature-audit.md`](./feature-audit.md) §4.1). Product rule: **one kind of thing you read**, not Article-the-lesson plus Book-the-other-app.
+
+### 4.2 Length
+
+No 300-word cap on imported books. Seed pieces may stay short so a first sitting is easy.
+
+---
+
+### 4.3 Real content pipeline (after upload)
+
+User-imported files should **read like a book**, not like a dumped zip of HTML.
+
+```text
+Upload authentic file
+  → Clean EPUB (strip junk, keep the work)
+  → Organize chapters
+  → Book-like typography in the reader
+```
+
+This is presentation and structure. It is **not** simplifying, grading, or generating a parallel “learning” text.
 
 ---
 
 ## 5. End-to-end flows
 
-### 5.1 Learner flow (product)
+### 5.1 Learner (V1)
 
 ```text
-Discover (Library / Today card)
-  → Learning Room (read + optional listen + on-demand assist)
-  → optional Practice (1–3 checks on that text)
-  → Review / Progress later from shell
+Import file or pick seed
+  → Shelf (my library)
+  → Reader (read + optional listen + on-demand assist / translation)
+  → Resume next time
 ```
 
-Content strategy only supplies **publishable articles**. It does not invent a separate “AI-generated learning path.”
+No practice or review step.
 
-### 5.2 Ops / admin flow (future CMS)
+### 5.2 Import (V1)
 
 ```text
-Select or write/rewrite short text (human)
-  → Enter draft in admin UI (title, body, level, tags, sourceNote)
-  → Optional enrich later (audio, gloss draft, practice draft)
-  → Human review → status = published
-  → Appears in Library / can be “current” article
-  → Unpublish if needed (hidden from learners)
+Choose EPUB (or text)
+  → Clean + chapter structure (real content pipeline)
+  → Store as the user’s document
+  → Open at the start (or last position)
 ```
 
-Admin UI is **operators only**. Learners never create or edit the catalog in MVP.
+Parse failures must be explicit. Do not silently send the whole book through an LLM to “simplify.”
 
-**v1 feature brief (paste → Library → pure read, task splits):** [`feature-short-article-library-v1.md`](./feature-short-article-library-v1.md). EPUB / in-app rewrite adapters are later sources into the same article shape.
-
-### 5.3 What we explicitly do not run in MVP
+### 5.3 Seed / admin (until import carries the product)
 
 ```text
-Crawl public web on a schedule → auto-AI “course” → ship to users
+Operator pastes or edits a seed text
+  → Publish
+  → Appears as seed on the shelf (not as “today’s lesson”)
 ```
 
-That path conflicts with interest control, copyright, and product identity (course / content factory).
+Users do not edit the seed catalog. They do own their imports.
+
+### 5.4 What we do not run
+
+```text
+Crawl the web → auto-AI “course” → ship to users
+LLM rewrites this novel into units with quizzes
+```
 
 ---
 
-## 6. First validation set (titles locked; bodies deferred)
+## 6. Quality bar
 
-**Do not collect or write full texts until the content/Library module is in active development.** Titles below are the agreed shortlist for the first ~5 pieces.
+A seed piece is publishable only if:
 
-Recommended set:
+1. A reader might **want to finish it**
+2. Source/rights are clear
+3. It does not push Elynd toward **course pack**, **vocab list**, **chatbot**, or **AI-generated library**
 
-| #   | Working title                | Genre                | Level (intent) |
-| --- | ---------------------------- | -------------------- | -------------- |
-| 1   | The Wrong Umbrella           | Short narrative      | easy           |
-| 2   | Two Minutes Late             | Short narrative      | easy           |
-| 3   | The Neighbor’s Piano         | Short narrative      | easy           |
-| 4   | Fox and the App Notification | Modernized fable     | easy           |
-| 5   | Trying On a Jacket           | Situational-in-story | easy           |
-
-Parked for later (not first set): humor/meme ideas, heavier workplace pieces, birthday-dinner situational, more fables—only after validation.
+Imported user content is not “quality-reviewed” by us beyond parse safety (size limits, format, malware/DoS basics). We do not become their editor.
 
 ---
 
-## 7. Quality bar before publish
+## 7. Phase note
 
-A piece is ready only if:
+| When         | Content work                                                       |
+| ------------ | ------------------------------------------------------------------ |
+| V1 (Phase 1) | Import + EPUB parse + reader on that document; seed optional       |
+| Phase 2+     | Only if Phase 1 is used as a reader—more sources, not a CMS empire |
 
-1. An adult might **want to finish** it (interest)
-2. Most of it is **understandable** at the labeled level (i+1 / high coverage intent)
-3. It fits a **short session** without a syllabus wall
-4. **Source/rights** are clear in `sourceNote`
-5. It does not push Elynd toward **course pack**, **vocab list**, or **chatbot** identity
-
----
-
-## 8. Phase note
-
-| When                            | Content work                                                      |
-| ------------------------------- | ----------------------------------------------------------------- |
-| Now (docs only)                 | This strategy SSOT                                                |
-| P1 Library / Learning Room      | Seed the validation set; admin draft/publish path                 |
-| After loop metrics look healthy | More articles; optional humor; licensing partners; ingest tooling |
-| Later                           | User import; careful licensed feeds—not blind scrape              |
-
-Treat empty Learning Room as a product failure mode: content is part of P1 delivery, but **volume stays tiny until the bet is validated**.
+Empty reader is a failure mode. Filling it with generated articles is a worse failure mode.
 
 ---
 
-## 9. Revision log
+## 8. Revision log
 
-| Date       | Change                                                                                                                                                                                   |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-08-11 | Point v1 admin path to paste-only feature brief; EPUB/in-app generate deferred to later adapters.                                                                                        |
-| 2026-08-05 | Initial SSOT from product discussion: curated lean library, narrative+situational mix, no memes/scrape/ebook-reader in MVP, admin CMS flow, five-title validation set (bodies deferred). |
+| Date       | Change                                                                                              |
+| ---------- | --------------------------------------------------------------------------------------------------- |
+| 2026-08-20 | Name the real content pipeline (clean / chapters / book-like present). Reading Environment wording. |
+| 2026-08-20 | Supersede curated-article MVP: user import + ebook parse in V1; seed CMS demoted.                   |
+| 2026-08-11 | Pointed v1 admin path to paste-only feature brief (historical).                                     |
+| 2026-08-05 | Initial curated lean library SSOT.                                                                  |

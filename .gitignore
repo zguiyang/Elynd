@@ -64,3 +64,5 @@ __screenshots__/
 *.timestamp-*-*.mjs
 
 .pnpm-store/
+
+temp/

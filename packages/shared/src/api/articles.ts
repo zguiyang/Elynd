@@ -6,7 +6,7 @@ import {
   emptyToUndefined,
   paginationMetaSchema,
   paginationQuerySchema,
-} from '@elynd/shared/api/pagination';
+} from '@gloaming/shared/api/pagination';
 
 /** Coarse reading bands for short articles. */
 export const ARTICLE_LEVELS = ['easy', 'mid', 'stretch'] as const;

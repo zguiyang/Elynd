@@ -6,7 +6,7 @@ import {
   emptyToUndefined,
   paginationMetaSchema,
   paginationQuerySchema,
-} from '@elynd/shared/api/pagination';
+} from '@gloaming/shared/api/pagination';
 
 export const CONVERSATION_SURFACES = ['assist-read'] as const;
 export type ConversationSurface = (typeof CONVERSATION_SURFACES)[number];

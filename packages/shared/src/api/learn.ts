@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { ARTICLE_LEVELS } from '@elynd/shared/api/articles';
-import { ttsVoiceRoleValues, ttsWordTimingSchema } from '@elynd/shared/api/tts';
+import { ARTICLE_LEVELS } from '@gloaming/shared/api/articles';
+import { ttsVoiceRoleValues, ttsWordTimingSchema } from '@gloaming/shared/api/tts';
 
 export const READING_PROGRESS_STATUSES = ['in_progress', 'completed'] as const;
 export type ReadingProgressStatus = (typeof READING_PROGRESS_STATUSES)[number];

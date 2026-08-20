@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { AI_SETTING_KEY_VALUES } from '@elynd/shared/api/llm-config-keys';
+import { AI_SETTING_KEY_VALUES } from '@gloaming/shared/api/llm-config-keys';
 
 export const llmProviderSchema = z.object({
   id: z.string(),

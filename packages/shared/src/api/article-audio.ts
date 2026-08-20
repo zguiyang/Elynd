@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { ttsVoiceRoleValues, ttsWordTimingSchema } from '@elynd/shared/api/tts';
+import { ttsVoiceRoleValues, ttsWordTimingSchema } from '@gloaming/shared/api/tts';
 
 export const ARTICLE_AUDIO_ROLES = ttsVoiceRoleValues;
 export type ArticleAudioRole = (typeof ARTICLE_AUDIO_ROLES)[number];

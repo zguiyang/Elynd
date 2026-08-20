@@ -5,7 +5,7 @@ import {
   emptyToUndefined,
   paginationMetaSchema,
   paginationQuerySchema,
-} from '@elynd/shared/api/pagination';
+} from '@gloaming/shared/api/pagination';
 
 export const AI_INVOCATION_STATUSES = ['success', 'failure'] as const;
 export type AiInvocationStatus = (typeof AI_INVOCATION_STATUSES)[number];

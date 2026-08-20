@@ -95,10 +95,13 @@ function toLog(row: InvocationLogRow, articleTitle: string | null): TtsInvocatio
   };
 }
 
+/** App Date vs Postgres `now()` can skew; keep list/stats inclusive of just-inserted rows. */
+const QUERY_TO_SKEW_MS = 60_000;
+
 function invocationWhere(filter: { from: Date; to: Date; status?: TtsInvocationStatus; articleId?: string }): SQL {
   const parts: SQL[] = [
     gte(ttsInvocationLogTable.createdAt, filter.from),
-    lte(ttsInvocationLogTable.createdAt, filter.to),
+    lte(ttsInvocationLogTable.createdAt, new Date(filter.to.getTime() + QUERY_TO_SKEW_MS)),
   ];
   if (filter.status) {
     parts.push(eq(ttsInvocationLogTable.status, filter.status));

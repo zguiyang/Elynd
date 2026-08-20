@@ -123,10 +123,13 @@ function toLog(row: InvocationLogRow): AiInvocationLog {
   };
 }
 
+/** App Date vs Postgres `now()` can skew; keep list/stats inclusive of just-inserted rows. */
+const QUERY_TO_SKEW_MS = 60_000;
+
 function invocationWhere(filter: { from: Date; to: Date; status?: AiInvocationStatus }): SQL {
   const parts: SQL[] = [
     gte(aiInvocationLogTable.createdAt, filter.from),
-    lte(aiInvocationLogTable.createdAt, filter.to),
+    lte(aiInvocationLogTable.createdAt, new Date(filter.to.getTime() + QUERY_TO_SKEW_MS)),
   ];
   if (filter.status) {
     parts.push(eq(aiInvocationLogTable.status, filter.status));

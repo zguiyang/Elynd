@@ -6,7 +6,7 @@ import {
   article as articleTable,
   articleAudio as articleAudioTable,
   conversation as conversationTable,
-} from '@elynd/db';
+} from '@gloaming/db';
 import {
   type AdminArticle,
   type AdminArticleListData,
@@ -19,7 +19,7 @@ import {
   type LibraryArticleListData,
   type LibraryArticleListQuery,
   type UpdateArticleBody,
-} from '@elynd/shared/api/articles';
+} from '@gloaming/shared/api/articles';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';

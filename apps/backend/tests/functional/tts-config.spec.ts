@@ -1,9 +1,9 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { ttsConfig as ttsConfigTable, user as userTable } from '@elynd/db';
-import type { TestTtsResult, TtsConfigView } from '@elynd/shared/api/tts';
-import { AUTH_ADMIN_ROLE } from '@elynd/shared/auth/policy';
+import { ttsConfig as ttsConfigTable, user as userTable } from '@gloaming/db';
+import type { TestTtsResult, TtsConfigView } from '@gloaming/shared/api/tts';
+import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 
 import app from '@/app';
 import { db } from '@/db';

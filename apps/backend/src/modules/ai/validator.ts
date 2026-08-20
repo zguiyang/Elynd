@@ -2,7 +2,7 @@ import { zValidator } from '@hono/zod-validator';
 import type { Context, ValidationTargets } from 'hono';
 import type { ZodType } from 'zod';
 
-import { aiInvocationListQuerySchema, aiInvocationStatsQuerySchema } from '@elynd/shared/api/ai-invocations';
+import { aiInvocationListQuerySchema, aiInvocationStatsQuerySchema } from '@gloaming/shared/api/ai-invocations';
 
 import { sendValidationError } from '@/lib/response';
 

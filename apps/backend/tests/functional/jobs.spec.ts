@@ -1,8 +1,8 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { user as userTable } from '@elynd/db';
-import { AUTH_ADMIN_ROLE } from '@elynd/shared/auth/policy';
+import { user as userTable } from '@gloaming/db';
+import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 
 import app from '@/app';
 import { HTTP_STATUS } from '@/constants';

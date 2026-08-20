@@ -3,7 +3,7 @@ import {
   AI_SETTING_KEY_VALUES,
   type AiPurposeName,
   type AiSettingKey,
-} from '@elynd/shared/api/llm-config-keys';
+} from '@gloaming/shared/api/llm-config-keys';
 
 export const AI_PURPOSE = AI_PURPOSE_TO_SETTING_KEY;
 export type AiPurpose = AiPurposeName;

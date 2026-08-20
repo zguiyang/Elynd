@@ -6,7 +6,7 @@ import {
   llmAppSetting as llmAppSettingTable,
   llmModel as llmModelTable,
   llmProvider as llmProviderTable,
-} from '@elynd/db';
+} from '@gloaming/db';
 import {
   type CreateLlmModelBody,
   type CreateLlmProviderBody,
@@ -19,8 +19,8 @@ import {
   type TestLlmProviderResult,
   type UpdateLlmModelBody,
   type UpdateLlmProviderBody,
-} from '@elynd/shared/api/llm-config';
-import { AI_SETTING_KEY_VALUES, type AiSettingKey } from '@elynd/shared/api/llm-config-keys';
+} from '@gloaming/shared/api/llm-config';
+import { AI_SETTING_KEY_VALUES, type AiSettingKey } from '@gloaming/shared/api/llm-config-keys';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';

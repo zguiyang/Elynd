@@ -7,11 +7,11 @@ import {
   ttsConfig as ttsConfigTable,
   ttsInvocationLog as ttsInvocationLogTable,
   user as userTable,
-} from '@elynd/db';
-import type { ArticleAudioView, GenerateArticleAudioResult } from '@elynd/shared/api/article-audio';
-import type { AdminArticle } from '@elynd/shared/api/articles';
-import type { TtsInvocationListData, TtsInvocationStats } from '@elynd/shared/api/tts-invocations';
-import { AUTH_ADMIN_ROLE } from '@elynd/shared/auth/policy';
+} from '@gloaming/db';
+import type { ArticleAudioView, GenerateArticleAudioResult } from '@gloaming/shared/api/article-audio';
+import type { AdminArticle } from '@gloaming/shared/api/articles';
+import type { TtsInvocationListData, TtsInvocationStats } from '@gloaming/shared/api/tts-invocations';
+import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 
 import app from '@/app';
 import { db } from '@/db';
@@ -247,7 +247,7 @@ describe('admin article audio', () => {
 
     objectStore.store.delete(articleAudioObjectKey(article.id, 'uk', contentHash));
     for (const key of [...memoryRedis.store.keys()]) {
-      if (key.startsWith('elynd:tts:v1:')) {
+      if (key.startsWith('gloaming:tts:v1:')) {
         memoryRedis.store.delete(key);
       }
     }

@@ -6,7 +6,7 @@ import {
   conversation as conversationTable,
   conversationMessage as conversationMessageTable,
   type ConversationMessageMetadata,
-} from '@elynd/db';
+} from '@gloaming/db';
 import {
   buildPaginationMeta,
   CONVERSATION_CONTENT_MAX,
@@ -21,7 +21,7 @@ import {
   type ConversationSummary,
   type ConversationSurface,
   type CreateConversationBody,
-} from '@elynd/shared/api/conversations';
+} from '@gloaming/shared/api/conversations';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';

@@ -1,8 +1,8 @@
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { article as articleTable } from '@elynd/db';
-import { type AssistAskBody } from '@elynd/shared/api/assist';
+import { article as articleTable } from '@gloaming/db';
+import { type AssistAskBody } from '@gloaming/shared/api/assist';
 
 import { db } from '@/db';
 import { NotFoundError } from '@/lib/errors';

@@ -2,8 +2,8 @@ import { zValidator } from '@hono/zod-validator';
 import type { Context, ValidationTargets } from 'hono';
 import type { ZodType } from 'zod';
 
-import { generateArticleAudioBodySchema } from '@elynd/shared/api/article-audio';
-import { learnArticleAudioQuerySchema } from '@elynd/shared/api/learn';
+import { generateArticleAudioBodySchema } from '@gloaming/shared/api/article-audio';
+import { learnArticleAudioQuerySchema } from '@gloaming/shared/api/learn';
 
 import { sendValidationError } from '@/lib/response';
 

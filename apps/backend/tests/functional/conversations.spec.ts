@@ -5,8 +5,8 @@ import {
   conversation as conversationTable,
   conversationMessage as conversationMessageTable,
   user as userTable,
-} from '@elynd/db';
-import type { ConversationDetail, ConversationListData, ConversationSummary } from '@elynd/shared/api/conversations';
+} from '@gloaming/db';
+import type { ConversationDetail, ConversationListData, ConversationSummary } from '@gloaming/shared/api/conversations';
 
 import app from '@/app';
 import { HTTP_STATUS } from '@/constants';

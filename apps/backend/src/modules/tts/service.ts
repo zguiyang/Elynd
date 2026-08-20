@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { eq } from 'drizzle-orm';
 
-import { ttsConfig as ttsConfigTable } from '@elynd/db';
+import { ttsConfig as ttsConfigTable } from '@gloaming/db';
 import {
   DEFAULT_TTS_VOICES,
   type PutTtsConfigBody,
@@ -15,7 +15,7 @@ import {
   type TtsConfigView,
   type TtsVoicePreset,
   type TtsVoiceRole,
-} from '@elynd/shared/api/tts';
+} from '@gloaming/shared/api/tts';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';
@@ -121,7 +121,7 @@ function ttsCacheKey(normalizedText: string, voice: string, region: string): str
   const digest = createHash('sha256')
     .update(`${normalizedText}\0${voice}\0${TTS_OUTPUT_MIME}\0${region}`, 'utf8')
     .digest('hex');
-  return `elynd:tts:v1:${digest}`;
+  return `gloaming:tts:v1:${digest}`;
 }
 
 async function readTtsCache(key: string): Promise<TtsCachePayload | null> {

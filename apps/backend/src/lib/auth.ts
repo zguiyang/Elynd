@@ -4,14 +4,14 @@ import { username } from 'better-auth/plugins';
 import { count } from 'drizzle-orm';
 import { Resend } from 'resend';
 
-import * as schema from '@elynd/db/schema';
+import * as schema from '@gloaming/db/schema';
 import {
   AUTH_PASSWORD_POLICY,
   AUTH_USER_ROLE,
   AUTH_USERNAME_POLICY,
   bootstrapRoleForNewUser,
   isValidUsername,
-} from '@elynd/shared/auth/policy';
+} from '@gloaming/shared/auth/policy';
 
 import { db } from '@/db';
 import { env } from '@/lib/env';
@@ -69,7 +69,7 @@ export const auth = betterAuth({
       const resetUrl = `${env.FRONTEND_URL}/reset-password?token=${encodeURIComponent(token)}`;
       void sendMail({
         to: user.email,
-        subject: 'Reset your Elynd password',
+        subject: 'Reset your Gloaming password',
         text: `Reset your password: ${resetUrl}`,
       });
     },
@@ -80,7 +80,7 @@ export const auth = betterAuth({
       const verifyUrl = `${env.FRONTEND_URL}/verify-email?token=${encodeURIComponent(token)}`;
       void sendMail({
         to: user.email,
-        subject: 'Verify your Elynd email',
+        subject: 'Verify your Gloaming email',
         text: `Verify your email: ${verifyUrl}`,
       });
     },

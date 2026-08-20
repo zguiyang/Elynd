@@ -3,10 +3,10 @@ import { randomUUID } from 'node:crypto';
 import { eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { aiInvocationLog as aiInvocationLogTable, user as userTable } from '@elynd/db';
-import type { AiInvocationListData, AiInvocationStats } from '@elynd/shared/api/ai-invocations';
-import { AI_INVOCATION_DEFAULT_PAGE_SIZE, AI_INVOCATION_STATS_DAYS } from '@elynd/shared/api/ai-invocations';
-import { AUTH_ADMIN_ROLE } from '@elynd/shared/auth/policy';
+import { aiInvocationLog as aiInvocationLogTable, user as userTable } from '@gloaming/db';
+import type { AiInvocationListData, AiInvocationStats } from '@gloaming/shared/api/ai-invocations';
+import { AI_INVOCATION_DEFAULT_PAGE_SIZE, AI_INVOCATION_STATS_DAYS } from '@gloaming/shared/api/ai-invocations';
+import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 
 import app from '@/app';
 import { HTTP_STATUS } from '@/constants';

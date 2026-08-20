@@ -1,4 +1,4 @@
-import { REVIEW_TIME_ZONE } from '@elynd/shared/api/review';
+import { REVIEW_TIME_ZONE } from '@gloaming/shared/api/review';
 
 import { materializeDailyReview } from '@/modules/review/service';
 

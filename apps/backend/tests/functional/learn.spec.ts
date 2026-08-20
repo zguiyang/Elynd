@@ -1,8 +1,8 @@
 import { eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { article as articleTable, user as userTable } from '@elynd/db';
-import type { Article } from '@elynd/shared/api/articles';
+import { article as articleTable, user as userTable } from '@gloaming/db';
+import type { Article } from '@gloaming/shared/api/articles';
 import {
   type AdminPracticeItemsData,
   LEARN_TODAY_RECOMMENDATIONS_LIMIT,
@@ -12,8 +12,8 @@ import {
   type PracticeAttempt,
   type ReadingProgress,
   type UpdatePracticeAttemptResponse,
-} from '@elynd/shared/api/learn';
-import { AUTH_ADMIN_ROLE } from '@elynd/shared/auth/policy';
+} from '@gloaming/shared/api/learn';
+import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 
 import app from '@/app';
 import { db } from '@/db';

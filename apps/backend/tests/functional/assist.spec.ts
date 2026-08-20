@@ -1,8 +1,12 @@
 import { eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 
-import { article as articleTable, conversationMessage as conversationMessageTable, user as userTable } from '@elynd/db';
-import { ASSIST_SSE_EVENT, type AssistSseDone, type AssistSseError } from '@elynd/shared/api/assist';
+import {
+  article as articleTable,
+  conversationMessage as conversationMessageTable,
+  user as userTable,
+} from '@gloaming/db';
+import { ASSIST_SSE_EVENT, type AssistSseDone, type AssistSseError } from '@gloaming/shared/api/assist';
 
 import app from '@/app';
 import { HTTP_STATUS } from '@/constants';

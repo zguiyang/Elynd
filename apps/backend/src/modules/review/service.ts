@@ -9,7 +9,7 @@ import {
   reviewItem as reviewItemTable,
   reviewSession as reviewSessionTable,
   reviewSessionItem as reviewSessionItemTable,
-} from '@elynd/db';
+} from '@gloaming/db';
 import {
   type AdminReviewItemsData,
   calendarDateInTimeZone,
@@ -35,7 +35,7 @@ import {
   type ReviewSessionResult,
   type ReviewSessionSource,
   type ReviewTodayData,
-} from '@elynd/shared/api/review';
+} from '@gloaming/shared/api/review';
 
 import { db } from '@/db';
 import { AppError, NotFoundError, ValidationFailedError } from '@/lib/errors';

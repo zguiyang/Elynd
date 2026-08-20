@@ -3,12 +3,12 @@ import { randomUUID } from 'node:crypto';
 import { eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { article as articleTable, readingProgress as readingProgressTable, user as userTable } from '@elynd/db';
-import type { Article } from '@elynd/shared/api/articles';
-import type { AdminPracticeItemsData } from '@elynd/shared/api/learn';
-import type { ProgressData } from '@elynd/shared/api/progress';
-import { calendarDateInTimeZone, type ReviewTodayData } from '@elynd/shared/api/review';
-import { AUTH_ADMIN_ROLE } from '@elynd/shared/auth/policy';
+import { article as articleTable, readingProgress as readingProgressTable, user as userTable } from '@gloaming/db';
+import type { Article } from '@gloaming/shared/api/articles';
+import type { AdminPracticeItemsData } from '@gloaming/shared/api/learn';
+import type { ProgressData } from '@gloaming/shared/api/progress';
+import { calendarDateInTimeZone, type ReviewTodayData } from '@gloaming/shared/api/review';
+import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 
 import app from '@/app';
 import { HTTP_STATUS } from '@/constants';

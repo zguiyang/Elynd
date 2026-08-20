@@ -2,8 +2,8 @@ import { zValidator } from '@hono/zod-validator';
 import type { Context, ValidationTargets } from 'hono';
 import type { ZodType } from 'zod';
 
-import { putTtsConfigBodySchema, testTtsBodySchema } from '@elynd/shared/api/tts';
-import { ttsInvocationListQuerySchema, ttsInvocationStatsQuerySchema } from '@elynd/shared/api/tts-invocations';
+import { putTtsConfigBodySchema, testTtsBodySchema } from '@gloaming/shared/api/tts';
+import { ttsInvocationListQuerySchema, ttsInvocationStatsQuerySchema } from '@gloaming/shared/api/tts-invocations';
 
 import { sendValidationError } from '@/lib/response';
 

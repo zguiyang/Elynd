@@ -2,9 +2,9 @@ import { randomUUID } from 'node:crypto';
 
 import { and, asc, count, desc, eq, gte, lte, type SQL, sql } from 'drizzle-orm';
 
-import { article as articleTable, ttsInvocationLog as ttsInvocationLogTable } from '@elynd/db';
-import { buildPaginationMeta } from '@elynd/shared/api/pagination';
-import { type TtsVoiceRole } from '@elynd/shared/api/tts';
+import { article as articleTable, ttsInvocationLog as ttsInvocationLogTable } from '@gloaming/db';
+import { buildPaginationMeta } from '@gloaming/shared/api/pagination';
+import { type TtsVoiceRole } from '@gloaming/shared/api/tts';
 import {
   resolveTtsInvocationWindow,
   type TtsInvocationListData,
@@ -13,7 +13,7 @@ import {
   type TtsInvocationStats,
   type TtsInvocationStatsQuery,
   type TtsInvocationStatus,
-} from '@elynd/shared/api/tts-invocations';
+} from '@gloaming/shared/api/tts-invocations';
 
 import { db } from '@/db';
 

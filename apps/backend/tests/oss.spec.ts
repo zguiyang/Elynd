@@ -20,7 +20,7 @@ function baseEnv(overrides: Partial<Env> = {}): Env {
     REDIS_URL: 'redis://localhost:6379',
     RESEND_API_KEY: undefined,
     MAIL_FROM_ADDRESS: 'noreply@example.com',
-    MAIL_FROM_NAME: 'Elynd',
+    MAIL_FROM_NAME: 'Gloaming',
     LLM_CONFIG_ENCRYPTION_KEY: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
     OSS_DRIVER: 'r2',
     R2_ACCOUNT_ID: undefined,
@@ -131,8 +131,8 @@ describe.skipIf(!isR2ObjectStorageConfigured())('R2 live connectivity', () => {
       return;
     }
 
-    const key = `elynd-dev-connectivity/${randomUUID()}.txt`;
-    const body = Buffer.from('elynd-r2-probe', 'utf8');
+    const key = `gloaming-dev-connectivity/${randomUUID()}.txt`;
+    const body = Buffer.from('gloaming-r2-probe', 'utf8');
     try {
       await store.put({ key, body, contentType: 'text/plain' });
       await expect(store.exists(key)).resolves.toBe(true);

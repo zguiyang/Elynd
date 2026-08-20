@@ -11,9 +11,9 @@ import {
   readingProgress as readingProgressTable,
   reviewSession as reviewSessionTable,
   reviewSessionItem as reviewSessionItemTable,
-} from '@elynd/db';
-import type { ProgressCompletion, ProgressData, ProgressPortrait } from '@elynd/shared/api/progress';
-import { calendarDateInTimeZone } from '@elynd/shared/api/review';
+} from '@gloaming/db';
+import type { ProgressCompletion, ProgressData, ProgressPortrait } from '@gloaming/shared/api/progress';
+import { calendarDateInTimeZone } from '@gloaming/shared/api/review';
 
 import { db } from '@/db';
 

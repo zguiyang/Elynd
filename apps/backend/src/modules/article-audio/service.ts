@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 
-import { article as articleTable, articleAudio as articleAudioTable } from '@elynd/db';
+import { article as articleTable, articleAudio as articleAudioTable } from '@gloaming/db';
 import {
   type ArticleAudioRole,
   type ArticleAudioTrack,
@@ -9,8 +9,8 @@ import {
   type GenerateArticleAudioBody,
   type GenerateArticleAudioResult,
   type GenerateArticleAudioRoleResult,
-} from '@elynd/shared/api/article-audio';
-import { type TtsWordTiming } from '@elynd/shared/api/tts';
+} from '@gloaming/shared/api/article-audio';
+import { type TtsWordTiming } from '@gloaming/shared/api/tts';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';

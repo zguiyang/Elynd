@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 
-import { TRANSLATE_SSE_EVENT } from '@elynd/shared/api/translate';
+import { TRANSLATE_SSE_EVENT } from '@gloaming/shared/api/translate';
 
 import { AppError, NotFoundError } from '@/lib/errors';
 import { type AuthVariables, requireAuth } from '@/middleware/auth';

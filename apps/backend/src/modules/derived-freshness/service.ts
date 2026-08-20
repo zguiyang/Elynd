@@ -1,7 +1,7 @@
 import { inArray } from 'drizzle-orm';
 
-import { articleAudio as articleAudioTable } from '@elynd/db';
-import { type DerivedFreshness, type DerivedState } from '@elynd/shared/api/articles';
+import { articleAudio as articleAudioTable } from '@gloaming/db';
+import { type DerivedFreshness, type DerivedState } from '@gloaming/shared/api/articles';
 
 import { db } from '@/db';
 import { hashArticleContent } from '@/modules/articles/content-hash';

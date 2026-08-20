@@ -7,7 +7,7 @@ import {
   replacePracticeItemsBodySchema,
   updatePracticeAttemptBodySchema,
   updateReadingProgressBodySchema,
-} from '@elynd/shared/api/learn';
+} from '@gloaming/shared/api/learn';
 
 import { sendValidationError } from '@/lib/response';
 

@@ -7,7 +7,7 @@ import {
   createArticleBodySchema,
   libraryArticleListQuerySchema,
   updateArticleBodySchema,
-} from '@elynd/shared/api/articles';
+} from '@gloaming/shared/api/articles';
 
 import { sendValidationError } from '@/lib/response';
 

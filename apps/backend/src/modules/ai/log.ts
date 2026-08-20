@@ -6,7 +6,7 @@ import {
   aiInvocationLog as aiInvocationLogTable,
   type AiInvocationRequestSummary,
   type AiInvocationResponseSummary,
-} from '@elynd/db';
+} from '@gloaming/db';
 import {
   type AiInvocationListData,
   type AiInvocationListQuery,
@@ -15,8 +15,8 @@ import {
   type AiInvocationStatsQuery,
   type AiInvocationStatus,
   resolveAiInvocationWindow,
-} from '@elynd/shared/api/ai-invocations';
-import { buildPaginationMeta } from '@elynd/shared/api/pagination';
+} from '@gloaming/shared/api/ai-invocations';
+import { buildPaginationMeta } from '@gloaming/shared/api/pagination';
 
 import { db } from '@/db';
 

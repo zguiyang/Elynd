@@ -8,7 +8,7 @@ import { JOB_REVIEW_MATERIALIZE } from '@/jobs/review-materialize';
 import { env } from '@/lib/env';
 import { queueLogger } from '@/lib/logger';
 
-export const QUEUE_NAME = 'elynd';
+export const QUEUE_NAME = 'gloaming';
 
 const jobCleanup = { removeOnComplete: 100, removeOnFail: 100 } as const;
 

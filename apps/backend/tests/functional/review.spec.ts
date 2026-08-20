@@ -1,16 +1,16 @@
 import { eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 
-import { article as articleTable, reviewSession as reviewSessionTable, user as userTable } from '@elynd/db';
-import type { Article } from '@elynd/shared/api/articles';
+import { article as articleTable, reviewSession as reviewSessionTable, user as userTable } from '@gloaming/db';
+import type { Article } from '@gloaming/shared/api/articles';
 import type {
   AdminReviewItemsData,
   GenerateReviewItemsResponse,
   ReviewAnswerResponse,
   ReviewFeedbackResponse,
   ReviewTodayData,
-} from '@elynd/shared/api/review';
-import { AUTH_ADMIN_ROLE } from '@elynd/shared/auth/policy';
+} from '@gloaming/shared/api/review';
+import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 
 import app from '@/app';
 import { HTTP_STATUS } from '@/constants';

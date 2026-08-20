@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 
-import { llmModel as llmModelTable, llmProvider as llmProviderTable } from '@elynd/db';
+import { llmModel as llmModelTable, llmProvider as llmProviderTable } from '@gloaming/db';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';

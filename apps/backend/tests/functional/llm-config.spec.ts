@@ -1,10 +1,10 @@
 import { eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 
-import { llmAppSetting as llmAppSettingTable, llmProvider as llmProviderTable, user as userTable } from '@elynd/db';
-import type { LlmAppSettingView, LlmModel, LlmProvider } from '@elynd/shared/api/llm-config';
-import { AI_PURPOSE_TO_SETTING_KEY } from '@elynd/shared/api/llm-config-keys';
-import { AUTH_ADMIN_ROLE } from '@elynd/shared/auth/policy';
+import { llmAppSetting as llmAppSettingTable, llmProvider as llmProviderTable, user as userTable } from '@gloaming/db';
+import type { LlmAppSettingView, LlmModel, LlmProvider } from '@gloaming/shared/api/llm-config';
+import { AI_PURPOSE_TO_SETTING_KEY } from '@gloaming/shared/api/llm-config-keys';
+import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 
 import app from '@/app';
 import { db } from '@/db';

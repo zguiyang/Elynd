@@ -2,7 +2,7 @@ import { zValidator } from '@hono/zod-validator';
 import type { Context, ValidationTargets } from 'hono';
 import type { ZodType } from 'zod';
 
-import { translateArticleBodySchema } from '@elynd/shared/api/translate';
+import { translateArticleBodySchema } from '@gloaming/shared/api/translate';
 
 import { sendValidationError } from '@/lib/response';
 

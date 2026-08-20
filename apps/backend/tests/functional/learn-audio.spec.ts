@@ -6,9 +6,9 @@ import {
   articleAudio as articleAudioTable,
   ttsConfig as ttsConfigTable,
   user as userTable,
-} from '@elynd/db';
-import type { LearnArticleAudioTrack, LearnArticleData } from '@elynd/shared/api/learn';
-import { AUTH_ADMIN_ROLE } from '@elynd/shared/auth/policy';
+} from '@gloaming/db';
+import type { LearnArticleAudioTrack, LearnArticleData } from '@gloaming/shared/api/learn';
+import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 
 import app from '@/app';
 import { db } from '@/db';

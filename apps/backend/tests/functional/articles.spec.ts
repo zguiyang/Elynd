@@ -12,15 +12,15 @@ import {
   practiceItem as practiceItemTable,
   readingProgress as readingProgressTable,
   user as userTable,
-} from '@elynd/db';
+} from '@gloaming/db';
 import {
   type AdminArticleListData,
   type Article,
   ARTICLE_BODY_MAX_WORDS,
   type LibraryArticleListData,
-} from '@elynd/shared/api/articles';
-import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEFAULT_SORT_ORDER } from '@elynd/shared/api/pagination';
-import { AUTH_ADMIN_ROLE } from '@elynd/shared/auth/policy';
+} from '@gloaming/shared/api/articles';
+import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEFAULT_SORT_ORDER } from '@gloaming/shared/api/pagination';
+import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 
 import app from '@/app';
 import { db } from '@/db';
@@ -565,8 +565,8 @@ describe('Articles HTTP', () => {
     setObjectStoreForTests(objectStore);
 
     const memoryRedis = createMemoryRedis();
-    const bilingualKey = `elynd:bilingual:v1:${created.id}:testhash`;
-    const otherKey = 'elynd:bilingual:v1:other-article:testhash';
+    const bilingualKey = `gloaming:bilingual:v1:${created.id}:testhash`;
+    const otherKey = 'gloaming:bilingual:v1:other-article:testhash';
     memoryRedis.store.set(bilingualKey, '{}');
     memoryRedis.store.set(otherKey, '{}');
     const redisSpy = vi.spyOn(redisLib, 'getRedis').mockReturnValue(memoryRedis.client as never);

@@ -10,7 +10,7 @@ import {
   practiceItem as practiceItemTable,
   type PracticeItemPayload as DbPracticeItemPayload,
   readingProgress as readingProgressTable,
-} from '@elynd/db';
+} from '@gloaming/db';
 import {
   type AdminPracticeItemsData,
   type GeneratePracticeItemsResponse,
@@ -33,7 +33,7 @@ import {
   type UpdatePracticeAttemptBody,
   type UpdatePracticeAttemptResponse,
   type UpdateReadingProgressBody,
-} from '@elynd/shared/api/learn';
+} from '@gloaming/shared/api/learn';
 
 import { db } from '@/db';
 import { AppError, NotFoundError, ValidationFailedError } from '@/lib/errors';

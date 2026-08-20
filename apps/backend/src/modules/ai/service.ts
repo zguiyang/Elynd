@@ -4,7 +4,7 @@ import type { StructuredToolInterface } from '@langchain/core/tools';
 import { eq } from 'drizzle-orm';
 import type { z, ZodTypeAny } from 'zod';
 
-import { llmAppSetting as llmAppSettingTable } from '@elynd/db';
+import { llmAppSetting as llmAppSettingTable } from '@gloaming/db';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';

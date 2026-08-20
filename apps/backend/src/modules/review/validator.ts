@@ -6,7 +6,7 @@ import {
   generateReviewItemsBodySchema,
   replaceReviewItemsBodySchema,
   reviewAnswerBodySchema,
-} from '@elynd/shared/api/review';
+} from '@gloaming/shared/api/review';
 
 import { sendValidationError } from '@/lib/response';
 

@@ -1,11 +1,11 @@
 import { and, eq } from 'drizzle-orm';
 
-import { article as articleTable } from '@elynd/db';
+import { article as articleTable } from '@gloaming/db';
 import {
   type BilingualCachePayload,
   bilingualCachePayloadSchema,
   type TranslateArticleBody,
-} from '@elynd/shared/api/translate';
+} from '@gloaming/shared/api/translate';
 
 import { db } from '@/db';
 import { NotFoundError } from '@/lib/errors';
@@ -58,11 +58,11 @@ export type StreamTranslateArticleOptions = {
 };
 
 function cacheKey(articleId: string, contentHash: string): string {
-  return `elynd:bilingual:v1:${articleId}:${contentHash}`;
+  return `gloaming:bilingual:v1:${articleId}:${contentHash}`;
 }
 
 function bilingualCacheMatch(articleId: string): string {
-  return `elynd:bilingual:v1:${articleId}:*`;
+  return `gloaming:bilingual:v1:${articleId}:*`;
 }
 
 /** Best-effort: drop cached bilingual payloads for this article. */

@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { llmModel as llmModelTable, llmProvider as llmProviderTable } from '@elynd/db';
+import { llmModel as llmModelTable, llmProvider as llmProviderTable } from '@gloaming/db';
 
 import { db } from '@/db';
 import { AppError } from '@/lib/errors';

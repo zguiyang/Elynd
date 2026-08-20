@@ -1,14 +1,14 @@
 import { eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 
-import { article as articleTable, user as userTable } from '@elynd/db';
+import { article as articleTable, user as userTable } from '@gloaming/db';
 import {
   TRANSLATE_SSE_EVENT,
   type TranslateSseDone,
   type TranslateSseMeta,
   type TranslateSseSentence,
   type TranslateSseTitle,
-} from '@elynd/shared/api/translate';
+} from '@gloaming/shared/api/translate';
 
 import app from '@/app';
 import { db } from '@/db';

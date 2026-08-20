@@ -1,8 +1,8 @@
 import { and, eq, like } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { user as userTable, verification as verificationTable } from '@elynd/db';
-import { AUTH_ADMIN_ROLE, AUTH_USER_ROLE } from '@elynd/shared/auth/policy';
+import { user as userTable, verification as verificationTable } from '@gloaming/db';
+import { AUTH_ADMIN_ROLE, AUTH_USER_ROLE } from '@gloaming/shared/auth/policy';
 
 import app from '@/app';
 import { db } from '@/db';

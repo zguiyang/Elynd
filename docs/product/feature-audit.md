@@ -6,6 +6,8 @@ Related: [`mvp-scope.md`](./mvp-scope.md) · [`roadmap.md`](./roadmap.md) · [`p
 
 Audit date: **2026-08-20**. Paths below are current engineering reality.
 
+**MVP 1 module SSOT (prototypes / build scope):** [`mvp-1-modules.md`](./mvp-1-modules.md) — Phase **1a** = catalog → shelf; **1b** = import (deferred).
+
 **2026-08-20 removal:** Practice and Review stacks (learner UI, admin workspaces, APIs, AI drill purposes, `practice_*` / `review_*` tables) were **deleted**. Progress / 成长 is **kept** as a reading-history overview (heatmap + portrait); optimize later toward volume/summary metrics—do not rebuild drills into it.
 
 ---

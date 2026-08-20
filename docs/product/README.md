@@ -8,15 +8,16 @@ English is the **single language** for product and engineering documentation in 
 | ----- | ---------------------------------------------------------- | ---------------------------------------------------------------------- |
 | 1     | [`product-vision.md`](./product-vision.md)                 | Positioning, personas, **what Gloaming is NOT**, experience references |
 | 2     | [`product-principles.md`](./product-principles.md)         | Reading first, real content, AI companion, calm UI                     |
-| 3     | [`mvp-scope.md`](./mvp-scope.md)                           | **V1 feature specification** — must / must-not                         |
-| 4     | [`roadmap.md`](./roadmap.md)                               | Phase 1–3 outcomes only                                                |
-| 5     | [`feature-audit.md`](./feature-audit.md)                   | Current code: KEEP / REFACTOR / POSTPONE / REMOVED + migration         |
-| 6     | [`learning-philosophy.md`](./learning-philosophy.md)       | Why authentic reading (research)                                       |
-| 7     | [`content-strategy.md`](./content-strategy.md)             | Import-first; real content pipeline                                    |
-| 8     | [`prototype-flows.md`](./prototype-flows.md)               | First-time + daily reading loop; nav SSOT                              |
-| 9     | [`success-metrics.md`](./success-metrics.md)               | North star: engaged reading minutes                                    |
-| 10    | [`feature-decision-guide.md`](./feature-decision-guide.md) | Before building a feature                                              |
-| 11    | [`design-guardrails.md`](./design-guardrails.md)           | Reviews, walkthroughs, retros                                          |
+| 3     | [`mvp-scope.md`](./mvp-scope.md)                           | **V1 capability** must / must-not                                      |
+| 4     | [`mvp-1-modules.md`](./mvp-1-modules.md)                   | **MVP 1 module roadmap** — prototype / build anti-drift (Phase 1a)     |
+| 5     | [`roadmap.md`](./roadmap.md)                               | Phase 1–3 outcomes; Phase 1a vs 1b                                     |
+| 6     | [`feature-audit.md`](./feature-audit.md)                   | Current code: KEEP / REFACTOR / POSTPONE / REMOVED + migration         |
+| 7     | [`learning-philosophy.md`](./learning-philosophy.md)       | Why authentic reading (research)                                       |
+| 8     | [`content-strategy.md`](./content-strategy.md)             | Content supply; import is Phase 1b                                     |
+| 9     | [`prototype-flows.md`](./prototype-flows.md)               | First-time + daily reading loop; nav SSOT                              |
+| 10    | [`success-metrics.md`](./success-metrics.md)               | North star: engaged reading minutes                                    |
+| 11    | [`feature-decision-guide.md`](./feature-decision-guide.md) | Before building a feature                                              |
+| 12    | [`design-guardrails.md`](./design-guardrails.md)           | Reviews, walkthroughs, retros                                          |
 
 Historical (superseded, do not use as V1 scope): [`feature-short-article-library-v1.md`](./feature-short-article-library-v1.md).
 

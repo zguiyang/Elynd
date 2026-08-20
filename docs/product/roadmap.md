@@ -10,9 +10,16 @@ V1 feature specification: [`mvp-scope.md`](./mvp-scope.md). Identity: [`product-
 
 **Outcome:** Gloaming is a place you open to **continue authentic English**, with contextual AI that unsticks you on the page, then disappears.
 
-Exit when a real user can import or open a text, read it like a book, use inline help / translation / TTS, and return to the same place tomorrow—without being asked to practice, review, or chat.
+**Module roadmap (anti-drift):** [`mvp-1-modules.md`](./mvp-1-modules.md).
 
-This is the only phase with a feature list. See V1 must / must-not in [`mvp-scope.md`](./mvp-scope.md).
+| Slice          | Outcome                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------ |
+| **1a (MVP 1)** | Discover official catalog → **我的书架** → resume → read with help / translate / TTS. No upload. |
+| **1b**         | User import / EPUB pipeline; `用户` source on the shelf.                                         |
+
+Exit Phase 1 when 1a is real for users and 1b is either shipped or explicitly still deferred without blocking daily reading. Do not ask users to practice, review, or chat.
+
+Capability must / must-not: [`mvp-scope.md`](./mvp-scope.md).
 
 ---
 

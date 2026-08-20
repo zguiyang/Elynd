@@ -2,7 +2,7 @@
 
 SSOT for **what people read** and **how it enters Gloaming**—under the AI Native Language Reading Environment bet.
 
-Related: [`mvp-scope.md`](./mvp-scope.md) · [`product-vision.md`](./product-vision.md) · [`feature-audit.md`](./feature-audit.md)
+Related: [`mvp-scope.md`](./mvp-scope.md) · [`mvp-1-modules.md`](./mvp-1-modules.md) · [`product-vision.md`](./product-vision.md) · [`feature-audit.md`](./feature-audit.md)
 
 **Language:** Product docs are English. User-facing copy may be Chinese.
 
@@ -14,27 +14,28 @@ Content exists so someone can **read real English**.
 
 Gloaming is not a corpus-building project, not a course publisher, and not an AI writing mill.
 
-**Primary:** the user brings a text they want to read (books, novels, articles, news, technical docs, essays, or any English they chose).  
-**Secondary:** a small seed shelf so first-run is not blocked.  
+**MVP 1 (Phase 1a):** users add texts from the official **发现** catalog to **我的书架**.  
+**Later (Phase 1b):** users bring files they chose (import).  
 **Never:** generated “learning English” articles as the product. Gloaming does not manufacture learning materials.
 
 ---
 
-## 2. Scope decisions (locked 2026-08-20)
+## 2. Scope decisions (locked 2026-08-20; Phase split same day)
 
-| Decision                                          | V1 stance                                                                                                                                                  |
-| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Supply model                                      | **User import first** (ebook / file → their library)                                                                                                       |
-| Real content pipeline                             | **In V1** — clean EPUB, organize chapters, present like a book. Do **not** rewrite into lessons                                                            |
-| Seed / demo texts                                 | Optional, small; team-owned or clearly licensed                                                                                                            |
-| Admin paste CMS                                   | **Keep as ops/seed** until import is real; not the identity ([`feature-short-article-library-v1.md`](./feature-short-article-library-v1.md) is historical) |
-| Scraping / crawl                                  | **Out**                                                                                                                                                    |
-| AI rewrite of the user’s book into graded lessons | **Out** — that is a content generator                                                                                                                      |
-| AI at read time                                   | Explain / translate / TTS on **this** document                                                                                                             |
-| Memes / joke packs / syllabus trees               | **Out** of identity                                                                                                                                        |
-| User-generated marketplace                        | **Out** of V1                                                                                                                                              |
+| Decision                                          | Stance                                                                                                                                                  |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| MVP 1 supply                                      | **Official catalog → shelf** (**发现** → **我的书架**)                                                                                                  |
+| User import                                       | **Phase 1b** — deferred (sync / rights); not required for MVP 1 prototypes                                                                              |
+| Real content pipeline (EPUB)                      | **Phase 1b** — clean EPUB, organize chapters, present like a book. Do **not** rewrite into lessons                                                      |
+| Seed / catalog texts                              | Team-owned or clearly licensed; feed **发现**                                                                                                           |
+| Admin paste CMS                                   | **Keep as ops/catalog** for 1a; not the product identity ([`feature-short-article-library-v1.md`](./feature-short-article-library-v1.md) is historical) |
+| Scraping / crawl                                  | **Out**                                                                                                                                                 |
+| AI rewrite of the user’s book into graded lessons | **Out** — that is a content generator                                                                                                                   |
+| AI at read time                                   | Explain / translate / TTS on **this** document                                                                                                          |
+| Memes / joke packs / syllabus trees               | **Out** of identity                                                                                                                                     |
+| User-generated marketplace                        | **Out** of MVP 1                                                                                                                                        |
 
-Older lock (2026-08-05) said curated short articles in, user import deferred. **That lock is superseded.**
+Module SSOT: [`mvp-1-modules.md`](./mvp-1-modules.md). Older “import first as immediate V1 gate” is superseded by the **1a / 1b** split.
 
 ---
 

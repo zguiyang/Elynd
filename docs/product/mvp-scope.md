@@ -2,9 +2,11 @@
 
 V1 has one job: **be an excellent AI native language reading environment.**
 
-Related: [`product-vision.md`](./product-vision.md) · [`product-principles.md`](./product-principles.md) · [`roadmap.md`](./roadmap.md) · [`content-strategy.md`](./content-strategy.md) · [`feature-audit.md`](./feature-audit.md)
+Related: [`product-vision.md`](./product-vision.md) · [`product-principles.md`](./product-principles.md) · [`mvp-1-modules.md`](./mvp-1-modules.md) · [`roadmap.md`](./roadmap.md) · [`content-strategy.md`](./content-strategy.md) · [`feature-audit.md`](./feature-audit.md)
 
-This document is the **product target**. What already ships is recorded in [`feature-audit.md`](./feature-audit.md)—do not treat this file as an inventory of current code.
+This document is the **capability** target (must / must-not). For **which modules / screens** MVP 1 prototypes and builds may include, use [`mvp-1-modules.md`](./mvp-1-modules.md) (Phase **1a** = catalog → shelf; **1b** = user import, deferred).
+
+What already ships is recorded in [`feature-audit.md`](./feature-audit.md)—do not treat this file as an inventory of current code.
 
 ---
 
@@ -27,17 +29,18 @@ If they only sign in and see a learning-platform home, V1 has failed.
 
 ## 2. Must include
 
-| Capability            | Notes                                                                                                       |
-| --------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Auth session          | Better Auth cookie session; first-party session via Next `/api` proxy                                       |
-| Content import        | User brings a file into **their** library                                                                   |
-| Real content pipeline | EPUB clean-up, chapter structure, book-like presentation—see [`content-strategy.md`](./content-strategy.md) |
-| Reading experience    | Typography, pagination or continuous scroll, chapter/position resume                                        |
-| AI companion          | Selection → explain / meaning in **this passage**; rail stays secondary; not a chat home                    |
-| Translation           | Sentence or passage; bilingual view must not replace English as default                                     |
-| TTS                   | Listen to the current text; degrade if audio is unavailable                                                 |
+| Capability               | Notes                                                                                                                       |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| Auth session             | Better Auth cookie session; first-party session via Next `/api` proxy                                                       |
+| Official catalog → shelf | Browse **发现**, add to **我的书架** (MVP 1 / Phase **1a**)                                                                 |
+| Content import           | User brings a file into **their** library — Phase **1b**, not required to ship MVP 1 prototypes                             |
+| Real content pipeline    | EPUB clean-up, chapter structure, book-like presentation — Phase **1b**; see [`content-strategy.md`](./content-strategy.md) |
+| Reading experience       | Typography, pagination or continuous scroll, chapter/position resume                                                        |
+| AI companion             | Selection → explain / meaning in **this passage**; rail stays secondary; not a chat home                                    |
+| Translation              | Sentence or passage; bilingual view must not replace English as default                                                     |
+| TTS                      | Listen to the current text; degrade if audio is unavailable                                                                 |
 
-Seed / demo texts are allowed so first-run is not blocked on import. They are **not** a substitute for import.
+Official / seed catalog texts are the MVP 1 supply. User import remains the long-term content bet ([`mvp-1-modules.md`](./mvp-1-modules.md) §2)—do not block 1a on upload.
 
 ---
 
@@ -67,13 +70,15 @@ Full navigation SSOT: [`prototype-flows.md`](./prototype-flows.md).
 
 ```text
 Sign in
-  → Home / shelf (empty or seed)
-  → Upload or choose authentic content
+  → 我的书架 (empty or few items)
+  → 发现 → add to shelf (or open)
   → Open reader
   → Read
   → Language barrier → contextual help / translation / TTS
   → Keep reading
 ```
+
+(Upload belongs to Phase 1b—see [`mvp-1-modules.md`](./mvp-1-modules.md).)
 
 ### 4.2 Daily
 
@@ -94,11 +99,12 @@ There is no required Practice or Review step.
 
 **Full SSOT:** [`content-strategy.md`](./content-strategy.md).
 
-| Topic          | V1 stance                                                                     |
+| Topic          | Stance                                                                        |
 | -------------- | ----------------------------------------------------------------------------- |
-| Primary supply | **User import** (ebook / file)                                                |
-| Pipeline       | Clean EPUB, order chapters, present like a book—**not** rewrite into a course |
-| Seed library   | Optional, small                                                               |
+| MVP 1 supply   | **Official catalog** via **发现** → **我的书架** (Phase 1a)                   |
+| Later supply   | **User import** (ebook / file) — Phase 1b                                     |
+| Pipeline (1b)  | Clean EPUB, order chapters, present like a book—**not** rewrite into a course |
+| Seed / catalog | Team-owned or licensed texts that feed Discover                               |
 | Unit           | A **document** the user is reading—not a lesson                               |
 | Scraping       | Out                                                                           |
 

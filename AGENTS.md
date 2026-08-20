@@ -11,8 +11,9 @@ Canonical product docs (English): [`docs/product/`](docs/product/).
 | [`docs/product/README.md`](docs/product/README.md)                                 | Index / read order                                         |
 | [`docs/product/product-vision.md`](docs/product/product-vision.md)                 | What Gloaming is / is not; personas; experience references |
 | [`docs/product/product-principles.md`](docs/product/product-principles.md)         | Reading-first decision rules                               |
-| [`docs/product/mvp-scope.md`](docs/product/mvp-scope.md)                           | V1 feature specification — must / must-not                 |
-| [`docs/product/roadmap.md`](docs/product/roadmap.md)                               | Phase 1–3 outcomes                                         |
+| [`docs/product/mvp-scope.md`](docs/product/mvp-scope.md)                           | V1 capability must / must-not                              |
+| [`docs/product/mvp-1-modules.md`](docs/product/mvp-1-modules.md)                   | **MVP 1 module roadmap** (prototype / build anti-drift)    |
+| [`docs/product/roadmap.md`](docs/product/roadmap.md)                               | Phase 1–3 outcomes; Phase 1a vs 1b                         |
 | [`docs/product/feature-audit.md`](docs/product/feature-audit.md)                   | KEEP / hide / migrate existing code                        |
 | [`docs/product/learning-philosophy.md`](docs/product/learning-philosophy.md)       | Why authentic reading                                      |
 | [`docs/product/content-strategy.md`](docs/product/content-strategy.md)             | Import-first supply                                        |

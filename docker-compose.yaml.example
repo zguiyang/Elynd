@@ -1,12 +1,12 @@
 services:
   postgres:
     image: postgres:15
-    container_name: elynd-postgres
+    container_name: gloaming-postgres
     restart: always
     environment:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: root
-      POSTGRES_DB: elynd_backend
+      POSTGRES_DB: gloaming_backend
       TZ: UTC
     ports:
       - '5433:5432'
@@ -21,7 +21,7 @@ services:
   # Redis — Hono reads `REDIS_URL` on the host (e.g. redis://127.0.0.1:6380).
   redis:
     image: redis:latest
-    container_name: elynd-redis
+    container_name: gloaming-redis
     restart: always
     ports:
       - '6380:6379'

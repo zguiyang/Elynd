@@ -14,21 +14,21 @@ importers:
       '@commitlint/config-conventional':
         specifier: ^21.2.0
         version: 21.2.0
-      '@elynd/backend':
-        specifier: workspace:*
-        version: link:apps/backend
-      '@elynd/db':
-        specifier: workspace:*
-        version: link:packages/db
-      '@elynd/shared':
-        specifier: workspace:*
-        version: link:packages/shared
-      '@elynd/web':
-        specifier: workspace:*
-        version: link:apps/web
       '@eslint/js':
         specifier: ^9.39.1
         version: 9.39.3
+      '@gloaming/backend':
+        specifier: workspace:*
+        version: link:apps/backend
+      '@gloaming/db':
+        specifier: workspace:*
+        version: link:packages/db
+      '@gloaming/shared':
+        specifier: workspace:*
+        version: link:packages/shared
+      '@gloaming/web':
+        specifier: workspace:*
+        version: link:apps/web
       '@types/node':
         specifier: ^22.19.7
         version: 22.19.11
@@ -74,10 +74,10 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.1112.0
         version: 3.1112.0
-      '@elynd/db':
+      '@gloaming/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@elynd/shared':
+      '@gloaming/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@hono/node-server':
@@ -162,9 +162,6 @@ importers:
       '@base-ui/react':
         specifier: ^1.6.0
         version: 1.6.0(@date-fns/tz@1.5.0)(@types/react@19.2.18)(date-fns@4.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@elynd/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       '@fontsource-variable/noto-sans-sc':
         specifier: ^5.3.0
         version: 5.3.0
@@ -177,6 +174,9 @@ importers:
       '@fontsource-variable/source-serif-4':
         specifier: ^5.3.0
         version: 5.3.0
+      '@gloaming/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@tanstack/react-form':
         specifier: ^1.33.3
         version: 1.33.3(react-dom@19.2.4(react@19.2.4))(react@19.2.4)

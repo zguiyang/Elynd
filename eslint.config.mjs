@@ -99,7 +99,7 @@ export default defineConfig([
       'simple-import-sort/imports': [
         'error',
         {
-          groups: [['^\\u0000'], ['^node:'], ['^@?\\w'], ['^@elynd/'], ['^@/'], ['^\\.']],
+          groups: [['^\\u0000'], ['^node:'], ['^@?\\w'], ['^@gloaming/'], ['^@/'], ['^\\.']],
         },
       ],
       'simple-import-sort/exports': 'error',

@@ -8,8 +8,6 @@ import {
   articleAudio as articleAudioTable,
   conversation as conversationTable,
   conversationMessage as conversationMessageTable,
-  practiceAttempt as practiceAttemptTable,
-  practiceItem as practiceItemTable,
   readingProgress as readingProgressTable,
   user as userTable,
 } from '@gloaming/db';
@@ -501,24 +499,6 @@ describe('Articles HTTP', () => {
       progressRatio: 40,
     });
 
-    const practiceItemId = randomUUID();
-    await db.insert(practiceItemTable).values({
-      id: practiceItemId,
-      articleId: created.id,
-      sortOrder: 0,
-      kind: 'comprehension',
-      payload: { prompt: 'Why rain?', options: ['Quiet', 'Loud'] },
-      correctOptionIndex: 0,
-    });
-    await db.insert(practiceAttemptTable).values({
-      id: randomUUID(),
-      userId: learnerId,
-      articleId: created.id,
-      status: 'in_progress',
-      currentIndex: 0,
-      answers: [],
-    });
-
     const usKey = `article-audio/${created.id}/us/testhash.mp3`;
     const ukKey = `article-audio/${created.id}/uk/testhash.mp3`;
     await db.insert(articleAudioTable).values([
@@ -592,18 +572,6 @@ describe('Articles HTTP', () => {
         .from(readingProgressTable)
         .where(eq(readingProgressTable.articleId, created.id));
       expect(progressCount).toBeUndefined();
-
-      const [attemptCount] = await db
-        .select({ id: practiceAttemptTable.id })
-        .from(practiceAttemptTable)
-        .where(eq(practiceAttemptTable.articleId, created.id));
-      expect(attemptCount).toBeUndefined();
-
-      const [itemCount] = await db
-        .select({ id: practiceItemTable.id })
-        .from(practiceItemTable)
-        .where(eq(practiceItemTable.articleId, created.id));
-      expect(itemCount).toBeUndefined();
 
       const [audioCount] = await db
         .select({ articleId: articleAudioTable.articleId })

@@ -13,7 +13,7 @@ export function normalizeArticleContent(title: string, body: string): string {
   return `${normalizedTitle}\n\n${normalizedBody}`;
 }
 
-/** SSOT source-content hash for derived projections (audio, translate cache, future practice). */
+/** SSOT source-content hash for derived projections (audio, translate cache). */
 export function hashArticleContent(title: string, body: string): string {
   return createHash('sha256').update(normalizeArticleContent(title, body), 'utf8').digest('hex');
 }

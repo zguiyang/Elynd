@@ -1,19 +1,16 @@
 import { randomUUID } from 'node:crypto';
 
-import { and, asc, count, desc, eq, exists, inArray, isNotNull, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, isNotNull, sql } from 'drizzle-orm';
 
 import {
   article as articleTable,
   conversation as conversationTable,
   conversationMessage as conversationMessageTable,
   learnerDay as learnerDayTable,
-  practiceAttempt as practiceAttemptTable,
   readingProgress as readingProgressTable,
-  reviewSession as reviewSessionTable,
-  reviewSessionItem as reviewSessionItemTable,
 } from '@gloaming/db';
 import type { ProgressCompletion, ProgressData, ProgressPortrait } from '@gloaming/shared/api/progress';
-import { calendarDateInTimeZone } from '@gloaming/shared/api/review';
+import { calendarDateInTimeZone } from '@gloaming/shared/api/progress';
 
 import { db } from '@/db';
 
@@ -39,26 +36,6 @@ function consecutiveLearningDays(today: string, dates: ReadonlySet<string>): num
   return countDays;
 }
 
-function interactedReviewFilter(userId: string) {
-  return and(
-    eq(reviewSessionTable.userId, userId),
-    or(
-      inArray(reviewSessionTable.outcome, ['completed', 'left']),
-      exists(
-        db
-          .select({ id: reviewSessionItemTable.id })
-          .from(reviewSessionItemTable)
-          .where(
-            and(
-              eq(reviewSessionItemTable.sessionId, reviewSessionTable.id),
-              isNotNull(reviewSessionItemTable.selectedIndex),
-            ),
-          ),
-      ),
-    ),
-  );
-}
-
 async function insertLearnerDays(userId: string, dates: Iterable<string>): Promise<void> {
   const unique = [...new Set(dates)];
   if (unique.length === 0) {
@@ -82,7 +59,7 @@ function pushShanghaiDates(target: Set<string>, ...values: Array<Date | null | u
   }
 }
 
-/** Reconstruct days from existing rows. Safe to call after touch (unique / onConflict). */
+/** Reconstruct days from existing reading progress. Safe to call after touch (unique / onConflict). */
 async function backfillLearnerDays(userId: string): Promise<void> {
   const dates = new Set<string>();
 
@@ -96,25 +73,6 @@ async function backfillLearnerDays(userId: string): Promise<void> {
     .where(eq(readingProgressTable.userId, userId));
   for (const row of progressRows) {
     pushShanghaiDates(dates, row.createdAt, row.lastReadAt, row.completedAt);
-  }
-
-  const attemptRows = await db
-    .select({
-      startedAt: practiceAttemptTable.startedAt,
-      finishedAt: practiceAttemptTable.finishedAt,
-    })
-    .from(practiceAttemptTable)
-    .where(eq(practiceAttemptTable.userId, userId));
-  for (const row of attemptRows) {
-    pushShanghaiDates(dates, row.startedAt, row.finishedAt);
-  }
-
-  const reviewRows = await db
-    .select({ localDate: reviewSessionTable.localDate })
-    .from(reviewSessionTable)
-    .where(interactedReviewFilter(userId));
-  for (const row of reviewRows) {
-    dates.add(row.localDate);
   }
 
   await insertLearnerDays(userId, dates);
@@ -138,26 +96,11 @@ async function countLookedUpWords(userId: string): Promise<number> {
   return Number(row?.value ?? 0);
 }
 
-async function countPracticeAnswers(userId: string): Promise<number> {
-  const [row] = await db
-    .select({
-      value: sql<number>`coalesce(sum(jsonb_array_length(${practiceAttemptTable.answers})), 0)`,
-    })
-    .from(practiceAttemptTable)
-    .where(eq(practiceAttemptTable.userId, userId));
-  return Number(row?.value ?? 0);
-}
-
 async function countCompletedArticles(userId: string): Promise<number> {
   const [row] = await db
     .select({ value: count() })
     .from(readingProgressTable)
     .where(and(eq(readingProgressTable.userId, userId), eq(readingProgressTable.status, 'completed')));
-  return Number(row?.value ?? 0);
-}
-
-async function countInteractedReviews(userId: string): Promise<number> {
-  const [row] = await db.select({ value: count() }).from(reviewSessionTable).where(interactedReviewFilter(userId));
   return Number(row?.value ?? 0);
 }
 
@@ -214,8 +157,6 @@ export async function getProgress(userId: string): Promise<ProgressData> {
     learningDays: activityDates.length,
     completedArticles: await countCompletedArticles(userId),
     lookedUpWords: await countLookedUpWords(userId),
-    reviewCount: await countInteractedReviews(userId),
-    practiceCount: await countPracticeAnswers(userId),
   };
 
   return {

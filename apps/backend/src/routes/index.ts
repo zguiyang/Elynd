@@ -11,7 +11,6 @@ import { conversationsRoutes } from '@/modules/conversations/route';
 import { learnRoutes } from '@/modules/learn/route';
 import { llmConfigRoutes } from '@/modules/llm-config/route';
 import { progressRoutes } from '@/modules/progress/route';
-import { reviewRoutes } from '@/modules/review/route';
 import { translateRoutes } from '@/modules/translate/route';
 import { ttsRoutes } from '@/modules/tts/route';
 
@@ -42,7 +41,6 @@ routes.route('/', articlesRoutes);
 routes.route('/', articleAudioRoutes);
 routes.route('/', learnRoutes);
 routes.route('/', progressRoutes);
-routes.route('/', reviewRoutes);
 routes.route('/', llmConfigRoutes);
 routes.route('/', aiRoutes);
 routes.route('/', assistRoutes);

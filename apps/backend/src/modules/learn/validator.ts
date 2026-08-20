@@ -2,12 +2,7 @@ import { zValidator } from '@hono/zod-validator';
 import type { Context, ValidationTargets } from 'hono';
 import type { ZodType } from 'zod';
 
-import {
-  generatePracticeItemsBodySchema,
-  replacePracticeItemsBodySchema,
-  updatePracticeAttemptBodySchema,
-  updateReadingProgressBodySchema,
-} from '@gloaming/shared/api/learn';
+import { updateReadingProgressBodySchema } from '@gloaming/shared/api/learn';
 
 import { sendValidationError } from '@/lib/response';
 
@@ -26,6 +21,3 @@ function validated<T extends ZodType, Target extends keyof ValidationTargets>(ta
 }
 
 export const validateUpdateReadingProgress = validated('json', updateReadingProgressBodySchema);
-export const validateReplacePracticeItems = validated('json', replacePracticeItemsBodySchema);
-export const validateUpdatePracticeAttempt = validated('json', updatePracticeAttemptBodySchema);
-export const validateGeneratePracticeItems = validated('json', generatePracticeItemsBodySchema);

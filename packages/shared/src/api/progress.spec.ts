@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { progressDataSchema } from './progress.ts';
+import { calendarDateInTimeZone, progressDataSchema } from './progress.ts';
 
 const valid = {
   today: '2026-08-19',
@@ -11,12 +11,14 @@ const valid = {
     learningDays: 1,
     completedArticles: 1,
     lookedUpWords: 0,
-    reviewCount: 0,
-    practiceCount: 0,
   },
 };
 
 describe('progress api contracts', () => {
+  it('formats a Shanghai calendar date as YYYY-MM-DD', () => {
+    expect(calendarDateInTimeZone(new Date('2026-08-18T18:30:00.000Z'))).toBe('2026-08-19');
+  });
+
   it('accepts a sparse binary snapshot', () => {
     expect(progressDataSchema.parse(valid)).toEqual(valid);
   });

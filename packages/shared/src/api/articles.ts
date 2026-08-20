@@ -70,7 +70,7 @@ export const articleSchema = z.object({
 
 export type Article = z.infer<typeof articleSchema>;
 
-/** Registered derived projection kinds (extend when practice/glossary store a source hash). */
+/** Registered derived projection kinds (extend when a projection stores a source hash). */
 export const DERIVED_KINDS = ['audio'] as const;
 export type DerivedKind = (typeof DERIVED_KINDS)[number];
 

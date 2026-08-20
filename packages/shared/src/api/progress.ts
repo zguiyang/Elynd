@@ -1,5 +1,17 @@
 import { z } from 'zod';
 
+/** Calendar day for learner activity (reading heatmap). */
+export const LEARNER_DAY_TIME_ZONE = 'Asia/Shanghai';
+
+export function calendarDateInTimeZone(now = new Date(), timeZone = LEARNER_DAY_TIME_ZONE): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
+}
+
 const calendarDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected YYYY-MM-DD');
 
 export const progressActivityLevelSchema = z.literal(1);
@@ -25,8 +37,6 @@ export const progressPortraitSchema = z.object({
   learningDays: z.number().int().min(0),
   completedArticles: z.number().int().min(0),
   lookedUpWords: z.number().int().min(0),
-  reviewCount: z.number().int().min(0),
-  practiceCount: z.number().int().min(0),
 });
 
 export type ProgressPortrait = z.infer<typeof progressPortraitSchema>;

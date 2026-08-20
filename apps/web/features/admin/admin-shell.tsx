@@ -54,10 +54,10 @@ export function AdminShell({ children }: AdminShellProps) {
           <p className="mb-3 text-sm font-medium tracking-[0.16em] text-primary">无权限</p>
           <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">无法进入管理后台</h1>
           <p className="mt-4 text-sm leading-6 text-muted-foreground">
-            当前账号没有管理员权限。管理后台只对内容维护人员开放，你仍然可以返回学习空间继续阅读。
+            当前账号没有管理员权限。管理后台只对内容维护人员开放，你仍然可以返回首页继续阅读。
           </p>
           <Button nativeButton={false} className="mt-8 rounded-xl px-5" render={<Link href={AUTH_ROUTES.dashboard} />}>
-            返回学习空间
+            返回首页
           </Button>
         </section>
       </div>
@@ -82,7 +82,7 @@ export function AdminShell({ children }: AdminShellProps) {
           render={<Link href={AUTH_ROUTES.dashboard} />}
         >
           <ArrowLeft data-icon="inline-start" />
-          学习空间
+          首页
         </Button>
       </header>
 
@@ -171,7 +171,7 @@ export function AdminShell({ children }: AdminShellProps) {
           render={<Link href={AUTH_ROUTES.dashboard} />}
         >
           <ArrowLeft data-icon="inline-start" />
-          返回学习空间
+          返回首页
         </Button>
       </aside>
 

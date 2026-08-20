@@ -215,7 +215,7 @@ export function countLearningDaysInWindow(
 }
 
 export function progressAdvice(portrait: ProgressPortrait): string {
-  return `这几天你都有回来打开。一共 ${portrait.learningDays} 天和英语待过一小会儿——读完 ${portrait.completedArticles} 篇，中间再碰了几句。断几天也没关系，下一篇还在图书馆。`;
+  return `这几天你都有回来打开。一共 ${portrait.learningDays} 天和英语待过一小会儿——读完 ${portrait.completedArticles} 篇，查过 ${portrait.lookedUpWords} 个词。断几天也没关系，下一篇还在图书馆。`;
 }
 
 export function buildHeatmapWeeks(

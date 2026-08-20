@@ -71,7 +71,7 @@ function AudioWordLine({ tokens, activeTextOffset }: { tokens: AudioWordToken[];
               className={cn(
                 'box-decoration-clone rounded-[0.2em] px-[0.12em] -mx-[0.12em] transition-[color,background-color,box-shadow] duration-300 ease-out-soft',
                 isActive
-                  ? 'bg-primary/20 text-brand-deep shadow-[inset_0_-0.12em_0_0_color-mix(in_oklab,var(--brand)_40%,transparent)]'
+                  ? 'bg-primary/20 text-brand-deep shadow-[inset_0_-0.12em_0_0_color-mix(in_oklab,var(--primary)_40%,transparent)]'
                   : 'bg-transparent text-inherit shadow-[inset_0_-0.12em_0_0_transparent]',
               )}
             >

@@ -12,7 +12,6 @@ import {
   text,
   timestamp,
   unique,
-  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
 /** Better Auth core tables (PostgreSQL) + username plugin / product fields. */
@@ -170,70 +169,6 @@ export const readingProgress = pgTable(
   ],
 );
 
-export type PracticeItemPayload =
-  { prompt: string; options: string[] } | { word: string; hint: string; quote: string; options: string[] };
-
-/** Curated practice question bound to an article. */
-export const practiceItem = pgTable(
-  'practice_item',
-  {
-    id: text('id').primaryKey(),
-    articleId: text('article_id')
-      .notNull()
-      .references(() => article.id, { onDelete: 'cascade' }),
-    sortOrder: integer('sort_order').notNull(),
-    kind: text('kind').notNull(),
-    payload: jsonb('payload').$type<PracticeItemPayload>().notNull(),
-    /** 0-based; never returned on learner APIs. */
-    correctOptionIndex: integer('correct_option_index').notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at')
-      .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
-  },
-  (table) => [
-    unique('practice_item_article_sort_uidx').on(table.articleId, table.sortOrder),
-    index('practice_item_article_idx').on(table.articleId),
-  ],
-);
-
-export type PracticeAttemptAnswer = {
-  practiceItemId: string;
-  selectedOptionIndex: number;
-};
-
-/** One practice session for a user on an article. */
-export const practiceAttempt = pgTable(
-  'practice_attempt',
-  {
-    id: text('id').primaryKey(),
-    userId: text('user_id')
-      .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
-    articleId: text('article_id')
-      .notNull()
-      .references(() => article.id, { onDelete: 'cascade' }),
-    status: text('status').notNull().default('in_progress'),
-    currentIndex: integer('current_index').notNull().default(0),
-    answers: jsonb('answers').$type<PracticeAttemptAnswer[]>().notNull().default([]),
-    startedAt: timestamp('started_at').defaultNow().notNull(),
-    finishedAt: timestamp('finished_at'),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at')
-      .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
-  },
-  (table) => [
-    uniqueIndex('practice_attempt_one_in_progress_uidx')
-      .on(table.userId, table.articleId)
-      .where(sql`${table.status} = 'in_progress'`),
-    index('practice_attempt_user_idx').on(table.userId),
-    index('practice_attempt_article_idx').on(table.articleId),
-  ],
-);
-
 export const readingProgressRelations = relations(readingProgress, ({ one }) => ({
   user: one(user, {
     fields: [readingProgress.userId],
@@ -241,24 +176,6 @@ export const readingProgressRelations = relations(readingProgress, ({ one }) => 
   }),
   article: one(article, {
     fields: [readingProgress.articleId],
-    references: [article.id],
-  }),
-}));
-
-export const practiceItemRelations = relations(practiceItem, ({ one }) => ({
-  article: one(article, {
-    fields: [practiceItem.articleId],
-    references: [article.id],
-  }),
-}));
-
-export const practiceAttemptRelations = relations(practiceAttempt, ({ one }) => ({
-  user: one(user, {
-    fields: [practiceAttempt.userId],
-    references: [user.id],
-  }),
-  article: one(article, {
-    fields: [practiceAttempt.articleId],
     references: [article.id],
   }),
 }));
@@ -537,115 +454,7 @@ export const conversationMessageRelations = relations(conversationMessage, ({ on
   }),
 }));
 
-/** Curated cloze/sense item bound to an article (review bank, not practice). */
-export const reviewItem = pgTable(
-  'review_item',
-  {
-    id: text('id').primaryKey(),
-    articleId: text('article_id')
-      .notNull()
-      .references(() => article.id, { onDelete: 'cascade' }),
-    sortOrder: integer('sort_order').notNull(),
-    kind: text('kind').notNull(),
-    sentence: text('sentence').notNull(),
-    focus: text('focus').notNull(),
-    options: jsonb('options').$type<string[]>().notNull(),
-    hintZh: text('hint_zh').notNull(),
-    correctOptionIndex: integer('correct_option_index').notNull(),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at')
-      .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
-  },
-  (table) => [
-    unique('review_item_article_sort_uidx').on(table.articleId, table.sortOrder),
-    index('review_item_article_idx').on(table.articleId),
-  ],
-);
-
-/** One learner review queue for a Shanghai calendar date. */
-export const reviewSession = pgTable(
-  'review_session',
-  {
-    id: text('id').primaryKey(),
-    userId: text('user_id')
-      .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
-    localDate: date('local_date', { mode: 'string' }).notNull(),
-    source: text('source').notNull(),
-    outcome: text('outcome').notNull().default('in_progress'),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at')
-      .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
-  },
-  (table) => [
-    unique('review_session_user_date_uidx').on(table.userId, table.localDate),
-    index('review_session_date_idx').on(table.localDate),
-  ],
-);
-
-/** Snapshotted queue row for a daily session. */
-export const reviewSessionItem = pgTable(
-  'review_session_item',
-  {
-    id: text('id').primaryKey(),
-    sessionId: text('session_id')
-      .notNull()
-      .references(() => reviewSession.id, { onDelete: 'cascade' }),
-    reviewItemId: text('review_item_id').references(() => reviewItem.id, { onDelete: 'set null' }),
-    sortOrder: integer('sort_order').notNull(),
-    articleId: text('article_id').notNull(),
-    articleTitle: text('article_title').notNull(),
-    articleBody: text('article_body').notNull(),
-    kind: text('kind').notNull(),
-    sentence: text('sentence').notNull(),
-    focus: text('focus').notNull(),
-    options: jsonb('options').$type<string[]>().notNull(),
-    hintZh: text('hint_zh').notNull(),
-    correctOptionIndex: integer('correct_option_index').notNull(),
-    selectedIndex: integer('selected_index'),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at')
-      .defaultNow()
-      .$onUpdate(() => /* @__PURE__ */ new Date())
-      .notNull(),
-  },
-  (table) => [
-    unique('review_session_item_session_sort_uidx').on(table.sessionId, table.sortOrder),
-    index('review_session_item_session_idx').on(table.sessionId),
-  ],
-);
-
-export const reviewItemRelations = relations(reviewItem, ({ one }) => ({
-  article: one(article, {
-    fields: [reviewItem.articleId],
-    references: [article.id],
-  }),
-}));
-
-export const reviewSessionRelations = relations(reviewSession, ({ one, many }) => ({
-  user: one(user, {
-    fields: [reviewSession.userId],
-    references: [user.id],
-  }),
-  items: many(reviewSessionItem),
-}));
-
-export const reviewSessionItemRelations = relations(reviewSessionItem, ({ one }) => ({
-  session: one(reviewSession, {
-    fields: [reviewSessionItem.sessionId],
-    references: [reviewSession.id],
-  }),
-  reviewItem: one(reviewItem, {
-    fields: [reviewSessionItem.reviewItemId],
-    references: [reviewItem.id],
-  }),
-}));
-
-/** One Shanghai calendar day the learner opened the room, review, or practice. */
+/** One Shanghai calendar day the learner opened the reading room. */
 export const learnerDay = pgTable(
   'learner_day',
   {

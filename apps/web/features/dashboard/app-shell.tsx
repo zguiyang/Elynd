@@ -1,16 +1,7 @@
 'use client';
 
 import { Menu } from '@base-ui/react/menu';
-import {
-  EllipsisVertical,
-  Library,
-  LogOut,
-  type LucideIcon,
-  RotateCcw,
-  Settings2,
-  Sun,
-  TrendingUp,
-} from 'lucide-react';
+import { EllipsisVertical, Library, LogOut, type LucideIcon, Settings2, Sun, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { createContext, type ReactNode, useContext, useEffect } from 'react';
@@ -57,13 +48,6 @@ function buildLearnerNavItems(pathname: string): NavItem[] {
       label: '图书馆',
       icon: Library,
       active: matchesPath(pathname, AUTH_ROUTES.library),
-      disabled: false,
-    },
-    {
-      href: AUTH_ROUTES.review,
-      label: '复习',
-      icon: RotateCcw,
-      active: matchesPath(pathname, AUTH_ROUTES.review),
       disabled: false,
     },
     {

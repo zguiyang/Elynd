@@ -85,8 +85,6 @@ describe('windowed completions and copy', () => {
         learningDays: 12,
         completedArticles: 3,
         lookedUpWords: 8,
-        reviewCount: 2,
-        practiceCount: 6,
       }),
     ).toContain('断几天也没关系');
   });

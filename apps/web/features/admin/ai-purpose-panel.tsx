@@ -17,14 +17,6 @@ const AI_PURPOSE_LABELS: Record<AiSettingKey, { title: string; description: stri
     title: '双语翻译',
     description: '阅读页双语模式下英译中使用的默认模型。',
   },
-  'practice.default_model_id': {
-    title: '练习出题',
-    description: '管理后台根据短文生成练习题时使用的默认模型。',
-  },
-  'practice.feedback.default_model_id': {
-    title: '练习反馈',
-    description: '学习者完成练习后生成学习建议时使用的默认模型。',
-  },
 };
 
 type AiPurposePanelProps = {

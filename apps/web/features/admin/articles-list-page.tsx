@@ -35,7 +35,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs } from '@/components/ui/tabs';
 import { ADMIN_ROUTES } from '@/constants';
 import { AdminSegmentedTabsList, AdminSegmentedTabsTrigger } from '@/features/admin/admin-segmented-tabs';
-import { enqueueAdminReviewMaterialize } from '@/features/admin/article-review-api';
 import {
   type AdminArticle,
   adminArticlesQueryKey,
@@ -118,7 +117,6 @@ export function ArticlesListPage() {
   const [status, setStatus] = useState<StatusFilter>('all');
   const [page, setPage] = useState<number>(DEFAULT_PAGE);
   const [deleteTarget, setDeleteTarget] = useState<AdminArticle | null>(null);
-  const [isMaterializeOpen, setIsMaterializeOpen] = useState(false);
 
   const listParams: AdminListParams = {
     page,
@@ -146,17 +144,6 @@ export function ArticlesListPage() {
     },
   });
 
-  const materializeMutation = useMutation({
-    mutationFn: enqueueAdminReviewMaterialize,
-    onSuccess: () => {
-      setIsMaterializeOpen(false);
-      toast.success('已加入队列');
-    },
-    onError: (error) => {
-      toast.error(formatAdminApiError(error));
-    },
-  });
-
   const emptyTitle = list.total === 0 && status !== 'all' ? '当前筛选下没有文章' : '还没有文章';
   const emptyDescription =
     list.total === 0 && status !== 'all' ? '试试切换状态筛选，或新建一篇短文。' : '点「新建文章」开始粘贴内容。';
@@ -169,14 +156,6 @@ export function ArticlesListPage() {
           <p className="mt-3 text-lg text-muted-foreground">粘贴短文、存草稿，再发布到图书馆。</p>
         </div>
         <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
-          <Button
-            type="button"
-            variant="outline"
-            className="h-11 rounded-xl px-7"
-            onClick={() => setIsMaterializeOpen(true)}
-          >
-            生成今日复习
-          </Button>
           <Button
             nativeButton={false}
             className="h-11 shrink-0 rounded-xl px-7 hover:bg-brand-deep"
@@ -295,24 +274,6 @@ export function ArticlesListPage() {
                             size="sm"
                             nativeButton={false}
                             className="rounded-xl"
-                            render={<Link href={ADMIN_ROUTES.articlePractice(article.id)} />}
-                          >
-                            练习题
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            nativeButton={false}
-                            className="rounded-xl"
-                            render={<Link href={ADMIN_ROUTES.articleReview(article.id)} />}
-                          >
-                            复习题
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            nativeButton={false}
-                            className="rounded-xl"
                             render={<Link href={ADMIN_ROUTES.articleAudio(article.id)} />}
                           >
                             音频
@@ -388,7 +349,7 @@ export function ArticlesListPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>永久删除这篇文章？</AlertDialogTitle>
             <AlertDialogDescription>
-              不可恢复。将清除正文、练习题、音频、对照缓存和该文的帮助对话。若已有人读过或做过练习，其进度也会一并消失。
+              不可恢复。将清除正文、音频、对照缓存和该文的帮助对话。若已有人读过，其进度也会一并消失。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -403,22 +364,6 @@ export function ArticlesListPage() {
               }}
             >
               {deleteMutation.isPending ? '删除中…' : '确认删除'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      <AlertDialog open={isMaterializeOpen} onOpenChange={setIsMaterializeOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>生成今日复习？</AlertDialogTitle>
-            <AlertDialogDescription>
-              此操作会覆盖今天已自动生成的复习（如果有的话）。正在进行的复习进度也会被替换。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction disabled={materializeMutation.isPending} onClick={() => materializeMutation.mutate()}>
-              {materializeMutation.isPending ? '加入队列中…' : '确认生成'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

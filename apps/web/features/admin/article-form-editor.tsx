@@ -289,22 +289,6 @@ export function ArticleFormEditor({ mode, articleId, initialArticle }: ArticleFo
               variant="outline"
               className="h-11 rounded-xl"
               nativeButton={false}
-              render={<Link href={ADMIN_ROUTES.articlePractice(articleId)} />}
-            >
-              练习题工作台
-            </Button>
-            <Button
-              variant="outline"
-              className="h-11 rounded-xl"
-              nativeButton={false}
-              render={<Link href={ADMIN_ROUTES.articleReview(articleId)} />}
-            >
-              复习题工作台
-            </Button>
-            <Button
-              variant="outline"
-              className="h-11 rounded-xl"
-              nativeButton={false}
               render={<Link href={ADMIN_ROUTES.articleAudio(articleId)} />}
             >
               音频工作台
@@ -546,7 +530,7 @@ export function ArticleFormEditor({ mode, articleId, initialArticle }: ArticleFo
           <AlertDialogHeader>
             <AlertDialogTitle>永久删除这篇文章？</AlertDialogTitle>
             <AlertDialogDescription>
-              不可恢复。将清除正文、练习题、音频、对照缓存和该文的帮助对话。若已有人读过或做过练习，其进度也会一并消失。
+              不可恢复。将清除正文、音频、对照缓存和该文的帮助对话。若已有人读过，其进度也会一并消失。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

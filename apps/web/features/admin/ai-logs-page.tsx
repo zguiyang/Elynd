@@ -50,18 +50,12 @@ const SOURCE_LABELS: Record<string, string> = {
   'assist.ask': '阅读提问',
   'assist.ask.followups': '追问建议',
   'translate.article': '双语翻译',
-  'practice.generate': '练习出题',
-  'practice.feedback': '练习反馈',
-  'review.generate': '复习出题',
-  'review.feedback': '复习反馈',
   'admin.provider_test': '连通测试',
 };
 
 const PURPOSE_LABELS: Record<string, string> = {
   assist: '阅读助手',
   translate: '双语翻译',
-  practice: '练习出题',
-  practiceFeedback: '练习反馈',
 };
 
 function sourceLabel(source: string): string {

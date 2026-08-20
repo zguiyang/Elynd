@@ -34,8 +34,6 @@ export const config = {
   matcher: [
     '/dashboard/:path*',
     '/library/:path*',
-    '/review',
-    '/review/:path*',
     '/progress',
     '/progress/:path*',
     '/learn/:path*',

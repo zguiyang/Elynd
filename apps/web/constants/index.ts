@@ -10,11 +10,9 @@ export const AUTH_ROUTES = {
   verifyEmail: '/verify-email',
   dashboard: '/dashboard',
   library: '/library',
-  review: '/review',
   progress: '/progress',
   learn: '/learn',
   learnArticle: (id: string) => `/learn/${id}` as const,
-  learnPractice: (id: string) => `/learn/${id}/practice` as const,
 } as const;
 
 export const ADMIN_ROUTES = {
@@ -22,8 +20,6 @@ export const ADMIN_ROUTES = {
   articles: '/admin/articles',
   articleNew: '/admin/articles/new',
   articleEdit: (id: string) => `/admin/articles/${id}/edit` as const,
-  articlePractice: (id: string) => `/admin/articles/${id}/practice` as const,
-  articleReview: (id: string) => `/admin/articles/${id}/review` as const,
   articleAudio: (id: string) => `/admin/articles/${id}/audio` as const,
   ai: '/admin/ai',
   aiLogs: '/admin/ai-logs',

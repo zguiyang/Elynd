@@ -5,8 +5,6 @@ const PORTRAIT_ITEMS: { key: keyof ProgressPortrait; label: string }[] = [
   { key: 'learningDays', label: '一共来过（天）' },
   { key: 'completedArticles', label: '读完的短文（篇）' },
   { key: 'lookedUpWords', label: '查过的词' },
-  { key: 'reviewCount', label: '再碰（次）' },
-  { key: 'practiceCount', label: '做过的小题' },
 ];
 
 type ProgressPortraitGridProps = {

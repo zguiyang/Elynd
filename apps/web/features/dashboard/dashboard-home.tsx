@@ -33,7 +33,7 @@ function ProgressHint({ ratio }: { ratio: number }) {
   return <p className="mt-3 text-sm text-muted-foreground">大约读到 {ratio}%</p>;
 }
 
-function CurrentHero({ entry, activePracticeHref }: { entry: LearnTodayEntry; activePracticeHref: string | null }) {
+function CurrentHero({ entry }: { entry: LearnTodayEntry }) {
   return (
     <section className="mt-10 flex flex-col items-stretch justify-between gap-8 rounded-3xl bg-paper p-8 md:flex-row md:items-center md:p-10">
       <div className="max-w-xl">
@@ -50,16 +50,6 @@ function CurrentHero({ entry, activePracticeHref }: { entry: LearnTodayEntry; ac
             <Play className="size-4" strokeWidth={1.5} aria-hidden />
             继续阅读
           </Button>
-          {activePracticeHref ? (
-            <Button
-              nativeButton={false}
-              variant="outline"
-              className="h-11 rounded-xl border-border bg-card px-5 shadow-none"
-              render={<Link href={activePracticeHref} />}
-            >
-              继续练习
-            </Button>
-          ) : null}
         </div>
       </div>
       <div
@@ -168,7 +158,6 @@ export function DashboardHome() {
 
   const current = todayQuery.data?.current ?? null;
   const continueReading = todayQuery.data?.continueReading ?? [];
-  const activePractice = todayQuery.data?.activePractice ?? null;
   const recommendations = todayQuery.data?.recommendations ?? [];
 
   return (
@@ -189,14 +178,7 @@ export function DashboardHome() {
         </Empty>
       ) : (
         <>
-          {current ? (
-            <CurrentHero
-              entry={current}
-              activePracticeHref={activePractice ? AUTH_ROUTES.learnPractice(activePractice.articleId) : null}
-            />
-          ) : (
-            <EmptyHero />
-          )}
+          {current ? <CurrentHero entry={current} /> : <EmptyHero />}
           {continueReading.length > 0 ? <ContinueReadingList entries={continueReading} /> : null}
           {recommendations.length > 0 ? <RecommendationsList articles={recommendations} /> : null}
         </>

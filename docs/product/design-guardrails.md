@@ -1,4 +1,4 @@
-# Elynd Design Guardrails
+# Gloaming Design Guardrails
 
 Use during **reviews, prototype walkthroughs, and post-ship retros** to catch drift early.
 
@@ -57,7 +57,7 @@ Standards inform; they do not override the reader bet.
 
 | Red light                                    | Why                     | Pull back                               |
 | -------------------------------------------- | ----------------------- | --------------------------------------- |
-| Chat is the default home                     | Elynd ≠ chatbot         | AI secondary                            |
+| Chat is the default home                     | Gloaming ≠ chatbot      | AI secondary                            |
 | “Summarize so you needn’t read” as main path | Skips understanding     | Optional assist only                    |
 | Core path unusable without AI                | Tool became the product | Degraded reading still works            |
 | LLM rewrites the import into a course        | Generator               | Parse structure; keep the author’s text |

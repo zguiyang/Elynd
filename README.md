@@ -1,4 +1,4 @@
-# Elynd
+# 书灯阅读（Gloaming Reader）
 
 [English](./README.en.md) | 中文
 
@@ -6,7 +6,7 @@
 
 ## 产品简介
 
-**Elynd** 是 **AI Native Language Reading Environment**（AI 原生语言阅读环境）：像用现代电子书阅读器一样读真实英文，卡住时获得上下文相关的 AI 帮助。核心不是教语言，而是帮助用户**持续阅读他们真正想读的英文**。
+**书灯阅读**（英文名 **Gloaming** / 全称 Gloaming Reader）是 **AI Native Language Reading Environment**（AI 原生语言阅读环境）：像用现代电子书阅读器一样读真实英文，卡住时获得上下文相关的 AI 帮助。英文名给「暮光时刻」的安静氛围，中文名给「书灯」这盏照亮书页的光——不直译，互相成就。核心不是教语言，而是帮助用户**持续阅读他们真正想读的英文**。
 
 目标用户：不限年龄——学生、成人学习者、英语爱好者、高级读者。缺的不是资料，而是一个能读下去、卡住能获得帮助的环境。
 
@@ -24,7 +24,7 @@
 | Reader | 安静阅读；划词解释、翻译、TTS  |
 | AI     | 页内同伴，不需要时消失         |
 
-Elynd 不是 Duolingo、LingQ、Anki、ChatGPT 阅读插件，也不是 AI 内容工厂。V1 规格：[`docs/product/mvp-scope.md`](./docs/product/mvp-scope.md)。代码去留：[`docs/product/feature-audit.md`](./docs/product/feature-audit.md)。
+书灯阅读不是 Duolingo、LingQ、Anki、ChatGPT 阅读插件，也不是 AI 内容工厂。V1 规格：[`docs/product/mvp-scope.md`](./docs/product/mvp-scope.md)。代码去留：[`docs/product/feature-audit.md`](./docs/product/feature-audit.md)。
 
 ## 技术栈
 
@@ -32,7 +32,7 @@ Elynd 不是 Duolingo、LingQ、Anki、ChatGPT 阅读插件，也不是 AI 内�
 | ------ | ----------------------------------------------------------------------------------------------- |
 | API    | Hono、Better Auth、Drizzle、PostgreSQL、Redis（端口 **6380**）、session cookie（端口 **3333**） |
 | Web    | Next.js App Router、React、TanStack Query/Form、Tailwind CSS v4（端口 **3000**）                |
-| 包管理 | pnpm workspace（`apps/*`、`packages/*`）；`@elynd/shared`、`@elynd/db`                          |
+| 包管理 | pnpm workspace（`apps/*`、`packages/*`）；`@gloaming/shared`、`@gloaming/db`                    |
 
 ## 环境要求
 
@@ -46,7 +46,7 @@ Elynd 不是 Duolingo、LingQ、Anki、ChatGPT 阅读插件，也不是 AI 内�
 
 ```bash
 git clone <repository-url>
-cd elynd
+cd gloaming
 pnpm install
 ```
 
@@ -59,7 +59,7 @@ docker compose up -d
 
 默认连接（与 compose / `.env.example` 一致）：
 
-- Postgres: `127.0.0.1:5433`，库名 `elynd_backend`（`DATABASE_URL`）
+- Postgres: `127.0.0.1:5433`，库名 `gloaming_backend`（`DATABASE_URL`）
 - Redis: `127.0.0.1:6380`（`REDIS_URL`）
 
 ### 2. 配置环境变量

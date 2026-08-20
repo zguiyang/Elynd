@@ -13,14 +13,14 @@ Stack folders: `backend` / `frontend` / `packages`. **This file wins on "where d
 apps/web           ──► packages/shared     # cross-app policy/types (no ORM)
 apps/backend       ──► packages/shared     # auth policy SSOT
 apps/backend       ──► packages/db         # Drizzle schema (Better Auth + app tables)
-@elynd/shared                              # NO apps / ORM / secrets
-@elynd/db                                  # schema only — no HTTP
+@gloaming/shared                              # NO apps / ORM / secrets
+@gloaming/db                                  # schema only — no HTTP
 ```
 
 | Forbidden |
 | --- |
 | `apps/web` ↔ `apps/backend` app-source imports |
-| Business workflows inside `@elynd/shared` |
+| Business workflows inside `@gloaming/shared` |
 | Drizzle/Better Auth tables outside `packages/db` |
 | One file mixing HTTP-server and UI-render |
 
@@ -33,7 +33,7 @@ Root tooling (`tsconfig.base.json`, prettier, eslint) is not a package; Next/Hon
 | Domain workflow | `apps/backend` modules, `apps/web/features/**` | Generic `lib/`, shared config pkgs |
 | Tech capability (no domain) | `apps/backend/src/lib`, middleware | Import feature modules |
 | Transport cross-cutting | API middleware / web proxy | Domain workflows |
-| Cross-app Zod/DTO/constants (2+ apps) | `@elynd/shared` | Dup schemas; ORM imports |
+| Cross-app Zod/DTO/constants (2+ apps) | `@gloaming/shared` | Dup schemas; ORM imports |
 | Persistence schema | `packages/db` (Drizzle) | Ad-hoc tables in web/shared/backend |
 | Server/remote state | Query/data layer | Zustand as API SoT |
 | Client UI state | UI store | Secrets; server lists as SoT |
@@ -45,17 +45,17 @@ In-app (Hono): `routes → modules/route → modules/service → lib/db → I/O`
 
 Downstream only; typecheck each layer before the next:
 
-- **Hono path:** `packages/db` → `apps/backend` (+ `@elynd/shared` when public) → `apps/web`
+- **Hono path:** `packages/db` → `apps/backend` (+ `@gloaming/shared` when public) → `apps/web`
 
 | Trigger | Order |
 | --- | --- |
 | DB schema | `packages/db` migrate → backend → tests → web |
 | Shared validator/type | shared → backend + web |
 | API response shape | backend (+tests) → shared if public → web → UI |
-| Shared constant | define once in owner / `@elynd/shared`; import |
+| Shared constant | define once in owner / `@gloaming/shared`; import |
 
 Never update only one layer. Same-fact copies: SSOT in `core`.
 
 ## Constants
 
-Literal in **2+** modules → named constant in owning package (or `@elynd/shared` if cross-app). One-off → local. Prefer `as const` over `enum`.
+Literal in **2+** modules → named constant in owning package (or `@gloaming/shared` if cross-app). One-off → local. Prefer `as const` over `enum`.

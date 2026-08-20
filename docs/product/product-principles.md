@@ -1,4 +1,4 @@
-# Elynd Product Principles
+# Gloaming Product Principles
 
 How we decide what belongs in the product. Companion to [`product-vision.md`](./product-vision.md).
 
@@ -25,7 +25,7 @@ The first action on return: **continue the unfinished text**—not study, not a 
 
 Users read **English they chose**: books, novels, articles, news, technical docs, essays, or anything else they care about.
 
-Elynd does not manufacture learning materials. The user chooses. Elynd lowers the cost of understanding.
+Gloaming does not manufacture learning materials. The user chooses. Gloaming lowers the cost of understanding.
 
 A small seed shelf is allowed so first-run is not a dead end. It must not become the identity.
 
@@ -37,7 +37,7 @@ The surface should feel like **Apple Books**, **TextStack**, and **Readest**: ty
 
 No XP, no shame streaks, no “today’s tasks,” no lesson walls. A session can end by closing the book.
 
-Opening Elynd should feel like:
+Opening Gloaming should feel like:
 
 > “I’m back to continue a book.”
 
@@ -72,7 +72,7 @@ Help is **contextual**—the current passage, this document. If they already ask
 
 Help lives next to the selection: tap a word, mark a sentence, ask.
 
-Do not require a mode switch into “study.” Do not collect a vocab homework list as the reason to open Elynd.
+Do not require a mode switch into “study.” Do not collect a vocab homework list as the reason to open Gloaming.
 
 ---
 

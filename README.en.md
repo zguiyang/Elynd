@@ -1,4 +1,4 @@
-# Elynd
+# Gloaming Reader
 
 [中文](./README.md) | English
 
@@ -6,7 +6,7 @@
 
 ## Product
 
-**Elynd** is an **AI Native Language Reading Environment**: read authentic English the way you use a modern ebook reader, with contextual AI help when meaning breaks down. The core is not teaching language. The core is helping people **keep reading English they actually want to read**.
+**Gloaming** (Chinese: **书灯阅读**, “book-lamp reading”) is an **AI Native Language Reading Environment**: read authentic English the way you use a modern ebook reader, with contextual AI help when meaning breaks down. The English name evokes the quiet hour of twilight; the Chinese name is the lamp that lights the page—paired meanings, not a literal translation. The core is not teaching language. The core is helping people **keep reading English they actually want to read**.
 
 Who: **no age gate**—students, adult learners, enthusiasts, advanced readers. They are not short of materials. They are short of an environment that lets them keep reading, with help when stuck.
 
@@ -24,7 +24,7 @@ Choose authentic English → Read → Contextual help when stuck → Keep readin
 | Reader  | Calm reading; lookup, translation, TTS        |
 | AI      | In-page companion; disappears when not needed |
 
-Elynd is not Duolingo, LingQ, Anki, a ChatGPT reading plugin, or an AI content factory. V1 spec: [`docs/product/mvp-scope.md`](./docs/product/mvp-scope.md). Code vs bet: [`docs/product/feature-audit.md`](./docs/product/feature-audit.md).
+Gloaming is not Duolingo, LingQ, Anki, a ChatGPT reading plugin, or an AI content factory. V1 spec: [`docs/product/mvp-scope.md`](./docs/product/mvp-scope.md). Code vs bet: [`docs/product/feature-audit.md`](./docs/product/feature-audit.md).
 
 ## Stack
 
@@ -32,7 +32,7 @@ Elynd is not Duolingo, LingQ, Anki, a ChatGPT reading plugin, or an AI content f
 | -------- | --------------------------------------------------------------------------------------------- |
 | API      | Hono, Better Auth, Drizzle, PostgreSQL, Redis (port **6380**), session cookie (port **3333**) |
 | Web      | Next.js App Router, React, TanStack Query/Form, Tailwind CSS v4 (port **3000**)               |
-| Packages | pnpm workspace (`apps/*`, `packages/*`); `@elynd/shared`, `@elynd/db`                         |
+| Packages | pnpm workspace (`apps/*`, `packages/*`); `@gloaming/shared`, `@gloaming/db`                   |
 
 ## Requirements
 
@@ -46,7 +46,7 @@ Elynd is not Duolingo, LingQ, Anki, a ChatGPT reading plugin, or an AI content f
 
 ```bash
 git clone <repository-url>
-cd elynd
+cd gloaming
 pnpm install
 ```
 
@@ -59,7 +59,7 @@ docker compose up -d
 
 Defaults (from compose / `.env.example`):
 
-- Postgres: `127.0.0.1:5433`, database `elynd_backend` (`DATABASE_URL`)
+- Postgres: `127.0.0.1:5433`, database `gloaming_backend` (`DATABASE_URL`)
 - Redis: `127.0.0.1:6380` (`REDIS_URL`)
 
 ### 2. Environment files

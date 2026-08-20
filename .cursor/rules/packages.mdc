@@ -1,5 +1,5 @@
 ---
-description: Shared packages conventions for Elynd
+description: Shared packages conventions for Gloaming
 globs: packages/**
 alwaysApply: false
 ---
@@ -8,8 +8,8 @@ alwaysApply: false
 
 | Package | Role |
 | --- | --- |
-| `@elynd/shared` | Cross-app constants/types/policy for **2+** apps — no ORM |
-| `@elynd/db` | Drizzle schema + migrations SSOT (Better Auth + app tables) |
+| `@gloaming/shared` | Cross-app constants/types/policy for **2+** apps — no ORM |
+| `@gloaming/db` | Drizzle schema + migrations SSOT (Better Auth + app tables) |
 
 Layering: `layering`. Cross-layer edits: `layering` propagation section.
 
@@ -17,16 +17,16 @@ Layering: `layering`. Cross-layer edits: `layering` propagation section.
 
 - Extend `../../tsconfig.base.json`; local `rootDir`/`include` as needed
 - Source-first package: `exports` → `src/*.ts`, `tsc --noEmit` only (no `dist` / `build`)
-- Cross-package: `@elynd/*` names, not relative across packages
+- Cross-package: `@gloaming/*` names, not relative across packages
 - Import suffixes: `core` **Never** (repo-wide). Packages use `allowImportingTsExtensions` + `noEmit`; ESLint enforces.
 
 ## Ownership
 
-- Password/username/mail-cooldown policy SSOT → `@elynd/shared/auth/policy`
-- Cross-app validators/types → `@elynd/shared`
-- Persistence → `@elynd/db` (Drizzle), not `@elynd/shared` and not inline in `apps/backend`
+- Password/username/mail-cooldown policy SSOT → `@gloaming/shared/auth/policy`
+- Cross-app validators/types → `@gloaming/shared`
+- Persistence → `@gloaming/db` (Drizzle), not `@gloaming/shared` and not inline in `apps/backend`
 - No Nest/React feature workflows in packages
-- Do not add to `@elynd/shared` for a single consumer
+- Do not add to `@gloaming/shared` for a single consumer
 
 ## Zod
 

@@ -1,5 +1,5 @@
 ---
-description: Hono API conventions for Elynd (apps/backend)
+description: Hono API conventions for Gloaming (apps/backend)
 globs: apps/backend/**
 alwaysApply: false
 ---
@@ -8,7 +8,7 @@ alwaysApply: false
 
 Hono API on Node (`@hono/node-server`). Auth: **Better Auth**.
 
-Placement: `layering` + `structure`. Schema: `@elynd/db` (Drizzle).
+Placement: `layering` + `structure`. Schema: `@gloaming/db` (Drizzle).
 
 ## Directory layout
 
@@ -37,7 +37,7 @@ apps/backend/
 | Route thin | Validate → call service → status/JSON. No DB orchestration in routes |
 | Service thick | Business rules; no `c.json` / raw Context |
 | `lib/` | Technical only (redis, queue, env, logger). No `modules/` imports |
-| Schema | **Only** in `packages/db` — import `@elynd/db` / `@elynd/db/schema` |
+| Schema | **Only** in `packages/db` — import `@gloaming/db` / `@gloaming/db/schema` |
 | Auth | Better Auth at `/api/auth/*` via `auth.handler`; do not reimplement login/register |
 | Admin auth | Any `/api/admin/**` route must use `requireAdmin`; hiding navigation or relying on web proxy is not authorization |
 | Validation | Zod (`@hono/zod-validator` or shared schemas) |

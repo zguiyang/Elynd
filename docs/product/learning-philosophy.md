@@ -1,6 +1,6 @@
-# Elynd Learning Philosophy
+# Gloaming Learning Philosophy
 
-Canonical reference for **why Elynd is a reading environment**: beliefs, scholarly lineage, critiques we accept, and how beliefs map to product surfaces.
+Canonical reference for **why Gloaming is a reading environment**: beliefs, scholarly lineage, critiques we accept, and how beliefs map to product surfaces.
 
 Companion to [`product-vision.md`](./product-vision.md) (identity) and [`product-principles.md`](./product-principles.md) (decision rules).
 
@@ -14,7 +14,7 @@ Index: [`README.md`](./README.md)
 
 ## 1. One-sentence stance
 
-Elynd believes people build durable English mainly by **reading (and hearing) authentic messages they care about**, with help that keeps most of the page understandable—not by completing courses, drills, or chat sessions.
+Gloaming believes people build durable English mainly by **reading (and hearing) authentic messages they care about**, with help that keeps most of the page understandable—not by completing courses, drills, or chat sessions.
 
 AI exists to **keep the reader in the book**, not to replace the book.
 
@@ -24,7 +24,7 @@ AI exists to **keep the reader in the book**, not to replace the book.
 
 ### 2.1 Practitioner / community lineage
 
-| Source                                | Role for Elynd                                                                                                                                            |
+| Source                                | Role for Gloaming                                                                                                                                         |
 | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **罗肖尼 Shawney**                    | Fluency from massive interesting input; do not force early output                                                                                         |
 | **Steve Kaufmann**                    | Time with compelling authentic content; lookup is legitimate if it helps you consume more                                                                 |
@@ -32,7 +32,7 @@ AI exists to **keep the reader in the book**, not to replace the book.
 
 These pointed us at a research tradition. They are not a license to clone LingQ, Duolingo, or Anki.
 
-### 2.2 What Elynd is _not_ claiming
+### 2.2 What Gloaming is _not_ claiming
 
 - We are **not** claiming Krashen is uncontested or that input alone explains all of SLA.
 - We are **not** building a “never look anything up” ideology product.
@@ -65,7 +65,7 @@ Re-meeting words in **later reading** is how vocabulary actually sticks. That do
 
 **Optimal Input (2020):** comprehensible, **compelling**, rich, **abundant**.
 
-**How Elynd uses it:** The reader is the product. AI/translation/TTS raise the share of the page you can understand **without turning the page into a worksheet**.
+**How Gloaming uses it:** The reader is the product. AI/translation/TTS raise the share of the page you can understand **without turning the page into a worksheet**.
 
 Pointers: Krashen, _Principles and Practice in Second Language Acquisition_; _The Power of Reading_ (2004); “Optimal Input,” _Language Magazine_ (2020).
 
@@ -73,13 +73,13 @@ Pointers: Krashen, _Principles and Practice in Second Language Acquisition_; _Th
 
 Core input ideas persist under modern labels (implicit learning, ordered development, communicatively embedded input).
 
-**How Elynd uses it:** Reading-first is a living research direction, not a 1980s slogan. We still read critiques (§5).
+**How Gloaming uses it:** Reading-first is a living research direction, not a 1980s slogan. We still read critiques (§5).
 
 ### 4.3 Free voluntary / extensive reading — Day, Bamford, Krashen, Renandya
 
 Large amounts of **self-selected** reading for pleasure/general understanding improve reading and often transfer. Day & Bamford: easy-enough material, learner choice, volume, pleasure purpose, reading as its own reward.
 
-**How Elynd uses it:** Import + choice. A seed shelf is a courtesy, not a syllabus. Session design = **wanting to continue the book**.
+**How Gloaming uses it:** Import + choice. A seed shelf is a courtesy, not a syllabus. Session design = **wanting to continue the book**.
 
 Pointers: Day & Bamford (1998, 2002); ER Foundation bibliography.
 
@@ -87,19 +87,19 @@ Pointers: Day & Bamford (1998, 2002); ER Foundation bibliography.
 
 Abundant high-interest books accelerated L2 English reading/listening in a classic field study.
 
-**How Elynd uses it:** More readable authentic pages → growth. The product should increase **pages of real English**, not exercises completed.
+**How Gloaming uses it:** More readable authentic pages → growth. The product should increase **pages of real English**, not exercises completed.
 
 ### 4.5 Vocabulary from reading — Paul Nation
 
 Incidental vocabulary learning is real but **fragile**—needs repeated meetings in meaning-focused input. Comfortable reading often needs very high known-token coverage; help (gloss, translation) is a way to keep coverage up **in the text you chose**.
 
-**How Elynd uses it:** Inline lookup and translation are **coverage tools**. They are not a flashcard product. Nation also notes ER is not a complete _curriculum_—Elynd is not trying to be a complete curriculum.
+**How Gloaming uses it:** Inline lookup and translation are **coverage tools**. They are not a flashcard product. Nation also notes ER is not a complete _curriculum_—Gloaming is not trying to be a complete curriculum.
 
 ### 4.6 Affective filter / anxiety
 
 High anxiety blocks usable input. Compelling content and low pressure increase the chance that input becomes intake.
 
-**How Elynd uses it:** Book-like UX; no streak-shame; closing the reader is a valid end of session.
+**How Gloaming uses it:** Book-like UX; no streak-shame; closing the reader is a valid end of session.
 
 ### 4.7 Output and spacing (honest, deprioritized for V1)
 
@@ -113,7 +113,7 @@ High anxiety blocks usable input. Compelling content and low pressure increase t
 
 ## 5. Honest critiques
 
-| Critique                                         | Elynd response                                                                         |
+| Critique                                         | Gloaming response                                                                      |
 | ------------------------------------------------ | -------------------------------------------------------------------------------------- |
 | “Comprehensible input” is hard to operationalize | Proxies: did they keep reading? assist used then returned to the page—not mystical i+1 |
 | Input-only underplays attention and output       | V1 still chooses input. We do not pretend drills are required to ship a reader         |
@@ -145,7 +145,7 @@ When designing features, copy, or experiments, ask:
 3. Does this **avoid Duolingo / LingQ / Anki / chatbot / content-factory identity**?
 4. If we add AI, does it still **serve the page**—or steal the loop?
 
-If a feature fails these tests, it is off-mission—even if the old Elynd built it.
+If a feature fails these tests, it is off-mission—even if the old Gloaming built it.
 
 ---
 

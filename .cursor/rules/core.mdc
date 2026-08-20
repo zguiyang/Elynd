@@ -1,11 +1,11 @@
 ---
-description: Elynd constitution — decision gate, Ask/Never, TDD, DoD, router (always-on)
+description: Gloaming constitution — decision gate, Ask/Never, TDD, DoD, router (always-on)
 alwaysApply: true
 ---
 
 # Core
 
-Elynd: **AI Native Language Reading Environment**—authentic English like a modern ebook reader, contextual AI when stuck. Not a course, drills, or chatbot. Monorepo: `apps/backend` (Hono **3333**), `apps/web` (Next **3000**), `packages/shared`, `packages/db` (Drizzle).
+Gloaming: **AI Native Language Reading Environment**—authentic English like a modern ebook reader, contextual AI when stuck. Not a course, drills, or chatbot. Monorepo: `apps/backend` (Hono **3333**), `apps/web` (Next **3000**), `packages/shared`, `packages/db` (Drizzle).
 
 Product SSOT: `docs/product/`. Prototypes: `prd/`. Language: user Chinese → reply Chinese and write plans in Chinese; **code, comments, commits in English**. Repo docs (`docs/`, README) default to English unless the user specifies another language.
 
@@ -40,7 +40,7 @@ Never silently fill an open design fork. Locked choices in the active task brief
 
 ## Must / Ask / Never
 
-**Must:** follow `layering` + `structure` before adding files/dirs; Drizzle in `packages/db` / cross-app contracts in `@elynd/shared` before inventing layout; DB schema before consumers; extend root `tsconfig.base.json` via relative paths.
+**Must:** follow `layering` + `structure` before adding files/dirs; Drizzle in `packages/db` / cross-app contracts in `@gloaming/shared` before inventing layout; DB schema before consumers; extend root `tsconfig.base.json` via relative paths.
 
 **Ask first** (format: plan → reason → impact → alternative → proceed?):
 
@@ -74,7 +74,7 @@ Default for behavior-changing API/web logic: failing test → minimal impl → g
 
 ## Definition of Done
 
-Relevant tests pass; `pnpm lint` / `format:check` / `typecheck` for touched scope; backend production-entry/build changes must verify `pnpm --filter @elynd/backend build` and emitted JS has no unresolved `@/*` imports; no dead code/dangling imports; explicit errors; no new TODO unless deferred by user; no new single-consumer helper file `structure` would reject; trivial self-judged details disclosed.
+Relevant tests pass; `pnpm lint` / `format:check` / `typecheck` for touched scope; backend production-entry/build changes must verify `pnpm --filter @gloaming/backend build` and emitted JS has no unresolved `@/*` imports; no dead code/dangling imports; explicit errors; no new TODO unless deferred by user; no new single-consumer helper file `structure` would reject; trivial self-judged details disclosed.
 
 ## Commit (agent)
 

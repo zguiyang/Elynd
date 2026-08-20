@@ -1,4 +1,4 @@
-# Elynd Success Metrics
+# Gloaming Success Metrics
 
 What we measure so building stays honest. Numbers serve the philosophy—they do not replace it.
 

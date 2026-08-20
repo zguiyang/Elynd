@@ -1,6 +1,6 @@
-# Elynd Product Vision
+# Gloaming Product Vision
 
-**Canonical one-liner:** Elynd is an **AI Native Language Reading Environment**. It helps people read authentic English the way they use a modern ebook reader, with contextual AI help when meaning breaks down.
+**Canonical one-liner:** Gloaming is an **AI Native Language Reading Environment**. It helps people read authentic English the way they use a modern ebook reader, with contextual AI help when meaning breaks down.
 
 The core is **not** teaching language. The core is:
 
@@ -20,13 +20,13 @@ Related docs:
 
 ## 1. Name
 
-Elynd
+Gloaming
 
 ---
 
 ## 2. Positioning
 
-Elynd is a **reading environment**, not a learning-management product.
+Gloaming is a **reading environment**, not a learning-management product.
 
 ```text
 Choose authentic English
@@ -49,13 +49,13 @@ The first thing a returning user does is **not** study, finish a task, or check 
 
 Help people **read real English they care about**—books, novels, articles, news, technical writing, essays, or any English they chose—by lowering the cost of understanding, without turning reading into a course, a drill, or a chat.
 
-Elynd does **not** manufacture learning materials. The user chooses the text. Elynd lowers the barrier.
+Gloaming does **not** manufacture learning materials. The user chooses the text. Gloaming lowers the barrier.
 
 ---
 
 ## 4. Who we serve
 
-**No age gate.** Elynd is for anyone who wants to grow English by reading authentic content.
+**No age gate.** Gloaming is for anyone who wants to grow English by reading authentic content.
 
 They are not short of English materials. They are short of:
 
@@ -86,20 +86,20 @@ Most products respond by changing the activity:
 | Chatbot / “ChatGPT reading plugin” | Talk to a model                   |
 | Content factory                    | Consume generated “learning text” |
 
-Elynd’s bet: **keep the activity as reading.** Use AI only to make this page readable.
+Gloaming’s bet: **keep the activity as reading.** Use AI only to make this page readable.
 
 ---
 
-## 6. What Elynd is
+## 6. What Gloaming is
 
 Four ideas. Full decision rules: [`product-principles.md`](./product-principles.md).
 
-| Idea                   | Meaning                                                                                                                |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| **Reading first**      | Reading _is_ the product. Not “reading plus a study module.” Reading itself is how language grows here.                |
-| **Real content first** | Books, novels, articles, news, technical docs, essays—whatever the user wants. Elynd does not invent a lesson library. |
-| **AI as companion**    | Appears when needed, helps with **this passage**, then recedes. _AI should disappear when it is not needed._           |
-| **Calm reading**       | Feels like coming back to a book—not starting today’s learning task.                                                   |
+| Idea                   | Meaning                                                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **Reading first**      | Reading _is_ the product. Not “reading plus a study module.” Reading itself is how language grows here.                   |
+| **Real content first** | Books, novels, articles, news, technical docs, essays—whatever the user wants. Gloaming does not invent a lesson library. |
+| **AI as companion**    | Appears when needed, helps with **this passage**, then recedes. _AI should disappear when it is not needed._              |
+| **Calm reading**       | Feels like coming back to a book—not starting today’s learning task.                                                      |
 
 It should feel like:
 
@@ -111,7 +111,7 @@ Not:
 
 ---
 
-## 7. What Elynd is NOT
+## 7. What Gloaming is NOT
 
 | Not this                                                     | We do not                                                                   |
 | ------------------------------------------------------------ | --------------------------------------------------------------------------- |
@@ -122,7 +122,7 @@ Not:
 | **An AI content factory**                                    | Batch-generated “English articles” as the main supply                       |
 | A **course platform** / **AI teacher** / **practice system** | Syllabus, tutoring identity, quiz loop                                      |
 
-A plain e-reader without language help is also not Elynd. The difference is the **companion**, not a second product identity.
+A plain e-reader without language help is also not Gloaming. The difference is the **companion**, not a second product identity.
 
 ---
 
@@ -144,7 +144,7 @@ Visual tokens stay in [`DESIGN.md`](../../DESIGN.md). These three inform **behav
 
 ## 9. Personality
 
-Elynd feels like a **smart, quiet reading companion**.
+Gloaming feels like a **smart, quiet reading companion**.
 
 Not a teacher. Not an exam supervisor. Not a content farm.
 

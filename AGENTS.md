@@ -1,29 +1,29 @@
 # AGENTS.md
 
-Guidance for AI coding assistants in the Elynd repository.
+Guidance for AI coding assistants in the Gloaming repository.
 
 ## Product intent (read before feature work)
 
 Canonical product docs (English): [`docs/product/`](docs/product/).
 
-| Doc                                                                                | Use                                                     |
-| ---------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| [`docs/product/README.md`](docs/product/README.md)                                 | Index / read order                                      |
-| [`docs/product/product-vision.md`](docs/product/product-vision.md)                 | What Elynd is / is not; personas; experience references |
-| [`docs/product/product-principles.md`](docs/product/product-principles.md)         | Reading-first decision rules                            |
-| [`docs/product/mvp-scope.md`](docs/product/mvp-scope.md)                           | V1 feature specification — must / must-not              |
-| [`docs/product/roadmap.md`](docs/product/roadmap.md)                               | Phase 1–3 outcomes                                      |
-| [`docs/product/feature-audit.md`](docs/product/feature-audit.md)                   | KEEP / hide / migrate existing code                     |
-| [`docs/product/learning-philosophy.md`](docs/product/learning-philosophy.md)       | Why authentic reading                                   |
-| [`docs/product/content-strategy.md`](docs/product/content-strategy.md)             | Import-first supply                                     |
-| [`docs/product/prototype-flows.md`](docs/product/prototype-flows.md)               | First-time + daily reading loop                         |
-| [`docs/product/success-metrics.md`](docs/product/success-metrics.md)               | North star and drift metrics                            |
-| [`docs/product/feature-decision-guide.md`](docs/product/feature-decision-guide.md) | Should we build this?                                   |
-| [`docs/product/design-guardrails.md`](docs/product/design-guardrails.md)           | Anti-drift review                                       |
+| Doc                                                                                | Use                                                        |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| [`docs/product/README.md`](docs/product/README.md)                                 | Index / read order                                         |
+| [`docs/product/product-vision.md`](docs/product/product-vision.md)                 | What Gloaming is / is not; personas; experience references |
+| [`docs/product/product-principles.md`](docs/product/product-principles.md)         | Reading-first decision rules                               |
+| [`docs/product/mvp-scope.md`](docs/product/mvp-scope.md)                           | V1 feature specification — must / must-not                 |
+| [`docs/product/roadmap.md`](docs/product/roadmap.md)                               | Phase 1–3 outcomes                                         |
+| [`docs/product/feature-audit.md`](docs/product/feature-audit.md)                   | KEEP / hide / migrate existing code                        |
+| [`docs/product/learning-philosophy.md`](docs/product/learning-philosophy.md)       | Why authentic reading                                      |
+| [`docs/product/content-strategy.md`](docs/product/content-strategy.md)             | Import-first supply                                        |
+| [`docs/product/prototype-flows.md`](docs/product/prototype-flows.md)               | First-time + daily reading loop                            |
+| [`docs/product/success-metrics.md`](docs/product/success-metrics.md)               | North star and drift metrics                               |
+| [`docs/product/feature-decision-guide.md`](docs/product/feature-decision-guide.md) | Should we build this?                                      |
+| [`docs/product/design-guardrails.md`](docs/product/design-guardrails.md)           | Anti-drift review                                          |
 
 HTML prototypes: [`prd/`](prd/) (references only; Practice/Review/Progress HTML is stale).
 
-**One-liner:** Elynd is an AI Native Language Reading Environment—read authentic English like a modern ebook reader, with contextual AI when you get stuck. Not a course, not drills, not a chatbot. The core is helping people keep reading English they actually want to read.
+**One-liner:** Gloaming is an AI Native Language Reading Environment—read authentic English like a modern ebook reader, with contextual AI when you get stuck. Not a course, not drills, not a chatbot. The core is helping people keep reading English they actually want to read.
 
 ## Visual design (UI)
 
@@ -92,7 +92,7 @@ pnpm run format:check
 pnpm run typecheck
 pnpm run test
 pnpm run build
-pnpm db:generate       # Drizzle generate (@elynd/db)
+pnpm db:generate       # Drizzle generate (@gloaming/db)
 pnpm db:migrate        # Drizzle migrate
 ```
 

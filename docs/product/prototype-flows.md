@@ -15,16 +15,16 @@ Related: [`mvp-scope.md`](./mvp-scope.md) · [`product-vision.md`](./product-vis
 
 ## 1. Prototype inventory
 
-| Surface                       | File                     | Audience   | Role now                                                 |
-| ----------------------------- | ------------------------ | ---------- | -------------------------------------------------------- |
-| Landing                       | `elynd-landing-v1.html`  | Logged-out | Story / CTA into auth — **copy is stale**; follow vision |
-| Sign in / up / forgot / reset | `elynd-auth-*.html`      | Logged-out | Auth — still valid as flow                               |
-| Dashboard                     | `dashboard.html`         | Logged-in  | Should become **reading home** (resume), not study hub   |
-| Library                       | `elynd-library-v1.html`  | Logged-in  | Should become **shelf** (my books + seed)                |
-| Learning Room                 | `learning-room-v1.html`  | Logged-in  | **Reader** — still the core surface                      |
-| Practice                      | `elynd-practice-v1.html` | —          | **Do not implement further**                             |
-| Review                        | `elynd-review-v2.html`   | —          | **Do not implement further**                             |
-| Progress                      | `elynd-progress-v1.html` | —          | **Not in V1 shell**                                      |
+| Surface                       | File                        | Audience   | Role now                                                 |
+| ----------------------------- | --------------------------- | ---------- | -------------------------------------------------------- |
+| Landing                       | `gloaming-landing-v1.html`  | Logged-out | Story / CTA into auth — **copy is stale**; follow vision |
+| Sign in / up / forgot / reset | `gloaming-auth-*.html`      | Logged-out | Auth — still valid as flow                               |
+| Dashboard                     | `dashboard.html`            | Logged-in  | Should become **reading home** (resume), not study hub   |
+| Library                       | `gloaming-library-v1.html`  | Logged-in  | Should become **shelf** (my books + seed)                |
+| Learning Room                 | `learning-room-v1.html`     | Logged-in  | **Reader** — still the core surface                      |
+| Practice                      | `gloaming-practice-v1.html` | —          | **Do not implement further**                             |
+| Review                        | `gloaming-review-v2.html`   | —          | **Do not implement further**                             |
+| Progress                      | `gloaming-progress-v1.html` | —          | **Not in V1 shell**                                      |
 
 ---
 
@@ -90,7 +90,7 @@ Import UI may be a later slice than the reader; until it exists, seed pick is th
 ## 4. Daily reading loop (V1)
 
 ```text
-Open Elynd
+Open Gloaming
   → Resume last document
   → Read
   → AI help when stuck

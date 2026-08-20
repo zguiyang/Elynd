@@ -1,6 +1,6 @@
 ---
 version: alpha
-name: Elynd
+name: Gloaming
 description: >-
   Calm editorial product UI for an English reading environment —
   warm paper surfaces, single brand ember accent, light theme only.
@@ -56,7 +56,7 @@ omitted:
     reason: Component token map deferred until UI screens are designed against this system.
 ---
 
-# Elynd Design System
+# Gloaming Design System
 
 Agent-facing visual identity. Normative values live in the YAML front matter; prose below explains character and usage. Implement in `apps/web` via CSS variables / shadcn semantic tokens — do not hardcode hex in feature UI.
 
@@ -68,7 +68,7 @@ Agent-facing visual identity. Normative values live in the YAML front matter; pr
 
 ## Overview
 
-Elynd is a **calm editorial product shell** — a quiet paper reading environment. The UI should feel warm, dry, and low-pressure: somewhere you come back to a book, not to a learning task.
+Gloaming is a **calm editorial product shell** — a quiet paper reading environment. The UI should feel warm, dry, and low-pressure: somewhere you come back to a book, not to a learning task.
 
 **Character**
 

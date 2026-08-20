@@ -1,6 +1,6 @@
-# Elynd Content Strategy
+# Gloaming Content Strategy
 
-SSOT for **what people read** and **how it enters Elynd**—under the AI Native Language Reading Environment bet.
+SSOT for **what people read** and **how it enters Gloaming**—under the AI Native Language Reading Environment bet.
 
 Related: [`mvp-scope.md`](./mvp-scope.md) · [`product-vision.md`](./product-vision.md) · [`feature-audit.md`](./feature-audit.md)
 
@@ -12,11 +12,11 @@ Related: [`mvp-scope.md`](./mvp-scope.md) · [`product-vision.md`](./product-vis
 
 Content exists so someone can **read real English**.
 
-Elynd is not a corpus-building project, not a course publisher, and not an AI writing mill.
+Gloaming is not a corpus-building project, not a course publisher, and not an AI writing mill.
 
 **Primary:** the user brings a text they want to read (books, novels, articles, news, technical docs, essays, or any English they chose).  
 **Secondary:** a small seed shelf so first-run is not blocked.  
-**Never:** generated “learning English” articles as the product. Elynd does not manufacture learning materials.
+**Never:** generated “learning English” articles as the product. Gloaming does not manufacture learning materials.
 
 ---
 
@@ -40,7 +40,7 @@ Older lock (2026-08-05) said curated short articles in, user import deferred. **
 
 ## 3. What “authentic” means here
 
-Authentic = **not manufactured as an Elynd lesson**.
+Authentic = **not manufactured as an Gloaming lesson**.
 
 Examples that fit:
 
@@ -145,7 +145,7 @@ A seed piece is publishable only if:
 
 1. A reader might **want to finish it**
 2. Source/rights are clear
-3. It does not push Elynd toward **course pack**, **vocab list**, **chatbot**, or **AI-generated library**
+3. It does not push Gloaming toward **course pack**, **vocab list**, **chatbot**, or **AI-generated library**
 
 Imported user content is not “quality-reviewed” by us beyond parse safety (size limits, format, malware/DoS basics). We do not become their editor.
 

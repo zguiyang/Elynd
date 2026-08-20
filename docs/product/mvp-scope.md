@@ -1,4 +1,4 @@
-# Elynd V1 Feature Specification
+# Gloaming V1 Feature Specification
 
 V1 has one job: **be an excellent AI native language reading environment.**
 
@@ -78,7 +78,7 @@ Sign in
 ### 4.2 Daily
 
 ```text
-Open Elynd
+Open Gloaming
   → Resume last unfinished document
   → Read
   → Help when stuck

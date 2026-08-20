@@ -1,4 +1,4 @@
-# Elynd Feature Decision Guide
+# Gloaming Feature Decision Guide
 
 Use this when **planning or reviewing features**.  
 Goal: keep every feature serving **reading authentic English**—not quietly becoming Duolingo, LingQ, Anki, a chatbot, or a content factory.
@@ -32,7 +32,7 @@ Users can already find courses, drills, and chatbots. They still cannot **comfor
 
 Not: Duolingo, LingQ, Anki, ChatGPT reading plugin, AI content factory, course platform, practice system.
 
-If users can “have a productive day in Elynd” with **almost no reading** → danger.
+If users can “have a productive day in Gloaming” with **almost no reading** → danger.
 
 ### Q4. Where does it sit on the only loop?
 

@@ -136,9 +136,8 @@ spacing:
   stack-lg: 4rem
   stack-md: 2rem
   stack-sm: 1rem
-  # Page chrome: Tailwind `container` (responsive; xl/2xl ceilings in globals.css).
-  container-xl: 1200px
-  container-2xl: 1480px
+  # Page chrome: Tailwind `container` (responsive; large-screen ceiling in globals.css).
+  container-max: 1200px
 ---
 
 # Gloaming Design System
@@ -242,7 +241,7 @@ Functional split between **Editorial Serif** and **Interface Sans** (never Inter
 
 Classical book rhythm: centered content, generous negative space.
 
-- **Page chrome (`container`):** Use Tailwind’s `container` class for landing, app shell, and future marketing/product pages (centered + gutters in `apps/web/app/globals.css`). Do **not** hardcode a fixed `1024px` shell — Stitch / temp prototypes use 1024 as an artboard, not a product lock. Breakpoint ceilings: default through `lg` → **`xl` 1200px** → **`2xl` 1480px** (comfortable on 2K / 3K). Long-form text still nests in the reading column.
+- **Page chrome (`container`):** Use Tailwind’s `container` class for landing, app shell, and future marketing/product pages (centered + gutters in `apps/web/app/globals.css`). Do **not** hardcode a fixed shell width — use `max-width`. Stitch / temp prototypes use 1024 as an artboard, not a product lock. From `xl` up, content caps at **`1200px`** (`--container-max`) on large / 2K / 3K screens; sides keep paper margin. Long-form text still nests in the reading column.
 - **Reading column:** Nest `max-w-reading-column` / `--reading-column` (~`680px`) inside `container` for long-form text (~50–75 characters). Grids and multi-column UI may use the full container width.
 - **Full-bleed:** Backgrounds / hero photography span the viewport; inner content stays in `container`.
 - **Rhythm:** 8px-based; prefer `stack-sm` / `stack-md` / `stack-lg` (1 / 2 / 4rem) over dense dashboard packing.

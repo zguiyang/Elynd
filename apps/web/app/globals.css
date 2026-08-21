@@ -216,9 +216,8 @@
   /* Geometry, layout & motion */
   --radius: 0.75rem;
   --reading-column: 680px;
-  /* Page chrome ceilings — used by @utility container (px SSOT for 2K/3K). */
-  --container-xl: 1200px;
-  --container-2xl: 1480px;
+  /* Page chrome ceiling — used by @utility container (max-width, not fixed width). */
+  --container-max: 1200px;
   --gloaming-shadow-card: 0 4px 20px color-mix(in oklab, var(--on-surface) 8%, transparent);
   --gloaming-shadow-float:
     0 2px 6px color-mix(in oklab, var(--on-surface) 6%, transparent),
@@ -251,7 +250,7 @@
 /*
   Page chrome width SSOT — prefer `container` over ad-hoc max-w-*.
   Built-in Tailwind container steps max-width with breakpoints through lg.
-  From xl up we override for roomier chrome on large / 2K–3K displays.
+  From xl up, cap at --container-max (1200) for large / 2K–3K displays.
 */
 @utility container {
   margin-inline: auto;
@@ -262,11 +261,11 @@
   }
 
   @variant xl {
-    max-width: var(--container-xl); /* 1200px */
+    max-width: var(--container-max);
   }
 
   @variant 2xl {
-    max-width: var(--container-2xl); /* 1480px — 2K / 3K */
+    max-width: var(--container-max);
   }
 }
 

@@ -38,8 +38,6 @@ export const config = {
     '/dashboard/:path*',
     '/discover',
     '/discover/:path*',
-    '/library',
-    '/library/:path*',
     '/reading-history',
     '/reading-history/:path*',
     '/progress',

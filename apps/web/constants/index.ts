@@ -9,7 +9,7 @@ export const AUTH_ROUTES = {
   resetPassword: '/reset-password',
   verifyEmail: '/verify-email',
   shelf: '/my-shelf',
-  /** Discover catalog (formerly /library). */
+  /** Discover catalog. */
   discover: '/discover',
   /** Discover book detail (mock UI; future catalog item). */
   bookDetail: (id: string) => `/discover/${id}` as const,

@@ -20,8 +20,10 @@ describe('resolveAuthPageRedirect', () => {
   it('sends users without a cookie away from app routes', () => {
     expect(resolveAuthPageRedirect(AUTH_ROUTES.shelf, false)).toBe(AUTH_ROUTES.signIn);
     expect(resolveAuthPageRedirect('/dashboard', false)).toBe(AUTH_ROUTES.signIn);
-    expect(resolveAuthPageRedirect(AUTH_ROUTES.library, false)).toBe(AUTH_ROUTES.signIn);
-    expect(resolveAuthPageRedirect(`${AUTH_ROUTES.library}/abc`, false)).toBe(AUTH_ROUTES.signIn);
+    expect(resolveAuthPageRedirect(AUTH_ROUTES.discover, false)).toBe(AUTH_ROUTES.signIn);
+    expect(resolveAuthPageRedirect(`${AUTH_ROUTES.discover}/abc`, false)).toBe(AUTH_ROUTES.signIn);
+    expect(resolveAuthPageRedirect('/library', false)).toBe(AUTH_ROUTES.signIn);
+    expect(resolveAuthPageRedirect('/library/abc', false)).toBe(AUTH_ROUTES.signIn);
     expect(resolveAuthPageRedirect(AUTH_ROUTES.history, false)).toBe(AUTH_ROUTES.signIn);
     expect(resolveAuthPageRedirect(`${AUTH_ROUTES.history}/abc`, false)).toBe(AUTH_ROUTES.signIn);
     expect(resolveAuthPageRedirect('/progress', false)).toBe(AUTH_ROUTES.signIn);
@@ -45,8 +47,10 @@ describe('resolveAuthPageRedirect', () => {
   it('allows app routes when a session cookie is present', () => {
     expect(resolveAuthPageRedirect(AUTH_ROUTES.shelf, true)).toBeNull();
     expect(resolveAuthPageRedirect('/dashboard', true)).toBeNull();
-    expect(resolveAuthPageRedirect(AUTH_ROUTES.library, true)).toBeNull();
-    expect(resolveAuthPageRedirect(`${AUTH_ROUTES.library}/abc`, true)).toBeNull();
+    expect(resolveAuthPageRedirect(AUTH_ROUTES.discover, true)).toBeNull();
+    expect(resolveAuthPageRedirect(`${AUTH_ROUTES.discover}/abc`, true)).toBeNull();
+    expect(resolveAuthPageRedirect('/library', true)).toBeNull();
+    expect(resolveAuthPageRedirect('/library/abc', true)).toBeNull();
     expect(resolveAuthPageRedirect(AUTH_ROUTES.history, true)).toBeNull();
     expect(resolveAuthPageRedirect('/progress', true)).toBeNull();
     expect(resolveAuthPageRedirect(AUTH_ROUTES.learn, true)).toBeNull();

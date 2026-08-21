@@ -23,7 +23,8 @@ export function hasSessionCookie(getCookie: (name: string) => string | undefined
 const APP_PREFIXES = [
   AUTH_ROUTES.shelf,
   '/dashboard',
-  AUTH_ROUTES.library,
+  AUTH_ROUTES.discover,
+  '/library',
   AUTH_ROUTES.history,
   '/progress',
   AUTH_ROUTES.learn,

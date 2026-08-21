@@ -36,6 +36,8 @@ export const config = {
     '/my-shelf/:path*',
     '/dashboard',
     '/dashboard/:path*',
+    '/discover',
+    '/discover/:path*',
     '/library',
     '/library/:path*',
     '/reading-history',

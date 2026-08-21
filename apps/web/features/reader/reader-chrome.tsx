@@ -1,7 +1,7 @@
 'use client';
 
 import { ArrowLeftIcon, HeadphonesIcon, ListIcon, SparklesIcon, TypeIcon } from 'lucide-react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { AUTH_ROUTES } from '@/constants';
@@ -25,6 +25,14 @@ type ReaderChromeProps = {
   onToggleTts: () => void;
 };
 
+function navigateReaderBack(router: ReturnType<typeof useRouter>) {
+  if (typeof window !== 'undefined' && window.history.length > 1) {
+    router.back();
+    return;
+  }
+  router.replace(AUTH_ROUTES.shelf);
+}
+
 export function ReaderChrome({
   visible,
   bookTitle,
@@ -40,6 +48,7 @@ export function ReaderChrome({
   onToggleAi,
   onToggleTts,
 }: ReaderChromeProps) {
+  const router = useRouter();
   const fill = Math.min(100, Math.max(0, Math.round(progressRatio * 100)));
 
   return (
@@ -53,11 +62,12 @@ export function ReaderChrome({
         <div className="flex h-14 items-center justify-between gap-3 px-4 md:px-8">
           <div className="flex min-w-0 items-center gap-2">
             <Button
-              nativeButton={false}
+              type="button"
               variant="ghost"
               size="icon"
               className="size-10 shrink-0 text-muted-foreground hover:text-foreground"
-              render={<Link href={AUTH_ROUTES.shelf} aria-label="返回书架" />}
+              aria-label="返回"
+              onClick={() => navigateReaderBack(router)}
             >
               <ArrowLeftIcon className="size-5" strokeWidth={1.5} />
             </Button>

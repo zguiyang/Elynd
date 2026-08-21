@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
 
-/** Immersive reader chrome — no app sidebar / SiteNav. */
+/**
+ * Reading Space — independent of AppShell.
+ * No SiteNav, no MobileBottomNav; only ReaderChrome inside the feature.
+ */
 export default function ReaderGroupLayout({ children }: { children: ReactNode }) {
   return children;
 }

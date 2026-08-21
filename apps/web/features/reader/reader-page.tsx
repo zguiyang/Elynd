@@ -28,14 +28,25 @@ type ReaderPageProps = {
   forceUnavailable?: boolean;
 };
 
+type InlineAssistKind = 'explain' | 'translate' | 'ask';
+
 const FONT_CYCLE: ReaderFontSize[] = ['sm', 'md', 'lg'];
 
-function mockAssistReply(quote: string, question?: string): string {
-  const clipped = `${quote.slice(0, 40)}${quote.length > 40 ? '…' : ''}`;
-  if (question) {
-    return `（预览）关于「${clipped}」：${question} — 这里会结合当前章节给出简短解释，帮助你继续往下读。`;
+function mockAssistReply(kind: InlineAssistKind, selectedText: string, question?: string): string {
+  const clipped = `${selectedText.slice(0, 40)}${selectedText.length > 40 ? '…' : ''}`;
+  if (kind === 'translate') {
+    return `（预览译文）${selectedText}`;
   }
-  return `（预览）这段大致是在描写场景与氛围。理解关键词后，试着回到原文把整段再读一遍。`;
+  if (kind === 'ask' || question) {
+    return `（预览）关于「${clipped}」：${question ?? '这段是什么意思？'} — 这里会结合当前章节给出简短解释，帮助你继续往下读。`;
+  }
+  return `（预览）「${clipped}」大致在描写场景与氛围。理解关键词后，试着回到原文把整段再读一遍。`;
+}
+
+function inlineUserPrompt(kind: InlineAssistKind, selectedText: string): string {
+  if (kind === 'translate') return `翻译：${selectedText}`;
+  if (kind === 'ask') return `这段是什么意思？：${selectedText}`;
+  return `解释：${selectedText}`;
 }
 
 function resolveSession(bookId: string, chapterId: string | null | undefined, forceUnavailable: boolean) {
@@ -89,39 +100,70 @@ export function ReaderPage({ bookId, chapterId = null, forceUnavailable = false 
     window.getSelection()?.removeAllRanges();
   }
 
-  function runInlineExplain(quote: string, paragraphId: string) {
+  function openDrawer() {
+    setAiMode('drawer');
+  }
+
+  function closeAiSurface() {
+    setAiMode('closed');
+  }
+
+  function requestInlineAssist(kind: InlineAssistKind) {
+    if (!selection) return;
+    const { quote: selectedText, paragraphId } = selection;
+    const userContent = inlineUserPrompt(kind, selectedText);
+
     setAiMode('inline');
     setIsInlineStreaming(true);
     setInlineAnswer('');
-    window.setTimeout(() => {
-      const answer = mockAssistReply(quote);
-      setInlineAnswer(answer);
-      setIsInlineStreaming(false);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `m-${Date.now()}-u`,
-          role: 'user',
-          content: `解释：${quote}`,
-          anchor: { paragraphId, quote },
-        },
-        {
-          id: `m-${Date.now()}-a`,
-          role: 'assistant',
-          content: answer,
-          anchor: { paragraphId, quote },
-        },
-      ]);
-    }, 600);
+
+    window.setTimeout(
+      () => {
+        const answer = mockAssistReply(kind, selectedText);
+        setInlineAnswer(answer);
+        setIsInlineStreaming(false);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `m-${Date.now()}-u`,
+            role: 'user',
+            content: userContent,
+            source: 'inline',
+            anchor: { paragraphId, selectedText },
+          },
+          {
+            id: `m-${Date.now()}-a`,
+            role: 'assistant',
+            content: answer,
+            source: 'inline',
+            anchor: { paragraphId, selectedText },
+          },
+        ]);
+      },
+      kind === 'translate' ? 0 : 600,
+    );
   }
 
-  function handleSendAi(text: string) {
-    const quote = selection?.quote ?? '';
-    const reply = mockAssistReply(quote || 'this passage', text);
+  function sendDrawerMessage(text: string) {
+    const selectedText = selection?.quote ?? '';
+    const paragraphId = selection?.paragraphId;
+    const reply = mockAssistReply('ask', selectedText || 'this passage', text);
     setMessages((prev) => [
       ...prev,
-      { id: `m-${Date.now()}-u`, role: 'user', content: text },
-      { id: `m-${Date.now()}-a`, role: 'assistant', content: reply },
+      {
+        id: `m-${Date.now()}-u`,
+        role: 'user',
+        content: text,
+        source: 'drawer',
+        ...(paragraphId && selectedText ? { anchor: { paragraphId, selectedText } } : {}),
+      },
+      {
+        id: `m-${Date.now()}-a`,
+        role: 'assistant',
+        content: reply,
+        source: 'drawer',
+        ...(paragraphId && selectedText ? { anchor: { paragraphId, selectedText } } : {}),
+      },
     ]);
   }
 
@@ -212,7 +254,7 @@ export function ReaderPage({ bookId, chapterId = null, forceUnavailable = false 
         aiDrawerOpen={isDrawerOpen}
         onSelectText={(payload) => {
           setSelection(payload);
-          setAiMode('closed');
+          closeAiSurface();
           setInlineAnswer('');
         }}
         onPrevChapter={() => {
@@ -238,21 +280,9 @@ export function ReaderPage({ bookId, chapterId = null, forceUnavailable = false 
         visible={Boolean(selection) && aiMode === 'closed'}
         top={selection?.top ?? 0}
         left={selection?.left ?? 0}
-        onExplain={() => {
-          if (!selection) return;
-          runInlineExplain(selection.quote, selection.paragraphId);
-        }}
-        onAskAi={() => {
-          if (!selection) return;
-          runInlineExplain(selection.quote, selection.paragraphId);
-          window.setTimeout(() => setAiMode('drawer'), 200);
-        }}
-        onTranslate={() => {
-          if (!selection) return;
-          setAiMode('inline');
-          setIsInlineStreaming(false);
-          setInlineAnswer(`（预览译文）${selection.quote}`);
-        }}
+        onExplain={() => requestInlineAssist('explain')}
+        onAskAi={() => requestInlineAssist('ask')}
+        onTranslate={() => requestInlineAssist('translate')}
       />
 
       <ReaderAiInline
@@ -263,10 +293,10 @@ export function ReaderPage({ bookId, chapterId = null, forceUnavailable = false 
         top={(selection?.top ?? 0) + 48}
         left={selection?.left ?? 0}
         onClose={() => {
-          setAiMode('closed');
+          closeAiSurface();
           clearSelectionUi();
         }}
-        onOpenDrawer={() => setAiMode('drawer')}
+        onOpenDrawer={openDrawer}
       />
 
       <ReaderAiDrawer
@@ -274,8 +304,8 @@ export function ReaderPage({ bookId, chapterId = null, forceUnavailable = false 
         quote={selection?.quote ?? null}
         messages={messages}
         suggestions={session.ai.suggestions}
-        onOpenChange={(open) => setAiMode(open ? 'drawer' : 'closed')}
-        onSend={handleSendAi}
+        onOpenChange={(open) => (open ? openDrawer() : closeAiSurface())}
+        onSend={sendDrawerMessage}
       />
 
       <ReaderTts

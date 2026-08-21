@@ -49,7 +49,7 @@ export function ReaderAiInline({
           关闭
         </Button>
         <Button type="button" size="sm" className="h-8 rounded-lg text-xs hover:bg-brand-deep" onClick={onOpenDrawer}>
-          在抽屉中继续
+          继续追问
         </Button>
       </div>
     </div>

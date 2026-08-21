@@ -1,10 +1,13 @@
-import { BookDetailPage } from '@/features/book-detail';
+import { redirect } from 'next/navigation';
 
-type BookDetailRouteProps = {
+import { AUTH_ROUTES } from '@/constants';
+
+type LibraryBookRedirectProps = {
   params: Promise<{ bookId: string }>;
 };
 
-export default async function BookDetailRoutePage({ params }: BookDetailRouteProps) {
+/** Soft redirect from former /library/:id book detail paths. */
+export default async function LibraryBookRedirectPage({ params }: LibraryBookRedirectProps) {
   const { bookId } = await params;
-  return <BookDetailPage bookId={bookId} />;
+  redirect(AUTH_ROUTES.bookDetail(bookId));
 }

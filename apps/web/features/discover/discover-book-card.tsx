@@ -128,6 +128,7 @@ function ShelfAction({
 export function DiscoverBookCard({ item, shelfStatus, onAddToShelf }: DiscoverBookCardProps) {
   const levelLabel = LEVEL_LABEL[item.level] ?? item.level;
   const minutes = item.estimatedMinutes != null ? `约 ${item.estimatedMinutes} 分钟` : null;
+  const detailHref = AUTH_ROUTES.bookDetail(item.id);
   const readHref = AUTH_ROUTES.learnArticle(item.id);
 
   return (
@@ -138,19 +139,25 @@ export function DiscoverBookCard({ item, shelfStatus, onAddToShelf }: DiscoverBo
         'md:hover:-translate-y-1',
       )}
     >
-      <Cover
-        item={item}
-        shelfStatus={shelfStatus}
-        className="aspect-[2/3] w-24 shrink-0 rounded-lg md:aspect-[3/4] md:w-full md:rounded-none"
-      />
+      <Link
+        href={detailHref}
+        className="shrink-0 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 md:block"
+        aria-label={`查看《${item.title}》详情`}
+      >
+        <Cover
+          item={item}
+          shelfStatus={shelfStatus}
+          className="aspect-[2/3] w-24 rounded-lg md:aspect-[3/4] md:w-full md:rounded-none"
+        />
+      </Link>
 
       <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5 md:flex-grow md:bg-paper md:p-6">
-        <div>
+        <Link href={detailHref} className="outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
           <span className="mb-1 block text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase md:mb-2 md:text-xs md:tracking-[0.12em]">
             <span className="md:hidden">{item.category}</span>
             <span className="hidden md:inline">{metaLine(item)}</span>
           </span>
-          <h2 className="font-heading text-lg leading-tight font-semibold text-foreground md:text-2xl md:leading-8">
+          <h2 className="font-heading text-lg leading-tight font-semibold text-foreground transition-colors duration-200 ease-out-soft group-hover:text-primary md:text-2xl md:leading-8">
             {item.title}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground md:mt-1.5 md:italic">
@@ -163,7 +170,7 @@ export function DiscoverBookCard({ item, shelfStatus, onAddToShelf }: DiscoverBo
           <p className="mt-2 hidden text-xs text-muted-foreground md:mt-3 md:block">
             {[levelLabel, minutes].filter(Boolean).join(' · ')}
           </p>
-        </div>
+        </Link>
 
         <div className="mt-3 flex items-center md:hidden">
           <ShelfAction
@@ -177,10 +184,10 @@ export function DiscoverBookCard({ item, shelfStatus, onAddToShelf }: DiscoverBo
 
         <div className="mt-auto hidden items-center justify-between border-t border-border/30 pt-4 md:flex">
           <Link
-            href={readHref}
+            href={detailHref}
             className="text-sm font-medium text-muted-foreground transition-colors duration-200 ease-out-soft hover:text-primary"
           >
-            立即阅读
+            查看详情
           </Link>
           <ShelfAction
             status={shelfStatus}

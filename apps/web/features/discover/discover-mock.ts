@@ -206,7 +206,7 @@ const populatedItems: DiscoverItem[] = [
       'A collection of essays unraveling the etymological threads that connect distant cultures through shared roots.',
     source: 'official',
     shelfStatus: 'in_progress',
-    progressRatio: 32,
+    progressRatio: 42,
     publishedAt: '2026-08-10T13:00:00.000Z',
   },
   {

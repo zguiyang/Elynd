@@ -36,7 +36,7 @@ type NavLinkItem = {
 };
 
 const primaryLinks: NavLinkItem[] = [
-  { href: AUTH_ROUTES.library, label: SITE_NAV.discover },
+  { href: AUTH_ROUTES.discover, label: SITE_NAV.discover },
   { href: AUTH_ROUTES.shelf, label: SITE_NAV.shelf },
   { href: AUTH_ROUTES.history, label: SITE_NAV.history },
 ];

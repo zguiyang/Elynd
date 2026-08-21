@@ -52,7 +52,7 @@ export function ShelfEmptyState() {
       <Button
         nativeButton={false}
         className="mt-10 h-12 rounded-full px-10 text-base hover:bg-brand-deep active:scale-[0.98]"
-        render={<Link href={AUTH_ROUTES.library} />}
+        render={<Link href={AUTH_ROUTES.discover} />}
       >
         发现一本书开始阅读
       </Button>

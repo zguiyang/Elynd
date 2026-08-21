@@ -69,7 +69,7 @@ export function BookDetailPage({ bookId }: { bookId: string }) {
 
       <div className="md:hidden">
         <Link
-          href={AUTH_ROUTES.library}
+          href={AUTH_ROUTES.discover}
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors duration-200 ease-out-soft hover:text-primary"
         >
           <ArrowLeftIcon className="size-4" strokeWidth={1.5} aria-hidden />

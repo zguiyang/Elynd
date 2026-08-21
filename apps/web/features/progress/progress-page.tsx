@@ -112,7 +112,7 @@ function ProgressLoaded({ data }: { data: ProgressData }) {
             <Button
               nativeButton={false}
               className="mt-8 h-11 rounded-xl px-7 hover:bg-brand-deep"
-              render={<Link href={AUTH_ROUTES.library} />}
+              render={<Link href={AUTH_ROUTES.discover} />}
             >
               去图书馆
             </Button>

@@ -46,7 +46,7 @@ export function BookDetailUnavailable() {
             nativeButton={false}
             variant="outline"
             className="h-11 rounded-xl border-2 border-outline/60 px-8 text-sm text-muted-foreground hover:bg-surface-container-low"
-            render={<Link href={AUTH_ROUTES.library} />}
+            render={<Link href={AUTH_ROUTES.discover} />}
           >
             返回发现
           </Button>

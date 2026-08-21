@@ -23,7 +23,7 @@ export function LearnUnavailable() {
           <Button
             nativeButton={false}
             className="h-11 rounded-xl px-6 hover:bg-brand-deep"
-            render={<Link href={AUTH_ROUTES.library} />}
+            render={<Link href={AUTH_ROUTES.discover} />}
           >
             去图书馆
           </Button>

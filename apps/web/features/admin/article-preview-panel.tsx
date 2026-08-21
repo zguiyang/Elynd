@@ -35,7 +35,7 @@ export function ArticlePreviewPanel({ title, body, level, themes = [], estimated
       </CardHeader>
       <CardContent className="px-6 pt-8 pb-9 md:px-10 md:pb-11">
         {paragraphs.length > 0 ? (
-          <div className="flex max-w-[65ch] flex-col gap-5 text-base leading-relaxed text-foreground">
+          <div className="font-reading flex max-w-[65ch] flex-col gap-5 text-base leading-relaxed text-foreground">
             {paragraphs.map((paragraph) => (
               <p key={paragraph.slice(0, 48)}>{paragraph}</p>
             ))}

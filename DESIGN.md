@@ -70,49 +70,50 @@ colors:
   destructive: '{colors.error}'
 typography:
   display-editorial:
-    fontFamily: Source Serif 4, Noto Serif SC, ui-serif, Georgia, serif
+    fontFamily: Source Serif 4, Noto Serif SC, serif
     fontSize: 48px
     fontWeight: '700'
     lineHeight: 56px
     letterSpacing: -0.02em
   headline-lg:
-    fontFamily: Source Serif 4, Noto Serif SC, ui-serif, Georgia, serif
+    fontFamily: Source Serif 4, Noto Serif SC, serif
     fontSize: 32px
     fontWeight: '600'
     lineHeight: 40px
   headline-lg-mobile:
-    fontFamily: Source Serif 4, Noto Serif SC, ui-serif, Georgia, serif
+    fontFamily: Source Serif 4, Noto Serif SC, serif
     fontSize: 24px
     fontWeight: '600'
     lineHeight: 32px
   headline-md:
-    fontFamily: Source Serif 4, Noto Serif SC, ui-serif, Georgia, serif
+    fontFamily: Source Serif 4, Noto Serif SC, serif
     fontSize: 24px
     fontWeight: '600'
     lineHeight: 32px
   body-reading:
-    fontFamily: Source Serif 4, Noto Serif SC, ui-serif, Georgia, serif
+    fontFamily: Source Serif 4, Noto Serif SC, serif
     fontSize: 20px
     fontWeight: '400'
-    lineHeight: 32px
+    lineHeight: 36px
+    letterSpacing: 0.01em
   body-ui:
-    fontFamily: Source Sans 3, Noto Sans SC, ui-sans-serif, system-ui, sans-serif
+    fontFamily: Source Sans 3, Noto Sans SC, sans-serif
     fontSize: 16px
     fontWeight: '400'
     lineHeight: 24px
   body-ui-sm:
-    fontFamily: Source Sans 3, Noto Sans SC, ui-sans-serif, system-ui, sans-serif
+    fontFamily: Source Sans 3, Noto Sans SC, sans-serif
     fontSize: 14px
     fontWeight: '400'
     lineHeight: 20px
   label-caps:
-    fontFamily: Source Sans 3, Noto Sans SC, ui-sans-serif, system-ui, sans-serif
+    fontFamily: Source Sans 3, Noto Sans SC, sans-serif
     fontSize: 12px
     fontWeight: '600'
     lineHeight: 16px
     letterSpacing: 0.05em
   label-ui:
-    fontFamily: Source Sans 3, Noto Sans SC, ui-sans-serif, system-ui, sans-serif
+    fontFamily: Source Sans 3, Noto Sans SC, sans-serif
     fontSize: 14px
     fontWeight: '500'
     lineHeight: 20px
@@ -228,6 +229,7 @@ Functional split between **Editorial Serif** and **Interface Sans** (never Inter
 - **Serif (Source Serif 4 + Noto Serif SC):** display, headlines, book titles, long-form reading (`body-reading`).
 - **Sans (Source Sans 3 + Noto Sans SC):** nav, settings, buttons, tooltips, dense UI (`body-ui`, `label-ui`, `label-caps`).
 - Use `label-caps` for meta like chapter or level labels.
+- Load via `@fontsource-variable` in `apps/web` (`--font-ui`, `--font-display`, `--font-reading` in `globals.css`). Reader body uses `--font-reading` and does not inherit UI sans.
 - Exact scales are frozen in the YAML front matter.
 
 ---

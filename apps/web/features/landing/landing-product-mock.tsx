@@ -19,7 +19,7 @@ export function LandingProductMock() {
               <br />
               of Oceans
             </h3>
-            <div className="mt-6 space-y-4 text-[15px] leading-[1.85] text-muted-foreground">
+            <div className="font-reading mt-6 space-y-4 text-[15px] leading-[1.85] text-muted-foreground">
               <p>
                 The ocean covers more than seventy percent of the Earth’s surface, yet we know less about its depths
                 than about the surface of the Moon.

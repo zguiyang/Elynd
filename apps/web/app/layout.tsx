@@ -1,7 +1,7 @@
-import '@fontsource-variable/source-sans-3/wght.css';
-import '@fontsource-variable/source-serif-4/wght.css';
-import '@fontsource-variable/noto-sans-sc/wght.css';
-import '@fontsource-variable/noto-serif-sc/wght.css';
+import '@fontsource-variable/source-sans-3';
+import '@fontsource-variable/source-serif-4';
+import '@fontsource-variable/noto-sans-sc';
+import '@fontsource-variable/noto-serif-sc';
 import './globals.css';
 
 import type { Metadata } from 'next';

@@ -319,7 +319,7 @@ export function LearnArticleReader({
             <p
               data-bilingual-zh
               className={cn(
-                'mt-3 max-w-[42rem] select-none text-xl leading-snug text-muted-foreground text-pretty md:text-2xl',
+                'font-reading mt-3 max-w-reading-column select-none text-xl leading-snug text-muted-foreground text-pretty md:text-2xl',
                 !bilingual.titleZh && bilingual.isStreaming ? 'animate-pulse' : null,
               )}
             >
@@ -328,7 +328,7 @@ export function LearnArticleReader({
           ) : isBilingualOn ? (
             <p
               data-bilingual-zh
-              className="mt-3 max-w-[42rem] select-none text-xl leading-snug text-muted-foreground animate-pulse md:text-2xl"
+              className="font-reading mt-3 max-w-reading-column select-none text-xl leading-snug text-muted-foreground animate-pulse md:text-2xl"
             >
               翻译中…
             </p>
@@ -336,7 +336,7 @@ export function LearnArticleReader({
 
           <div
             ref={articleBodyRef}
-            className="mt-10 flex max-w-[42rem] flex-col gap-7 text-lg leading-loose text-foreground/90"
+            className="font-reading mt-10 flex max-w-reading-column flex-col gap-7 text-[20px] leading-[1.8] tracking-[0.01em] text-foreground/90"
           >
             {isShowingBilingual ? (
               paragraphGroups.length > 0 ? (

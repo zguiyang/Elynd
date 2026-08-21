@@ -10,9 +10,10 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--gloaming-font-sans);
+  --font-sans: var(--font-ui);
+  --font-serif: var(--font-display);
+  --font-heading: var(--font-display);
   --font-mono: var(--gloaming-font-mono);
-  --font-heading: var(--gloaming-font-heading);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -223,13 +224,19 @@
     0 14px 32px color-mix(in oklab, var(--on-surface) 10%, transparent);
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 
-  /* Fonts — DESIGN.md stacks via Fontsource variable packages + OS fallbacks */
-  --gloaming-font-sans:
-    'Source Sans 3 Variable', 'Noto Sans SC Variable', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
-    ui-sans-serif, system-ui, sans-serif;
-  --gloaming-font-heading:
-    'Source Serif 4 Variable', 'Noto Serif SC Variable', 'Songti SC', 'STSong', Georgia, ui-serif, serif;
+  /*
+    Fonts — DESIGN.md stacks via @fontsource-variable.
+    Those packages register "* Variable" family names; using them avoids OS/system fallbacks.
+    Axes cover 400/500/600/700 (Source Sans 3 / Source Serif 4: 200–900; Noto Sans SC: 100–900).
+  */
+  --font-ui: 'Source Sans 3 Variable', 'Noto Sans SC Variable', sans-serif;
+  --font-display: 'Source Serif 4 Variable', 'Noto Serif SC Variable', serif;
+  --font-reading: 'Source Serif 4 Variable', 'Noto Serif SC Variable', serif;
   --gloaming-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+@utility font-reading {
+  font-family: var(--font-reading);
 }
 
 @utility shadow-card {

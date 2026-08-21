@@ -1,4 +1,3 @@
-import { BookOpen } from 'lucide-react';
 import Link from 'next/link';
 
 import { APP_NAME } from '@/constants';
@@ -9,25 +8,36 @@ type BrandMarkProps = {
   subtitle?: string;
   size?: 'sm' | 'md';
   className?: string;
+  /** Hide the wordmark; keep the icon as the brand identifier. */
+  wordmark?: boolean;
 };
 
-export function BrandMark({ href = '/', subtitle, size = 'sm', className }: BrandMarkProps) {
-  const iconBox = size === 'md' ? 'size-11 rounded-2xl' : 'size-9 rounded-xl';
-  const iconSize = size === 'md' ? 'size-5' : 'size-[18px]';
+export function BrandMark({ href = '/', subtitle, size = 'sm', className, wordmark = true }: BrandMarkProps) {
+  const markClass = size === 'md' ? 'h-10 w-auto' : 'h-8 w-auto';
   const titleClass = size === 'md' ? 'text-xl' : 'text-lg';
 
   const content = (
     <>
-      <span className={cn('flex items-center justify-center bg-brand-soft ring-1 ring-primary/10', iconBox)}>
-        <BookOpen className={cn(iconSize, 'text-primary')} strokeWidth={1.5} aria-hidden />
-      </span>
-      {subtitle ? (
-        <span className="flex flex-col">
+      {/* eslint-disable-next-line @next/next/no-img-element -- local static mark; keep intrinsic ratio */}
+      <img
+        src="/gloaming-mark.png"
+        alt=""
+        width={32}
+        height={27}
+        className={cn(markClass, 'shrink-0')}
+        decoding="async"
+      />
+      {wordmark ? (
+        subtitle ? (
+          <span className="flex flex-col">
+            <span className={cn('font-semibold tracking-tight text-foreground', titleClass)}>{APP_NAME}</span>
+            <span className="text-xs text-muted-foreground">{subtitle}</span>
+          </span>
+        ) : (
           <span className={cn('font-semibold tracking-tight text-foreground', titleClass)}>{APP_NAME}</span>
-          <span className="text-xs text-muted-foreground">{subtitle}</span>
-        </span>
+        )
       ) : (
-        <span className={cn('font-semibold tracking-tight text-foreground', titleClass)}>{APP_NAME}</span>
+        <span className="sr-only">{APP_NAME}</span>
       )}
     </>
   );
@@ -37,6 +47,7 @@ export function BrandMark({ href = '/', subtitle, size = 'sm', className }: Bran
       href={href}
       className={cn(
         'flex items-center gap-3 transition-opacity duration-300 ease-out-soft hover:opacity-90',
+        !wordmark && 'gap-0',
         className,
       )}
       aria-label={`${APP_NAME} home`}

@@ -49,7 +49,7 @@ function VolumeCard({ article }: { article: LibraryArticle }) {
 
   return (
     <Link
-      href={AUTH_ROUTES.learnArticle(article.id)}
+      href={AUTH_ROUTES.readBook(article.id)}
       className={cn(
         'group flex flex-col rounded-3xl outline-none',
         'transition-transform duration-300 ease-out-soft',

@@ -28,7 +28,7 @@ export function ShelfBookCard({ entry }: { entry: LearnTodayEntry }) {
 
   return (
     <Link
-      href={AUTH_ROUTES.learnArticle(article.id)}
+      href={AUTH_ROUTES.readBook(article.id)}
       className={cn(
         'group flex flex-col gap-3 outline-none',
         'transition-transform duration-300 ease-out-soft',

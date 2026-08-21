@@ -97,7 +97,7 @@ function ProgressLoaded({ data }: { data: ProgressData }) {
             {rows.map((row) => (
               <li key={`${row.date}-${row.articleId}`}>
                 <Link
-                  href={AUTH_ROUTES.learnArticle(row.articleId)}
+                  href={AUTH_ROUTES.readBook(row.articleId)}
                   className="block py-5 transition-colors duration-300 ease-out-soft hover:text-brand-deep focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
                 >
                   <p className="font-heading text-lg font-semibold tracking-tight">{row.title}</p>

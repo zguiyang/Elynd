@@ -12,7 +12,7 @@ export function HistoryBookCard({ work }: { work: HistoryWork }) {
   const tint = coverTintForVolume(work.themes, work.title);
   const levelLabel = LEVEL_LABEL[work.level] ?? work.level;
   const isCompleted = work.status === 'completed';
-  const href = AUTH_ROUTES.learnArticle(work.id);
+  const href = AUTH_ROUTES.readBook(work.id);
 
   return (
     <Link

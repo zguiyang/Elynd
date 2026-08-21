@@ -17,7 +17,7 @@ type BookDetailHeroProps = {
 };
 
 export function BookDetailHero({ book, onShelf, onAddToShelf }: BookDetailHeroProps) {
-  const readHref = AUTH_ROUTES.learnArticle(book.id);
+  const readHref = AUTH_ROUTES.readBook(book.id);
   const readLabel = primaryReadLabel(book.readingStatus);
   const lastRead = formatRelativeReadTime(book.lastReadAt);
   const hasProgress = book.readingStatus === 'in_progress' && book.progressRatio != null && book.progressRatio > 0;
@@ -168,7 +168,7 @@ export function BookDetailStickyCta({
   onShelf: boolean;
   onAddToShelf: () => void;
 }) {
-  const readHref = AUTH_ROUTES.learnArticle(book.id);
+  const readHref = AUTH_ROUTES.readBook(book.id);
   const readLabel = primaryReadLabel(book.readingStatus);
 
   return (

@@ -15,8 +15,9 @@ export const AUTH_ROUTES = {
   bookDetail: (id: string) => `/discover/${id}` as const,
   /** Reading history (formerly /progress · 成长). */
   history: '/reading-history',
-  learn: '/learn',
-  learnArticle: (id: string) => `/learn/${id}` as const,
+  /** Immersive reader (mock UI; future book/chapter API). */
+  read: '/read',
+  readBook: (id: string) => `/read/${id}` as const,
 } as const;
 
 export const ADMIN_ROUTES = {

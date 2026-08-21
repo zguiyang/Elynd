@@ -42,7 +42,7 @@ export const config = {
     '/reading-history/:path*',
     '/progress',
     '/progress/:path*',
-    '/learn/:path*',
+    '/read/:path*',
     '/admin/:path*',
     '/sign-in',
     '/sign-up',

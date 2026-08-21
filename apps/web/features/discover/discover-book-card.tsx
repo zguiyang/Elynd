@@ -129,7 +129,7 @@ export function DiscoverBookCard({ item, shelfStatus, onAddToShelf }: DiscoverBo
   const levelLabel = LEVEL_LABEL[item.level] ?? item.level;
   const minutes = item.estimatedMinutes != null ? `约 ${item.estimatedMinutes} 分钟` : null;
   const detailHref = AUTH_ROUTES.bookDetail(item.id);
-  const readHref = AUTH_ROUTES.learnArticle(item.id);
+  const readHref = AUTH_ROUTES.readBook(item.id);
 
   return (
     <article

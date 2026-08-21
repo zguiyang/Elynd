@@ -26,7 +26,7 @@ const APP_PREFIXES = [
   AUTH_ROUTES.discover,
   AUTH_ROUTES.history,
   '/progress',
-  AUTH_ROUTES.learn,
+  AUTH_ROUTES.read,
   ADMIN_ROUTES.root,
 ] as const;
 const AUTH_ONLY = [AUTH_ROUTES.signIn, AUTH_ROUTES.signUp] as const;

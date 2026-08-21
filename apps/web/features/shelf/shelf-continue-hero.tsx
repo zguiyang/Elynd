@@ -74,7 +74,7 @@ export function ShelfContinueHero({ entry }: { entry: LearnTodayEntry }) {
             className={cn(
               'mt-8 h-12 w-full rounded-full px-10 text-base hover:bg-brand-deep active:scale-[0.98] md:w-fit',
             )}
-            render={<Link href={AUTH_ROUTES.learnArticle(entry.article.id)} />}
+            render={<Link href={AUTH_ROUTES.readBook(entry.article.id)} />}
           >
             继续阅读
             <span aria-hidden className="ml-1">

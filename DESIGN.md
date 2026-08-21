@@ -280,14 +280,21 @@ Depth from **tonal layering** and hairline outlines — not heavy drop shadows.
 - **Translation / help popovers:** `bg-card`, `rounded-xl`, hairline border; serif for lemma, sans for notes.
 - **Chips:** `rounded-full`, `bg-brand-soft` / `bg-accent`, deep accent text — small only.
 - **Sidebar active:** soft accent wash + thin primary bar on the leading edge. (Legacy; learner chrome uses **Site nav** below.)
-- **Site nav (top chrome) — locked:** Shared header for landing + learner pages. Implement via `SiteNav` + `@utility site-nav-link` in `globals.css`; do not restyle ad hoc per page.
+- **Site nav (top chrome) — locked:** Shared header for landing + learner pages. Implement via `components/navigation/*` (`SiteNav`, `DesktopNav`, shared `nav-config`) + `@utility site-nav-link` in `globals.css`; do not restyle ad hoc per page.
   - **Brand lockup:** mark + serif wordmark `Gloaming` (`BrandMark` `appearance="editorial"`).
-  - **Primary links:** `body-ui` scale — **16px / 24 line-height**, weight **500** idle → **700** active. Not `label-ui` (14px); that token is for denser chrome (footer, meta, compact controls).
+  - **Primary links (desktop `md+`):** `body-ui` scale — **16px / 24 line-height**, weight **500** idle → **700** active. Not `label-ui` (14px); that token is for denser chrome (footer, meta, compact controls).
   - **Idle color:** `muted-foreground` / on-surface-variant; **hover / active:** `primary` (ember).
   - **Active indicator:** **2px** bottom underline in `primary`, with **4px** gap under the glyphs (`padding-bottom: 0.25rem`). Every link keeps a transparent 2px underline slot so the row does not jump. Do not use 1px hairlines for nav active — too weak on 2K/3K next to the 36px avatar.
   - **Row:** desktop height **64–80px**; link cluster `gap-8`; trailing Search (placeholder) + **36px** avatar when signed in, or Sign In text when guest.
   - **Settings:** same link typography; opens account menu (no Settings product page in MVP 1).
+  - **Mobile (`< md`) top chrome:** Brand + Avatar (or Sign In) only — **no** hamburger / Sheet for primary destinations.
   - Temp Stitch HTML may disagree (14px / 1px underline on some screens) — **this contract wins**.
+- **App bottom nav (mobile learner shell) — locked:** Only inside `AppShell` (`MobileBottomNav`). Not on Landing, Auth, Reader, or Admin.
+  - **Tabs:** 书架 → 发现 → 历史 → 更多 (labels from `nav-config`; hrefs shared with desktop primary links).
+  - **更多:** opens a bottom Sheet placeholder for future extensions — **no** `/more` route; no Settings product page.
+  - **Height:** **56px** tab row + `env(safe-area-inset-bottom)`.
+  - **AppShell** exposes `--app-shell-bottom` so page sticky CTAs (e.g. book detail) sit above the tab bar; `md+` sets it to `0`.
+  - **Active:** `primary` icon + label; idle `muted-foreground`. Quiet — no floating island / glow.
 
 ---
 

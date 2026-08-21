@@ -39,11 +39,14 @@ export type ReaderAudio = {
   label: string;
 };
 
+export type ReaderAiMessageSource = 'inline' | 'drawer';
+
 export type ReaderAiMessage = {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  anchor?: { paragraphId: string; quote: string };
+  source: ReaderAiMessageSource;
+  anchor?: { paragraphId: string; selectedText: string };
 };
 
 export type ReaderChapterBody = ReaderChapterMeta & {
@@ -57,6 +60,7 @@ export type ReaderSession = {
   progress: ReaderProgress;
   audio: ReaderAudio;
   ai: {
+    conversationId: string;
     messages: ReaderAiMessage[];
     suggestions: string[];
   };

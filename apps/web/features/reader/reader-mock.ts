@@ -138,6 +138,7 @@ export function getReaderSession(
       label: `Playing ${chapter.title.split(':')[0] ?? 'Chapter'}`,
     },
     ai: {
+      conversationId: `conv-reader-${bookId}`,
       messages: [],
       suggestions: ['Explain this passage in simpler English', 'What does this metaphor mean?'],
     },

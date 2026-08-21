@@ -1,11 +1,10 @@
 import type { Metadata } from 'next';
 
-import { APP_NAME } from '@/constants';
 import { LandingPage } from '@/features/landing';
 
 export const metadata: Metadata = {
-  title: `${APP_NAME} — 读自己想读的英语`,
-  description: '给总是学不下去的人：有趣、大半能懂的英文，每天读一小段。',
+  title: `Gloaming — 回来，继续读你想读的英文`,
+  description: 'Gloaming 是一个为真实英文阅读打造的 AI 阅读环境。它不会打断你的阅读，也不会把阅读变成任务。',
 };
 
 export default function Home() {

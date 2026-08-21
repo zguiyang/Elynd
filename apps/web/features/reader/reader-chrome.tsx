@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeftIcon, ListIcon, SparklesIcon, TypeIcon, Volume2Icon } from 'lucide-react';
+import { ArrowLeftIcon, HeadphonesIcon, ListIcon, SparklesIcon, TypeIcon } from 'lucide-react';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,8 @@ type ReaderChromeProps = {
   fontSize: ReaderFontSize;
   tocOpen: boolean;
   aiOpen: boolean;
+  /** Listening session active (playing / paused / loading). */
+  isListening: boolean;
   onToggleFontSize: () => void;
   onToggleToc: () => void;
   onToggleAi: () => void;
@@ -32,6 +34,7 @@ export function ReaderChrome({
   fontSize,
   tocOpen,
   aiOpen,
+  isListening,
   onToggleFontSize,
   onToggleToc,
   onToggleAi,
@@ -106,11 +109,15 @@ export function ReaderChrome({
               type="button"
               variant="ghost"
               size="icon"
-              className="size-10 text-muted-foreground hover:text-foreground"
-              aria-label="朗读"
+              className={cn(
+                'size-10 text-muted-foreground hover:text-foreground',
+                isListening && 'bg-accent text-brand-deep',
+              )}
+              aria-label="听读"
+              aria-pressed={isListening}
               onClick={onToggleTts}
             >
-              <Volume2Icon className="size-5" strokeWidth={1.5} />
+              <HeadphonesIcon className="size-5" strokeWidth={1.5} />
             </Button>
           </div>
         </div>

@@ -178,6 +178,7 @@ export function ReaderPage({ bookId, chapterId = null, forceUnavailable = false 
         fontSize={fontSize}
         tocOpen={isTocOpen}
         aiOpen={isDrawerOpen}
+        isListening={audioStatus === 'playing' || audioStatus === 'paused' || audioStatus === 'loading'}
         onToggleFontSize={() => setFontSize((f) => FONT_CYCLE[(FONT_CYCLE.indexOf(f) + 1) % FONT_CYCLE.length]!)}
         onToggleToc={() => {
           setIsTocOpen((o) => !o);

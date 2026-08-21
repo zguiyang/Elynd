@@ -130,13 +130,15 @@ rounded:
   app-cta: 0.75rem
   auth-cta: 9999px
 spacing:
-  container-max: 1024px
   reading-column: 680px
   gutter: 2rem
   margin-mobile: 1.5rem
   stack-lg: 4rem
   stack-md: 2rem
   stack-sm: 1rem
+  # Page chrome: Tailwind `container` (responsive; xl/2xl ceilings in globals.css).
+  container-xl: 1200px
+  container-2xl: 1480px
 ---
 
 # Gloaming Design System
@@ -228,6 +230,8 @@ Functional split between **Editorial Serif** and **Interface Sans** (never Inter
 
 - **Serif (Source Serif 4 + Noto Serif SC):** display, headlines, book titles, long-form reading (`body-reading`).
 - **Sans (Source Sans 3 + Noto Sans SC):** nav, settings, buttons, tooltips, dense UI (`body-ui`, `label-ui`, `label-caps`).
+  - **Primary site-nav destinations** use **`body-ui` (16px)** — see Site nav contract.
+  - **`label-ui` (14px)** is for denser / secondary chrome only (footer links, compact controls), not top-nav destinations.
 - Use `label-caps` for meta like chapter or level labels.
 - Load via `@fontsource-variable` in `apps/web` (`--font-ui`, `--font-display`, `--font-reading` in `globals.css`). Reader body uses `--font-reading` and does not inherit UI sans.
 - Exact scales are frozen in the YAML front matter.
@@ -238,10 +242,11 @@ Functional split between **Editorial Serif** and **Interface Sans** (never Inter
 
 Classical book rhythm: centered content, generous negative space.
 
-- **Reading column:** `max-w` ≈ `680px` (`--reading-column`) for ~50–75 characters.
-- **App shell max:** `1024px` (`--container-max`) where a constrained main column applies.
+- **Page chrome (`container`):** Use Tailwind’s `container` class for landing, app shell, and future marketing/product pages (centered + gutters in `apps/web/app/globals.css`). Do **not** hardcode a fixed `1024px` shell — Stitch / temp prototypes use 1024 as an artboard, not a product lock. Breakpoint ceilings: default through `lg` → **`xl` 1200px** → **`2xl` 1480px** (comfortable on 2K / 3K). Long-form text still nests in the reading column.
+- **Reading column:** Nest `max-w-reading-column` / `--reading-column` (~`680px`) inside `container` for long-form text (~50–75 characters). Grids and multi-column UI may use the full container width.
+- **Full-bleed:** Backgrounds / hero photography span the viewport; inner content stays in `container`.
 - **Rhythm:** 8px-based; prefer `stack-sm` / `stack-md` / `stack-lg` (1 / 2 / 4rem) over dense dashboard packing.
-- **Mobile:** margins ≈ `1.5rem`; sidebar → bottom dock or full-screen overlay.
+- **Gutters:** Mobile ≈ `1.5rem` (`margin-mobile`); `md+` ≈ `2rem` (`gutter`) — baked into `container`, avoid stacking extra `px-*` on the same node.
 - Collapse multi-column layouts below ~768px.
 
 ---
@@ -275,7 +280,15 @@ Depth from **tonal layering** and hairline outlines — not heavy drop shadows.
 - **Reading / shelf cards:** warm `bg-paper` or `bg-surface-container-*`, `rounded-2xl`, prefer tonal edge over heavy border.
 - **Translation / help popovers:** `bg-card`, `rounded-xl`, hairline border; serif for lemma, sans for notes.
 - **Chips:** `rounded-full`, `bg-brand-soft` / `bg-accent`, deep accent text — small only.
-- **Sidebar active:** soft accent wash + thin primary bar on the leading edge.
+- **Sidebar active:** soft accent wash + thin primary bar on the leading edge. (Legacy; learner chrome uses **Site nav** below.)
+- **Site nav (top chrome) — locked:** Shared header for landing + learner pages. Implement via `SiteNav` + `@utility site-nav-link` in `globals.css`; do not restyle ad hoc per page.
+  - **Brand lockup:** mark + serif wordmark `Gloaming` (`BrandMark` `appearance="editorial"`).
+  - **Primary links:** `body-ui` scale — **16px / 24 line-height**, weight **500** idle → **700** active. Not `label-ui` (14px); that token is for denser chrome (footer, meta, compact controls).
+  - **Idle color:** `muted-foreground` / on-surface-variant; **hover / active:** `primary` (ember).
+  - **Active indicator:** **2px** bottom underline in `primary`, with **4px** gap under the glyphs (`padding-bottom: 0.25rem`). Every link keeps a transparent 2px underline slot so the row does not jump. Do not use 1px hairlines for nav active — too weak on 2K/3K next to the 36px avatar.
+  - **Row:** desktop height **64–80px**; link cluster `gap-8`; trailing Search (placeholder) + **36px** avatar when signed in, or Sign In text when guest.
+  - **Settings:** same link typography; opens account menu (no Settings product page in MVP 1).
+  - Temp Stitch HTML may disagree (14px / 1px underline on some screens) — **this contract wins**.
 
 ---
 

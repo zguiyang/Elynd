@@ -72,7 +72,6 @@
   --animate-loading-soft-ring: loading-soft-ring 2.2s var(--ease-out) infinite;
   --animate-loading-page: loading-page 1.15s ease-in-out infinite;
   --max-width-reading-column: var(--reading-column);
-  --max-width-container-max: var(--container-max);
 }
 
 @keyframes loading-soft-ring {
@@ -217,7 +216,9 @@
   /* Geometry, layout & motion */
   --radius: 0.75rem;
   --reading-column: 680px;
-  --container-max: 1024px;
+  /* Page chrome ceilings — used by @utility container (px SSOT for 2K/3K). */
+  --container-xl: 1200px;
+  --container-2xl: 1480px;
   --gloaming-shadow-card: 0 4px 20px color-mix(in oklab, var(--on-surface) 8%, transparent);
   --gloaming-shadow-float:
     0 2px 6px color-mix(in oklab, var(--on-surface) 6%, transparent),
@@ -245,6 +246,56 @@
 
 @utility shadow-float {
   box-shadow: var(--gloaming-shadow-float);
+}
+
+/*
+  Page chrome width SSOT — prefer `container` over ad-hoc max-w-*.
+  Built-in Tailwind container steps max-width with breakpoints through lg.
+  From xl up we override for roomier chrome on large / 2K–3K displays.
+*/
+@utility container {
+  margin-inline: auto;
+  padding-inline: 1.5rem; /* DESIGN.md margin-mobile */
+
+  @variant md {
+    padding-inline: 2rem; /* DESIGN.md gutter */
+  }
+
+  @variant xl {
+    max-width: var(--container-xl); /* 1200px */
+  }
+
+  @variant 2xl {
+    max-width: var(--container-2xl); /* 1480px — 2K / 3K */
+  }
+}
+
+/*
+  Site nav link — SSOT: DESIGN.md «Site nav (top chrome)».
+  Use for primary destinations + Settings in SiteNav; do not recreate with text-sm / border-b.
+*/
+@utility site-nav-link {
+  font-family: var(--font-ui);
+  font-size: 1rem; /* body-ui */
+  line-height: 1.5rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  border-bottom: 2px solid transparent;
+  padding-bottom: 0.25rem;
+  transition:
+    color 200ms var(--ease-out),
+    border-color 200ms var(--ease-out);
+
+  &:hover {
+    color: var(--primary);
+  }
+
+  &[aria-current='page'],
+  &[data-active] {
+    font-weight: 700;
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+  }
 }
 
 @layer base {

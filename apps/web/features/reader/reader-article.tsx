@@ -2,7 +2,6 @@
 
 import type { MouseEvent } from 'react';
 
-import { Button } from '@/components/ui/button';
 import type { ReaderChapterBody, ReaderChapterMeta, ReaderFontSize } from '@/features/reader/reader-model';
 import { cn } from '@/lib/utils';
 
@@ -114,31 +113,46 @@ export function ReaderArticle({
           <span className="size-1.5 rounded-full bg-outline-variant" />
         </div>
 
-        <section data-reader-ui className="mt-8 border-t border-border/50 pt-10" onClick={(e) => e.stopPropagation()}>
-          <p className="text-xs font-semibold tracking-[0.05em] text-muted-foreground uppercase">Up Next</p>
+        <section
+          data-reader-ui
+          className="mt-16 flex flex-col items-center justify-center border-t border-border/40 pt-16 pb-8 text-center md:mt-32"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <p className="mb-4 text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">Up Next</p>
           {nextChapter ? (
-            <h2 className="font-heading mt-2 text-xl font-semibold text-foreground md:text-2xl">{nextChapter.title}</h2>
+            <h2 className="font-heading text-2xl font-semibold text-primary md:text-[32px] md:leading-10">
+              {nextChapter.title}
+            </h2>
           ) : (
-            <h2 className="font-heading mt-2 text-xl font-semibold text-foreground md:text-2xl">本书已读完</h2>
+            <h2 className="font-heading text-2xl font-semibold text-primary md:text-[32px] md:leading-10">
+              本书已读完
+            </h2>
           )}
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Button
+          <div className="mt-12 flex w-full max-w-sm items-center justify-between gap-6">
+            <button
               type="button"
-              variant="outline"
-              className="h-11 rounded-xl px-6"
               disabled={!hasPrev}
+              className={cn(
+                'group flex items-center gap-2 text-sm text-muted-foreground transition-colors',
+                hasPrev ? 'hover:text-primary' : 'cursor-not-allowed opacity-40',
+              )}
               onClick={onPrevChapter}
             >
+              <span aria-hidden className={cn(hasPrev && 'transition-transform group-hover:-translate-x-0.5')}>
+                ←
+              </span>
               Previous Chapter
-            </Button>
-            <Button
+            </button>
+            <button
               type="button"
-              className="h-11 rounded-xl px-6 hover:bg-brand-deep"
-              disabled={!hasNext}
+              className="group flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-brand-deep"
               onClick={onNextChapter}
             >
               {hasNext ? 'Continue Reading' : '返回书架'}
-            </Button>
+              <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
+                →
+              </span>
+            </button>
           </div>
         </section>
       </article>

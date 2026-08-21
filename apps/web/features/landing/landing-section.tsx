@@ -24,7 +24,7 @@ export function LandingSection({
         className,
       )}
     >
-      <div className="mx-auto max-w-container-max px-6 py-24 md:px-10 md:py-32">{children}</div>
+      <div className="container py-24 md:py-32">{children}</div>
     </section>
   );
 }

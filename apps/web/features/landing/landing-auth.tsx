@@ -8,7 +8,7 @@ import { AUTH_ROUTES } from '@/constants';
 import { authClient } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 
-export function useLandingUser() {
+function useLandingUser() {
   const { data, isPending } = authClient.useSession();
   return { user: data?.user ?? null, isPending };
 }

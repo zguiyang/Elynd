@@ -23,7 +23,7 @@ export function LandingFooter() {
 
   return (
     <footer className="border-t border-border/60 bg-card">
-      <div className="mx-auto flex max-w-container-max flex-col items-center justify-between gap-6 px-6 py-8 md:flex-row md:px-8">
+      <div className="container flex flex-col items-center justify-between gap-6 py-8 md:flex-row">
         <p className="font-heading text-2xl font-semibold text-foreground">{c.brand}</p>
         <p className="text-sm text-muted-foreground">
           © {year} {c.brand}. {c.footer.tagline}

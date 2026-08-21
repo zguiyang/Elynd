@@ -2,17 +2,6 @@
 
 export const landingCopy = {
   brand: 'Gloaming',
-  nav: {
-    philosophy: 'Philosophy',
-    signIn: 'Sign In',
-    cta: '开始阅读',
-    shelf: '我的书架',
-    discover: '发现',
-    history: '阅读历史',
-    menu: '打开菜单',
-    account: '账户菜单',
-    signOut: '退出登录',
-  },
   hero: {
     title: '回来，继续读你想读的英文。',
     subtitle:

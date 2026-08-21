@@ -28,7 +28,7 @@ export function LandingPrimaryCta({ label, className }: LandingPrimaryCtaProps) 
     return <Skeleton className={cn('h-14 w-40 rounded-xl', className)} />;
   }
 
-  const href = user ? AUTH_ROUTES.dashboard : AUTH_ROUTES.signUp;
+  const href = user ? AUTH_ROUTES.shelf : AUTH_ROUTES.signUp;
 
   const button = (
     <Button

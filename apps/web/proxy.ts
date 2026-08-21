@@ -32,6 +32,9 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    '/my-shelf',
+    '/my-shelf/:path*',
+    '/dashboard',
     '/dashboard/:path*',
     '/library/:path*',
     '/progress',

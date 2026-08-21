@@ -31,7 +31,7 @@ export function LearnUnavailable() {
             nativeButton={false}
             variant="outline"
             className="h-11 rounded-xl px-6"
-            render={<Link href={AUTH_ROUTES.dashboard} />}
+            render={<Link href={AUTH_ROUTES.shelf} />}
           >
             回今日
           </Button>

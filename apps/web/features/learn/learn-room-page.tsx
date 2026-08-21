@@ -197,7 +197,7 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
             nativeButton={false}
             variant="ghost"
             className="h-10 shrink-0 gap-2 rounded-xl px-3 text-muted-foreground hover:text-foreground"
-            render={<Link href={AUTH_ROUTES.dashboard} />}
+            render={<Link href={AUTH_ROUTES.shelf} />}
           >
             <ArrowLeftIcon className="size-4" strokeWidth={1.5} aria-hidden />
             返回
@@ -304,7 +304,7 @@ export function LearnRoomPage({ articleId }: LearnRoomPageProps) {
             <Button
               nativeButton={false}
               className="h-11 rounded-xl px-6 hover:bg-brand-deep"
-              render={<Link href={AUTH_ROUTES.dashboard} />}
+              render={<Link href={AUTH_ROUTES.shelf} />}
             >
               先这样，回今日
             </Button>

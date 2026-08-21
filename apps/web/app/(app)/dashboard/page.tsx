@@ -1,5 +1,8 @@
-import { DashboardHome } from '@/features/dashboard/dashboard-home';
+import { redirect } from 'next/navigation';
 
-export default function DashboardPage() {
-  return <DashboardHome />;
+import { AUTH_ROUTES } from '@/constants';
+
+/** Legacy home path → 我的书架. */
+export default function DashboardRedirectPage() {
+  redirect(AUTH_ROUTES.shelf);
 }

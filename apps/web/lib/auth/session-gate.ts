@@ -21,7 +21,8 @@ export function hasSessionCookie(getCookie: (name: string) => string | undefined
 }
 
 const APP_PREFIXES = [
-  AUTH_ROUTES.dashboard,
+  AUTH_ROUTES.shelf,
+  '/dashboard',
   AUTH_ROUTES.library,
   AUTH_ROUTES.progress,
   AUTH_ROUTES.learn,
@@ -42,7 +43,7 @@ export function resolveAuthPageRedirect(pathname: string, hasSession: boolean): 
     return AUTH_ROUTES.signIn;
   }
   if (isAuthOnly && hasSession) {
-    return AUTH_ROUTES.dashboard;
+    return AUTH_ROUTES.shelf;
   }
   return null;
 }

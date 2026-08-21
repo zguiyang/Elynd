@@ -8,7 +8,7 @@ export const AUTH_ROUTES = {
   forgotPassword: '/forgot-password',
   resetPassword: '/reset-password',
   verifyEmail: '/verify-email',
-  dashboard: '/dashboard',
+  shelf: '/my-shelf',
   library: '/library',
   progress: '/progress',
   learn: '/learn',

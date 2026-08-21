@@ -57,7 +57,7 @@ export function SignInForm() {
       }
 
       toast.success('登录成功');
-      router.replace(AUTH_ROUTES.dashboard);
+      router.replace(AUTH_ROUTES.shelf);
       router.refresh();
     },
   });

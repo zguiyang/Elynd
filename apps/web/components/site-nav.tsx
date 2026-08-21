@@ -37,7 +37,7 @@ type NavLinkItem = {
 
 const primaryLinks: NavLinkItem[] = [
   { href: AUTH_ROUTES.library, label: SITE_NAV.discover },
-  { href: AUTH_ROUTES.dashboard, label: SITE_NAV.shelf },
+  { href: AUTH_ROUTES.shelf, label: SITE_NAV.shelf },
   { href: AUTH_ROUTES.progress, label: SITE_NAV.history },
 ];
 
@@ -273,7 +273,7 @@ export function SiteNav() {
       <nav className="container flex h-16 items-center justify-between gap-6 md:h-20" aria-label="主导航">
         <div className="flex min-w-0 items-center gap-8">
           <BrandMark
-            href={user ? AUTH_ROUTES.dashboard : '/'}
+            href={user ? AUTH_ROUTES.shelf : '/'}
             name={SITE_NAV.wordmark}
             appearance="editorial"
             size="md"

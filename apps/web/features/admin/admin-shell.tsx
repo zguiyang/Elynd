@@ -49,14 +49,14 @@ export function AdminShell({ children }: AdminShellProps) {
       <div className="flex min-h-dvh items-center justify-center bg-background px-6 py-10">
         <section className="w-full max-w-md rounded-3xl border border-border bg-card px-8 py-10 text-center">
           <div className="mb-8 flex justify-center">
-            <BrandMark href={AUTH_ROUTES.dashboard} subtitle="管理后台" />
+            <BrandMark href={AUTH_ROUTES.shelf} subtitle="管理后台" />
           </div>
           <p className="mb-3 text-sm font-medium tracking-[0.16em] text-primary">无权限</p>
           <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">无法进入管理后台</h1>
           <p className="mt-4 text-sm leading-6 text-muted-foreground">
             当前账号没有管理员权限。管理后台只对内容维护人员开放，你仍然可以返回首页继续阅读。
           </p>
-          <Button nativeButton={false} className="mt-8 rounded-xl px-5" render={<Link href={AUTH_ROUTES.dashboard} />}>
+          <Button nativeButton={false} className="mt-8 rounded-xl px-5" render={<Link href={AUTH_ROUTES.shelf} />}>
             返回首页
           </Button>
         </section>
@@ -79,7 +79,7 @@ export function AdminShell({ children }: AdminShellProps) {
           size="sm"
           nativeButton={false}
           className="gap-1.5 text-muted-foreground transition-colors duration-300 ease-out-soft hover:text-foreground"
-          render={<Link href={AUTH_ROUTES.dashboard} />}
+          render={<Link href={AUTH_ROUTES.shelf} />}
         >
           <ArrowLeft data-icon="inline-start" />
           首页
@@ -168,7 +168,7 @@ export function AdminShell({ children }: AdminShellProps) {
           variant="ghost"
           nativeButton={false}
           className="mt-4 h-auto justify-start gap-2 rounded-xl px-4 py-3 font-normal text-muted-foreground transition-colors duration-300 ease-out-soft hover:bg-muted hover:text-foreground"
-          render={<Link href={AUTH_ROUTES.dashboard} />}
+          render={<Link href={AUTH_ROUTES.shelf} />}
         >
           <ArrowLeft data-icon="inline-start" />
           返回首页

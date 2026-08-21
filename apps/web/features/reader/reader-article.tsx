@@ -107,12 +107,6 @@ export function ReaderArticle({
           ))}
         </div>
 
-        <div className="mt-16 flex justify-center gap-3 py-8" aria-hidden>
-          <span className="size-1.5 rounded-full bg-outline-variant" />
-          <span className="size-1.5 rounded-full bg-outline-variant" />
-          <span className="size-1.5 rounded-full bg-outline-variant" />
-        </div>
-
         <section
           data-reader-ui
           className="mt-16 flex flex-col items-center justify-center border-t border-border/40 pt-16 pb-8 text-center md:mt-32"

@@ -3,7 +3,8 @@
 import { createContext, type ReactNode, useContext, useEffect } from 'react';
 
 import { GlobalLoading } from '@/components/global-loading';
-import { SiteNav } from '@/components/site-nav';
+import { MobileBottomNav } from '@/components/navigation/mobile-bottom-nav';
+import { SiteNav } from '@/components/navigation/site-nav';
 import { AUTH_ROUTES } from '@/constants';
 import { authClient, type User } from '@/lib/auth';
 
@@ -47,11 +48,15 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <AppUserContext.Provider value={user}>
-      <div className="flex h-dvh flex-col overflow-hidden">
+      {/* --app-shell-bottom: tab bar + safe-area on mobile; 0 on md+ (see DESIGN.md). */}
+      <div className="flex h-dvh flex-col overflow-hidden max-md:[--app-shell-bottom:calc(3.5rem+env(safe-area-inset-bottom,0px))] md:[--app-shell-bottom:0px]">
         <SiteNav />
         <main className="min-h-0 flex-1 overflow-y-auto">
-          <div className="container py-6 md:py-12">{children}</div>
+          <div className="container py-6 pb-[calc(1.5rem+var(--app-shell-bottom,0px))] md:py-12 md:pb-12">
+            {children}
+          </div>
         </main>
+        <MobileBottomNav />
       </div>
     </AppUserContext.Provider>
   );

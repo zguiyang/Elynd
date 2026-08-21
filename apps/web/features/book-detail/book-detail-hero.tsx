@@ -172,7 +172,7 @@ export function BookDetailStickyCta({
   const readLabel = primaryReadLabel(book.readingStatus);
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 p-4 backdrop-blur-md md:hidden">
+    <div className="fixed inset-x-0 z-40 border-t border-border/60 bg-background/95 p-4 backdrop-blur-md md:hidden bottom-[var(--app-shell-bottom,0px)]">
       <div className="mx-auto flex max-w-lg gap-3">
         <Button
           nativeButton={false}

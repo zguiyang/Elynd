@@ -33,7 +33,7 @@ export function BookDetailPage({ bookId }: { bookId: string }) {
     <div
       className={cn(
         'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700',
-        'mx-auto flex w-full max-w-5xl flex-col gap-8 pb-28 md:gap-14 md:pb-8',
+        'mx-auto flex w-full max-w-5xl flex-col gap-8 pb-36 md:gap-14 md:pb-8',
       )}
     >
       <p className="text-center text-xs text-muted-foreground">

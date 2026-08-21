@@ -1,11 +1,14 @@
+'use client';
+
 import { LandingPrimaryCta } from '@/features/landing/landing-auth';
 import { landingCopy as c } from '@/features/landing/landing-copy';
+import { LandingReveal } from '@/features/landing/landing-motion';
 import { LandingSection } from '@/features/landing/landing-section';
 
 export function LandingCta() {
   return (
     <LandingSection id="cta" tone="paper" className="text-center">
-      <div className="mx-auto max-w-3xl">
+      <LandingReveal className="mx-auto max-w-3xl">
         <h2 className="font-heading text-3xl leading-tight font-bold tracking-tight md:text-5xl">{c.invite.title}</h2>
         <p className="font-reading mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-foreground/80 md:text-xl">
           {c.invite.body}
@@ -13,7 +16,7 @@ export function LandingCta() {
         <div className="mt-12 flex justify-center">
           <LandingPrimaryCta label={c.invite.cta} className="px-10 py-5 text-lg" />
         </div>
-      </div>
+      </LandingReveal>
     </LandingSection>
   );
 }

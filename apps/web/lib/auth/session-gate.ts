@@ -24,7 +24,8 @@ const APP_PREFIXES = [
   AUTH_ROUTES.shelf,
   '/dashboard',
   AUTH_ROUTES.library,
-  AUTH_ROUTES.progress,
+  AUTH_ROUTES.history,
+  '/progress',
   AUTH_ROUTES.learn,
   ADMIN_ROUTES.root,
 ] as const;

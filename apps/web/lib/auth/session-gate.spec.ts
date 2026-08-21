@@ -22,8 +22,9 @@ describe('resolveAuthPageRedirect', () => {
     expect(resolveAuthPageRedirect('/dashboard', false)).toBe(AUTH_ROUTES.signIn);
     expect(resolveAuthPageRedirect(AUTH_ROUTES.library, false)).toBe(AUTH_ROUTES.signIn);
     expect(resolveAuthPageRedirect(`${AUTH_ROUTES.library}/abc`, false)).toBe(AUTH_ROUTES.signIn);
-    expect(resolveAuthPageRedirect(AUTH_ROUTES.progress, false)).toBe(AUTH_ROUTES.signIn);
-    expect(resolveAuthPageRedirect(`${AUTH_ROUTES.progress}/abc`, false)).toBe(AUTH_ROUTES.signIn);
+    expect(resolveAuthPageRedirect(AUTH_ROUTES.history, false)).toBe(AUTH_ROUTES.signIn);
+    expect(resolveAuthPageRedirect(`${AUTH_ROUTES.history}/abc`, false)).toBe(AUTH_ROUTES.signIn);
+    expect(resolveAuthPageRedirect('/progress', false)).toBe(AUTH_ROUTES.signIn);
     expect(resolveAuthPageRedirect(AUTH_ROUTES.learn, false)).toBe(AUTH_ROUTES.signIn);
     expect(resolveAuthPageRedirect(`${AUTH_ROUTES.learn}/abc`, false)).toBe(AUTH_ROUTES.signIn);
     expect(resolveAuthPageRedirect(ADMIN_ROUTES.root, false)).toBe(AUTH_ROUTES.signIn);
@@ -46,7 +47,8 @@ describe('resolveAuthPageRedirect', () => {
     expect(resolveAuthPageRedirect('/dashboard', true)).toBeNull();
     expect(resolveAuthPageRedirect(AUTH_ROUTES.library, true)).toBeNull();
     expect(resolveAuthPageRedirect(`${AUTH_ROUTES.library}/abc`, true)).toBeNull();
-    expect(resolveAuthPageRedirect(AUTH_ROUTES.progress, true)).toBeNull();
+    expect(resolveAuthPageRedirect(AUTH_ROUTES.history, true)).toBeNull();
+    expect(resolveAuthPageRedirect('/progress', true)).toBeNull();
     expect(resolveAuthPageRedirect(AUTH_ROUTES.learn, true)).toBeNull();
     expect(resolveAuthPageRedirect(`${AUTH_ROUTES.learn}/abc`, true)).toBeNull();
     expect(resolveAuthPageRedirect(ADMIN_ROUTES.root, true)).toBeNull();

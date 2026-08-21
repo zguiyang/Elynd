@@ -38,7 +38,7 @@ type NavLinkItem = {
 const primaryLinks: NavLinkItem[] = [
   { href: AUTH_ROUTES.library, label: SITE_NAV.discover },
   { href: AUTH_ROUTES.shelf, label: SITE_NAV.shelf },
-  { href: AUTH_ROUTES.progress, label: SITE_NAV.history },
+  { href: AUTH_ROUTES.history, label: SITE_NAV.history },
 ];
 
 function matchesPath(pathname: string, href: string) {

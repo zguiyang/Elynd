@@ -6,6 +6,7 @@ import type { Article } from '@gloaming/shared/api/articles';
 import {
   LEARN_TODAY_RECOMMENDATIONS_LIMIT,
   type LearnArticleData,
+  type LearnShelfData,
   type LearnTodayData,
   type ReadingProgress,
 } from '@gloaming/shared/api/learn';
@@ -211,5 +212,80 @@ describe('Learn HTTP', () => {
     expect(recIds).not.toContain(opened.id);
     expect(recIds).not.toContain(draft.id);
     expect(recIds).toEqual(expect.arrayContaining([unreadA.id, unreadB.id]));
+  });
+
+  it('returns empty shelf, then current + items after reading', async () => {
+    const admin = await createSession('admin');
+    const learner = await createSession('user');
+    createdEmails.push(admin.email, learner.email);
+
+    async function createAndPublish(title: string): Promise<Article> {
+      const create = await app.request('/api/admin/articles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+        body: JSON.stringify({
+          title,
+          body: `${title} body for shelf.`,
+          level: 'easy',
+          themes: ['story'],
+          sourceNote: 'demo',
+          estimatedMinutes: 4,
+        }),
+      });
+      expect(create.status).toBe(201);
+      const article = (await create.json()) as Article;
+      expect(
+        (
+          await app.request(`/api/admin/articles/${article.id}/publish`, {
+            method: 'POST',
+            headers: { cookie: admin.cookie },
+          })
+        ).status,
+      ).toBe(200);
+      return article;
+    }
+
+    const emptyShelf = await app.request('/api/learn/shelf', { headers: { cookie: learner.cookie } });
+    expect(emptyShelf.status).toBe(200);
+    expect((await emptyShelf.json()) as LearnShelfData).toEqual({ current: null, items: [] });
+
+    const first = await createAndPublish('Shelf First');
+    const second = await createAndPublish('Shelf Second');
+    createdArticleIds.push(first.id, second.id);
+
+    expect((await app.request(`/api/learn/articles/${first.id}`, { headers: { cookie: learner.cookie } })).status).toBe(
+      200,
+    );
+    expect(
+      (
+        await app.request(`/api/learn/articles/${first.id}/progress`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
+          body: JSON.stringify({ status: 'completed', progressRatio: 100 }),
+        })
+      ).status,
+    ).toBe(200);
+
+    expect(
+      (await app.request(`/api/learn/articles/${second.id}`, { headers: { cookie: learner.cookie } })).status,
+    ).toBe(200);
+    expect(
+      (
+        await app.request(`/api/learn/articles/${second.id}/progress`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
+          body: JSON.stringify({ progressRatio: 55 }),
+        })
+      ).status,
+    ).toBe(200);
+
+    const shelf = await app.request('/api/learn/shelf', { headers: { cookie: learner.cookie } });
+    expect(shelf.status).toBe(200);
+    const shelfData = (await shelf.json()) as LearnShelfData;
+    expect(shelfData.current?.article.id).toBe(second.id);
+    expect(shelfData.current?.progress.progressRatio).toBe(55);
+    expect(shelfData.items).toHaveLength(1);
+    expect(shelfData.items[0]?.article.id).toBe(first.id);
+    expect(shelfData.items[0]?.progress.status).toBe('completed');
   });
 });

@@ -12,6 +12,12 @@ learnRoutes.get('/api/learn/today', requireAuth, async (c) => {
   return c.json(data);
 });
 
+learnRoutes.get('/api/learn/shelf', requireAuth, async (c) => {
+  const user = c.get('user')!;
+  const data = await learnService.getShelf(user.id);
+  return c.json(data);
+});
+
 learnRoutes.get('/api/learn/articles/:articleId', requireAuth, async (c) => {
   const user = c.get('user')!;
   const data = await learnService.getLearnArticle(user.id, c.req.param('articleId'));

@@ -44,6 +44,17 @@ export const learnTodayDataSchema = z.object({
 
 export type LearnTodayData = z.infer<typeof learnTodayDataSchema>;
 
+/** Soft ceiling for shelf grid items (excludes `current`). */
+export const LEARN_SHELF_ITEMS_LIMIT = 48 as const;
+
+/** My shelf: continue hero + remaining progress-backed articles. */
+export const learnShelfDataSchema = z.object({
+  current: learnTodayEntrySchema.nullable(),
+  items: z.array(learnTodayEntrySchema).max(LEARN_SHELF_ITEMS_LIMIT),
+});
+
+export type LearnShelfData = z.infer<typeof learnShelfDataSchema>;
+
 export const learnAudioAvailabilitySchema = z.object({
   us: z.boolean(),
   uk: z.boolean(),

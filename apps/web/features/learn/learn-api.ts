@@ -1,6 +1,8 @@
 import {
   type LearnArticleData,
   learnArticleDataSchema,
+  type LearnShelfData,
+  learnShelfDataSchema,
   type LearnTodayData,
   learnTodayDataSchema,
   type ReadingProgress,
@@ -13,12 +15,20 @@ import { apiRequest, formatApiError } from '@/lib/api-request';
 export const learnQueryKey = {
   all: ['learn'] as const,
   today: () => [...learnQueryKey.all, 'today'] as const,
+  shelf: () => [...learnQueryKey.all, 'shelf'] as const,
   article: (articleId: string) => [...learnQueryKey.all, 'article', articleId] as const,
 };
 
 export async function getLearnToday(init?: { signal?: AbortSignal }): Promise<LearnTodayData> {
   return apiRequest('/api/learn/today', {
     schema: learnTodayDataSchema,
+    signal: init?.signal,
+  });
+}
+
+export async function getLearnShelf(init?: { signal?: AbortSignal }): Promise<LearnShelfData> {
+  return apiRequest('/api/learn/shelf', {
+    schema: learnShelfDataSchema,
     signal: init?.signal,
   });
 }

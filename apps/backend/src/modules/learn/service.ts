@@ -1,13 +1,15 @@
 import { randomUUID } from 'node:crypto';
 
-import { and, desc, eq, notExists } from 'drizzle-orm';
+import { and, desc, eq, ne, notExists } from 'drizzle-orm';
 
 import { article as articleTable, readingProgress as readingProgressTable } from '@gloaming/db';
 import {
   LEARN_CONTINUE_READING_LIMIT,
+  LEARN_SHELF_ITEMS_LIMIT,
   LEARN_TODAY_RECOMMENDATIONS_LIMIT,
   type LearnArticleData,
   type LearnArticleSummary,
+  type LearnShelfData,
   type LearnTodayData,
   type UpdateReadingProgressBody,
 } from '@gloaming/shared/api/learn';
@@ -100,6 +102,51 @@ export async function getToday(userId: string): Promise<LearnTodayData> {
       progress: toProgress(row.progress),
     })),
     recommendations: recommendationRows.map((row) => toSummary(row)),
+  };
+}
+
+/** My shelf: latest in-progress as continue hero; remaining progress rows as grid. */
+export async function getShelf(userId: string): Promise<LearnShelfData> {
+  const [currentRow] = await db
+    .select({
+      progress: readingProgressTable,
+      article: articleTable,
+    })
+    .from(readingProgressTable)
+    .innerJoin(articleTable, eq(readingProgressTable.articleId, articleTable.id))
+    .where(
+      and(
+        eq(readingProgressTable.userId, userId),
+        eq(readingProgressTable.status, 'in_progress'),
+        eq(articleTable.status, 'published'),
+      ),
+    )
+    .orderBy(desc(readingProgressTable.lastReadAt), desc(readingProgressTable.id))
+    .limit(1);
+
+  const itemConditions = [
+    eq(readingProgressTable.userId, userId),
+    eq(articleTable.status, 'published'),
+    ...(currentRow ? [ne(readingProgressTable.id, currentRow.progress.id)] : []),
+  ];
+
+  const itemRows = await db
+    .select({
+      progress: readingProgressTable,
+      article: articleTable,
+    })
+    .from(readingProgressTable)
+    .innerJoin(articleTable, eq(readingProgressTable.articleId, articleTable.id))
+    .where(and(...itemConditions))
+    .orderBy(desc(readingProgressTable.lastReadAt), desc(readingProgressTable.id))
+    .limit(LEARN_SHELF_ITEMS_LIMIT);
+
+  return {
+    current: currentRow ? { article: toSummary(currentRow.article), progress: toProgress(currentRow.progress) } : null,
+    items: itemRows.map((row) => ({
+      article: toSummary(row.article),
+      progress: toProgress(row.progress),
+    })),
   };
 }
 

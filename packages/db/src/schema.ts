@@ -113,7 +113,7 @@ export const accountRelations = relations(account, ({ one }) => ({
   }),
 }));
 
-/** Short-article library unit (admin CMS + learner catalog). */
+/** Short-article catalog unit (admin CMS + Discover). */
 export const article = pgTable(
   'article',
   {
@@ -454,7 +454,7 @@ export const conversationMessageRelations = relations(conversationMessage, ({ on
   }),
 }));
 
-/** One Shanghai calendar day the learner opened the reading room. */
+/** One Shanghai calendar day with recorded reading activity. */
 export const learnerDay = pgTable(
   'learner_day',
   {

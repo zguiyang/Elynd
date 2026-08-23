@@ -150,7 +150,7 @@ export async function getShelf(userId: string): Promise<LearnShelfData> {
   };
 }
 
-/** Open Learning Room: touch / upsert progress (unless already completed). */
+/** Open reader content and track reading progress (unless already completed). */
 export async function getLearnArticle(userId: string, articleId: string): Promise<LearnArticleData> {
   const article = await requirePublishedArticle(articleId);
   const now = new Date();

@@ -85,7 +85,7 @@ describe('Learn HTTP', () => {
     }
   });
 
-  it('supports room progress and today resume', async () => {
+  it('supports reader progress and today resume', async () => {
     const admin = await createSession('admin');
     const learner = await createSession('user');
     createdEmails.push(admin.email, learner.email);

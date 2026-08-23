@@ -117,7 +117,7 @@ describe('Progress HTTP', () => {
     }
   });
 
-  it('requires a session and does not treat dashboard or the progress page as a learning day', async () => {
+  it('requires a session and does not treat shelf or reading-history views as a reading-activity day', async () => {
     const anonymous = await app.request('/api/progress');
     expect(anonymous.status).toBe(HTTP_STATUS.UNAUTHORIZED);
 
@@ -138,7 +138,7 @@ describe('Progress HTTP', () => {
     });
   });
 
-  it('records room opens, backfills recoverable dates, and lists completions', async () => {
+  it('records reader opens, backfills recoverable dates, and lists completions', async () => {
     const admin = await createSession('admin');
     const learner = await createSession('user');
     createdEmails.push(admin.email, learner.email);

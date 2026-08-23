@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-/** Calendar day for learner activity (reading heatmap). */
+/** Calendar day for reading activity (history heatmap). */
 export const LEARNER_DAY_TIME_ZONE = 'Asia/Shanghai';
 
 export function calendarDateInTimeZone(now = new Date(), timeZone = LEARNER_DAY_TIME_ZONE): string {

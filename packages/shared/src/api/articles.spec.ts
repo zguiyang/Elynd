@@ -4,12 +4,12 @@ import {
   adminArticleListQuerySchema,
   adminArticleSchema,
   ARTICLE_BODY_MAX_WORDS,
+  catalogArticleListQuerySchema,
   countArticleWords,
   createArticleBodySchema,
   DEFAULT_ADMIN_ARTICLE_SORT_BY,
-  DEFAULT_LIBRARY_ARTICLE_SORT_BY,
+  DEFAULT_CATALOG_ARTICLE_SORT_BY,
   getPublishArticleIssues,
-  libraryArticleListQuerySchema,
   updateArticleBodySchema,
 } from './articles.ts';
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEFAULT_SORT_ORDER } from './pagination.ts';
@@ -125,20 +125,20 @@ describe('article api contracts', () => {
     });
   });
 
-  it('defaults library list query pagination and sort', () => {
-    expect(libraryArticleListQuerySchema.parse({})).toEqual({
+  it('defaults catalog list query pagination and sort', () => {
+    expect(catalogArticleListQuerySchema.parse({})).toEqual({
       page: DEFAULT_PAGE,
       pageSize: DEFAULT_PAGE_SIZE,
-      sortBy: DEFAULT_LIBRARY_ARTICLE_SORT_BY,
+      sortBy: DEFAULT_CATALOG_ARTICLE_SORT_BY,
       sortOrder: DEFAULT_SORT_ORDER,
       theme: undefined,
       q: undefined,
     });
   });
 
-  it('parses library list filters from query strings', () => {
+  it('parses catalog list filters from query strings', () => {
     expect(
-      libraryArticleListQuerySchema.parse({
+      catalogArticleListQuerySchema.parse({
         page: '2',
         pageSize: '5',
         sortBy: 'updatedAt',

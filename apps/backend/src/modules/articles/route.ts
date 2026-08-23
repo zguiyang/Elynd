@@ -5,8 +5,8 @@ import { type AuthVariables, requireAdmin, requireAuth } from '@/middleware/auth
 import * as articlesService from '@/modules/articles/service';
 import {
   validateAdminArticleListQuery,
+  validateCatalogArticleListQuery,
   validateCreateArticle,
-  validateLibraryArticleListQuery,
   validateUpdateArticle,
 } from '@/modules/articles/validator';
 
@@ -48,7 +48,7 @@ articlesRoutes.delete('/api/admin/articles/:id', requireAdmin, async (c) => {
   return c.body(null, HTTP_STATUS.NO_CONTENT);
 });
 
-articlesRoutes.get('/api/articles', requireAuth, validateLibraryArticleListQuery, async (c) => {
+articlesRoutes.get('/api/articles', requireAuth, validateCatalogArticleListQuery, async (c) => {
   const data = await articlesService.listPublishedArticles(c.req.valid('query'));
   return c.json(data);
 });

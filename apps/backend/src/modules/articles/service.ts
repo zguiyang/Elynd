@@ -13,11 +13,11 @@ import {
   type AdminArticleListQuery,
   type Article,
   buildPaginationMeta,
+  type CatalogArticleListData,
+  type CatalogArticleListQuery,
   type CreateArticleBody,
   type DerivedFreshness,
   getPublishArticleIssues,
-  type LibraryArticleListData,
-  type LibraryArticleListQuery,
   type UpdateArticleBody,
 } from '@gloaming/shared/api/articles';
 
@@ -61,7 +61,7 @@ function escapeIlikePattern(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
 }
 
-function publishedListWhere(query: Pick<LibraryArticleListQuery, 'theme' | 'q'>): SQL {
+function publishedListWhere(query: Pick<CatalogArticleListQuery, 'theme' | 'q'>): SQL {
   const parts: SQL[] = [eq(articleTable.status, 'published')];
 
   if (query.theme) {
@@ -76,7 +76,7 @@ function publishedListWhere(query: Pick<LibraryArticleListQuery, 'theme' | 'q'>)
   return and(...parts)!;
 }
 
-function publishedListOrderBy(query: Pick<LibraryArticleListQuery, 'sortBy' | 'sortOrder'>) {
+function publishedListOrderBy(query: Pick<CatalogArticleListQuery, 'sortBy' | 'sortOrder'>) {
   const column =
     query.sortBy === 'createdAt'
       ? articleTable.createdAt
@@ -276,7 +276,7 @@ export async function deleteArticle(id: string): Promise<void> {
   await db.delete(articleTable).where(eq(articleTable.id, id));
 }
 
-export async function listPublishedArticles(query: LibraryArticleListQuery): Promise<LibraryArticleListData> {
+export async function listPublishedArticles(query: CatalogArticleListQuery): Promise<CatalogArticleListData> {
   const where = publishedListWhere(query);
   const orderBy = publishedListOrderBy(query);
   const offset = (query.page - 1) * query.pageSize;

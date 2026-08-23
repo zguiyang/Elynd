@@ -1,9 +1,7 @@
 export {
   ASSIST_ACTION_TEMPLATE,
   PROMPT_ROLE,
-  PROMPT_ROLE_RESERVED,
   PROMPT_SCENE,
-  PROMPT_SCENE_RESERVED,
   type PromptRoleId,
   type PromptSceneId,
 } from '@/lib/prompts/ids';

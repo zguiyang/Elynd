@@ -1,17 +1,19 @@
 # Gloaming Book Detail Design Context
 
-**Purpose:** Fact pack for a future Book Detail UI design.  
-**Scope:** Research only — no UI layout, no code changes.  
-**Date:** 2026-08-20  
+**Purpose:** Fact pack for Book Detail UI design.  
+**Scope:** Research + shipped-route reference.  
+**Date:** 2026-08-20 (routes updated **2026-08-23**).
+
+> **Superseded sections:** Any journey referencing `/dashboard`, `/library`, `/learn/:id`, or `features/library/**` / `features/learn/**` describes **archived** code (removed). Current learner routes are in **Current shipped routes** below.
 
 **Legend (status tags used below):**
 
-| Tag | Meaning |
-| --- | --- |
-| **Locked** | Product decision in `docs/product/` (do not invent against it) |
-| **Existing Code** | Shipped in repo today |
-| **Future** | Documented intent / Phase 1b+ / migration direction, not shipped |
-| **Open Question** | Not decided; design must not silently assume |
+| Tag               | Meaning                                                          |
+| ----------------- | ---------------------------------------------------------------- |
+| **Locked**        | Product decision in `docs/product/` (do not invent against it)   |
+| **Existing Code** | Shipped in repo today                                            |
+| **Future**        | Documented intent / Phase 1b+ / migration direction, not shipped |
+| **Open Question** | Not decided; design must not silently assume                     |
 
 ---
 
@@ -28,7 +30,7 @@ Book Detail Role:
 - **Content introduction / choice surface** — **Locked** under **发现**: “show enough metadata to choose a text”; primary story is **add to shelf**, open-to-read allowed (`mvp-1-modules.md` §4.4).
 - **Reading entry** — **Locked**: open path from Discover or Shelf → Reader (`prototype-flows.md` §3–4). Today that entry is **direct**; a dedicated Detail hop is **Open Question**.
 - **User decision page** — **Locked** intent for Discover (choose official text); Detail would concentrate metadata + CTA if inserted.
-- **Reading state recovery page** — **Not** Book Detail’s home. **Locked:** resume / **继续阅读** belongs to **我的书架** (`mvp-1-modules.md` §4.3; `prototype-flows.md` Confirmed). Detail may *show* progress if the user arrives from catalog while already reading — **Open Question** for UX, not for where “daily resume” lives.
+- **Reading state recovery page** — **Not** Book Detail’s home. **Locked:** resume / **继续阅读** belongs to **我的书架** (`mvp-1-modules.md` §4.3; `prototype-flows.md` Confirmed). Detail may _show_ progress if the user arrives from catalog while already reading — **Open Question** for UX, not for where “daily resume” lives.
 
 **What Book Detail is not (Locked anti-identity):**
 
@@ -60,21 +62,32 @@ Returning users’ first action: **continue the unfinished text** on **我的书
 
 Sources: `mvp-1-modules.md` §3–6, `prototype-flows.md` §3–4.
 
-### Existing Code journey (shipped labels still drifted)
+### Current shipped routes (2026-08-23)
 
 ```text
-今日 (/dashboard)          ← nav label; should become 我的书架
+我的书架 (/my-shelf)     → mock; continue / grid → /read/[bookId]
+发现 (/discover)         → mock; card → /discover/[bookId] (detail) or /read/[bookId]
+书籍详情 (/discover/[id]) → mock; CTA → /read/[bookId]
+阅读历史 (/reading-history) → mock; work row → /read/[bookId]
+Reader (/read/[bookId])  → mock immersive reader (no AppShell nav)
+```
+
+Implementation: `features/shelf/**`, `features/discover/**`, `features/book-detail/**`, `features/history/**`, `features/reader/**`.
+
+### Archived journey (**superseded** — do not wire against)
+
+```text
+今日 (/dashboard)          ← REMOVED
   → Continue / card → /learn/:articleId (Reader)
   → 打开图书馆 → /library
 
-图书馆 (/library)          ← nav label; should become 发现
+图书馆 (/library)          ← REMOVED
   → VolumeCard “开始阅读” → /learn/:articleId (Reader)
-  → No intermediate detail route
 
-成长 (/progress)           ← should become 阅读历史
+成长 (/progress)           ← REMOVED (replaced by /reading-history)
 ```
 
-**Current Journey (as coded today):**
+**Archived “Current Journey” (pre-2026-08-23):**
 
 ```text
 Discover (图书馆 /library)
@@ -94,10 +107,10 @@ Reader (/learn/:articleId)
 
 ### Card → click → destination (**Existing Code**)
 
-| Surface | Card shows | Click goes to | Detail entry? |
-| --- | --- | --- | --- |
-| Library `VolumeCard` | Title; level (简单/中等/稍难); up to 2 themes; estimated minutes; tinted “cover” (no real image); CTA「开始阅读」 | `/learn/:id` | **No** |
-| Dashboard continue / recommend | Title; level · minutes · theme; progress % if > 0 | `/learn/:id` | **No** |
+| Surface                        | Card shows                                                                                                        | Click goes to | Detail entry? |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------- | ------------- | ------------- |
+| Library `VolumeCard`           | Title; level (简单/中等/稍难); up to 2 themes; estimated minutes; tinted “cover” (no real image); CTA「开始阅读」 | `/learn/:id`  | **No**        |
+| Dashboard continue / recommend | Title; level · minutes · theme; progress % if > 0                                                                 | `/learn/:id`  | **No**        |
 
 ### Proposed journey under discussion (**Open Question**)
 
@@ -194,14 +207,14 @@ Document-scoped help transcripts (`conversation` / messages); subject is article
 
 From `content-strategy.md` §4.1 and `feature-audit.md` §4.1:
 
-| Concern | V1 need | Status |
-| --- | --- | --- |
-| Title | Yes | Existing |
-| Body or ordered parts (chapters) | Yes for ebooks | Future (1b pipeline); schema fork **Open Question** (extend `article` vs new `document`) |
-| Source (官方 / 用户) | Yes | Future labels Locked; data absent |
-| Owner | User import vs seed | Future (1b) |
-| Reading position per user × document (+ chapter) | Yes | Partial Existing (article + % only) |
-| Level / tags | Optional metadata | Existing; not syllabus |
+| Concern                                          | V1 need             | Status                                                                                   |
+| ------------------------------------------------ | ------------------- | ---------------------------------------------------------------------------------------- |
+| Title                                            | Yes                 | Existing                                                                                 |
+| Body or ordered parts (chapters)                 | Yes for ebooks      | Future (1b pipeline); schema fork **Open Question** (extend `article` vs new `document`) |
+| Source (官方 / 用户)                             | Yes                 | Future labels Locked; data absent                                                        |
+| Owner                                            | User import vs seed | Future (1b)                                                                              |
+| Reading position per user × document (+ chapter) | Yes                 | Partial Existing (article + % only)                                                      |
+| Level / tags                                     | Optional metadata   | Existing; not syllabus                                                                   |
 
 **No parallel “Book app” beside Article** — product rule: one kind of thing you read.
 
@@ -211,14 +224,14 @@ From `content-strategy.md` §4.1 and `feature-audit.md` §4.1:
 
 ### Routes & features (**Existing Code**)
 
-| Area | Path / module | Notes |
-| --- | --- | --- |
-| Home (今日) | `features/dashboard/dashboard-home.tsx` | Resume hero + continue list + catalog picks |
-| Library (发现 candidate) | `features/library/library-page.tsx` | Published catalog grid; `VolumeCard` |
-| Reader | `features/learn/learn-room-page.tsx` + `learn-article-reader.tsx` + `learn-help-rail.tsx` + `learn-audio-bar.tsx` | `/learn/:articleId` |
-| Reading history | `features/progress/**` | Keep as history; rename 成长 → 阅读历史 |
-| Admin CMS | `features/admin/article-*` | Ops catalog for 1a |
-| App shell nav | `app-shell.tsx` | Labels still 今日 / 图书馆 / 成长 (**Known drift**) |
+| Area                     | Path / module                                                                                                     | Notes                                               |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| Home (今日)              | `features/dashboard/dashboard-home.tsx`                                                                           | Resume hero + continue list + catalog picks         |
+| Library (发现 candidate) | `features/library/library-page.tsx`                                                                               | Published catalog grid; `VolumeCard`                |
+| Reader                   | `features/learn/learn-room-page.tsx` + `learn-article-reader.tsx` + `learn-help-rail.tsx` + `learn-audio-bar.tsx` | `/learn/:articleId`                                 |
+| Reading history          | `features/progress/**`                                                                                            | Keep as history; rename 成长 → 阅读历史             |
+| Admin CMS                | `features/admin/article-*`                                                                                        | Ops catalog for 1a                                  |
+| App shell nav            | `app-shell.tsx`                                                                                                   | Labels still 今日 / 图书馆 / 成长 (**Known drift**) |
 
 ### Book Detail page
 
@@ -243,18 +256,18 @@ Calm editorial product shell: warm paper, single ember accent, **light theme onl
 
 ### Colors (**Locked** in DESIGN.md)
 
-| Token | Hex | Role |
-| --- | --- | --- |
-| Canvas | `#FAF9F6` | Page background |
-| Paper | `#F3EEE2` | Warm panels |
-| Sidebar | `#FCFBF8` | Sidebar wash |
-| Ink | `#1C1917` | Primary text |
-| Surface | `#FFFFFF` | Cards / forms |
-| Brand | `#C2410C` | Primary CTA / scarce emphasis |
-| Brand soft | `#FFF7ED` | Small accent washes only |
-| Brand deep | `#9A3412` | Hover / deeper emphasis |
-| Muted | `#57534E` | Secondary copy |
-| Border | `#E7E5E4` | Hairlines |
+| Token      | Hex       | Role                          |
+| ---------- | --------- | ----------------------------- |
+| Canvas     | `#FAF9F6` | Page background               |
+| Paper      | `#F3EEE2` | Warm panels                   |
+| Sidebar    | `#FCFBF8` | Sidebar wash                  |
+| Ink        | `#1C1917` | Primary text                  |
+| Surface    | `#FFFFFF` | Cards / forms                 |
+| Brand      | `#C2410C` | Primary CTA / scarce emphasis |
+| Brand soft | `#FFF7ED` | Small accent washes only      |
+| Brand deep | `#9A3412` | Hover / deeper emphasis       |
+| Muted      | `#57534E` | Secondary copy                |
+| Border     | `#E7E5E4` | Hairlines                     |
 
 ### Typography
 
@@ -322,35 +335,35 @@ Suggestions grounded in Locked roles + Existing progress model. **Not** a shippe
 
 ### Required States
 
-1. **New Book (never opened)**  
-   - **Why:** Discover choice + entry; user has no progress.  
-   - **Show:** Enough metadata to decide; primary CTA open / start; add-to-shelf (**Locked** primary Discover story).  
+1. **New Book (never opened)**
+   - **Why:** Discover choice + entry; user has no progress.
+   - **Show:** Enough metadata to decide; primary CTA open / start; add-to-shelf (**Locked** primary Discover story).
    - **Data today:** article fields; progress absent until Reader opens (opening creates progress — Existing).
 
-2. **Returning Reader (in_progress)**  
-   - **Why:** User may re-enter from Discover/Detail with existing %. Daily resume still belongs on 我的书架 (**Locked**).  
-   - **Show:** Progress hint; CTA「继续阅读」; optional last-read time.  
+2. **Returning Reader (in_progress)**
+   - **Why:** User may re-enter from Discover/Detail with existing %. Daily resume still belongs on 我的书架 (**Locked**).
+   - **Show:** Progress hint; CTA「继续阅读」; optional last-read time.
    - **Data:** `progressRatio`, `status`, `lastReadAt`.
 
-3. **Reading Completed**  
-   - **Why:** `status: completed` exists in schema.  
-   - **Show:** Completed affordance; reopen / read again without quiz gate.  
+3. **Reading Completed**
+   - **Why:** `status: completed` exists in schema.
+   - **Show:** Completed affordance; reopen / read again without quiz gate.
    - **Avoid:** “finish lesson → practice” patterns (**REMOVED**).
 
-4. **On shelf vs not on shelf** (**Future** membership model)  
-   - **Why:** Locked Discover story is add-to-shelf; code today has **no** shelf membership — catalog = all published.  
+4. **On shelf vs not on shelf** (**Future** membership model)
+   - **Why:** Locked Discover story is add-to-shelf; code today has **no** shelf membership — catalog = all published.
    - **Show (when built):** Add vs Already on shelf; source label `官方` (and later `用户`).
 
-5. **Mobile layout**  
-   - **Why:** DESIGN.md collapses multi-column &lt;768px; cards already 2-col on small screens.  
+5. **Mobile layout**
+   - **Why:** DESIGN.md collapses multi-column &lt;768px; cards already 2-col on small screens.
    - **Show:** Single-column detail; CTA reachable without desktop-only chrome.
 
-6. **Loading / Error / Not found**  
-   - **Why:** Reader and Library already handle pending/error/empty patterns.  
+6. **Loading / Error / Not found**
+   - **Why:** Reader and Library already handle pending/error/empty patterns.
    - **Show:** Calm empty/error; path back to 发现 / 我的书架 — no AI upsell as empty-state hero (`design-guardrails.md`).
 
-7. **No audio / AI unavailable** (**Locked** degrade)  
-   - **Why:** Document must still open and read if AI/TTS off.  
+7. **No audio / AI unavailable** (**Locked** degrade)
+   - **Why:** Document must still open and read if AI/TTS off.
    - **Show on Detail:** Do **not** require audio/AI badges as blockers; optional quiet availability hints only if useful.
 
 ---
@@ -384,10 +397,10 @@ Constraints for any Stitch / prototype pass (facts + Locked rules — still **no
 
 1. **Treat Book Detail as a calm book-introduction + decision + entry surface**, secondary to Reader and to 我的书架 resume. Do not make it a study dashboard or AI showcase.
 
-2. **Primary actions to prioritize conceptually:**  
-   - Add to **我的书架** (Discover primary story)  
+2. **Primary actions to prioritize conceptually:**
+   - Add to **我的书架** (Discover primary story)
    - Open / Continue → **Reader**  
-   Resume-of-the-day remains owned by **我的书架**.
+     Resume-of-the-day remains owned by **我的书架**.
 
 3. **Metadata budget (Existing-safe):** title, level, themes, estimated minutes, sourceNote (provenance), progress if any.  
    Mark author / real cover / TOC / description blurb as **Future or Open** unless product adds fields.
@@ -406,27 +419,27 @@ Constraints for any Stitch / prototype pass (facts + Locked rules — still **no
 
 7. **States to cover in prototypes:** New / In progress / Completed / Loading-Error / Mobile; shelf membership only if product locks it into the mock.
 
-8. **Anti-drift checklist before accepting a Detail prototype:**  
-   - Does this help the user **choose and enter** a real text?  
-   - Does it create a study task or AI chat home? → cut  
-   - Does daily resume still feel owned by 我的书架?  
+8. **Anti-drift checklist before accepting a Detail prototype:**
+   - Does this help the user **choose and enter** a real text?
+   - Does it create a study task or AI chat home? → cut
+   - Does daily resume still feel owned by 我的书架?
 
 ---
 
 ## Source index
 
-| Kind | Path |
-| --- | --- |
-| Vision / principles | `docs/product/product-vision.md`, `product-principles.md` |
-| MVP capabilities | `docs/product/mvp-scope.md` |
-| Module IA (Locked) | `docs/product/mvp-1-modules.md` |
-| Nav journeys (Locked) | `docs/product/prototype-flows.md` |
-| Content / fields intent | `docs/product/content-strategy.md` |
-| Code vs product | `docs/product/feature-audit.md` |
-| Guardrails | `docs/product/design-guardrails.md` |
-| Roadmap | `docs/product/roadmap.md` |
-| Visual SSOT | `DESIGN.md`, `apps/web/app/globals.css` |
-| Schema | `packages/db/src/schema.ts` |
-| Article / learn DTOs | `packages/shared/src/api/articles.ts`, `learn.ts` |
-| Library / Dashboard / Reader UI | `apps/web/features/library/**`, `dashboard/**`, `learn/**` |
-| TextStack reference | https://github.com/mrviduus/textstack (`BookDetailPage`, `BookDetailHero`, `BookDetail` type) |
+| Kind                            | Path                                                                                          |
+| ------------------------------- | --------------------------------------------------------------------------------------------- |
+| Vision / principles             | `docs/product/product-vision.md`, `product-principles.md`                                     |
+| MVP capabilities                | `docs/product/mvp-scope.md`                                                                   |
+| Module IA (Locked)              | `docs/product/mvp-1-modules.md`                                                               |
+| Nav journeys (Locked)           | `docs/product/prototype-flows.md`                                                             |
+| Content / fields intent         | `docs/product/content-strategy.md`                                                            |
+| Code vs product                 | `docs/product/feature-audit.md`                                                               |
+| Guardrails                      | `docs/product/design-guardrails.md`                                                           |
+| Roadmap                         | `docs/product/roadmap.md`                                                                     |
+| Visual SSOT                     | `DESIGN.md`, `apps/web/app/globals.css`                                                       |
+| Schema                          | `packages/db/src/schema.ts`                                                                   |
+| Article / learn DTOs            | `packages/shared/src/api/articles.ts`, `learn.ts`                                             |
+| Library / Dashboard / Reader UI | `apps/web/features/library/**`, `dashboard/**`, `learn/**`                                    |
+| TextStack reference             | https://github.com/mrviduus/textstack (`BookDetailPage`, `BookDetailHero`, `BookDetail` type) |

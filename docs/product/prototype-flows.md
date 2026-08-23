@@ -174,13 +174,13 @@ Superseded (2026-08-20): “Import + parse are required before calling V1 done�
 
 ## 8. Known drift
 
-| Where            | Issue                                           | Action                                         |
-| ---------------- | ----------------------------------------------- | ---------------------------------------------- |
-| App nav          | Still labeled 今日 / 图书馆 / 成长              | Rename to 我的书架 / 发现 / 阅读历史           |
-| Dashboard home   | Catalog-shaped “今日”, not shelf + continue     | Become 我的书架                                |
-| Library          | Published catalog only; no “add to my shelf”    | Become 发现 + shelf membership                 |
-| Content atom     | Short curated `article.body`                    | Document / chapters later (feature-audit §4.1) |
-| Progress metrics | “Learning days” wording; no year/30d volume yet | Evolve under 阅读历史 when ready               |
+| Where           | Issue                                                                | Action                                         |
+| --------------- | -------------------------------------------------------------------- | ---------------------------------------------- |
+| Learner mock UI | discover / shelf / history / reader / detail use local fixtures only | Wire to backend APIs when ready                |
+| Content atom    | Short curated `article.body`                                         | Document / chapters later (feature-audit §4.1) |
+| History metrics | Mock heatmap; no year/30d volume yet                                 | Evolve when `/api/progress` is wired           |
+
+**Resolved (2026-08-23):** App nav → 我的书架 / 发现 / 阅读历史; home → `/my-shelf`; AppShell → `features/app-shell/`; old routes `/dashboard`, `/progress`, `/library`, `/learn` removed (404).
 
 **North star:** weekly minutes of engaged reading of authentic English—not practice completion, not review queues, not chat turns.
 
@@ -188,9 +188,10 @@ Superseded (2026-08-20): “Import + parse are required before calling V1 done�
 
 ## 9. Change log
 
-| Date       | Change                                                                                               |
-| ---------- | ---------------------------------------------------------------------------------------------------- |
-| 2026-08-20 | Learner IA: 我的书架 / 发现 / 阅读历史; MVP 1 = catalog→shelf; import deferred to 1b.                |
-| 2026-08-20 | Removed `prd/` HTML prototypes; Practice/Review gone from code; Progress kept as reading history.    |
-| 2026-08-20 | Replace study loop with first-time import + daily resume; retire Practice/Review from confirmed nav. |
-| 2026-08-05 | Initial SSOT from docs + `prd` auth wiring (superseded loop).                                        |
+| Date       | Change                                                                                                 |
+| ---------- | ------------------------------------------------------------------------------------------------------ |
+| 2026-08-23 | Frontend cleanup: removed learner library/progress UI and legacy routes; nav IA matches mvp-1-modules. |
+| 2026-08-20 | Learner IA: 我的书架 / 发现 / 阅读历史; MVP 1 = catalog→shelf; import deferred to 1b.                  |
+| 2026-08-20 | Removed `prd/` HTML prototypes; Practice/Review gone from code; Progress kept as reading history.      |
+| 2026-08-20 | Replace study loop with first-time import + daily resume; retire Practice/Review from confirmed nav.   |
+| 2026-08-05 | Initial SSOT from docs + `prd` auth wiring (superseded loop).                                          |

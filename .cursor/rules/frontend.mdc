@@ -53,12 +53,14 @@ Prefer **compose many focused components** over one 700–1000 line page module.
 Example shape:
 
 ```text
-features/learn/
-  learn-room-page.tsx      # query + chrome + compose
-  learn-article-reader.tsx # body + selection popover
-  learn-help-rail.tsx      # assist rail
-  learn-api.ts
+features/reader/
+  reader-page.tsx          # session + chrome + compose
+  reader-article.tsx       # body + selection toolbar
+  reader-ai-drawer.tsx     # assist drawer
+  reader-mock.ts
 ```
+
+Shared content helpers live in `features/content/content-model.ts` (level labels, cover tints).
 
 ## Styling
 

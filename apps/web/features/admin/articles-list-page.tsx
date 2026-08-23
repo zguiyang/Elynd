@@ -44,7 +44,7 @@ import {
   formatAdminApiError,
   listAdminArticles,
 } from '@/features/admin/articles-api';
-import { LEVEL_LABEL } from '@/features/library/library-model';
+import { LEVEL_LABEL } from '@/features/content/content-model';
 import { usePaginatedQuery } from '@/lib/query';
 import { cn } from '@/lib/utils';
 
@@ -153,7 +153,7 @@ export function ArticlesListPage() {
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <h1 className="font-heading text-4xl font-bold tracking-tight md:text-5xl">文章</h1>
-          <p className="mt-3 text-lg text-muted-foreground">粘贴短文、存草稿，再发布到图书馆。</p>
+          <p className="mt-3 text-lg text-muted-foreground">粘贴短文、存草稿，再发布到发现。</p>
         </div>
         <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
           <Button

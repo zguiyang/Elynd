@@ -8,7 +8,7 @@ import {
   levelStarCount,
   primaryReadLabel,
 } from '@/features/book-detail/book-detail-model';
-import { LEVEL_LABEL } from '@/features/library/library-model';
+import { LEVEL_LABEL } from '@/features/content/content-model';
 
 describe('book-detail-model', () => {
   it('maps reading status to primary CTA labels', () => {
@@ -31,7 +31,7 @@ describe('book-detail-model', () => {
     expect(formatWordCount(85000)).toBe('85k');
   });
 
-  it('reuses library level labels', () => {
+  it('reuses shared content level labels', () => {
     expect(levelMeta('easy')).toBe(LEVEL_LABEL.easy);
     expect(levelMeta('mid')).toBe(LEVEL_LABEL.mid);
   });

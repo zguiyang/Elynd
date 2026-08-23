@@ -6,7 +6,7 @@ import { type ArticleLevel } from '@gloaming/shared/api/articles';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
-import { LEVEL_LABEL, paragraphsFromBody } from '@/features/library/library-model';
+import { LEVEL_LABEL, paragraphsFromBody } from '@/features/content/content-model';
 
 type ArticlePreviewPanelProps = {
   title: string;

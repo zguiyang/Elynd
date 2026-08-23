@@ -4,8 +4,8 @@ import { ChevronRightIcon } from 'lucide-react';
 import Link from 'next/link';
 
 import { AUTH_ROUTES } from '@/constants';
+import { coverTintForVolume, LEVEL_LABEL } from '@/features/content/content-model';
 import { formatHistoryDate, type HistoryWork } from '@/features/history/history-mock';
-import { coverTintForVolume, LEVEL_LABEL } from '@/features/library/library-model';
 import { cn } from '@/lib/utils';
 
 export function HistoryBookCard({ work }: { work: HistoryWork }) {

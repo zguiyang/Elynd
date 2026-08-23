@@ -5,7 +5,7 @@ import Link from 'next/link';
 import type { LearnTodayEntry } from '@gloaming/shared/api/learn';
 
 import { AUTH_ROUTES } from '@/constants';
-import { coverTintForVolume, LEVEL_LABEL } from '@/features/library/library-model';
+import { coverTintForVolume, LEVEL_LABEL } from '@/features/content/content-model';
 import { cn } from '@/lib/utils';
 
 function statusLabel(entry: LearnTodayEntry): string {

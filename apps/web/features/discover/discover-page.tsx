@@ -22,7 +22,7 @@ import { DiscoverPagination } from '@/features/discover/discover-pagination';
 import { cn } from '@/lib/utils';
 
 /**
- * Discover UI prototype: local mock catalog only (no library/shelf API).
+ * Discover UI prototype: local mock catalog only (no shelf API).
  * Append `?empty=1` to preview the empty catalog state.
  */
 export function DiscoverPage() {

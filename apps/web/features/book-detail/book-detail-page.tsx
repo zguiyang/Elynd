@@ -15,7 +15,7 @@ import { BookDetailUnavailable } from '@/features/book-detail/book-detail-unavai
 import { cn } from '@/lib/utils';
 
 /**
- * Book detail UI prototype: local mock catalog only (no library/shelf API).
+ * Book detail UI prototype: local mock catalog only (no shelf API).
  * Reading CTAs route to the existing Reader; shelf add is toast-only.
  */
 export function BookDetailPage({ bookId }: { bookId: string }) {

@@ -1,6 +1,6 @@
 import type { ArticleLevel } from '@gloaming/shared/api/articles';
 
-import { LEVEL_LABEL } from '@/features/library/library-model';
+import { LEVEL_LABEL } from '@/features/content/content-model';
 
 /** Reading lifecycle for book detail CTA / progress chrome (UI mock). */
 export type BookReadingStatus = 'unread' | 'in_progress' | 'completed';

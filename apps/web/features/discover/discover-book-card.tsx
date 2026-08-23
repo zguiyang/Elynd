@@ -6,8 +6,8 @@ import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { AUTH_ROUTES } from '@/constants';
+import { coverTintForVolume, LEVEL_LABEL } from '@/features/content/content-model';
 import type { DiscoverItem, DiscoverShelfStatus } from '@/features/discover/discover-mock';
-import { coverTintForVolume, LEVEL_LABEL } from '@/features/library/library-model';
 import { cn } from '@/lib/utils';
 
 type DiscoverBookCardProps = {

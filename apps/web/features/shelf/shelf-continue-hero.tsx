@@ -6,7 +6,7 @@ import type { LearnTodayEntry } from '@gloaming/shared/api/learn';
 
 import { Button } from '@/components/ui/button';
 import { AUTH_ROUTES } from '@/constants';
-import { coverTintForVolume, LEVEL_LABEL } from '@/features/library/library-model';
+import { coverTintForVolume, LEVEL_LABEL } from '@/features/content/content-model';
 import { cn } from '@/lib/utils';
 
 function articleMetaLine(entry: LearnTodayEntry): string {

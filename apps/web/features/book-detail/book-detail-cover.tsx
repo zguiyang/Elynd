@@ -1,4 +1,4 @@
-import { coverTintForVolume } from '@/features/library/library-model';
+import { coverTintForVolume } from '@/features/content/content-model';
 import { cn } from '@/lib/utils';
 
 type BookDetailCoverProps = {

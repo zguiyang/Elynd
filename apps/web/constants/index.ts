@@ -13,7 +13,6 @@ export const AUTH_ROUTES = {
   discover: '/discover',
   /** Discover book detail (mock UI; future catalog item). */
   bookDetail: (id: string) => `/discover/${id}` as const,
-  /** Reading history (formerly /progress · 成长). */
   history: '/reading-history',
   /** Immersive reader (mock UI; future book/chapter API). */
   read: '/read',

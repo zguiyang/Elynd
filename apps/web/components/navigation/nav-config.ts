@@ -9,7 +9,6 @@ export const NAV_COPY = {
   history: '阅读历史',
   historyShort: '历史',
   more: '更多',
-  settings: '设置',
   signIn: '登录',
   searchPlaceholder: '搜索…',
   account: '账户菜单',

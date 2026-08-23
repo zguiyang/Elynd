@@ -42,27 +42,13 @@ export function SiteNav() {
   const { user, isPending, username, email, initial, image, isAdmin, signOut } = useNavAccount();
   const [isAccountOpen, setIsAccountOpen] = useState(false);
 
-  function openSettings() {
-    if (!user) {
-      window.location.assign(AUTH_ROUTES.signIn);
-      return;
-    }
-    setIsAccountOpen(true);
-  }
-
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 backdrop-blur-sm">
       <nav className="container flex h-16 items-center justify-between gap-6 md:h-20" aria-label="站点顶栏">
         <div className="flex min-w-0 items-center gap-8">
-          <BrandMark
-            href={user ? AUTH_ROUTES.shelf : '/'}
-            name={NAV_COPY.wordmark}
-            appearance="editorial"
-            size="md"
-            className="shrink-0"
-          />
+          <BrandMark href="/" name={NAV_COPY.wordmark} appearance="editorial" size="md" className="shrink-0" />
           <div className="hidden md:block">
-            {isPending ? <Skeleton className="h-6 w-80 rounded-md" /> : <DesktopNav onOpenSettings={openSettings} />}
+            {isPending ? <Skeleton className="h-6 w-80 rounded-md" /> : <DesktopNav />}
           </div>
         </div>
 

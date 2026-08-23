@@ -271,7 +271,7 @@
 
 /*
   Site nav link — SSOT: DESIGN.md «Site nav (top chrome)».
-  Use for desktop primary destinations + Settings in DesktopNav; do not recreate with text-sm / border-b.
+  Use for desktop primary destinations in DesktopNav; do not recreate with text-sm / border-b.
   Mobile primary destinations use MobileBottomNav (DESIGN.md «App bottom nav»).
 */
 @utility site-nav-link {

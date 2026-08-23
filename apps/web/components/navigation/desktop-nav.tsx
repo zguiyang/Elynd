@@ -3,13 +3,9 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { matchesNavPath, NAV_COPY, PRIMARY_NAV_LINKS } from '@/components/navigation/nav-config';
+import { matchesNavPath, PRIMARY_NAV_LINKS } from '@/components/navigation/nav-config';
 
-type DesktopNavProps = {
-  onOpenSettings: () => void;
-};
-
-export function DesktopNav({ onOpenSettings }: DesktopNavProps) {
+export function DesktopNav() {
   const pathname = usePathname() ?? '/';
 
   return (
@@ -22,9 +18,6 @@ export function DesktopNav({ onOpenSettings }: DesktopNavProps) {
           </Link>
         );
       })}
-      <button type="button" onClick={onOpenSettings} className="site-nav-link">
-        {NAV_COPY.settings}
-      </button>
     </div>
   );
 }

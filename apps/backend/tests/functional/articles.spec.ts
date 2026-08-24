@@ -131,7 +131,7 @@ describe('Articles HTTP', () => {
     }
   });
 
-  it('guards admin article writes and learner reads by session/role', async () => {
+  it('guards admin article writes while allowing public published reads', async () => {
     const anonymousCreate = await app.request('/api/admin/articles', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -149,7 +149,7 @@ describe('Articles HTTP', () => {
     expect(userDenied.status).toBe(403);
 
     const learnerAnon = await app.request('/api/articles');
-    expect(learnerAnon.status).toBe(401);
+    expect(learnerAnon.status).toBe(200);
   });
 
   it('creates, updates, publishes, lists for admin and learner, then unpublishes', async () => {

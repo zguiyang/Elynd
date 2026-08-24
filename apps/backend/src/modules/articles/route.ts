@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 
 import { HTTP_STATUS } from '@/constants';
-import { type AuthVariables, requireAdmin, requireAuth } from '@/middleware/auth';
+import { type AuthVariables, requireAdmin } from '@/middleware/auth';
 import * as articlesService from '@/modules/articles/service';
 import {
   validateAdminArticleListQuery,
@@ -48,12 +48,12 @@ articlesRoutes.delete('/api/admin/articles/:id', requireAdmin, async (c) => {
   return c.body(null, HTTP_STATUS.NO_CONTENT);
 });
 
-articlesRoutes.get('/api/articles', requireAuth, validateDiscoverListQuery, async (c) => {
+articlesRoutes.get('/api/articles', validateDiscoverListQuery, async (c) => {
   const data = await articlesService.listPublishedArticles(c.req.valid('query'));
   return c.json(data);
 });
 
-articlesRoutes.get('/api/articles/:id', requireAuth, async (c) => {
+articlesRoutes.get('/api/articles/:id', async (c) => {
   const article = await articlesService.getPublishedArticle(c.req.param('id'));
   return c.json(article);
 });

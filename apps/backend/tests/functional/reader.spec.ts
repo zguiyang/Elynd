@@ -106,6 +106,10 @@ describe('Reader HTTP', () => {
     });
     expect(publish.status).toBe(200);
 
+    const anonymousSession = await app.request(`/api/reader/articles/${article.id}`);
+    expect(anonymousSession.status).toBe(200);
+    expect(((await anonymousSession.json()) as ReaderSessionData).progress.progressRatio).toBe(0);
+
     const session = await app.request(`/api/reader/articles/${article.id}`, {
       headers: { cookie: learner.cookie },
     });

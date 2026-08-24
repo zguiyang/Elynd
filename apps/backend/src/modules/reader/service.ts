@@ -38,6 +38,29 @@ async function requirePublishedArticle(articleId: string): Promise<ArticleRow> {
   return row;
 }
 
+/** Read-only reader payload for anonymous visitors; no user data is created. */
+export async function getPublicReaderSession(articleId: string): Promise<ReaderSessionData> {
+  const article = await requirePublishedArticle(articleId);
+  const now = new Date().toISOString();
+  const audioAvailable = await getArticleAudioAvailability(articleId);
+
+  return {
+    id: article.id,
+    title: article.title,
+    body: article.body,
+    level: article.level as ReaderSessionData['level'],
+    themes: article.themes,
+    estimatedMinutes: article.estimatedMinutes,
+    progress: {
+      status: 'in_progress',
+      progressRatio: 0,
+      lastReadAt: now,
+      completedAt: null,
+    },
+    audioAvailable,
+  };
+}
+
 /** Open reader content and track reading progress (unless already completed). */
 export async function getReaderSession(userId: string, articleId: string): Promise<ReaderSessionData> {
   const article = await requirePublishedArticle(articleId);

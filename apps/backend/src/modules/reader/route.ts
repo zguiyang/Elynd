@@ -6,9 +6,11 @@ import { validateUpdateReadingProgress } from '@/modules/reader/validator';
 
 export const readerRoutes = new Hono<{ Variables: AuthVariables }>();
 
-readerRoutes.get('/api/reader/articles/:articleId', requireAuth, async (c) => {
-  const user = c.get('user')!;
-  const data = await readerService.getReaderSession(user.id, c.req.param('articleId'));
+readerRoutes.get('/api/reader/articles/:articleId', async (c) => {
+  const user = c.get('user');
+  const data = user
+    ? await readerService.getReaderSession(user.id, c.req.param('articleId'))
+    : await readerService.getPublicReaderSession(c.req.param('articleId'));
   return c.json(data);
 });
 

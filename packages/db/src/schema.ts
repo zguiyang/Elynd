@@ -304,6 +304,9 @@ export type ContentAssetMeta = {
   wordTimings?: ContentAssetWordTiming[];
   lastError?: string;
   generatedAt?: string;
+  /** Origin file uploads (kind = origin_file). */
+  originalFileName?: string;
+  size?: number;
 };
 
 /** Unified storage for origin files, covers, TTS audio, future derivatives (ADR-001). */

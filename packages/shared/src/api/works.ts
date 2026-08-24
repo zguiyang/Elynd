@@ -28,6 +28,9 @@ export const WORK_TAG_MAX_LEN = 40 as const;
 export const PART_BODY_MAX_CHARS = 500_000 as const;
 export const PART_TITLE_MAX = 200 as const;
 
+/** Max EPUB upload size (bytes) — enforced by frontend and backend. */
+export const EPUB_UPLOAD_MAX_BYTES = 50 * 1024 * 1024;
+
 const tagItemSchema = z.string().trim().min(1).max(WORK_TAG_MAX_LEN);
 const tagsSchema = z.array(tagItemSchema).max(WORK_TAG_MAX_ITEMS);
 
@@ -94,6 +97,23 @@ export const createAdminTextWorkBodySchema = z.object({
 });
 
 export type CreateAdminTextWorkBody = z.infer<typeof createAdminTextWorkBodySchema>;
+
+/** Response of `POST /api/admin/works/epub` — upload creates work + origin_file asset. */
+export const createEpubWorkResultSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  status: z.enum(WORK_STATUSES),
+  originKind: z.enum(WORK_ORIGIN_KINDS),
+  originMeta: z.record(z.string(), z.unknown()).default({}),
+  asset: z.object({
+    storageKey: z.string(),
+    mimeType: z.string(),
+    contentHash: z.string(),
+    size: z.number().int().nonnegative(),
+  }),
+});
+
+export type CreateEpubWorkResult = z.infer<typeof createEpubWorkResultSchema>;
 
 export const updateWorkBodySchema = z.object({
   title: z.string().trim().min(1).max(WORK_TITLE_MAX).optional(),

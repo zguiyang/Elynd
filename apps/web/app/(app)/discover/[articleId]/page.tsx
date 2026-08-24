@@ -1,10 +1,10 @@
 import { BookDetailPage } from '@/features/book-detail';
 
 type BookDetailRouteProps = {
-  params: Promise<{ bookId: string }>;
+  params: Promise<{ articleId: string }>;
 };
 
 export default async function BookDetailRoutePage({ params }: BookDetailRouteProps) {
-  const { bookId } = await params;
-  return <BookDetailPage bookId={bookId} />;
+  const { articleId } = await params;
+  return <BookDetailPage articleId={articleId} />;
 }

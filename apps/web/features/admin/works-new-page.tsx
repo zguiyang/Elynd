@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { ADMIN_ROUTES } from '@/constants';
-import { formatWorksApiError, uploadAdminEpub } from '@/features/admin/works-api';
+import { checkEpubWorkReuse, formatWorksApiError, uploadAdminEpub } from '@/features/admin/works-api';
 import { cn } from '@/lib/utils';
 
 const WORK_CREATION_STEPS = [
@@ -47,6 +47,12 @@ function formatFileSize(bytes: number): string {
     return `${(bytes / 1024).toFixed(1)} KB`;
   }
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+async function sha256File(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest('SHA-256', buffer);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
 function EpubDropzone({ onFile, disabled }: { onFile: (file: File) => void; disabled: boolean }) {
@@ -111,8 +117,10 @@ export function WorksNewPage() {
   const [activeStep, setActiveStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<ReadonlySet<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [isHashing, setIsHashing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [created, setCreated] = useState<CreateEpubWorkResult | null>(null);
+  const [isDuplicated, setIsDuplicated] = useState(false);
   const [selectedFileName, setSelectedFileName] = useState('');
 
   async function handleFile(file: File) {
@@ -124,20 +132,37 @@ export function WorksNewPage() {
 
     setError(null);
     setSelectedFileName(file.name);
-    setIsUploading(true);
+    setIsHashing(true);
     try {
-      const result = await uploadAdminEpub(file);
-      setCreated(result);
-      setCompletedSteps((previous) => new Set(previous).add(0));
-      toast.success('作品已创建');
+      const contentHash = await sha256File(file);
+      const reuse = await checkEpubWorkReuse({ fileName: file.name, contentHash });
+      if (reuse.duplicated) {
+        setCreated(reuse);
+        setIsDuplicated(true);
+        setCompletedSteps((previous) => new Set(previous).add(0));
+        toast.success('秒传完成');
+        return;
+      }
+
+      setIsDuplicated(false);
+      setIsUploading(true);
+      try {
+        const result = await uploadAdminEpub(file);
+        setCreated(result);
+        setCompletedSteps((previous) => new Set(previous).add(0));
+        toast.success('作品已创建');
+      } finally {
+        setIsUploading(false);
+      }
     } catch (uploadError) {
       setError(formatWorksApiError(uploadError));
     } finally {
-      setIsUploading(false);
+      setIsHashing(false);
     }
   }
 
   const activeStepId = WORK_CREATION_STEPS[activeStep]?.id ?? 'upload';
+  const isBusy = isHashing || isUploading;
 
   return (
     <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700 mx-auto w-full max-w-3xl">
@@ -189,7 +214,10 @@ export function WorksNewPage() {
                   <Check className="size-5" />
                 </div>
                 <div>
-                  <h2 className="font-heading text-base font-semibold">上传成功</h2>
+                  <h2 className="flex items-center gap-2 font-heading text-base font-semibold">
+                    {isDuplicated ? '秒传完成' : '上传成功'}
+                    {isDuplicated ? <Badge variant="secondary">检测到相同文件</Badge> : null}
+                  </h2>
                   <p className="mt-0.5 text-sm text-muted-foreground">
                     「{String(created.originMeta.originalFileName ?? created.title)}」（
                     {formatFileSize(created.asset.size)}） 已存入对象存储，作品已创建为草稿
@@ -207,6 +235,12 @@ export function WorksNewPage() {
                 <p className="text-xs text-muted-foreground">内容清洗、目录解析等后续步骤即将上线</p>
               </div>
             </div>
+          ) : isHashing ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+              <Spinner className="size-6 text-brand" />
+              <p className="font-heading text-sm font-medium">正在校验「{selectedFileName}」…</p>
+              <p className="text-xs text-muted-foreground">计算文件哈希，检查是否已存在相同文件</p>
+            </div>
           ) : isUploading ? (
             <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
               <Spinner className="size-6 text-brand" />
@@ -215,7 +249,7 @@ export function WorksNewPage() {
             </div>
           ) : (
             <div>
-              <EpubDropzone onFile={(file) => void handleFile(file)} disabled={false} />
+              <EpubDropzone onFile={(file) => void handleFile(file)} disabled={isBusy} />
               {error ? (
                 <div
                   role="alert"

@@ -10,8 +10,10 @@ import {
   adminWorkListDataSchema,
   type AdminWorkListQuery,
   adminWorkSchema,
+  type CheckEpubWorkReuseBody,
   type CreateAdminTextWorkBody,
   createEpubWorkResultSchema,
+  epubReuseResultSchema,
   type UpdatePartBody,
   type UpdateWorkBody,
 } from '@gloaming/shared/api/works';
@@ -68,6 +70,16 @@ export async function uploadAdminEpub(file: File, init?: { signal?: AbortSignal 
     method: 'POST',
     body: formData,
     schema: createEpubWorkResultSchema,
+    signal: init?.signal,
+  });
+}
+
+/** Instant-upload dedupe lookup — creates the work when the file hash already exists. */
+export async function checkEpubWorkReuse(body: CheckEpubWorkReuseBody, init?: { signal?: AbortSignal }) {
+  return apiRequest('/api/admin/works/epub/reuse', {
+    method: 'POST',
+    json: body,
+    schema: epubReuseResultSchema,
     signal: init?.signal,
   });
 }

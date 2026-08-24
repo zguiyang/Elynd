@@ -2,21 +2,17 @@
 
 import { BookOpenIcon, RefreshCwIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { APP_NAME, AUTH_ROUTES } from '@/constants';
-import { getReaderUnavailableSuggestions } from '@/features/reader/reader-mock';
 import { cn } from '@/lib/utils';
 
 type ReaderUnavailableProps = {
   onRetry?: () => void;
+  message?: string;
 };
 
-export function ReaderUnavailable({ onRetry }: ReaderUnavailableProps) {
-  const router = useRouter();
-  const suggestions = getReaderUnavailableSuggestions();
-
+export function ReaderUnavailable({ onRetry, message }: ReaderUnavailableProps) {
   return (
     <div className="flex min-h-[100dvh] w-full flex-col bg-background">
       <header className="flex h-16 items-center justify-center border-b border-border/40">
@@ -31,18 +27,15 @@ export function ReaderUnavailable({ onRetry }: ReaderUnavailableProps) {
       >
         <BookOpenIcon className="mb-6 size-20 text-muted-foreground/45 md:size-24" strokeWidth={1} aria-hidden />
         <h1 className="font-heading text-2xl font-semibold text-foreground md:text-[32px] md:leading-10">
-          无法打开这本书
+          无法打开这篇文章
         </h1>
-        <p className="mt-4 max-w-md text-base text-muted-foreground">当前无法获取书籍内容，请稍后再试。</p>
+        <p className="mt-4 max-w-md text-base text-muted-foreground">{message ?? '当前无法获取内容，请稍后再试。'}</p>
 
         <div className="mt-8 flex w-full max-w-md flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center sm:gap-4">
           <Button
             type="button"
             className="h-11 rounded-xl px-8 hover:bg-brand-deep active:scale-[0.98]"
-            onClick={() => {
-              onRetry?.();
-              router.refresh();
-            }}
+            onClick={onRetry}
           >
             <RefreshCwIcon className="size-4" strokeWidth={1.5} aria-hidden />
             重新加载
@@ -64,24 +57,6 @@ export function ReaderUnavailable({ onRetry }: ReaderUnavailableProps) {
             返回书架
           </Button>
         </div>
-
-        <section className="mt-16 w-full text-left">
-          <h2 className="font-heading text-lg font-semibold text-foreground">你也可以阅读这些内容</h2>
-          <ul className="mt-6 flex gap-4 overflow-x-auto pb-2 md:grid md:grid-cols-4 md:overflow-visible">
-            {suggestions.map((item) => (
-              <li key={item.id} className="w-40 shrink-0 md:w-auto">
-                <Link
-                  href={AUTH_ROUTES.readBook(item.id)}
-                  className="block rounded-2xl bg-paper p-3 transition-colors hover:bg-surface-container-low"
-                >
-                  <div className="aspect-[3/4] rounded-xl bg-surface-container-high" aria-hidden />
-                  <p className="font-heading mt-3 line-clamp-2 text-sm font-medium text-foreground">{item.title}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{item.author}</p>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
       </main>
     </div>
   );

@@ -1,46 +1,44 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { type UIEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
-import { APP_NAME, AUTH_ROUTES } from '@/constants';
 import { ReaderAiDrawer } from '@/features/reader/reader-ai-drawer';
 import { ReaderAiInline } from '@/features/reader/reader-ai-inline';
-import { ReaderArticle } from '@/features/reader/reader-article';
+import {
+  formatReaderApiError,
+  getReaderAudioTrack,
+  useReaderSessionQuery,
+  useUpdateReadingProgressMutation,
+} from '@/features/reader/reader-api';
+import { ReaderArticle, ReaderArticleSkeleton } from '@/features/reader/reader-article';
+import { streamAssistAsk } from '@/features/reader/reader-assist-api';
 import { ReaderChrome } from '@/features/reader/reader-chrome';
-import { getReaderChapter, getReaderSession } from '@/features/reader/reader-mock';
 import type {
   ReaderAiMessage,
   ReaderAiMode,
   ReaderAudioStatus,
   ReaderFontSize,
   ReaderSelection,
-  ReaderSession,
 } from '@/features/reader/reader-model';
 import { ReaderSelectionToolbar } from '@/features/reader/reader-selection-toolbar';
-import { ReaderToc } from '@/features/reader/reader-toc';
 import { ReaderTts } from '@/features/reader/reader-tts';
 import { ReaderUnavailable } from '@/features/reader/reader-unavailable';
 
 type ReaderPageProps = {
-  bookId: string;
-  chapterId?: string | null;
-  forceUnavailable?: boolean;
+  articleId: string;
 };
 
 type InlineAssistKind = 'explain' | 'translate' | 'ask';
 
 const FONT_CYCLE: ReaderFontSize[] = ['sm', 'md', 'lg'];
+const PROGRESS_DEBOUNCE_MS = 800;
 
-function mockAssistReply(kind: InlineAssistKind, selectedText: string, question?: string): string {
-  const clipped = `${selectedText.slice(0, 40)}${selectedText.length > 40 ? '…' : ''}`;
-  if (kind === 'translate') {
-    return `（预览译文）${selectedText}`;
-  }
-  if (kind === 'ask' || question) {
-    return `（预览）关于「${clipped}」：${question ?? '这段是什么意思？'} — 这里会结合当前章节给出简短解释，帮助你继续往下读。`;
-  }
-  return `（预览）「${clipped}」大致在描写场景与氛围。理解关键词后，试着回到原文把整段再读一遍。`;
+function actionIdForKind(kind: InlineAssistKind): 'explain' | 'meaning' | 'qa' {
+  if (kind === 'translate') return 'meaning';
+  if (kind === 'ask') return 'qa';
+  return 'explain';
 }
 
 function inlineUserPrompt(kind: InlineAssistKind, selectedText: string): string {
@@ -49,231 +47,278 @@ function inlineUserPrompt(kind: InlineAssistKind, selectedText: string): string 
   return `解释：${selectedText}`;
 }
 
-function resolveSession(bookId: string, chapterId: string | null | undefined, forceUnavailable: boolean) {
-  return getReaderSession(bookId, {
-    chapterId: chapterId ?? null,
-    forceUnavailable,
-  });
+function scrollProgressRatio(container: HTMLElement): number {
+  const { scrollTop, scrollHeight, clientHeight } = container;
+  const maxScroll = scrollHeight - clientHeight;
+  if (maxScroll <= 0) {
+    return 100;
+  }
+  return Math.min(100, Math.max(0, Math.round((scrollTop / maxScroll) * 100)));
 }
 
-export function ReaderPage({ bookId, chapterId = null, forceUnavailable = false }: ReaderPageProps) {
+export function ReaderPage({ articleId }: ReaderPageProps) {
   const router = useRouter();
-  const initial = resolveSession(bookId, chapterId, forceUnavailable);
-
-  const [session, setSession] = useState<ReaderSession | null>(initial);
-  const [phase, setPhase] = useState<'ready' | 'unavailable'>(initial ? 'ready' : 'unavailable');
+  const sessionQuery = useReaderSessionQuery(articleId);
+  const progressMutation = useUpdateReadingProgressMutation(articleId);
 
   const [isChromeVisible, setIsChromeVisible] = useState(false);
-  const [isTocOpen, setIsTocOpen] = useState(false);
   const [aiMode, setAiMode] = useState<ReaderAiMode>('closed');
   const [fontSize, setFontSize] = useState<ReaderFontSize>('md');
   const [selection, setSelection] = useState<ReaderSelection | null>(null);
   const [inlineAnswer, setInlineAnswer] = useState('');
   const [isInlineStreaming, setIsInlineStreaming] = useState(false);
-  const [messages, setMessages] = useState<ReaderAiMessage[]>(() => initial?.ai.messages ?? []);
-  const [audioStatus, setAudioStatus] = useState<ReaderAudioStatus>(() => initial?.audio.status ?? 'idle');
+  const [messages, setMessages] = useState<ReaderAiMessage[]>([]);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [conversationId, setConversationId] = useState<string | undefined>();
+  const [audioStatus, setAudioStatus] = useState<ReaderAudioStatus>('idle');
+  const [audioLabel, setAudioLabel] = useState('听读');
   const [isTapHintVisible, setIsTapHintVisible] = useState(true);
 
+  const scrollRef = useRef<HTMLElement | null>(null);
+  const progressTimerRef = useRef<number | null>(null);
+  const lastSentRatioRef = useRef<number>(-1);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const assistAbortRef = useRef<AbortController | null>(null);
+
+  const session = sessionQuery.data;
+
   useEffect(() => {
-    if (!isTapHintVisible || phase !== 'ready') return;
+    if (!isTapHintVisible || !session) return;
     const t = window.setTimeout(() => setIsTapHintVisible(false), 3500);
     return () => window.clearTimeout(t);
-  }, [isTapHintVisible, phase]);
+  }, [isTapHintVisible, session]);
 
   useEffect(() => {
-    if (audioStatus !== 'playing') return;
-    const t = window.setTimeout(() => setAudioStatus('paused'), 12000);
-    return () => window.clearTimeout(t);
-  }, [audioStatus]);
+    return () => {
+      audioRef.current?.pause();
+      assistAbortRef.current?.abort();
+      if (progressTimerRef.current != null) {
+        window.clearTimeout(progressTimerRef.current);
+      }
+    };
+  }, []);
 
-  function applyChapter(nextChapterId: string) {
-    const next = getReaderChapter(bookId, nextChapterId);
-    if (!next) return;
-    setSession(next);
-    setSelection(null);
-    setAiMode('closed');
-    setInlineAnswer('');
-  }
+  const flushProgress = useCallback(
+    (ratio: number) => {
+      if (ratio === lastSentRatioRef.current) {
+        return;
+      }
+      lastSentRatioRef.current = ratio;
+      progressMutation.mutate({ progressRatio: ratio });
+    },
+    [progressMutation],
+  );
+
+  const handleScroll = useCallback(
+    (event: UIEvent<HTMLElement>) => {
+      scrollRef.current = event.currentTarget;
+      if (progressTimerRef.current != null) {
+        window.clearTimeout(progressTimerRef.current);
+      }
+      progressTimerRef.current = window.setTimeout(() => {
+        const ratio = scrollProgressRatio(event.currentTarget);
+        flushProgress(ratio);
+      }, PROGRESS_DEBOUNCE_MS);
+    },
+    [flushProgress],
+  );
 
   function clearSelectionUi() {
     setSelection(null);
     window.getSelection()?.removeAllRanges();
   }
 
-  function openDrawer() {
-    setAiMode('drawer');
-  }
-
   function closeAiSurface() {
     setAiMode('closed');
+    assistAbortRef.current?.abort();
+  }
+
+  async function runAssist(
+    kind: InlineAssistKind,
+    selectedText: string,
+    paragraphId: string,
+    question?: string,
+    source: ReaderAiMessage['source'] = 'inline',
+  ) {
+    assistAbortRef.current?.abort();
+    const controller = new AbortController();
+    assistAbortRef.current = controller;
+
+    const actionId = actionIdForKind(kind);
+    const userContent = kind === 'ask' && question ? question : inlineUserPrompt(kind, selectedText);
+
+    if (source === 'inline') {
+      setAiMode('inline');
+      setIsInlineStreaming(true);
+      setInlineAnswer('');
+    }
+
+    try {
+      const done = await streamAssistAsk(
+        {
+          articleId,
+          actionId,
+          selection: selectedText,
+          question: kind === 'ask' ? question : undefined,
+          conversationId,
+        },
+        {
+          signal: controller.signal,
+          onDelta: source === 'inline' ? (text) => setInlineAnswer((prev) => prev + text) : undefined,
+        },
+      );
+
+      if (done.conversationId) {
+        setConversationId(done.conversationId);
+      }
+      if (done.suggestions?.length) {
+        setSuggestions(done.suggestions);
+      }
+
+      const answer = done.reply;
+      if (source === 'inline') {
+        setInlineAnswer(answer);
+        setIsInlineStreaming(false);
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `m-${Date.now()}-u`,
+          role: 'user',
+          content: userContent,
+          source,
+          anchor: { paragraphId, selectedText },
+        },
+        {
+          id: `m-${Date.now()}-a`,
+          role: 'assistant',
+          content: answer,
+          source,
+          anchor: { paragraphId, selectedText },
+        },
+      ]);
+    } catch (error) {
+      if (controller.signal.aborted) {
+        return;
+      }
+      setIsInlineStreaming(false);
+      toast.error(formatReaderApiError(error));
+    }
   }
 
   function requestInlineAssist(kind: InlineAssistKind) {
     if (!selection) return;
-    const { quote: selectedText, paragraphId } = selection;
-    const userContent = inlineUserPrompt(kind, selectedText);
-
-    setAiMode('inline');
-    setIsInlineStreaming(true);
-    setInlineAnswer('');
-
-    window.setTimeout(
-      () => {
-        const answer = mockAssistReply(kind, selectedText);
-        setInlineAnswer(answer);
-        setIsInlineStreaming(false);
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `m-${Date.now()}-u`,
-            role: 'user',
-            content: userContent,
-            source: 'inline',
-            anchor: { paragraphId, selectedText },
-          },
-          {
-            id: `m-${Date.now()}-a`,
-            role: 'assistant',
-            content: answer,
-            source: 'inline',
-            anchor: { paragraphId, selectedText },
-          },
-        ]);
-      },
-      kind === 'translate' ? 0 : 600,
-    );
+    void runAssist(kind, selection.quote, selection.paragraphId);
   }
 
   function sendDrawerMessage(text: string) {
     const selectedText = selection?.quote ?? '';
-    const paragraphId = selection?.paragraphId;
-    const reply = mockAssistReply('ask', selectedText || 'this passage', text);
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: `m-${Date.now()}-u`,
-        role: 'user',
-        content: text,
-        source: 'drawer',
-        ...(paragraphId && selectedText ? { anchor: { paragraphId, selectedText } } : {}),
-      },
-      {
-        id: `m-${Date.now()}-a`,
-        role: 'assistant',
-        content: reply,
-        source: 'drawer',
-        ...(paragraphId && selectedText ? { anchor: { paragraphId, selectedText } } : {}),
-      },
-    ]);
+    const paragraphId = selection?.paragraphId ?? session?.paragraphs[0]?.id ?? '';
+    void runAssist('ask', selectedText || text, paragraphId, text, 'drawer');
   }
 
-  function handleTtsToggle() {
-    if (audioStatus === 'idle' || audioStatus === 'ready') {
-      setAudioStatus('loading');
-      window.setTimeout(() => setAudioStatus('playing'), 500);
+  async function handleTtsToggle() {
+    if (!session) return;
+
+    if (audioStatus === 'playing') {
+      audioRef.current?.pause();
+      setAudioStatus('paused');
       return;
     }
+
     if (audioStatus === 'paused') {
+      await audioRef.current?.play();
       setAudioStatus('playing');
       return;
     }
-    if (audioStatus === 'playing') {
-      setAudioStatus('paused');
+
+    const role = session.audioAvailable.us ? 'us' : session.audioAvailable.uk ? 'uk' : null;
+    if (!role) {
+      toast.error('暂无音频');
+      return;
+    }
+
+    setAudioStatus('loading');
+    try {
+      const track = await getReaderAudioTrack(articleId, role);
+      const src = `data:${track.mimeType};base64,${track.audioBase64}`;
+      audioRef.current?.pause();
+      const audio = new Audio(src);
+      audioRef.current = audio;
+      setAudioLabel(`${track.voice} · ${role.toUpperCase()}`);
+      audio.onended = () => setAudioStatus('ready');
+      audio.onerror = () => setAudioStatus('failed');
+      await audio.play();
+      setAudioStatus('playing');
+    } catch (error) {
+      setAudioStatus('failed');
+      toast.error(formatReaderApiError(error));
     }
   }
 
-  if (phase === 'unavailable' || !session) {
+  function handleFinish() {
+    flushProgress(100);
+    progressMutation.mutate({ progressRatio: 100, status: 'completed' }, { onSuccess: () => router.push('/my-shelf') });
+  }
+
+  if (sessionQuery.isPending) {
+    return (
+      <div className="relative flex h-[100dvh] flex-col overflow-hidden bg-background">
+        <ReaderArticleSkeleton />
+      </div>
+    );
+  }
+
+  if (sessionQuery.isError || !session) {
     return (
       <ReaderUnavailable
-        onRetry={() => {
-          const next = resolveSession(bookId, chapterId, forceUnavailable);
-          if (!next) {
-            setPhase('unavailable');
-            return;
-          }
-          setSession(next);
-          setMessages(next.ai.messages);
-          setAudioStatus(next.audio.status);
-          setPhase('ready');
-        }}
+        onRetry={() => void sessionQuery.refetch()}
+        message={sessionQuery.error ? formatReaderApiError(sessionQuery.error) : undefined}
       />
     );
   }
 
-  const chapterIdx = session.chapters.findIndex((c) => c.id === session.chapter.id);
-  const progressRatio = (Math.max(0, chapterIdx) + session.progress.offsetRatio) / session.book.chapterCount;
   const isDrawerOpen = aiMode === 'drawer';
   const isInlineOpen = aiMode === 'inline' && Boolean(selection);
 
   return (
     <div className="relative flex h-[100dvh] flex-col overflow-hidden bg-background">
-      <p className="pointer-events-none absolute top-2 left-1/2 z-50 -translate-x-1/2 text-[10px] text-muted-foreground/80">
-        界面预览（假数据）· {APP_NAME}
-      </p>
-
       <ReaderChrome
         visible={isChromeVisible}
-        bookTitle={session.book.title}
-        chapterIndex={session.chapter.index}
-        chapterCount={session.book.chapterCount}
-        progressRatio={progressRatio}
+        title={session.title}
+        progressRatio={session.progress.progressRatio}
         fontSize={fontSize}
-        tocOpen={isTocOpen}
         aiOpen={isDrawerOpen}
         isListening={audioStatus === 'playing' || audioStatus === 'paused' || audioStatus === 'loading'}
         onToggleFontSize={() => setFontSize((f) => FONT_CYCLE[(FONT_CYCLE.indexOf(f) + 1) % FONT_CYCLE.length]!)}
-        onToggleToc={() => {
-          setIsTocOpen((o) => !o);
-          setIsChromeVisible(true);
-        }}
         onToggleAi={() => {
           setAiMode((m) => (m === 'drawer' ? 'closed' : 'drawer'));
           setIsChromeVisible(true);
         }}
         onToggleTts={() => {
-          handleTtsToggle();
+          void handleTtsToggle();
           setIsChromeVisible(true);
         }}
       />
 
-      <ReaderToc
-        open={isTocOpen}
-        bookTitle={session.book.title}
-        chapters={session.chapters}
-        currentChapterId={session.chapter.id}
-        onOpenChange={setIsTocOpen}
-        onSelectChapter={applyChapter}
-      />
-
       <ReaderArticle
-        bookTitle={session.book.title}
-        chapter={session.chapter}
-        chapters={session.chapters}
+        title={session.title}
+        paragraphs={session.paragraphs}
         fontSize={fontSize}
-        tocOpen={isTocOpen}
         aiDrawerOpen={isDrawerOpen}
         onSelectText={(payload) => {
           setSelection(payload);
           closeAiSurface();
           setInlineAnswer('');
         }}
-        onPrevChapter={() => {
-          const prev = session.chapters[chapterIdx - 1];
-          if (prev) applyChapter(prev.id);
-        }}
-        onNextChapter={() => {
-          const next = session.chapters[chapterIdx + 1];
-          if (next) {
-            applyChapter(next.id);
-          } else {
-            router.push(AUTH_ROUTES.shelf);
-          }
-        }}
         onCenterTap={() => {
           setIsChromeVisible((v) => !v);
           setIsTapHintVisible(false);
           if (selection && aiMode !== 'inline') clearSelectionUi();
         }}
+        onScroll={handleScroll}
+        onFinish={handleFinish}
       />
 
       <ReaderSelectionToolbar
@@ -296,24 +341,24 @@ export function ReaderPage({ bookId, chapterId = null, forceUnavailable = false 
           closeAiSurface();
           clearSelectionUi();
         }}
-        onOpenDrawer={openDrawer}
+        onOpenDrawer={() => setAiMode('drawer')}
       />
 
       <ReaderAiDrawer
         open={isDrawerOpen}
         quote={selection?.quote ?? null}
         messages={messages}
-        suggestions={session.ai.suggestions}
-        onOpenChange={(open) => (open ? openDrawer() : closeAiSurface())}
+        suggestions={suggestions}
+        onOpenChange={(open) => (open ? setAiMode('drawer') : closeAiSurface())}
         onSend={sendDrawerMessage}
       />
 
       <ReaderTts
         status={audioStatus}
-        label={session.audio.label}
-        tocOpen={isTocOpen}
+        label={audioLabel}
+        tocOpen={false}
         aiDrawerOpen={isDrawerOpen}
-        onToggle={handleTtsToggle}
+        onToggle={() => void handleTtsToggle()}
       />
 
       {isTapHintVisible ? (

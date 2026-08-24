@@ -1,8 +1,8 @@
 'use client';
 
-import type { MouseEvent } from 'react';
+import type { MouseEvent, UIEvent } from 'react';
 
-import type { ReaderChapterBody, ReaderChapterMeta, ReaderFontSize } from '@/features/reader/reader-model';
+import type { ReaderFontSize, ReaderParagraph } from '@/features/reader/reader-model';
 import { cn } from '@/lib/utils';
 
 const FONT_CLASS: Record<ReaderFontSize, string> = {
@@ -12,35 +12,26 @@ const FONT_CLASS: Record<ReaderFontSize, string> = {
 };
 
 type ReaderArticleProps = {
-  bookTitle: string;
-  chapter: ReaderChapterBody;
-  chapters: ReaderChapterMeta[];
+  title: string;
+  paragraphs: ReaderParagraph[];
   fontSize: ReaderFontSize;
-  tocOpen: boolean;
   aiDrawerOpen: boolean;
   onSelectText: (payload: { quote: string; paragraphId: string; top: number; left: number }) => void;
-  onPrevChapter: () => void;
-  onNextChapter: () => void;
   onCenterTap: () => void;
+  onScroll: (event: UIEvent<HTMLElement>) => void;
+  onFinish: () => void;
 };
 
 export function ReaderArticle({
-  bookTitle,
-  chapter,
-  chapters,
+  title,
+  paragraphs,
   fontSize,
-  tocOpen,
   aiDrawerOpen,
   onSelectText,
-  onPrevChapter,
-  onNextChapter,
   onCenterTap,
+  onScroll,
+  onFinish,
 }: ReaderArticleProps) {
-  const chapterIndex = chapters.findIndex((c) => c.id === chapter.id);
-  const hasPrev = chapterIndex > 0;
-  const hasNext = chapterIndex >= 0 && chapterIndex < chapters.length - 1;
-  const nextChapter = hasNext ? chapters[chapterIndex + 1] : null;
-
   function handleMouseUp(event: MouseEvent<HTMLElement>) {
     const selection = window.getSelection();
     const quote = selection?.toString().trim() ?? '';
@@ -49,7 +40,7 @@ export function ReaderArticle({
     }
 
     const paragraphEl = (event.target as HTMLElement).closest('[data-paragraph-id]');
-    const paragraphId = paragraphEl?.getAttribute('data-paragraph-id') ?? chapter.paragraphs[0]?.id ?? '';
+    const paragraphId = paragraphEl?.getAttribute('data-paragraph-id') ?? paragraphs[0]?.id ?? '';
     const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
     const rect = range?.getBoundingClientRect();
     if (!rect) return;
@@ -79,9 +70,9 @@ export function ReaderArticle({
     <div
       className={cn(
         'relative h-full flex-1 overflow-y-auto transition-[margin,padding] duration-300 ease-out-soft',
-        tocOpen && 'md:ml-80',
         aiDrawerOpen && 'md:pr-96',
       )}
+      onScroll={onScroll}
       onClick={handleArticleClick}
     >
       <article
@@ -92,15 +83,14 @@ export function ReaderArticle({
         onMouseUp={handleMouseUp}
       >
         <header className="mb-12 flex flex-col items-center text-center md:mb-16">
-          <p className="mb-3 text-xs font-semibold tracking-[0.05em] text-muted-foreground uppercase">{bookTitle}</p>
           <h1 className="font-heading text-3xl font-semibold tracking-tight text-foreground md:text-5xl md:leading-[1.15]">
-            {chapter.title}
+            {title}
           </h1>
           <div className="mt-8 h-px w-12 bg-outline/50" aria-hidden />
         </header>
 
         <div className="font-reading flex flex-col gap-8 text-foreground/90 text-pretty selection:bg-accent selection:text-brand-deep">
-          {chapter.paragraphs.map((p) => (
+          {paragraphs.map((p) => (
             <p key={p.id} data-paragraph-id={p.id} className="text-justify">
               {p.text}
             </p>
@@ -112,42 +102,17 @@ export function ReaderArticle({
           className="mt-16 flex flex-col items-center justify-center border-t border-border/40 pt-16 pb-8 text-center md:mt-32"
           onClick={(e) => e.stopPropagation()}
         >
-          <p className="mb-4 text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">Up Next</p>
-          {nextChapter ? (
-            <h2 className="font-heading text-2xl font-semibold text-primary md:text-[32px] md:leading-10">
-              {nextChapter.title}
-            </h2>
-          ) : (
-            <h2 className="font-heading text-2xl font-semibold text-primary md:text-[32px] md:leading-10">
-              本书已读完
-            </h2>
-          )}
-          <div className="mt-12 flex w-full max-w-sm items-center justify-between gap-6">
-            <button
-              type="button"
-              disabled={!hasPrev}
-              className={cn(
-                'group flex items-center gap-2 text-sm text-muted-foreground transition-colors',
-                hasPrev ? 'hover:text-primary' : 'cursor-not-allowed opacity-40',
-              )}
-              onClick={onPrevChapter}
-            >
-              <span aria-hidden className={cn(hasPrev && 'transition-transform group-hover:-translate-x-0.5')}>
-                ←
-              </span>
-              Previous Chapter
-            </button>
-            <button
-              type="button"
-              className="group flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-brand-deep"
-              onClick={onNextChapter}
-            >
-              {hasNext ? 'Continue Reading' : '返回书架'}
-              <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
-                →
-              </span>
-            </button>
-          </div>
+          <p className="mb-4 text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">读完了？</p>
+          <button
+            type="button"
+            className="group flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-brand-deep"
+            onClick={onFinish}
+          >
+            返回书架
+            <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
+              →
+            </span>
+          </button>
         </section>
       </article>
     </div>
@@ -157,7 +122,6 @@ export function ReaderArticle({
 export function ReaderArticleSkeleton() {
   return (
     <div className="mx-auto flex w-full max-w-reading-column flex-col gap-8 px-6 py-24 md:px-8">
-      <div className="mx-auto h-3 w-40 animate-pulse rounded bg-surface-container-high" />
       <div className="mx-auto h-10 w-3/4 max-w-md animate-pulse rounded-lg bg-surface-container-high" />
       <div className="mx-auto mt-4 h-px w-12 bg-border/60" />
       <div className="mt-8 space-y-4">

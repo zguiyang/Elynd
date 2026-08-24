@@ -1,42 +1,18 @@
-/** Reader UI types — local for mock stage; swap getters for API later. */
+/** Reader UI types — aligned with ReaderSessionData after API adapter. */
+
+import type { ArticleLevel } from '@gloaming/shared/api/articles';
+import type { ReaderAudioAvailability, ReadingProgressStatus } from '@gloaming/shared/api/reader';
 
 export type ReaderFontSize = 'sm' | 'md' | 'lg';
 
 export type ReaderAiMode = 'closed' | 'inline' | 'drawer';
 
-export type ReaderChapterStatus = 'read' | 'current' | 'unread';
-
 export type ReaderAudioStatus = 'idle' | 'loading' | 'ready' | 'playing' | 'paused' | 'failed';
-
-export type ReaderBook = {
-  id: string;
-  title: string;
-  chapterCount: number;
-};
-
-export type ReaderChapterMeta = {
-  id: string;
-  index: number;
-  title: string;
-  status: ReaderChapterStatus;
-};
 
 export type ReaderParagraph = {
   id: string;
   index: number;
   text: string;
-};
-
-export type ReaderProgress = {
-  chapterId: string;
-  paragraphId: string | null;
-  offsetRatio: number;
-  updatedAt: string;
-};
-
-export type ReaderAudio = {
-  status: ReaderAudioStatus;
-  label: string;
 };
 
 export type ReaderAiMessageSource = 'inline' | 'drawer';
@@ -49,21 +25,20 @@ export type ReaderAiMessage = {
   anchor?: { paragraphId: string; selectedText: string };
 };
 
-export type ReaderChapterBody = ReaderChapterMeta & {
-  paragraphs: ReaderParagraph[];
-};
-
 export type ReaderSession = {
-  book: ReaderBook;
-  chapter: ReaderChapterBody;
-  chapters: ReaderChapterMeta[];
-  progress: ReaderProgress;
-  audio: ReaderAudio;
-  ai: {
-    conversationId: string;
-    messages: ReaderAiMessage[];
-    suggestions: string[];
+  id: string;
+  title: string;
+  level: ArticleLevel;
+  themes: string[];
+  estimatedMinutes: number | null;
+  paragraphs: ReaderParagraph[];
+  progress: {
+    status: ReadingProgressStatus;
+    progressRatio: number;
+    lastReadAt: string;
+    completedAt: string | null;
   };
+  audioAvailable: ReaderAudioAvailability;
 };
 
 export type ReaderSelection = {

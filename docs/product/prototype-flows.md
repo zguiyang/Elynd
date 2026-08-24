@@ -11,7 +11,7 @@ Related: [`mvp-scope.md`](./mvp-scope.md) · [`mvp-1-modules.md`](./mvp-1-module
 - **Confirmed** = product decisions (auth 2026-08-05; reading loop 2026-08-20; learner IA 2026-08-20; ReadingWork domain 2026-08-24).
 - Do not revive Practice or Review screens. Do not add **user** upload to MVP 1 learner flows (Phase 1b).
 
-**Target routes:** `/read/[workId]`, `/discover/[workId]` (detail). **Current code drift:** may still use `[articleId]` until Phase 3.
+**Routes (Phase 3A):** `/read/[workId]`, `/discover/[workId]` (detail).
 
 ---
 
@@ -132,15 +132,15 @@ Auth without this loop is **infra**, not product MVP 1.
 
 ## 7. Confirmed decisions
 
-| #   | Decision                                              | When       |
-| --- | ----------------------------------------------------- | ---------- |
-| 1   | Landing primary CTA → Sign in                         | 2026-08-05 |
-| 2   | Sign-up → verify → reading home                       | 2026-08-05 |
+| #   | Decision                                                | When       |
+| --- | ------------------------------------------------------- | ---------- |
+| 1   | Landing primary CTA → Sign in                           | 2026-08-05 |
+| 2   | Sign-up → verify → reading home                         | 2026-08-05 |
 | 3   | 我的书架 continue → Reader (current ReadingWork)        | 2026-08-20 |
-| 4   | Default nav → 我的书架 + 发现 + 阅读历史              | 2026-08-20 |
-| 5   | Practice / Review not in the loop                     | 2026-08-20 |
-| 6   | MVP 1a = admin EPUB catalog → shelf; user import = 1b | 2026-08-24 |
-| 7   | Shelf source labels `官方` / `用户` (`用户` = 1b)     | 2026-08-20 |
+| 4   | Default nav → 我的书架 + 发现 + 阅读历史                | 2026-08-20 |
+| 5   | Practice / Review not in the loop                       | 2026-08-20 |
+| 6   | MVP 1a = admin EPUB catalog → shelf; user import = 1b   | 2026-08-24 |
+| 7   | Shelf source labels `官方` / `用户` (`用户` = 1b)       | 2026-08-20 |
 | 8   | No independent Search page; no **user** upload in MVP 1 | 2026-08-20 |
 
 Retired: Practice / Review nav; Dashboard / 图书馆 / 复习 / 成长 study loop.
@@ -149,12 +149,12 @@ Retired: Practice / Review nav; Dashboard / 图书馆 / 复习 / 成长 study lo
 
 ## 8. Known drift
 
-| Where           | Issue                                                                 | Action                          |
-| --------------- | --------------------------------------------------------------------- | ------------------------------- |
-| Learner mock UI | discover / shelf / history / reader use local fixtures                | Wire to target Work APIs (Ph 3) |
-| Content model   | **Code:** legacy `Article` / `article.body`                           | **Target:** ReadingWork + ReadingPart ([`feature-audit.md`](./feature-audit.md)) |
-| Routes          | **Code:** `/read/[articleId]`                                         | **Target:** `/read/[workId]`    |
-| History metrics | Mock heatmap; no year/30d volume yet                                  | Evolve when API wired           |
+| Where           | Issue                                                           | Action                    |
+| --------------- | --------------------------------------------------------------- | ------------------------- |
+| Admin EPUB      | `admin_epub` origin reserved; upload/parse pipeline not shipped | Phase 3B                  |
+| History metrics | Heatmap / year/30d volume may still evolve                      | Evolve with product needs |
+
+**Resolved (2026-08-24):** Phase 3A — Article → ReadingWork / Part / State / ContentAsset; routes `/read/[workId]`, `/discover/[workId]`; Work APIs live.
 
 **Resolved (2026-08-23):** Nav IA → 我的书架 / 发现 / 阅读历史; legacy `/dashboard`, `/progress`, `/library`, `/learn` removed.
 
@@ -164,8 +164,9 @@ Retired: Practice / Review nav; Dashboard / 图书馆 / 复习 / 成长 study lo
 
 ## 9. Change log
 
-| Date       | Change                                                                                  |
-| ---------- | --------------------------------------------------------------------------------------- |
+| Date       | Change                                                                                   |
+| ---------- | ---------------------------------------------------------------------------------------- |
+| 2026-08-24 | Phase 3A complete; known drift cleared of articleId / Article code notes.                |
 | 2026-08-24 | ReadingWork / workId routes; admin EPUB in 1a; user upload wording; known drift updated. |
-| 2026-08-23 | Frontend cleanup; nav IA matches mvp-1-modules.                                         |
-| 2026-08-20 | Learner IA locked; Practice/Review retired.                                             |
+| 2026-08-23 | Frontend cleanup; nav IA matches mvp-1-modules.                                          |
+| 2026-08-20 | Learner IA locked; Practice/Review retired.                                              |

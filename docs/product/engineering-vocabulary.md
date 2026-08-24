@@ -8,14 +8,14 @@ Gloaming uses **product language** in UX and **engineering language** in code/AP
 
 ## Domain model
 
-| Product concept (UX) | Engineering entity | Table / module (target) |
-| -------------------- | ------------------ | ----------------------- |
-| 一本书 / 一份阅读内容 | **ReadingWork** | `reading_work` |
-| 章节 / 阅读单元 | **ReadingPart** | `reading_part` |
-| 我的阅读状态 / 书架上的进度 | **ReadingState** | `reading_state` |
-| 文件 / 音频等资源 | **ContentAsset** | `content_asset` |
-| AI 对话（本书上下文） | **Conversation** | `conversation` (`subject_type = reading_work`) |
-| 我的书架 | **Shelf** | Read model — `reading_state` JOIN `reading_work` (no table) |
+| Product concept (UX)        | Engineering entity | Table / module (target)                                     |
+| --------------------------- | ------------------ | ----------------------------------------------------------- |
+| 一本书 / 一份阅读内容       | **ReadingWork**    | `reading_work`                                              |
+| 章节 / 阅读单元             | **ReadingPart**    | `reading_part`                                              |
+| 我的阅读状态 / 书架上的进度 | **ReadingState**   | `reading_state`                                             |
+| 文件 / 音频等资源           | **ContentAsset**   | `content_asset`                                             |
+| AI 对话（本书上下文）       | **Conversation**   | `conversation` (`subject_type = reading_work`)              |
+| 我的书架                    | **Shelf**          | Read model — `reading_state` JOIN `reading_work` (no table) |
 
 UI copy may still say **书 / Book / 封面 / 章节** — intentional user metaphor, not legacy engineering names.
 
@@ -23,53 +23,53 @@ UI copy may still say **书 / Book / 封面 / 章节** — intentional user meta
 
 ## Product surfaces (user-facing)
 
-| Surface | Route (target) | API (target) | Meaning |
-| ------- | -------------- | ------------ | ------- |
-| **Discover** | `/discover` | `GET /api/catalog/works` | Browse published official works |
-| **Shelf** | `/my-shelf` | `GET /api/shelf` | Continue reading + shelf items |
-| **Reader** | `/read/[workId]` | `GET /api/reader/works/:workId` | Immersive reading session |
-| **Reading History** | `/reading-history` | `GET /api/reading-history` | Calm overview of reading activity |
+| Surface             | Route              | API                             | Meaning                           |
+| ------------------- | ------------------ | ------------------------------- | --------------------------------- |
+| **Discover**        | `/discover`        | `GET /api/catalog/works`        | Browse published official works   |
+| **Shelf**           | `/my-shelf`        | `GET /api/shelf`                | Continue reading + shelf items    |
+| **Reader**          | `/read/[workId]`   | `GET /api/reader/works/:workId` | Immersive reading session         |
+| **Reading History** | `/reading-history` | `GET /api/reading-history`      | Calm overview of reading activity |
 
-Part-scoped APIs (target): TTS / translate / assist use `partId` (+ `workId` for thread scope).
-
----
-
-## Current code vs target domain
-
-| Layer | Current (pre–Phase 3) | Target (ADR-001) |
-| ----- | --------------------- | ---------------- |
-| Content root | `Article` / `article` table | **ReadingWork** / `reading_work` |
-| Text body | `article.body` (single blob) | **ReadingPart.body** (ordered parts) |
-| Shelf / progress | `reading_progress` | **ReadingState** |
-| TTS / audio rows | `article_audio` | **ContentAsset** (`kind = audio_us` / `audio_uk`) |
-| Discover API | `GET /api/articles` | `GET /api/catalog/works` |
-| Admin CMS | `/api/admin/articles` | `/api/admin/works` |
-| Reader API | `/api/reader/articles/:articleId` | `/api/reader/works/:workId` |
-| Conversation subject | `subject_type = article` | `subject_type = reading_work` |
-
-**Phase 3** executes code migration: `packages/db` → `packages/shared` → `apps/backend` → `apps/web`. Until then, shipped code may still use legacy names — **do not** extend the Article model; implement against the target names above.
+Part-scoped APIs: TTS / translate / assist use `partId` (+ `workId` for thread scope).
 
 ---
 
-## Shared API contracts (target)
+## Current code = target domain (Phase 3A)
 
-| Module | Key types (target) |
-| ------ | ------------------ |
-| `api/works` / catalog | `WorkSummary`, `DiscoverListData`, `AdminWork` |
-| `api/shelf` | `ShelfData`, `ShelfItem` (`work` + `state`, not `article`) |
-| `api/reader` | `ReaderSessionData`, `UpdateReadingStateBody`, `ReaderAudioTrack` |
-| `api/reading-history` | `ReadingHistoryData`, completions with `workId` |
-| `api/content-assets` | Part/work asset views (TTS admin) |
+| Layer                | Current (= Target, ADR-001)                       |
+| -------------------- | ------------------------------------------------- |
+| Content root         | **ReadingWork** / `reading_work`                  |
+| Text body            | **ReadingPart.body** (ordered parts)              |
+| Shelf / progress     | **ReadingState** / `reading_state`                |
+| TTS / audio rows     | **ContentAsset** (`kind = audio_us` / `audio_uk`) |
+| Discover API         | `GET /api/catalog/works`                          |
+| Admin CMS            | `/api/admin/works`                                |
+| Reader API           | `/api/reader/works/:workId`                       |
+| Conversation subject | `subject_type = reading_work`                     |
+
+**Phase 3A complete.** Do **not** reintroduce Article names — see Retired names below. **Phase 3B** = admin EPUB ingest.
+
+---
+
+## Shared API contracts
+
+| Module                | Key types                                                         |
+| --------------------- | ----------------------------------------------------------------- |
+| `api/works` / catalog | `WorkSummary`, `DiscoverListData`, `AdminWork`                    |
+| `api/shelf`           | `ShelfData`, `ShelfItem` (`work` + `state`, not `article`)        |
+| `api/reader`          | `ReaderSessionData`, `UpdateReadingStateBody`, `ReaderAudioTrack` |
+| `api/reading-history` | `ReadingHistoryData`, completions with `workId`                   |
+| `api/content-assets`  | Part/work asset views (TTS admin)                                 |
 
 ---
 
 ## Content origins (MVP)
 
-| `origin_kind` | MVP | Role |
-| ------------- | --- | ---- |
-| `admin_epub` | **Yes — primary** | Official catalog supply: upload → process → publish |
-| `admin_text` | Internal only | Dev/test seed: 1 work + 1 part (`kind=body`); **not** product identity |
-| `user_epub`, `user_pdf`, `web`, … | No (Phase 1b+) | Reserved in schema; not implemented in MVP |
+| `origin_kind`                     | MVP               | Role                                                                   |
+| --------------------------------- | ----------------- | ---------------------------------------------------------------------- |
+| `admin_epub`                      | **Yes — primary** | Official catalog supply: upload → process → publish                    |
+| `admin_text`                      | Internal only     | Dev/test seed: 1 work + 1 part (`kind=body`); **not** product identity |
+| `user_epub`, `user_pdf`, `web`, … | No (Phase 1b+)    | Reserved in schema; not implemented in MVP                             |
 
 ---
 
@@ -99,7 +99,8 @@ Part-scoped APIs (target): TTS / translate / assist use `partId` (+ `workId` for
 
 ## Revision log
 
-| Date | Change |
-| ---- | ------ |
-| 2026-08-24 | Rewritten for ReadingWork domain (ADR-001); Article retired; target API table. |
-| 2026-08-24 | Prior version listed Article as MVP 1a entity. |
+| Date       | Change                                                                          |
+| ---------- | ------------------------------------------------------------------------------- |
+| 2026-08-24 | Phase 3A complete — Current = Target API/domain table; forbidden list retained. |
+| 2026-08-24 | Rewritten for ReadingWork domain (ADR-001); Article retired; target API table.  |
+| 2026-08-24 | Prior version listed Article as MVP 1a entity.                                  |

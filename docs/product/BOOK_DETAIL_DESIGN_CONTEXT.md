@@ -64,14 +64,14 @@ Sources: `mvp-1-modules.md` §3–6, `prototype-flows.md` §3–4.
 
 ### Current shipped routes (2026-08-24)
 
-**Target (ADR-001):** `/read/[workId]`, `/discover/[workId]`. **Code drift:** still `[articleId]` until Phase 3.
+**Phase 3A:** `/read/[workId]`, `/discover/[workId]`.
 
 ```text
-我的书架 (/my-shelf)              → mock; continue / grid → /read/[workId] (code: [articleId])
-发现 (/discover)                  → mock; card → /discover/[workId] or /read/[workId]
-书籍详情 (/discover/[workId])     → mock; CTA → /read/[workId]
-阅读历史 (/reading-history)       → mock; completion row → /read/[workId]
-Reader (/read/[workId])           → mock; renders ReadingPart text (code: single article.body)
+我的书架 (/my-shelf)              → continue / grid → /read/[workId]
+发现 (/discover)                  → card → /discover/[workId] or /read/[workId]
+书籍详情 (/discover/[workId])     → CTA → /read/[workId]
+阅读历史 (/reading-history)       → completion row → /read/[workId]
+Reader (/read/[workId])           → renders current ReadingPart body
 ```
 
 Implementation: `features/shelf/**`, `features/discover/**`, `features/book-detail/**`, `features/history/**`, `features/reader/**`.
@@ -107,7 +107,7 @@ Shelf-home (今日 /dashboard)
 Reader (/learn/:articleId)
 ```
 
-### Card → click → destination (**Existing Code**)
+### Card → click → destination (**Archived UI — pre Work routes**)
 
 | Surface                        | Card shows                                                                                                        | Click goes to | Detail entry? |
 | ------------------------------ | ----------------------------------------------------------------------------------------------------------------- | ------------- | ------------- |
@@ -175,18 +175,16 @@ Conversation {
 Shelf = read model: reading_state JOIN reading_work (no shelf_entry table in MVP)
 ```
 
-**Reader session (target):** work metadata + parts[] + current part body + ReadingState + part-level `audioAvailable`.
+**Reader session:** work metadata + parts[] + current part body + ReadingState + part-level `audioAvailable`.
 
-### Current implementation drift (**Existing Code — Phase 3 migrates away**)
+### Legacy Article model — **removed in Phase 3A**
 
-Legacy **`article`** table still ships. **Do not design new UI against these fields.**
+Do **not** design new UI against these (tables dropped in migration `0013`):
 
 ```text
-article { title, body, level, themes, seriesId, … }   ← DELETE in Phase 3
-reading_progress { articleId, progressRatio }         ← DELETE in Phase 3
-article_audio { articleId, role, … }                  ← DELETE in Phase 3
-conversation.subject_type = 'article'                   ← → reading_work
-Routes/APIs: /read/[articleId], /api/articles, …       ← → workId APIs
+article { title, body, level, themes, seriesId, … }   ← DELETED
+reading_progress { articleId, progressRatio }         ← DELETED
+article_audio { articleId, role, … }                  ← DELETED
 ```
 
 Short-article era (`ARTICLE_BODY_MAX_WORDS`, level bands) is **archived product** — see [`docs/archive/feature-short-article-library-v1.md`](../archive/feature-short-article-library-v1.md).
@@ -199,24 +197,22 @@ Short-article era (`ARTICLE_BODY_MAX_WORDS`, level bands) is **archived product*
 
 ### Routes & features
 
-**Target (ADR-001):** `features/shelf/**`, `discover/**`, `book-detail/**`, `reader/**`, `history/**`; admin **`work-*`** (Phase 3).
+**Current (Phase 3A):** `features/shelf/**`, `discover/**`, `book-detail/**`, `reader/**`, `history/**`; admin **`works-*`**.
 
-**Current code drift (legacy — Phase 3):**
-
-| Area | Current path | Target |
-| ---- | ------------ | ------ |
-| Shelf | `features/shelf/**` → `/my-shelf` | Unchanged |
-| Discover | `features/discover/**` → `/discover` | Lists **ReadingWork** |
-| Book detail | `features/book-detail/**` → `/discover/[workId]` | Code: `[articleId]` |
-| Reader | `features/reader/**` → `/read/[workId]` | Code: `[articleId]`; renders **ReadingPart** |
-| History | `features/history/**` → `/reading-history` | Completions by **workId** |
-| Admin catalog | `features/admin/article-*` | → `admin/work-*`; EPUB upload |
+| Area          | Path                                                                   |
+| ------------- | ---------------------------------------------------------------------- |
+| Shelf         | `features/shelf/**` → `/my-shelf`                                      |
+| Discover      | `features/discover/**` → `/discover` (lists **ReadingWork**)           |
+| Book detail   | `features/book-detail/**` → `/discover/[workId]`                       |
+| Reader        | `features/reader/**` → `/read/[workId]` (renders **ReadingPart**)      |
+| History       | `features/history/**` → `/reading-history` (completions by **workId**) |
+| Admin catalog | `features/admin/works-*`; EPUB upload = Phase 3B                       |
 
 **Removed (do not reference):** `features/dashboard/**`, `features/library/**`, `features/learn/**`, `/progress`, `/dashboard`.
 
 ### Book Detail page
 
-**Exists (mock):** `features/book-detail/**` at `/discover/[workId]` (code: `[articleId]`). Metadata for **ReadingWork** before Reader entry.
+**Exists:** `features/book-detail/**` at `/discover/[workId]`. Metadata for **ReadingWork** before Reader entry.
 
 ### Reusable UI atoms (**Existing Code**)
 
@@ -409,19 +405,19 @@ Constraints for any Stitch / prototype pass (facts + Locked rules — still **no
 
 ## Source index
 
-| Kind                         | Path                                                                                          |
-| ---------------------------- | --------------------------------------------------------------------------------------------- |
-| Vision / principles          | `docs/product/product-vision.md`, `product-principles.md`                                     |
-| MVP capabilities             | `docs/product/mvp-scope.md`                                                                   |
-| Module IA (Locked)           | `docs/product/mvp-1-modules.md`                                                               |
-| Nav journeys (Locked)        | `docs/product/prototype-flows.md`                                                             |
-| Content / fields intent      | `docs/product/content-strategy.md`                                                            |
-| Code vs product              | `docs/product/feature-audit.md`                                                               |
-| Guardrails                   | `docs/product/design-guardrails.md`                                                           |
-| Roadmap                      | `docs/product/roadmap.md`                                                                     |
-| Visual SSOT                  | `DESIGN.md`, `apps/web/app/globals.css`                                                       |
-| Domain SSOT                  | `docs/adr/001-reading-content-domain-model.md`, `docs/product/engineering-vocabulary.md`     |
+| Kind                         | Path                                                                                                        |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Vision / principles          | `docs/product/product-vision.md`, `product-principles.md`                                                   |
+| MVP capabilities             | `docs/product/mvp-scope.md`                                                                                 |
+| Module IA (Locked)           | `docs/product/mvp-1-modules.md`                                                                             |
+| Nav journeys (Locked)        | `docs/product/prototype-flows.md`                                                                           |
+| Content / fields intent      | `docs/product/content-strategy.md`                                                                          |
+| Code vs product              | `docs/product/feature-audit.md`                                                                             |
+| Guardrails                   | `docs/product/design-guardrails.md`                                                                         |
+| Roadmap                      | `docs/product/roadmap.md`                                                                                   |
+| Visual SSOT                  | `DESIGN.md`, `apps/web/app/globals.css`                                                                     |
+| Domain SSOT                  | `docs/adr/001-reading-content-domain-model.md`, `docs/product/engineering-vocabulary.md`                    |
 | Schema (target)              | `packages/db/src/schema.ts` — **Phase 3:** `reading_work`, `reading_part`, `reading_state`, `content_asset` |
-| Shared DTOs (target)         | `@gloaming/shared/api/works`, `reader`, `shelf` — **Phase 3** retires `api/articles`         |
-| Shelf / Discover / Reader UI | `apps/web/features/shelf/**`, `discover/**`, `book-detail/**`, `reader/**`                    |
-| TextStack reference          | https://github.com/mrviduus/textstack (`BookDetailPage`, `BookDetailHero`, `BookDetail` type) |
+| Shared DTOs (target)         | `@gloaming/shared/api/works`, `reader`, `shelf` — **Phase 3** retires `api/articles`                        |
+| Shelf / Discover / Reader UI | `apps/web/features/shelf/**`, `discover/**`, `book-detail/**`, `reader/**`                                  |
+| TextStack reference          | https://github.com/mrviduus/textstack (`BookDetailPage`, `BookDetailHero`, `BookDetail` type)               |

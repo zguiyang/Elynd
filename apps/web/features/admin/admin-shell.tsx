@@ -1,15 +1,16 @@
 'use client';
 
-import { ArrowLeft, AudioLines, FileText, ScrollText, Sparkles, Volume2 } from 'lucide-react';
+import { ArrowLeft, AudioLines, FileText, Menu, ScrollText, Sparkles, Volume2 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { type ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 
 import { isAdminRole } from '@gloaming/shared/auth/policy';
 
 import { BrandMark } from '@/components/brand-mark';
 import { GlobalLoading } from '@/components/global-loading';
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ADMIN_ROUTES, AUTH_ROUTES } from '@/constants';
 import { useAuthDialog } from '@/features/auth';
 import { authClient } from '@/lib/auth';
@@ -19,11 +20,75 @@ type AdminShellProps = {
   children: ReactNode;
 };
 
+type AdminNavItem = {
+  href: string;
+  label: string;
+  icon: typeof FileText;
+  isActive: boolean;
+};
+
+function adminNavItems(pathname: string): AdminNavItem[] {
+  return [
+    {
+      href: ADMIN_ROUTES.works,
+      label: '作品',
+      icon: FileText,
+      isActive: pathname.startsWith(ADMIN_ROUTES.works),
+    },
+    {
+      href: ADMIN_ROUTES.ai,
+      label: 'AI 配置',
+      icon: Sparkles,
+      isActive: pathname === ADMIN_ROUTES.ai || pathname.startsWith(`${ADMIN_ROUTES.ai}/`),
+    },
+    {
+      href: ADMIN_ROUTES.aiLogs,
+      label: 'AI 日志',
+      icon: ScrollText,
+      isActive: pathname === ADMIN_ROUTES.aiLogs || pathname.startsWith(`${ADMIN_ROUTES.aiLogs}/`),
+    },
+    {
+      href: ADMIN_ROUTES.tts,
+      label: '语音配置',
+      icon: Volume2,
+      isActive: pathname === ADMIN_ROUTES.tts || pathname.startsWith(`${ADMIN_ROUTES.tts}/`),
+    },
+    {
+      href: ADMIN_ROUTES.ttsLogs,
+      label: '音频日志',
+      icon: AudioLines,
+      isActive: pathname === ADMIN_ROUTES.ttsLogs || pathname.startsWith(`${ADMIN_ROUTES.ttsLogs}/`),
+    },
+  ];
+}
+
+function AdminNavButton({ item, onNavigate }: { item: AdminNavItem; onNavigate?: () => void }) {
+  return (
+    <Button
+      variant="ghost"
+      nativeButton={false}
+      className={cn(
+        'h-auto justify-start gap-3 rounded-xl px-4 py-3 text-base font-normal transition-colors duration-300 ease-out-soft',
+        item.isActive
+          ? 'bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+          : 'text-muted-foreground hover:bg-surface-container-high hover:text-foreground',
+      )}
+      render={
+        <Link href={item.href} onClick={onNavigate}>
+          <item.icon data-icon="inline-start" />
+          {item.label}
+        </Link>
+      }
+    />
+  );
+}
+
 export function AdminShell({ children }: AdminShellProps) {
   const pathname = usePathname();
   const { data, isPending } = authClient.useSession();
   const { openLogin } = useAuthDialog();
   const user = data?.user ?? null;
+  const [isNavOpen, setIsNavOpen] = useState(false);
 
   if (isPending) {
     return <GlobalLoading />;
@@ -45,7 +110,7 @@ export function AdminShell({ children }: AdminShellProps) {
   if (!isAdminRole(user.role)) {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-background px-6 py-10">
-        <section className="w-full max-w-md rounded-3xl border border-border bg-card px-8 py-10 text-center">
+        <section className="w-full max-w-md rounded-2xl border border-border bg-card px-8 py-10 text-center">
           <div className="mb-8 flex justify-center">
             <BrandMark href={AUTH_ROUTES.shelf} subtitle="管理后台" />
           </div>
@@ -62,16 +127,47 @@ export function AdminShell({ children }: AdminShellProps) {
     );
   }
 
-  const isWorksActive = pathname.startsWith(ADMIN_ROUTES.works);
-  const isAiActive = pathname === ADMIN_ROUTES.ai || pathname.startsWith(`${ADMIN_ROUTES.ai}/`);
-  const isAiLogsActive = pathname === ADMIN_ROUTES.aiLogs || pathname.startsWith(`${ADMIN_ROUTES.aiLogs}/`);
-  const isTtsActive = pathname === ADMIN_ROUTES.tts || pathname.startsWith(`${ADMIN_ROUTES.tts}/`);
-  const isTtsLogsActive = pathname === ADMIN_ROUTES.ttsLogs || pathname.startsWith(`${ADMIN_ROUTES.ttsLogs}/`);
+  const navItems = adminNavItems(pathname);
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden md:flex-row">
       <header className="flex shrink-0 items-center justify-between border-b border-sidebar-border bg-sidebar px-5 py-4 md:hidden">
-        <BrandMark href={ADMIN_ROUTES.works} subtitle="内容管理" />
+        <div className="flex min-w-0 items-center gap-2">
+          <Sheet open={isNavOpen} onOpenChange={setIsNavOpen}>
+            <SheetTrigger
+              render={<Button variant="ghost" size="icon" className="shrink-0" aria-label="打开管理导航" />}
+            >
+              <Menu />
+            </SheetTrigger>
+            <SheetContent side="left" className="w-80 bg-sidebar text-sidebar-foreground" showCloseButton={false}>
+              <SheetHeader className="border-b border-sidebar-border">
+                <SheetTitle className="sr-only">管理导航</SheetTitle>
+              </SheetHeader>
+              <div className="flex min-h-0 flex-1 flex-col px-6 pt-6 pb-3">
+                <BrandMark href={ADMIN_ROUTES.works} size="md" subtitle="内容管理" className="mb-10" />
+                <nav className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
+                  {navItems.map((item) => (
+                    <AdminNavButton key={item.href} item={item} onNavigate={() => setIsNavOpen(false)} />
+                  ))}
+                </nav>
+                <Button
+                  variant="ghost"
+                  nativeButton={false}
+                  className="mt-4 h-auto justify-start gap-2 rounded-xl px-4 py-3 font-normal text-muted-foreground transition-colors duration-300 ease-out-soft hover:bg-surface-container-high hover:text-foreground"
+                  render={
+                    <Link href={AUTH_ROUTES.shelf} onClick={() => setIsNavOpen(false)}>
+                      <ArrowLeft data-icon="inline-start" />
+                      返回首页
+                    </Link>
+                  }
+                >
+                  返回首页
+                </Button>
+              </div>
+            </SheetContent>
+          </Sheet>
+          <BrandMark href={ADMIN_ROUTES.works} subtitle="内容管理" className="min-w-0" />
+        </div>
         <Button
           variant="ghost"
           size="sm"
@@ -89,83 +185,16 @@ export function AdminShell({ children }: AdminShellProps) {
           <BrandMark href={ADMIN_ROUTES.works} size="md" subtitle="内容管理" className="mb-12" />
 
           <nav className="flex flex-col gap-2">
-            <Button
-              variant="ghost"
-              nativeButton={false}
-              className={cn(
-                'h-auto justify-start gap-3 rounded-xl px-4 py-3 text-base font-normal transition-colors duration-300 ease-out-soft',
-                isWorksActive
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-              )}
-              render={<Link href={ADMIN_ROUTES.works} />}
-            >
-              <FileText data-icon="inline-start" />
-              作品
-            </Button>
-            <Button
-              variant="ghost"
-              nativeButton={false}
-              className={cn(
-                'h-auto justify-start gap-3 rounded-xl px-4 py-3 text-base font-normal transition-colors duration-300 ease-out-soft',
-                isAiActive
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-              )}
-              render={<Link href={ADMIN_ROUTES.ai} />}
-            >
-              <Sparkles data-icon="inline-start" />
-              AI 配置
-            </Button>
-            <Button
-              variant="ghost"
-              nativeButton={false}
-              className={cn(
-                'h-auto justify-start gap-3 rounded-xl px-4 py-3 text-base font-normal transition-colors duration-300 ease-out-soft',
-                isAiLogsActive
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-              )}
-              render={<Link href={ADMIN_ROUTES.aiLogs} />}
-            >
-              <ScrollText data-icon="inline-start" />
-              AI 日志
-            </Button>
-            <Button
-              variant="ghost"
-              nativeButton={false}
-              className={cn(
-                'h-auto justify-start gap-3 rounded-xl px-4 py-3 text-base font-normal transition-colors duration-300 ease-out-soft',
-                isTtsActive
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-              )}
-              render={<Link href={ADMIN_ROUTES.tts} />}
-            >
-              <Volume2 data-icon="inline-start" />
-              语音配置
-            </Button>
-            <Button
-              variant="ghost"
-              nativeButton={false}
-              className={cn(
-                'h-auto justify-start gap-3 rounded-xl px-4 py-3 text-base font-normal transition-colors duration-300 ease-out-soft',
-                isTtsLogsActive
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-              )}
-              render={<Link href={ADMIN_ROUTES.ttsLogs} />}
-            >
-              <AudioLines data-icon="inline-start" />
-              音频日志
-            </Button>
+            {navItems.map((item) => (
+              <AdminNavButton key={item.href} item={item} />
+            ))}
           </nav>
         </div>
 
         <Button
           variant="ghost"
           nativeButton={false}
-          className="mt-4 h-auto justify-start gap-2 rounded-xl px-4 py-3 font-normal text-muted-foreground transition-colors duration-300 ease-out-soft hover:bg-muted hover:text-foreground"
+          className="mt-4 h-auto justify-start gap-2 rounded-xl px-4 py-3 font-normal text-muted-foreground transition-colors duration-300 ease-out-soft hover:bg-surface-container-high hover:text-foreground"
           render={<Link href={AUTH_ROUTES.shelf} />}
         >
           <ArrowLeft data-icon="inline-start" />

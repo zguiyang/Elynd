@@ -22,18 +22,18 @@ Gloaming is not a corpus-building project, not a course publisher, and not an AI
 
 ## 2. Scope decisions (locked)
 
-| Decision | Stance |
-| -------- | ------ |
-| MVP 1 primary supply | **Admin EPUB upload** → processing → **ReadingWork** + **ReadingPart[]** → publish → Discover |
-| User import | **Phase 1b** — deferred; not required for MVP 1 |
-| Real content pipeline (EPUB) | **In MVP 1a (admin)** — clean EPUB, organize chapters, present like a book; do **not** rewrite into lessons |
-| Official catalog | Team-owned or licensed EPUBs; feed **发现** |
-| `admin_text` fallback | **Internal only** — dev/test/seed; see §2.1; **not** Short Article Library |
-| Scraping / crawl | **Out** |
-| AI rewrite into graded lessons | **Out** — content generator |
-| AI at read time | Explain / translate / TTS on **this part** of **this work** |
-| Memes / syllabus trees | **Out** of identity |
-| User-generated marketplace | **Out** of MVP 1 |
+| Decision                       | Stance                                                                                                      |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| MVP 1 primary supply           | **Admin EPUB upload** → processing → **ReadingWork** + **ReadingPart[]** → publish → Discover               |
+| User import                    | **Phase 1b** — deferred; not required for MVP 1                                                             |
+| Real content pipeline (EPUB)   | **In MVP 1a (admin)** — clean EPUB, organize chapters, present like a book; do **not** rewrite into lessons |
+| Official catalog               | Team-owned or licensed EPUBs; feed **发现**                                                                 |
+| `admin_text` fallback          | **Internal only** — dev/test/seed; see §2.1; **not** Short Article Library                                  |
+| Scraping / crawl               | **Out**                                                                                                     |
+| AI rewrite into graded lessons | **Out** — content generator                                                                                 |
+| AI at read time                | Explain / translate / TTS on **this part** of **this work**                                                 |
+| Memes / syllabus trees         | **Out** of identity                                                                                         |
+| User-generated marketplace     | **Out** of MVP 1                                                                                            |
 
 Module SSOT: [`mvp-1-modules.md`](./mvp-1-modules.md).
 
@@ -81,27 +81,27 @@ The reading atom is a **ReadingWork** the user is in the middle of—not “toda
 
 ### 4.1 Domain entities (ADR-001)
 
-| Entity | User concept | Responsibility |
-| ------ | ------------ | -------------- |
-| **ReadingWork** | 书 / 阅读内容 | Metadata, source, publish status, visibility — **no body** |
-| **ReadingPart** | 章节 | Ordered text — Reader / TTS / Translate / Assist boundary |
-| **ReadingState** | 阅读状态 / 书架成员 | Per user × work position; shelf membership |
-| **ContentAsset** | (internal) | EPUB file, cover, TTS audio, future derivatives |
-| **Conversation** | AI 帮助 | Thread scoped to `reading_work` |
-| **Shelf** | 我的书架 | Read model over `reading_state` |
+| Entity           | User concept        | Responsibility                                             |
+| ---------------- | ------------------- | ---------------------------------------------------------- |
+| **ReadingWork**  | 书 / 阅读内容       | Metadata, source, publish status, visibility — **no body** |
+| **ReadingPart**  | 章节                | Ordered text — Reader / TTS / Translate / Assist boundary  |
+| **ReadingState** | 阅读状态 / 书架成员 | Per user × work position; shelf membership                 |
+| **ContentAsset** | (internal)          | EPUB file, cover, TTS audio, future derivatives            |
+| **Conversation** | AI 帮助             | Thread scoped to `reading_work`                            |
+| **Shelf**        | 我的书架            | Read model over `reading_state`                            |
 
 **Product rule:** one kind of thing you read — not Article-the-lesson plus Book-the-other-app.
 
 ### 4.2 Work fields (intent)
 
-| Concern | Need |
-| ------- | ---- |
-| Title, description, language | Yes |
-| Ordered parts (chapters) | Yes for EPUB |
-| `origin_kind` / `origin_meta` | Yes — source SSOT |
-| Owner / visibility | Official catalog vs user (1b) |
-| Reading position | Per user × work (+ part + anchor) |
-| Tags | Optional metadata — **not** a syllabus |
+| Concern                       | Need                                   |
+| ----------------------------- | -------------------------------------- |
+| Title, description, language  | Yes                                    |
+| Ordered parts (chapters)      | Yes for EPUB                           |
+| `origin_kind` / `origin_meta` | Yes — source SSOT                      |
+| Owner / visibility            | Official catalog vs user (1b)          |
+| Reading position              | Per user × work (+ part + anchor)      |
+| Tags                          | Optional metadata — **not** a syllabus |
 
 **Forbidden on Work:** `level`, `seriesId`, `estimatedMinutes`, single `body` blob.
 
@@ -179,11 +179,11 @@ A catalog work is publishable only if:
 
 ## 7. Phase note
 
-| When | Content work |
-| ---- | ------------ |
+| When           | Content work                                                  |
+| -------------- | ------------------------------------------------------------- |
 | MVP (Phase 1a) | Admin EPUB pipeline + ReadingWork reader + companion on parts |
-| Phase 1b | User import; `用户` source label on shelf |
-| Phase 2+ | More sources via `origin_kind` — same Work/Part model |
+| Phase 1b       | User import; `用户` source label on shelf                     |
+| Phase 2+       | More sources via `origin_kind` — same Work/Part model         |
 
 Empty reader is a failure mode. Filling it with generated articles is a worse failure mode.
 
@@ -191,8 +191,8 @@ Empty reader is a failure mode. Filling it with generated articles is a worse fa
 
 ## 8. Revision log
 
-| Date | Change |
-| ---- | ------ |
+| Date       | Change                                                                          |
+| ---------- | ------------------------------------------------------------------------------- |
 | 2026-08-24 | ReadingWork domain; admin EPUB primary; admin_text internal; ADR-001 alignment. |
-| 2026-08-20 | Real content pipeline wording; 1a/1b split. |
-| 2026-08-05 | Initial curated lean library SSOT (superseded). |
+| 2026-08-20 | Real content pipeline wording; 1a/1b split.                                     |
+| 2026-08-05 | Initial curated lean library SSOT (superseded).                                 |

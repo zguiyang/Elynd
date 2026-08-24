@@ -14,6 +14,6 @@ This directory holds **historical product and feature specifications** that are 
 
 ## Contents
 
-| Doc | Why archived |
-| --- | --- |
+| Doc                                                                            | Why archived                              |
+| ------------------------------------------------------------------------------ | ----------------------------------------- |
 | [`feature-short-article-library-v1.md`](./feature-short-article-library-v1.md) | Superseded by ReadingWork model (ADR-001) |

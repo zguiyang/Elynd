@@ -33,13 +33,13 @@ Do **not** treat practice completion, review return, or words “saved” as V1 
 
 ## 3. Drift / vanity metrics (watch or de-prioritize)
 
-| Metric                         | Risk if optimized blindly           |
-| ------------------------------ | ----------------------------------- |
-| AI chat turns                  | Can rise while reading falls        |
-| Practice / review completion   | Pulls back to course/Anki identity  |
-| Streak length                  | Shame mechanics                     |
-| Words “collected”              | LingQ/Anki identity                 |
-| Time in app (undifferentiated) | Settings and menus                  |
+| Metric                                  | Risk if optimized blindly                  |
+| --------------------------------------- | ------------------------------------------ |
+| AI chat turns                           | Can rise while reading falls               |
+| Practice / review completion            | Pulls back to course/Anki identity         |
+| Streak length                           | Shame mechanics                            |
+| Words “collected”                       | LingQ/Anki identity                        |
+| Time in app (undifferentiated)          | Settings and menus                         |
 | Seed **works** opened but reader broken | Ignores whether EPUB/reader pipeline works |
 
 **Rule:** If a metric can go up while north-star minutes go down, do not use it as a primary success signal.

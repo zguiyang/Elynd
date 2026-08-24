@@ -84,11 +84,11 @@ AI’s only legal job:
 
 > **Lower friction to stay inside real content.**
 
-| Legal                                | Illegal                                          |
-| ------------------------------------ | ------------------------------------------------ |
-| Explain words/sentences in this text | Default path that skips reading via summary      |
-| Translate this sentence / passage    | Free chat as the home screen                     |
-| TTS for this text                    | Marketing “smarter models” instead of the reader |
+| Legal                                                | Illegal                                          |
+| ---------------------------------------------------- | ------------------------------------------------ |
+| Explain words/sentences in this text                 | Default path that skips reading via summary      |
+| Translate this sentence / passage                    | Free chat as the home screen                     |
+| TTS for this text                                    | Marketing “smarter models” instead of the reader |
 | Parse EPUB into **ReadingPart** chapters (admin MVP) | Rewrite the user’s book into a course            |
 
 Extra check: **If AI is off, does reading still work?** If no, redesign.
@@ -110,13 +110,13 @@ When stuck on **how** a reader control should feel, study Apple Books, TextStack
 
 ## 7. Philosophy → design cheat sheet
 
-| Belief                                     | Design implication                           |
-| ------------------------------------------ | -------------------------------------------- |
-| Language grows from understanding messages | Home is the book, not a quiz bank            |
+| Belief                                     | Design implication                             |
+| ------------------------------------------ | ---------------------------------------------- |
+| Language grows from understanding messages | Home is the book, not a quiz bank              |
 | Authentic + chosen                         | User import (1b) > catalog of **ReadingWorks** |
-| Help on the page                           | i+1 via assist, not only via baby text       |
-| Input before output                        | No speaking/practice identity in V1          |
-| Tools reduce friction                      | Lookup/translate fast, accurate, dismissible |
+| Help on the page                           | i+1 via assist, not only via baby text         |
+| Input before output                        | No speaking/practice identity in V1            |
+| Tools reduce friction                      | Lookup/translate fast, accurate, dismissible   |
 
 ---
 

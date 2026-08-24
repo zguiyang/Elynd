@@ -26,11 +26,11 @@ Per-module interaction details (controls, empty states, copy variants) are **out
 
 ## 1. How to use this doc
 
-| Role          | Use                                                                                                                                      |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Role          | Use                                                                                                                                               |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Prototype     | Keep the **module set** in §3–§4; invent **any** layout that serves those responsibilities. No Practice, Review, Search page, or **user** Upload. |
-| Product / eng | A feature belongs in MVP 1 only if it sits under a module below. Else defer or refuse.                                                   |
-| Review        | New **top-level learner module** → reject unless this doc is updated. New **layout** for an existing module → OK.                        |
+| Product / eng | A feature belongs in MVP 1 only if it sits under a module below. Else defer or refuse.                                                            |
+| Review        | New **top-level learner module** → reject unless this doc is updated. New **layout** for an existing module → OK.                                 |
 
 Capability rules (AI identity, no drills, etc.) still come from [`mvp-scope.md`](./mvp-scope.md) and [`feature-decision-guide.md`](./feature-decision-guide.md).
 
@@ -40,10 +40,10 @@ Capability rules (AI identity, no drills, etc.) still come from [`mvp-scope.md`]
 
 Full Phase 1 outcome remains “language reading environment” ([`roadmap.md`](./roadmap.md)). Split so prototypes and builds do not silently pull in import:
 
-| Slice  | Name                     | In MVP 1?                        | Outcome                                                                                              |
-| ------ | ------------------------ | -------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| **1a** | Admin EPUB catalog → shelf | **Yes — this document’s target** | Admin EPUB upload → process → publish **ReadingWork**; Discover → shelf → Reader + companion       |
-| **1b** | User import              | **No — deferred**                | User EPUB/PDF/web import; `用户` source on shelf                                                     |
+| Slice  | Name                       | In MVP 1?                        | Outcome                                                                                      |
+| ------ | -------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------- |
+| **1a** | Admin EPUB catalog → shelf | **Yes — this document’s target** | Admin EPUB upload → process → publish **ReadingWork**; Discover → shelf → Reader + companion |
+| **1b** | User import                | **No — deferred**                | User EPUB/PDF/web import; `用户` source on shelf                                             |
 
 MVP 1 prototypes and MVP 1 engineering **stop at 1a**. Do not require **user** upload to call MVP 1 “done.” Admin EPUB ops **is** in 1a.
 
@@ -137,9 +137,9 @@ Must not reintroduce Practice / Review. Must not become the reason to open the a
 
 ### 4.6 Reader — reading surface
 
-|                        |                                                                                                                                                           |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Responsibility**     | Be the **core product**: a calm, book-like place to read authentic English and resume position.                                                           |
+|                        |                                                                                                                                              |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Responsibility**     | Be the **core product**: a calm, book-like place to read authentic English and resume position.                                              |
 | **Rough capabilities** | Present **ReadingPart** text (typography / page or scroll); chapter/part navigation; restore **ReadingState** (part + anchor); quiet chrome. |
 
 Entered only via content (shelf or discover)—not a shell tab. Target route: `/read/[workId]`.
@@ -169,9 +169,9 @@ If AI is off, reading still works.
 
 ### 4.10 Admin Work Management (catalog ops — supporting)
 
-|                        |                                                                                                                                 |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| **Responsibility**     | Keep the official **ReadingWork** catalog that feeds **发现** publishable and maintainable.                                     |
+|                        |                                                                                                                                                         |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Responsibility**     | Keep the official **ReadingWork** catalog that feeds **发现** publishable and maintainable.                                                             |
 | **Rough capabilities** | Upload EPUB → processing → review **ReadingPart[]** → publish (or unpublish) official works; optional **`admin_text`** for internal dev/test seed only. |
 
 Ops tool—not the learner product identity. Not in learner shell nav. **`admin_text` is not a product capability** — see [`content-strategy.md`](./content-strategy.md) §2.1.
@@ -246,7 +246,7 @@ Before a prototype is accepted for MVP 1:
 
 | Date       | Change                                                                                                 |
 | ---------- | ------------------------------------------------------------------------------------------------------ |
-| 2026-08-24 | §4.10 Admin Work Management (EPUB upload); 1a includes admin pipeline; user upload still 1b; ADR-001.   |
+| 2026-08-24 | §4.10 Admin Work Management (EPUB upload); 1a includes admin pipeline; user upload still 1b; ADR-001.  |
 | 2026-08-20 | Clarified: modules/IA locked; **layouts not locked** (§0).                                             |
 | 2026-08-20 | Added per-module responsibility + rough capabilities (§4).                                             |
 | 2026-08-20 | Initial MVP 1 module roadmap: 1a catalog-to-shelf; 1b import deferred; nav 我的书架 / 发现 / 阅读历史. |

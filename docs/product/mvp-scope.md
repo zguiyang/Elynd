@@ -27,17 +27,17 @@ If they only sign in and see a learning-platform home, V1 has failed.
 
 ## 2. Must include
 
-| Capability | Notes |
-| ---------- | ----- |
-| Auth session | Better Auth cookie session; first-party session via Next `/api` proxy |
-| Official catalog → shelf | Browse **发现**, add to **我的书架** (creates **ReadingState**) |
-| **Admin EPUB upload** | Ops uploads EPUB → processing → **ReadingWork** + **ReadingPart[]** → publish |
-| **EPUB processing** | Clean EPUB, chapter structure — admin pipeline in MVP 1a |
-| Reading experience | Typography; chapter/part navigation; resume part + anchor |
-| AI companion | Selection → explain in **this passage**; thread on **reading_work**; not chat home |
-| Translation | Sentence or passage; bilingual view must not replace English as default |
-| TTS | Listen to **current part**; degrade if audio unavailable |
-| User import | Phase **1b** — not required to ship MVP 1 |
+| Capability               | Notes                                                                              |
+| ------------------------ | ---------------------------------------------------------------------------------- |
+| Auth session             | Better Auth cookie session; first-party session via Next `/api` proxy              |
+| Official catalog → shelf | Browse **发现**, add to **我的书架** (creates **ReadingState**)                    |
+| **Admin EPUB upload**    | Ops uploads EPUB → processing → **ReadingWork** + **ReadingPart[]** → publish      |
+| **EPUB processing**      | Clean EPUB, chapter structure — admin pipeline in MVP 1a                           |
+| Reading experience       | Typography; chapter/part navigation; resume part + anchor                          |
+| AI companion             | Selection → explain in **this passage**; thread on **reading_work**; not chat home |
+| Translation              | Sentence or passage; bilingual view must not replace English as default            |
+| TTS                      | Listen to **current part**; degrade if audio unavailable                           |
+| User import              | Phase **1b** — not required to ship MVP 1                                          |
 
 Official catalog = admin-published **ReadingWorks**. Do not block MVP on **user** upload.
 
@@ -45,21 +45,21 @@ Official catalog = admin-published **ReadingWorks**. Do not block MVP on **user*
 
 ## 3. Must not include (V1)
 
-| Out of V1 | Why |
-| --------- | --- |
-| Gamification / XP / shame streaks | Duolingo |
-| Word-count / vocab-collecting as the center | LingQ |
-| SRS / daily cards / forced review | Anki |
-| Complex review / practice / quiz | Second loop |
-| **Lesson system / course progression** | Course app identity |
-| **Practice loop** | Removed from codebase |
-| Chat as home / chatting as the core | ChatGPT reading plugin |
-| **AI-generated article library** | Content factory |
-| **Short Article Library** as product | Superseded by ReadingWork (ADR-001) |
-| Speaking training / AI avatar / video chat | Not a reading environment |
-| Public social feed | Distraction from the page |
-| Kitchen-sink control panels | Study chrome we do not copy |
-| **User upload** in learner UI | Phase 1b |
+| Out of V1                                   | Why                                 |
+| ------------------------------------------- | ----------------------------------- |
+| Gamification / XP / shame streaks           | Duolingo                            |
+| Word-count / vocab-collecting as the center | LingQ                               |
+| SRS / daily cards / forced review           | Anki                                |
+| Complex review / practice / quiz            | Second loop                         |
+| **Lesson system / course progression**      | Course app identity                 |
+| **Practice loop**                           | Removed from codebase               |
+| Chat as home / chatting as the core         | ChatGPT reading plugin              |
+| **AI-generated article library**            | Content factory                     |
+| **Short Article Library** as product        | Superseded by ReadingWork (ADR-001) |
+| Speaking training / AI avatar / video chat  | Not a reading environment           |
+| Public social feed                          | Distraction from the page           |
+| Kitchen-sink control panels                 | Study chrome we do not copy         |
+| **User upload** in learner UI               | Phase 1b                            |
 
 Do not “fill V1” with Phase 2 ideas. See [`roadmap.md`](./roadmap.md).
 
@@ -114,13 +114,13 @@ There is no required Practice or Review step.
 
 **Full SSOT:** [`content-strategy.md`](./content-strategy.md).
 
-| Topic | Stance |
-| ----- | ------ |
+| Topic        | Stance                                                          |
+| ------------ | --------------------------------------------------------------- |
 | MVP 1 supply | **Admin EPUB** → published **ReadingWork** catalog via **发现** |
-| User import | Phase **1b** |
-| Unit | **ReadingWork** (+ **ReadingPart** for text) — not a lesson |
-| `admin_text` | Internal dev/test fallback only |
-| Scraping | Out |
+| User import  | Phase **1b**                                                    |
+| Unit         | **ReadingWork** (+ **ReadingPart** for text) — not a lesson     |
+| `admin_text` | Internal dev/test fallback only                                 |
+| Scraping     | Out                                                             |
 
 ---
 
@@ -146,6 +146,6 @@ There is no required Practice or Review step.
 
 ## Revision log
 
-| Date | Change |
-| ---- | ------ |
+| Date       | Change                                                                                |
+| ---------- | ------------------------------------------------------------------------------------- |
 | 2026-08-24 | ReadingWork loop; admin EPUB must; lesson/practice/article library must-not; ADR-001. |

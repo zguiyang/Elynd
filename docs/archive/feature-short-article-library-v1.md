@@ -126,7 +126,7 @@ Optional later (not v1): in-app generate, EPUB chunk adapter, TTS, assist, pract
 
 | Date       | Change                                                                                                                              |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-08-24 | Moved to `docs/archive/`; banner added; superseded by ReadingWork (ADR-001).                                                      |
+| 2026-08-24 | Moved to `docs/archive/`; banner added; superseded by ReadingWork (ADR-001).                                                        |
 | 2026-08-11 | Initial brief from product discussion: paste-only v1; EPUB/AI deferred; weak series + soft next; pure read; suggested T1–T5 splits. |
 | 2026-08-11 | T1 shipped: article table + admin CRUD/publish + learner published reads (no UI wiring yet).                                        |
 | 2026-08-11 | T2 admin paste form wired to real article APIs (list/create/edit/publish/unpublish).                                                |

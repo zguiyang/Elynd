@@ -94,34 +94,34 @@ Shelf = reading_state JOIN reading_work (published / accessible)
 
 ### Implement in MVP (Phase 3)
 
-| Area | Scope |
-| --- | --- |
-| Schema | `reading_work`, `reading_part`, `reading_state`, `content_asset`; drop article tables |
-| Admin supply | EPUB upload → processing → parts → publish |
-| Discover / Shelf / Reader | Work + Part + State |
-| Assist / Translate / TTS | Part-scoped text |
-| `admin_text` fallback | 1 work + 1 part (`kind=body`) for dev/test only |
+| Area                      | Scope                                                                                 |
+| ------------------------- | ------------------------------------------------------------------------------------- |
+| Schema                    | `reading_work`, `reading_part`, `reading_state`, `content_asset`; drop article tables |
+| Admin supply              | EPUB upload → processing → parts → publish                                            |
+| Discover / Shelf / Reader | Work + Part + State                                                                   |
+| Assist / Translate / TTS  | Part-scoped text                                                                      |
+| `admin_text` fallback     | 1 work + 1 part (`kind=body`) for dev/test only                                       |
 
 ### Reserved, not implemented in MVP
 
-| Area | Reserved via |
-| --- | --- |
-| User EPUB/PDF upload | `owner_user_id`, `visibility=private`, `origin_kind=user_*` |
-| Web / video / podcast | `origin_kind`, `part.kind`, `part.meta` |
-| `shelf_entry` table | Can use `reading_state.added_at` until needed |
-| Vocabulary product / RAG tables | Conversation message IDs as future pointers |
+| Area                            | Reserved via                                                |
+| ------------------------------- | ----------------------------------------------------------- |
+| User EPUB/PDF upload            | `owner_user_id`, `visibility=private`, `origin_kind=user_*` |
+| Web / video / podcast           | `origin_kind`, `part.kind`, `part.meta`                     |
+| `shelf_entry` table             | Can use `reading_state.added_at` until needed               |
+| Vocabulary product / RAG tables | Conversation message IDs as future pointers                 |
 
 ---
 
 ## Alternatives considered
 
-| Option | Rejected because |
-| --- | --- |
+| Option                                          | Rejected because                                      |
+| ----------------------------------------------- | ----------------------------------------------------- |
 | Extend `article` with long body / JSON chapters | Wrong semantics; derived resources stay article-bound |
-| Parallel `document` + keep `article` | Two reading types — violates content-strategy |
-| Flat single-table content | No chapter boundary for TTS/progress/assist |
-| Separate `shelf_entry` + `reading_progress` | MVP over-design; state row suffices |
-| Keep `/api/articles` alias | Perpetuates dual model |
+| Parallel `document` + keep `article`            | Two reading types — violates content-strategy         |
+| Flat single-table content                       | No chapter boundary for TTS/progress/assist           |
+| Separate `shelf_entry` + `reading_progress`     | MVP over-design; state row suffices                   |
+| Keep `/api/articles` alias                      | Perpetuates dual model                                |
 
 ---
 
@@ -144,6 +144,6 @@ Shelf = reading_state JOIN reading_work (published / accessible)
 
 ## Revision log
 
-| Date | Change |
-| --- | --- |
+| Date       | Change                                           |
+| ---------- | ------------------------------------------------ |
 | 2026-08-24 | Initial ADR — frozen at Phase 1 domain alignment |

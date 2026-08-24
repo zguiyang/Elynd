@@ -12,10 +12,10 @@ V1 feature specification: [`mvp-scope.md`](./mvp-scope.md). Domain model: ADR-00
 
 **Module roadmap (anti-drift):** [`mvp-1-modules.md`](./mvp-1-modules.md).
 
-| Slice | Outcome |
-| ----- | ------- |
+| Slice          | Outcome                                                                                                                                                                  |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **1a (MVP 1)** | **Admin EPUB catalog pipeline:** upload → process chapters → publish **ReadingWork** → **发现** → **我的书架** → Reader with help / translate / TTS. **No user upload.** |
-| **1b** | **User import** (EPUB/PDF/web, etc.); `用户` source on shelf; same Work/Part model |
+| **1b**         | **User import** (EPUB/PDF/web, etc.); `用户` source on shelf; same Work/Part model                                                                                       |
 
 ```text
 Admin EPUB upload
@@ -62,6 +62,6 @@ Do not spec SRS, speaking, or dashboards here. If anything appears later, it mus
 
 ## Revision log
 
-| Date | Change |
-| ---- | ------ |
+| Date       | Change                                                                    |
+| ---------- | ------------------------------------------------------------------------- |
 | 2026-08-24 | Phase 1a = admin EPUB pipeline; 1b = user import only; ADR-001 alignment. |

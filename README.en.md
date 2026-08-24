@@ -18,11 +18,11 @@ Product vision and decision docs (English SSOT): [`docs/product/`](./docs/produc
 Choose authentic English → Read → Contextual help when stuck → Keep reading
 ```
 
-| Surface | Role                                          |
-| ------- | --------------------------------------------- |
+| Surface | Role                                                    |
+| ------- | ------------------------------------------------------- |
 | Shelf   | Official catalog (admin EPUB) + user import in Phase 1b |
-| Reader  | Calm reading; lookup, translation, TTS        |
-| AI      | In-page companion; disappears when not needed |
+| Reader  | Calm reading; lookup, translation, TTS                  |
+| AI      | In-page companion; disappears when not needed           |
 
 Gloaming is not Duolingo, LingQ, Anki, a ChatGPT reading plugin, or an AI content factory. V1 spec: [`docs/product/mvp-scope.md`](./docs/product/mvp-scope.md). Code vs bet: [`docs/product/feature-audit.md`](./docs/product/feature-audit.md).
 

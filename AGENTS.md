@@ -6,23 +6,23 @@ Guidance for AI coding assistants in the Gloaming repository.
 
 Canonical product docs (English): [`docs/product/`](docs/product/).
 
-| Doc                                                                                | Use                                                        |
-| ---------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| [`docs/adr/001-reading-content-domain-model.md`](docs/adr/001-reading-content-domain-model.md) | **Domain SSOT** — ReadingWork, Part, State, Asset |
-| [`docs/product/README.md`](docs/product/README.md)                                 | Index / read order                                         |
-| [`docs/product/product-vision.md`](docs/product/product-vision.md)                 | What Gloaming is / is not; personas; experience references |
-| [`docs/product/product-principles.md`](docs/product/product-principles.md)         | Reading-first decision rules                               |
-| [`docs/product/mvp-scope.md`](docs/product/mvp-scope.md)                           | V1 capability must / must-not                              |
-| [`docs/product/mvp-1-modules.md`](docs/product/mvp-1-modules.md)                   | **MVP 1 module roadmap** (prototype / build anti-drift)    |
-| [`docs/product/roadmap.md`](docs/product/roadmap.md)                               | Phase 1–3 outcomes; Phase 1a vs 1b                         |
-| [`docs/product/feature-audit.md`](docs/product/feature-audit.md)                   | KEEP / hide / migrate existing code                        |
-| [`docs/product/learning-philosophy.md`](docs/product/learning-philosophy.md)       | Why authentic reading                                      |
-| [`docs/product/content-strategy.md`](docs/product/content-strategy.md)             | ReadingWork supply; admin EPUB (MVP); user import (1b)   |
-| [`docs/product/engineering-vocabulary.md`](docs/product/engineering-vocabulary.md) | Product vs engineering naming; target APIs                 |
-| [`docs/product/prototype-flows.md`](docs/product/prototype-flows.md)               | First-time + daily reading loop                            |
-| [`docs/product/success-metrics.md`](docs/product/success-metrics.md)               | North star and drift metrics                               |
-| [`docs/product/feature-decision-guide.md`](docs/product/feature-decision-guide.md) | Should we build this?                                      |
-| [`docs/product/design-guardrails.md`](docs/product/design-guardrails.md)           | Anti-drift review                                          |
+| Doc                                                                                            | Use                                                        |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| [`docs/adr/001-reading-content-domain-model.md`](docs/adr/001-reading-content-domain-model.md) | **Domain SSOT** — ReadingWork, Part, State, Asset          |
+| [`docs/product/README.md`](docs/product/README.md)                                             | Index / read order                                         |
+| [`docs/product/product-vision.md`](docs/product/product-vision.md)                             | What Gloaming is / is not; personas; experience references |
+| [`docs/product/product-principles.md`](docs/product/product-principles.md)                     | Reading-first decision rules                               |
+| [`docs/product/mvp-scope.md`](docs/product/mvp-scope.md)                                       | V1 capability must / must-not                              |
+| [`docs/product/mvp-1-modules.md`](docs/product/mvp-1-modules.md)                               | **MVP 1 module roadmap** (prototype / build anti-drift)    |
+| [`docs/product/roadmap.md`](docs/product/roadmap.md)                                           | Phase 1–3 outcomes; Phase 1a vs 1b                         |
+| [`docs/product/feature-audit.md`](docs/product/feature-audit.md)                               | KEEP / hide / migrate existing code                        |
+| [`docs/product/learning-philosophy.md`](docs/product/learning-philosophy.md)                   | Why authentic reading                                      |
+| [`docs/product/content-strategy.md`](docs/product/content-strategy.md)                         | ReadingWork supply; admin EPUB (MVP); user import (1b)     |
+| [`docs/product/engineering-vocabulary.md`](docs/product/engineering-vocabulary.md)             | Product vs engineering naming; target APIs                 |
+| [`docs/product/prototype-flows.md`](docs/product/prototype-flows.md)                           | First-time + daily reading loop                            |
+| [`docs/product/success-metrics.md`](docs/product/success-metrics.md)                           | North star and drift metrics                               |
+| [`docs/product/feature-decision-guide.md`](docs/product/feature-decision-guide.md)             | Should we build this?                                      |
+| [`docs/product/design-guardrails.md`](docs/product/design-guardrails.md)                       | Anti-drift review                                          |
 
 **One-liner:** Gloaming is an AI Native Language Reading Environment—read authentic English like a modern ebook reader, with contextual AI when you get stuck. Not a course, not drills, not a chatbot. The core is helping people keep reading English they actually want to read.
 

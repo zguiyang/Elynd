@@ -18,11 +18,11 @@
 选择真实英文内容 → 打开阅读 → 遇到语言障碍 → 获得上下文帮助 → 继续阅读
 ```
 
-| 表面   | 说明                           |
-| ------ | ------------------------------ |
+| 表面   | 说明                                              |
+| ------ | ------------------------------------------------- |
 | Shelf  | 官方书目（admin EPUB catalog）+ Phase 1b 用户导入 |
-| Reader | 安静阅读；划词解释、翻译、TTS  |
-| AI     | 页内同伴，不需要时消失         |
+| Reader | 安静阅读；划词解释、翻译、TTS                     |
+| AI     | 页内同伴，不需要时消失                            |
 
 书灯阅读不是 Duolingo、LingQ、Anki、ChatGPT 阅读插件，也不是 AI 内容工厂。V1 规格：[`docs/product/mvp-scope.md`](./docs/product/mvp-scope.md)。代码去留：[`docs/product/feature-audit.md`](./docs/product/feature-audit.md)。
 

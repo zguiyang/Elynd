@@ -8,12 +8,15 @@ import { Button } from '@/components/ui/button';
 import {
   authDialogFieldStackClassName,
   authDialogFormClassName,
+  authDialogSectionClassName,
   authInputClassName,
   authPrimaryButtonClassName,
   Field,
 } from '@/features/auth/auth-field';
 import { AuthIntro, AuthPanel } from '@/features/auth/auth-layout';
+import { AuthSocialLoginSection } from '@/features/auth/auth-social-login';
 import { authClient, resolveMailCooldownErrorMessage } from '@/lib/auth';
+import { cn } from '@/lib/utils';
 import { signUpSchema } from '@/lib/validations';
 
 export function SignUpForm({ embedded = false }: { embedded?: boolean }) {
@@ -106,93 +109,96 @@ export function SignUpForm({ embedded = false }: { embedded?: boolean }) {
       {!embedded ? <AuthIntro title="注册" /> : null}
 
       <AuthPanel variant={embedded ? 'plain' : 'card'}>
-        <form
-          className={embedded ? authDialogFormClassName : 'space-y-4'}
-          onSubmit={(event) => {
-            event.preventDefault();
-            void form.handleSubmit();
-          }}
-        >
-          <div className={embedded ? authDialogFieldStackClassName : 'contents'}>
-            <form.Field name="name">
-              {(field) => (
-                <Field hideLabel={embedded} label="显示名" htmlFor="sign-up-name">
-                  <input
-                    id="sign-up-name"
-                    type="text"
-                    autoComplete="name"
-                    placeholder={embedded ? '显示名' : '怎么称呼你'}
-                    className={authInputClassName}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                  />
-                </Field>
+        <div className={cn(embedded && authDialogSectionClassName)}>
+          <form
+            className={embedded ? authDialogFormClassName : 'space-y-4'}
+            onSubmit={(event) => {
+              event.preventDefault();
+              void form.handleSubmit();
+            }}
+          >
+            <div className={embedded ? authDialogFieldStackClassName : 'contents'}>
+              <form.Field name="name">
+                {(field) => (
+                  <Field hideLabel={embedded} label="显示名" htmlFor="sign-up-name">
+                    <input
+                      id="sign-up-name"
+                      type="text"
+                      autoComplete="name"
+                      placeholder={embedded ? '显示名' : '怎么称呼你'}
+                      className={authInputClassName}
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(event) => field.handleChange(event.target.value)}
+                    />
+                  </Field>
+                )}
+              </form.Field>
+
+              <form.Field name="username">
+                {(field) => (
+                  <Field hideLabel={embedded} label="用户名" htmlFor="sign-up-username">
+                    <input
+                      id="sign-up-username"
+                      type="text"
+                      autoComplete="username"
+                      placeholder={embedded ? '用户名' : '英文或数字，用于登录标识'}
+                      className={authInputClassName}
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(event) => field.handleChange(event.target.value)}
+                    />
+                  </Field>
+                )}
+              </form.Field>
+
+              <form.Field name="email">
+                {(field) => (
+                  <Field hideLabel={embedded} label="邮箱" htmlFor="sign-up-email">
+                    <input
+                      id="sign-up-email"
+                      type="email"
+                      autoComplete="email"
+                      placeholder={embedded ? '邮箱' : 'you@example.com'}
+                      className={authInputClassName}
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(event) => field.handleChange(event.target.value)}
+                    />
+                  </Field>
+                )}
+              </form.Field>
+
+              <form.Field name="password">
+                {(field) => (
+                  <Field hideLabel={embedded} label="密码" htmlFor="sign-up-password">
+                    <input
+                      id="sign-up-password"
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder={embedded ? '密码（至少 8 位）' : '至少 8 位'}
+                      className={authInputClassName}
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(event) => field.handleChange(event.target.value)}
+                    />
+                  </Field>
+                )}
+              </form.Field>
+            </div>
+
+            {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
+
+            <form.Subscribe selector={(state) => state.isSubmitting}>
+              {(isSubmitting) => (
+                <Button type="submit" className={authPrimaryButtonClassName} disabled={isSubmitting}>
+                  {isSubmitting ? '创建中…' : '创建账号'}
+                </Button>
               )}
-            </form.Field>
-
-            <form.Field name="username">
-              {(field) => (
-                <Field hideLabel={embedded} label="用户名" htmlFor="sign-up-username">
-                  <input
-                    id="sign-up-username"
-                    type="text"
-                    autoComplete="username"
-                    placeholder={embedded ? '用户名' : '英文或数字，用于登录标识'}
-                    className={authInputClassName}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                  />
-                </Field>
-              )}
-            </form.Field>
-
-            <form.Field name="email">
-              {(field) => (
-                <Field hideLabel={embedded} label="邮箱" htmlFor="sign-up-email">
-                  <input
-                    id="sign-up-email"
-                    type="email"
-                    autoComplete="email"
-                    placeholder={embedded ? '邮箱' : 'you@example.com'}
-                    className={authInputClassName}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                  />
-                </Field>
-              )}
-            </form.Field>
-
-            <form.Field name="password">
-              {(field) => (
-                <Field hideLabel={embedded} label="密码" htmlFor="sign-up-password">
-                  <input
-                    id="sign-up-password"
-                    type="password"
-                    autoComplete="new-password"
-                    placeholder={embedded ? '密码（至少 8 位）' : '至少 8 位'}
-                    className={authInputClassName}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                  />
-                </Field>
-              )}
-            </form.Field>
-          </div>
-
-          {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
-
-          <form.Subscribe selector={(state) => state.isSubmitting}>
-            {(isSubmitting) => (
-              <Button type="submit" className={authPrimaryButtonClassName} disabled={isSubmitting}>
-                {isSubmitting ? '创建中…' : '创建账号'}
-              </Button>
-            )}
-          </form.Subscribe>
-        </form>
+            </form.Subscribe>
+          </form>
+          {embedded ? <AuthSocialLoginSection /> : null}
+        </div>
       </AuthPanel>
     </>
   );

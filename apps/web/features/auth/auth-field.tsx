@@ -51,3 +51,6 @@ export const authDialogFieldStackClassName = 'flex flex-col gap-3.5';
 export const authDialogFormClassName = 'flex flex-col gap-5';
 export const authDialogActionStackClassName = 'flex flex-col items-center gap-3.5 pt-0.5';
 export const authDialogSectionClassName = 'flex flex-col gap-5';
+
+export const authSocialButtonClassName =
+  'relative flex h-11 w-full items-center rounded-md border border-border/70 bg-card px-3.5 text-sm font-medium text-foreground transition-colors duration-200 ease-out-soft hover:bg-muted/50 focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/15 active:scale-[0.99]';

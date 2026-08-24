@@ -9,11 +9,13 @@ import {
   authDialogActionStackClassName,
   authDialogFieldStackClassName,
   authDialogFormClassName,
+  authDialogSectionClassName,
   authInputClassName,
   authPrimaryButtonClassName,
   Field,
 } from '@/features/auth/auth-field';
 import { AuthIntro, AuthPanel } from '@/features/auth/auth-layout';
+import { AuthSocialLoginSection } from '@/features/auth/auth-social-login';
 import { authClient, resolveMailCooldownErrorMessage } from '@/lib/auth';
 import { looksLikeEmail } from '@/lib/auth/api';
 import { isEmailNotVerifiedError } from '@/lib/auth/auth-errors';
@@ -114,82 +116,85 @@ export function SignInForm({ embedded = false, onSuccess, onSwitchMode }: SignIn
       {!embedded ? <AuthIntro title="登录" /> : null}
 
       <AuthPanel variant={embedded ? 'plain' : 'card'}>
-        <form
-          className={cn(embedded ? authDialogFormClassName : 'space-y-4')}
-          onSubmit={(event) => {
-            event.preventDefault();
-            void form.handleSubmit();
-          }}
-        >
-          <div className={embedded ? authDialogFieldStackClassName : 'contents'}>
-            <form.Field name="login">
-              {(field) => (
-                <Field hideLabel={embedded} label="邮箱或用户名" htmlFor="sign-in-login">
-                  <input
-                    id="sign-in-login"
-                    type="text"
-                    autoComplete="username"
-                    placeholder={embedded ? '邮箱或用户名' : 'you@example.com'}
-                    className={authInputClassName}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                  />
-                </Field>
-              )}
-            </form.Field>
+        <div className={cn(embedded && authDialogSectionClassName)}>
+          <form
+            className={cn(embedded ? authDialogFormClassName : 'space-y-4')}
+            onSubmit={(event) => {
+              event.preventDefault();
+              void form.handleSubmit();
+            }}
+          >
+            <div className={embedded ? authDialogFieldStackClassName : 'contents'}>
+              <form.Field name="login">
+                {(field) => (
+                  <Field hideLabel={embedded} label="邮箱或用户名" htmlFor="sign-in-login">
+                    <input
+                      id="sign-in-login"
+                      type="text"
+                      autoComplete="username"
+                      placeholder={embedded ? '邮箱或用户名' : 'you@example.com'}
+                      className={authInputClassName}
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(event) => field.handleChange(event.target.value)}
+                    />
+                  </Field>
+                )}
+              </form.Field>
 
-            <form.Field name="password">
-              {(field) => (
-                <Field
-                  hideLabel={embedded}
-                  label="密码"
-                  htmlFor="sign-in-password"
-                  labelAside={embedded ? undefined : forgotPasswordLink}
-                >
-                  <input
-                    id="sign-in-password"
-                    type="password"
-                    autoComplete="current-password"
-                    placeholder={embedded ? '密码' : '••••••••'}
-                    className={authInputClassName}
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                  />
-                </Field>
-              )}
-            </form.Field>
-          </div>
+              <form.Field name="password">
+                {(field) => (
+                  <Field
+                    hideLabel={embedded}
+                    label="密码"
+                    htmlFor="sign-in-password"
+                    labelAside={embedded ? undefined : forgotPasswordLink}
+                  >
+                    <input
+                      id="sign-in-password"
+                      type="password"
+                      autoComplete="current-password"
+                      placeholder={embedded ? '密码' : '••••••••'}
+                      className={authInputClassName}
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(event) => field.handleChange(event.target.value)}
+                    />
+                  </Field>
+                )}
+              </form.Field>
+            </div>
 
-          {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
+            {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
 
-          {isVerificationRequired ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11 w-full rounded-md"
-              disabled={isResending}
-              onClick={() => {
-                void handleResendVerification();
-              }}
-            >
-              {isResending ? '发送中…' : '重新发送验证邮件'}
-            </Button>
-          ) : null}
+            {isVerificationRequired ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 w-full rounded-md"
+                disabled={isResending}
+                onClick={() => {
+                  void handleResendVerification();
+                }}
+              >
+                {isResending ? '发送中…' : '重新发送验证邮件'}
+              </Button>
+            ) : null}
 
-          <div className={embedded ? authDialogActionStackClassName : 'contents'}>
-            <form.Subscribe selector={(state) => state.isSubmitting}>
-              {(isSubmitting) => (
-                <Button type="submit" className={authPrimaryButtonClassName} disabled={isSubmitting}>
-                  {isSubmitting ? '登录中…' : '登录'}
-                </Button>
-              )}
-            </form.Subscribe>
+            <div className={embedded ? authDialogActionStackClassName : 'contents'}>
+              <form.Subscribe selector={(state) => state.isSubmitting}>
+                {(isSubmitting) => (
+                  <Button type="submit" className={authPrimaryButtonClassName} disabled={isSubmitting}>
+                    {isSubmitting ? '登录中…' : '登录'}
+                  </Button>
+                )}
+              </form.Subscribe>
 
-            {embedded ? forgotPasswordLink : null}
-          </div>
-        </form>
+              {embedded ? forgotPasswordLink : null}
+            </div>
+          </form>
+          {embedded ? <AuthSocialLoginSection /> : null}
+        </div>
       </AuthPanel>
     </>
   );

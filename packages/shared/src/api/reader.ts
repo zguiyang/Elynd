@@ -1,0 +1,75 @@
+import { z } from 'zod';
+
+import { ARTICLE_LEVELS } from '@gloaming/shared/api/articles';
+import { ttsVoiceRoleValues, ttsWordTimingSchema } from '@gloaming/shared/api/tts';
+
+export const READING_PROGRESS_STATUSES = ['in_progress', 'completed'] as const;
+export type ReadingProgressStatus = (typeof READING_PROGRESS_STATUSES)[number];
+
+export const readingProgressSchema = z.object({
+  status: z.enum(READING_PROGRESS_STATUSES),
+  progressRatio: z.number().int().min(0).max(100),
+  lastReadAt: z.union([z.string(), z.date()]),
+  completedAt: z.union([z.string(), z.date()]).nullable(),
+});
+
+export type ReadingProgress = z.infer<typeof readingProgressSchema>;
+
+/** Compact article card for shelf / reader surfaces (no body). */
+export const readerItemSummarySchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  level: z.enum(ARTICLE_LEVELS),
+  themes: z.array(z.string()),
+  estimatedMinutes: z.number().int().nullable(),
+});
+
+export type ReaderItemSummary = z.infer<typeof readerItemSummarySchema>;
+
+export const readerAudioAvailabilitySchema = z.object({
+  us: z.boolean(),
+  uk: z.boolean(),
+});
+
+export type ReaderAudioAvailability = z.infer<typeof readerAudioAvailabilitySchema>;
+
+export const readerSessionDataSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  body: z.string(),
+  level: z.enum(ARTICLE_LEVELS),
+  themes: z.array(z.string()),
+  estimatedMinutes: z.number().int().nullable(),
+  progress: readingProgressSchema,
+  /** Ready tracks with Redis bytes still present. */
+  audioAvailable: readerAudioAvailabilitySchema,
+});
+
+export type ReaderSessionData = z.infer<typeof readerSessionDataSchema>;
+
+export const readerArticleAudioQuerySchema = z.object({
+  role: z.enum(ttsVoiceRoleValues),
+});
+
+export type ReaderArticleAudioQuery = z.infer<typeof readerArticleAudioQuerySchema>;
+
+export const readerAudioTrackSchema = z.object({
+  role: z.enum(ttsVoiceRoleValues),
+  mimeType: z.string().min(1),
+  voice: z.string().min(1),
+  audioBase64: z.string().min(1),
+  wordTimings: z.array(ttsWordTimingSchema),
+});
+
+export type ReaderAudioTrack = z.infer<typeof readerAudioTrackSchema>;
+
+export const updateReadingProgressBodySchema = z
+  .object({
+    progressRatio: z.number().int().min(0).max(100).optional(),
+    status: z.enum(READING_PROGRESS_STATUSES).optional(),
+  })
+  .refine((value) => value.progressRatio !== undefined || value.status !== undefined, {
+    message: 'At least one of progressRatio or status is required',
+  });
+
+export type UpdateReadingProgressBody = z.infer<typeof updateReadingProgressBodySchema>;

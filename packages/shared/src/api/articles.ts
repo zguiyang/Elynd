@@ -140,37 +140,37 @@ export const adminArticleListDataSchema = z.object({
 
 export type AdminArticleListData = z.infer<typeof adminArticleListDataSchema>;
 
-/** Discover catalog list sort fields (default: publishedAt). */
-export const CATALOG_ARTICLE_SORT_FIELDS = ['publishedAt', 'updatedAt', 'createdAt'] as const;
-export type CatalogArticleSortField = (typeof CATALOG_ARTICLE_SORT_FIELDS)[number];
-export const DEFAULT_CATALOG_ARTICLE_SORT_BY = 'publishedAt' as const satisfies CatalogArticleSortField;
+/** Discover list sort fields (default: publishedAt). */
+export const DISCOVER_SORT_FIELDS = ['publishedAt', 'updatedAt', 'createdAt'] as const;
+export type DiscoverSortField = (typeof DISCOVER_SORT_FIELDS)[number];
+export const DEFAULT_DISCOVER_SORT_BY = 'publishedAt' as const satisfies DiscoverSortField;
 
-const catalogThemeQuerySchema = z.preprocess(
+const discoverThemeQuerySchema = z.preprocess(
   emptyToUndefined,
   z.string().trim().min(1).max(ARTICLE_THEME_MAX_LEN).optional(),
 );
 
-const catalogSearchQuerySchema = z.preprocess(
+const discoverSearchQuerySchema = z.preprocess(
   emptyToUndefined,
   z.string().trim().min(1).max(ARTICLE_TITLE_MAX).optional(),
 );
 
-/** Query for `GET /api/articles` (pagination + sort + catalog filters). */
-export const catalogArticleListQuerySchema = paginationQuerySchema.extend({
-  sortBy: createSortByQuerySchema(CATALOG_ARTICLE_SORT_FIELDS, DEFAULT_CATALOG_ARTICLE_SORT_BY),
-  theme: catalogThemeQuerySchema,
-  q: catalogSearchQuerySchema,
+/** Query for `GET /api/articles` (pagination + sort + discover filters). */
+export const discoverListQuerySchema = paginationQuerySchema.extend({
+  sortBy: createSortByQuerySchema(DISCOVER_SORT_FIELDS, DEFAULT_DISCOVER_SORT_BY),
+  theme: discoverThemeQuerySchema,
+  q: discoverSearchQuerySchema,
 });
 
-export type CatalogArticleListQuery = z.infer<typeof catalogArticleListQuerySchema>;
+export type DiscoverListQuery = z.infer<typeof discoverListQuerySchema>;
 
-export const catalogArticleListDataSchema = z.object({
+export const discoverListDataSchema = z.object({
   items: z.array(articleSchema),
   pagination: paginationMetaSchema,
   themes: z.array(z.string()),
 });
 
-export type CatalogArticleListData = z.infer<typeof catalogArticleListDataSchema>;
+export type DiscoverListData = z.infer<typeof discoverListDataSchema>;
 
 export { buildPaginationMeta };
 

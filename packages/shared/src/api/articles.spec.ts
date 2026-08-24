@@ -4,11 +4,11 @@ import {
   adminArticleListQuerySchema,
   adminArticleSchema,
   ARTICLE_BODY_MAX_WORDS,
-  catalogArticleListQuerySchema,
   countArticleWords,
   createArticleBodySchema,
   DEFAULT_ADMIN_ARTICLE_SORT_BY,
-  DEFAULT_CATALOG_ARTICLE_SORT_BY,
+  DEFAULT_DISCOVER_SORT_BY,
+  discoverListQuerySchema,
   getPublishArticleIssues,
   updateArticleBodySchema,
 } from './articles.ts';
@@ -125,20 +125,20 @@ describe('article api contracts', () => {
     });
   });
 
-  it('defaults catalog list query pagination and sort', () => {
-    expect(catalogArticleListQuerySchema.parse({})).toEqual({
+  it('defaults discover list query pagination and sort', () => {
+    expect(discoverListQuerySchema.parse({})).toEqual({
       page: DEFAULT_PAGE,
       pageSize: DEFAULT_PAGE_SIZE,
-      sortBy: DEFAULT_CATALOG_ARTICLE_SORT_BY,
+      sortBy: DEFAULT_DISCOVER_SORT_BY,
       sortOrder: DEFAULT_SORT_ORDER,
       theme: undefined,
       q: undefined,
     });
   });
 
-  it('parses catalog list filters from query strings', () => {
+  it('parses discover list filters from query strings', () => {
     expect(
-      catalogArticleListQuerySchema.parse({
+      discoverListQuerySchema.parse({
         page: '2',
         pageSize: '5',
         sortBy: 'updatedAt',

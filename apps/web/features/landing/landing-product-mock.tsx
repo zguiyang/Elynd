@@ -77,6 +77,7 @@ export function LandingFrameImage({
         fill
         className="object-cover object-top"
         sizes="(min-width: 768px) 32rem, 100vw"
+        loading={priority ? 'eager' : 'lazy'}
         priority={priority}
       />
       {readingAssist ? <ReadingAssistOverlay /> : null}

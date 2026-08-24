@@ -1,9 +1,9 @@
 import type { ArticleLevel } from '@gloaming/shared/api/articles';
-import type { ReadingProgressStatus } from '@gloaming/shared/api/learn';
+import type { ReadingProgressStatus } from '@gloaming/shared/api/reader';
 
 /**
- * Reading-history UI prototype fixtures only — not wired to /api/progress.
- * Shape mirrors LearnTodayEntry + quiet summary fields so a future adapter
+ * Reading-history UI prototype fixtures only — not wired to /api/reading-history.
+ * Shape mirrors ShelfItem + quiet summary fields so a future adapter
  * can map API rows without rewriting cards.
  */
 

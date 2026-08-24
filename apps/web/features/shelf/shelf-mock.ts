@@ -1,7 +1,7 @@
-import type { LearnShelfData, LearnTodayEntry } from '@gloaming/shared/api/learn';
+import type { ShelfData, ShelfItem } from '@gloaming/shared/api/shelf';
 
 /** Prototype fixture for shelf has-data UI. Not wired to the API yet. */
-const mockCurrent: LearnTodayEntry = {
+const mockCurrent: ShelfItem = {
   article: {
     id: 'mock-current',
     title: 'The Art of Noticing',
@@ -17,7 +17,7 @@ const mockCurrent: LearnTodayEntry = {
   },
 };
 
-const mockItems: LearnTodayEntry[] = [
+const mockItems: ShelfItem[] = [
   {
     article: {
       id: 'mock-1',
@@ -95,12 +95,12 @@ const mockItems: LearnTodayEntry[] = [
   },
 ];
 
-export const SHELF_MOCK_POPULATED: LearnShelfData = {
+export const SHELF_MOCK_POPULATED: ShelfData = {
   current: mockCurrent,
   items: mockItems,
 };
 
-export const SHELF_MOCK_EMPTY: LearnShelfData = {
+export const SHELF_MOCK_EMPTY: ShelfData = {
   current: null,
   items: [],
 };

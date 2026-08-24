@@ -2,14 +2,14 @@
 
 import Link from 'next/link';
 
-import type { LearnTodayEntry } from '@gloaming/shared/api/learn';
+import type { ShelfItem } from '@gloaming/shared/api/shelf';
 
 import { Button } from '@/components/ui/button';
 import { AUTH_ROUTES } from '@/constants';
 import { coverTintForVolume, LEVEL_LABEL } from '@/features/content/content-model';
 import { cn } from '@/lib/utils';
 
-function articleMetaLine(entry: LearnTodayEntry): string {
+function articleMetaLine(entry: ShelfItem): string {
   const parts = [LEVEL_LABEL[entry.article.level]];
   if (entry.article.estimatedMinutes != null) {
     parts.push(`约 ${entry.article.estimatedMinutes} 分钟`);
@@ -20,7 +20,7 @@ function articleMetaLine(entry: LearnTodayEntry): string {
   return parts.join(' · ');
 }
 
-export function ShelfContinueHero({ entry }: { entry: LearnTodayEntry }) {
+export function ShelfContinueHero({ entry }: { entry: ShelfItem }) {
   const ratio = entry.progress.progressRatio;
   const tint = coverTintForVolume(entry.article.themes, entry.article.title);
 

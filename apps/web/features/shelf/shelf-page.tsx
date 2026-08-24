@@ -1,11 +1,14 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
 
+import { Button } from '@/components/ui/button';
+import { formatShelfApiError, shelfQueryKey, useShelfQuery } from '@/features/shelf/shelf-api';
 import { ShelfContinueHero } from '@/features/shelf/shelf-continue-hero';
 import { ShelfEmptyState } from '@/features/shelf/shelf-empty-state';
 import { ShelfGrid } from '@/features/shelf/shelf-grid';
-import { SHELF_MOCK_EMPTY, SHELF_MOCK_POPULATED } from '@/features/shelf/shelf-mock';
+import { ShelfSkeleton } from '@/features/shelf/shelf-skeleton';
 import { cn } from '@/lib/utils';
 
 function ShelfHeader({ hasResumeHint }: { hasResumeHint: boolean }) {
@@ -23,14 +26,70 @@ function ShelfHeader({ hasResumeHint }: { hasResumeHint: boolean }) {
   );
 }
 
-/**
- * Shelf UI prototype: local mock data only (no learn/shelf API).
- * Append `?empty=1` to preview the empty state.
- */
+function ShelfErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="mx-auto flex w-full max-w-md flex-col items-center px-2 py-16 text-center md:py-24">
+      <h2 className="font-heading text-2xl font-semibold tracking-tight text-foreground">无法加载书架</h2>
+      <p className="mt-4 text-base text-muted-foreground">{message}</p>
+      <Button className="mt-8 h-12 rounded-full px-10" onClick={onRetry}>
+        重试
+      </Button>
+    </div>
+  );
+}
+
 export function ShelfPage() {
   const searchParams = useSearchParams();
   const isEmptyPreview = searchParams.get('empty') === '1';
-  const data = isEmptyPreview ? SHELF_MOCK_EMPTY : SHELF_MOCK_POPULATED;
+  const queryClient = useQueryClient();
+  const shelfQuery = useShelfQuery({ enabled: !isEmptyPreview });
+
+  if (isEmptyPreview) {
+    return (
+      <div
+        className={cn(
+          'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700',
+          'mx-auto flex w-full max-w-5xl min-h-[70dvh] flex-col justify-center',
+        )}
+      >
+        <ShelfHeader hasResumeHint={false} />
+        <ShelfEmptyState />
+      </div>
+    );
+  }
+
+  if (shelfQuery.isPending) {
+    return (
+      <div
+        className={cn(
+          'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700',
+          'mx-auto flex w-full max-w-5xl flex-col',
+        )}
+      >
+        <ShelfHeader hasResumeHint={false} />
+        <ShelfSkeleton />
+      </div>
+    );
+  }
+
+  if (shelfQuery.isError) {
+    return (
+      <div
+        className={cn(
+          'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700',
+          'mx-auto flex w-full max-w-5xl flex-col',
+        )}
+      >
+        <ShelfHeader hasResumeHint={false} />
+        <ShelfErrorState
+          message={formatShelfApiError(shelfQuery.error)}
+          onRetry={() => void queryClient.invalidateQueries({ queryKey: shelfQueryKey.all })}
+        />
+      </div>
+    );
+  }
+
+  const data = shelfQuery.data;
   const current = data.current;
   const items = data.items;
   const isEmpty = !current && items.length === 0;
@@ -43,11 +102,6 @@ export function ShelfPage() {
         isEmpty ? 'min-h-[70dvh] justify-center' : '',
       )}
     >
-      {!isEmptyPreview ? (
-        <p className="mb-4 text-center text-xs text-muted-foreground md:mb-6">
-          界面预览（假数据）· 加 ?empty=1 看空书架
-        </p>
-      ) : null}
       {isEmpty ? (
         <>
           <ShelfHeader hasResumeHint={false} />

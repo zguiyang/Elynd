@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 
-import type { LearnTodayEntry } from '@gloaming/shared/api/learn';
+import type { ShelfItem } from '@gloaming/shared/api/shelf';
 
 import { AUTH_ROUTES } from '@/constants';
 import { coverTintForVolume, LEVEL_LABEL } from '@/features/content/content-model';
 import { cn } from '@/lib/utils';
 
-function statusLabel(entry: LearnTodayEntry): string {
+function statusLabel(entry: ShelfItem): string {
   if (entry.progress.status === 'completed') {
     return '已读完';
   }
@@ -18,7 +18,7 @@ function statusLabel(entry: LearnTodayEntry): string {
   return `已读 ${entry.progress.progressRatio}%`;
 }
 
-export function ShelfBookCard({ entry }: { entry: LearnTodayEntry }) {
+export function ShelfBookCard({ entry }: { entry: ShelfItem }) {
   const { article, progress } = entry;
   const tint = coverTintForVolume(article.themes, article.title);
   const levelLabel = LEVEL_LABEL[article.level] ?? article.level;

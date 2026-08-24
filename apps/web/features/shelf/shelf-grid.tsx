@@ -1,10 +1,10 @@
 'use client';
 
-import type { LearnTodayEntry } from '@gloaming/shared/api/learn';
+import type { ShelfItem } from '@gloaming/shared/api/shelf';
 
 import { ShelfBookCard } from '@/features/shelf/shelf-book-card';
 
-export function ShelfGrid({ items }: { items: LearnTodayEntry[] }) {
+export function ShelfGrid({ items }: { items: ShelfItem[] }) {
   if (items.length === 0) {
     return null;
   }

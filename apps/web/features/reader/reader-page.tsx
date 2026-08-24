@@ -9,6 +9,7 @@ import { ReaderAiInline } from '@/features/reader/reader-ai-inline';
 import {
   formatReaderApiError,
   getReaderAudioTrack,
+  updateReadingProgress,
   useReaderSessionQuery,
   useUpdateReadingProgressMutation,
 } from '@/features/reader/reader-api';
@@ -22,6 +23,7 @@ import type {
   ReaderFontSize,
   ReaderSelection,
 } from '@/features/reader/reader-model';
+import { pendingProgressFlushRatio, scrollProgressRatio } from '@/features/reader/reader-progress';
 import { ReaderSelectionToolbar } from '@/features/reader/reader-selection-toolbar';
 import { ReaderTts } from '@/features/reader/reader-tts';
 import { ReaderUnavailable } from '@/features/reader/reader-unavailable';
@@ -47,15 +49,6 @@ function inlineUserPrompt(kind: InlineAssistKind, selectedText: string): string 
   return `解释：${selectedText}`;
 }
 
-function scrollProgressRatio(container: HTMLElement): number {
-  const { scrollTop, scrollHeight, clientHeight } = container;
-  const maxScroll = scrollHeight - clientHeight;
-  if (maxScroll <= 0) {
-    return 100;
-  }
-  return Math.min(100, Math.max(0, Math.round((scrollTop / maxScroll) * 100)));
-}
-
 export function ReaderPage({ articleId }: ReaderPageProps) {
   const router = useRouter();
   const sessionQuery = useReaderSessionQuery(articleId);
@@ -76,6 +69,7 @@ export function ReaderPage({ articleId }: ReaderPageProps) {
 
   const scrollRef = useRef<HTMLElement | null>(null);
   const progressTimerRef = useRef<number | null>(null);
+  const pendingRatioRef = useRef<number | null>(null);
   const lastSentRatioRef = useRef<number>(-1);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const assistAbortRef = useRef<AbortController | null>(null);
@@ -95,15 +89,21 @@ export function ReaderPage({ articleId }: ReaderPageProps) {
       if (progressTimerRef.current != null) {
         window.clearTimeout(progressTimerRef.current);
       }
+      const pending = pendingProgressFlushRatio(pendingRatioRef.current, lastSentRatioRef.current);
+      if (pending != null) {
+        void updateReadingProgress(articleId, { progressRatio: pending });
+      }
     };
-  }, []);
+  }, [articleId]);
 
   const flushProgress = useCallback(
     (ratio: number) => {
       if (ratio === lastSentRatioRef.current) {
+        pendingRatioRef.current = null;
         return;
       }
       lastSentRatioRef.current = ratio;
+      pendingRatioRef.current = null;
       progressMutation.mutate({ progressRatio: ratio });
     },
     [progressMutation],
@@ -112,11 +112,12 @@ export function ReaderPage({ articleId }: ReaderPageProps) {
   const handleScroll = useCallback(
     (event: UIEvent<HTMLElement>) => {
       scrollRef.current = event.currentTarget;
+      const ratio = scrollProgressRatio(event.currentTarget);
+      pendingRatioRef.current = ratio;
       if (progressTimerRef.current != null) {
         window.clearTimeout(progressTimerRef.current);
       }
       progressTimerRef.current = window.setTimeout(() => {
-        const ratio = scrollProgressRatio(event.currentTarget);
         flushProgress(ratio);
       }, PROGRESS_DEBOUNCE_MS);
     },
@@ -258,7 +259,11 @@ export function ReaderPage({ articleId }: ReaderPageProps) {
   }
 
   function handleFinish() {
-    flushProgress(100);
+    if (progressTimerRef.current != null) {
+      window.clearTimeout(progressTimerRef.current);
+    }
+    pendingRatioRef.current = null;
+    lastSentRatioRef.current = 100;
     progressMutation.mutate({ progressRatio: 100, status: 'completed' }, { onSuccess: () => router.push('/my-shelf') });
   }
 

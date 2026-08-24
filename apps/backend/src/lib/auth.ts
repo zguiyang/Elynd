@@ -14,6 +14,7 @@ import {
 } from '@gloaming/shared/auth/policy';
 
 import { db } from '@/db';
+import { buildVerificationUrl, logDevAuthLink } from '@/lib/auth-mail';
 import { env } from '@/lib/env';
 import { authLogger } from '@/lib/logger';
 
@@ -77,7 +78,8 @@ export const auth = betterAuth({
   emailVerification: {
     sendOnSignIn: true,
     sendVerificationEmail: async ({ user, token }) => {
-      const verifyUrl = `${env.FRONTEND_URL}/verify-email?token=${encodeURIComponent(token)}`;
+      const verifyUrl = buildVerificationUrl(token);
+      logDevAuthLink({ to: user.email, url: verifyUrl, kind: 'verify-email' });
       void sendMail({
         to: user.email,
         subject: 'Verify your Gloaming email',

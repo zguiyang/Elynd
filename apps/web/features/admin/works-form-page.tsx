@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { ADMIN_ROUTES } from '@/constants';
 import {
@@ -105,13 +106,13 @@ function WorksFormEditor({ mode, workId, work, initial }: WorksFormEditorProps) 
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-6 py-10">
+    <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700 mx-auto w-full max-w-3xl">
       <div className="mb-8 flex items-center justify-between gap-4">
-        <h1 className="font-heading text-2xl font-bold">{mode === 'new' ? '新建作品' : '编辑作品'}</h1>
+        <h1 className="font-heading text-3xl font-bold tracking-tight">{mode === 'new' ? '新建作品' : '编辑作品'}</h1>
         <Button nativeButton={false} variant="ghost" render={<Link href={ADMIN_ROUTES.works}>返回列表</Link>} />
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-6 rounded-2xl border border-border bg-card px-6 py-6">
         <div className="space-y-2">
           <Label htmlFor="title">标题</Label>
           <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -135,11 +136,20 @@ function WorksFormEditor({ mode, workId, work, initial }: WorksFormEditorProps) 
         </div>
 
         <div className="flex gap-3">
-          <Button type="button" onClick={() => void handleSaveDraft()}>
+          <Button
+            type="button"
+            className="h-10 rounded-xl px-6 hover:bg-brand-deep"
+            onClick={() => void handleSaveDraft()}
+          >
             保存草稿
           </Button>
           {mode === 'edit' && workId ? (
-            <Button type="button" variant="secondary" onClick={() => void handlePublish()}>
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-10 rounded-xl px-6"
+              onClick={() => void handlePublish()}
+            >
               发布
             </Button>
           ) : null}
@@ -153,7 +163,19 @@ export function WorksFormPage({ mode, workId }: WorksFormPageProps) {
   const detailQuery = useAdminWorkQuery(workId ?? '', { enabled: mode === 'edit' && Boolean(workId) });
 
   if (mode === 'edit' && detailQuery.isPending) {
-    return <p className="p-10 text-sm text-muted-foreground">加载中…</p>;
+    return (
+      <div className="mx-auto w-full max-w-3xl">
+        <Skeleton className="mb-8 h-9 w-40 rounded-2xl" />
+        <div className="space-y-6 rounded-2xl border border-border bg-card px-6 py-6">
+          <Skeleton className="h-5 w-16" />
+          <Skeleton className="h-10 w-full rounded-xl" />
+          <Skeleton className="h-5 w-16" />
+          <Skeleton className="h-64 w-full rounded-xl" />
+          <Skeleton className="h-5 w-24" />
+          <Skeleton className="h-10 w-full rounded-xl" />
+        </div>
+      </div>
+    );
   }
 
   const work = detailQuery.data;

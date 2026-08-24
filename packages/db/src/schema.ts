@@ -455,8 +455,8 @@ export const conversationMessageRelations = relations(conversationMessage, ({ on
 }));
 
 /** One Shanghai calendar day with recorded reading activity. */
-export const learnerDay = pgTable(
-  'learner_day',
+export const readingDay = pgTable(
+  'reading_day',
   {
     id: text('id').primaryKey(),
     userId: text('user_id')
@@ -465,12 +465,12 @@ export const learnerDay = pgTable(
     localDate: date('local_date', { mode: 'string' }).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
-  (table) => [unique('learner_day_user_date_uidx').on(table.userId, table.localDate)],
+  (table) => [unique('reading_day_user_date_uidx').on(table.userId, table.localDate)],
 );
 
-export const learnerDayRelations = relations(learnerDay, ({ one }) => ({
+export const readingDayRelations = relations(readingDay, ({ one }) => ({
   user: one(user, {
-    fields: [learnerDay.userId],
+    fields: [readingDay.userId],
     references: [user.id],
   }),
 }));

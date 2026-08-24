@@ -85,6 +85,13 @@
       "when": 1787219316439,
       "tag": "0011_fast_toad_men",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1787300000000,
+      "tag": "0012_reading_day_rename",
+      "breakpoints": true
     }
   ]
 }

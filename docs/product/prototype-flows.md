@@ -178,7 +178,7 @@ Superseded (2026-08-20): “Import + parse are required before calling V1 done�
 | --------------- | -------------------------------------------------------------------- | ---------------------------------------------- |
 | Learner mock UI | discover / shelf / history / reader / detail use local fixtures only | Wire to backend APIs when ready                |
 | Content atom    | Short curated `article.body`                                         | Document / chapters later (feature-audit §4.1) |
-| History metrics | Mock heatmap; no year/30d volume yet                                 | Evolve when `/api/progress` is wired           |
+| History metrics | Mock heatmap; no year/30d volume yet                                 | Evolve when `/api/reading-history` is wired    |
 
 **Resolved (2026-08-23):** App nav → 我的书架 / 发现 / 阅读历史; home → `/my-shelf`; AppShell → `features/app-shell/`; old routes `/dashboard`, `/progress`, `/library`, `/learn` removed (404).
 

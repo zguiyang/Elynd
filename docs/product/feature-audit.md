@@ -8,7 +8,7 @@ Audit date: **2026-08-20** (frontend learner cleanup: **2026-08-23**). Paths bel
 
 **MVP 1 module SSOT (prototypes / build scope):** [`mvp-1-modules.md`](./mvp-1-modules.md) — Phase **1a** = catalog → shelf; **1b** = import (deferred).
 
-**2026-08-20 removal:** Practice and Review stacks were **deleted**. **2026-08-23:** Learner **Progress / 成长 UI** (`features/progress/**`), **Library page** (`features/library/**`), and routes **`/dashboard`**, **`/progress`**, **`/library`**, **`/learn`** (never restored) were **removed** from the web app. **阅读历史** is `features/history/**` (mock UI). Backend **`/api/progress`** and **`/api/learn/*`** remain for future wiring.
+**2026-08-24 domain naming:** Backend uses **`/api/shelf`**, **`/api/reader/*`**, **`/api/reading-history`** (see [`engineering-vocabulary.md`](./engineering-vocabulary.md)). Legacy **`/api/learn/*`** and **`/api/progress`** are removed.
 
 ---
 
@@ -30,30 +30,30 @@ Audit date: **2026-08-20** (frontend learner cleanup: **2026-08-23**). Paths bel
 | Area                    | Where it lives                                                             | Why it stays                                                                           |
 | ----------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | Auth                    | Better Auth; `apps/web/features/auth/**`; Hono `/api/auth/*`               | Needed to have a shelf and resume                                                      |
-| Reader (immersive)      | `features/reader/**`; route `/read/[bookId]`                               | Core read surface (mock UI; backend learn APIs not wired yet)                          |
-| Book detail             | `features/book-detail/**`; route `/discover/[bookId]`                      | Catalog choice + entry to Reader (mock UI)                                             |
+| Reader (immersive)      | `features/reader/**`; route `/read/[articleId]`                            | Core read surface (mock UI; backend reader APIs not wired yet)                         |
+| Book detail             | `features/book-detail/**`; route `/discover/[articleId]`                   | Discover choice + entry to Reader (mock UI)                                            |
 | Discover                | `features/discover/**`; route `/discover`                                  | Official catalog (mock UI)                                                             |
 | My shelf                | `features/shelf/**`; route `/my-shelf`                                     | Default home after auth (mock UI)                                                      |
-| Reading history         | `features/history/**`; route `/reading-history`                            | Calm overview over time (mock UI; backend `/api/progress` not wired yet)               |
+| Reading history         | `features/history/**`; route `/reading-history`                            | Calm overview over time (mock UI; backend `/api/reading-history` not wired yet)        |
 | Shared content chrome   | `features/content/content-model.ts`                                        | Level labels, cover tints, body paragraph split — used by discover/shelf/history/admin |
 | App shell               | `features/app-shell/app-shell.tsx`; `app/(app)/layout.tsx`                 | Logged-in chrome: SiteNav + MobileBottomNav + session gate                             |
 | AI assist (in-text)     | `features/reader/reader-ai-*` (mock); `apps/backend/src/modules/assist/**` | Companion on this text                                                                 |
 | Assist transcripts      | `conversation` / `conversation_message`; `modules/conversations/**`        | History of help **for this article**—not a chat home                                   |
 | Translation / bilingual | `modules/translate/**`; reader bilingual toggle (mock)                     | V1 must                                                                                |
 | TTS + word timings      | `modules/tts/**`, `modules/article-audio/**`                               | V1 must                                                                                |
-| Reading position        | `reading_progress`; backend learn progress PATCH                           | Resume the book                                                                        |
-| Progress API            | `modules/progress/**`; `GET /api/progress`                                 | Backend for reading-history metrics—not a learner page anymore                         |
+| Reading position        | `reading_progress`; backend reader progress PATCH                          | Resume the book                                                                        |
+| Reading history API     | `modules/reading-history/**`; `GET /api/reading-history`                   | Backend for reading-history metrics—not a learner page anymore                         |
 | LLM / TTS admin + logs  | `features/admin/ai-*`, `tts-*`; invocation logs                            | Ops for the companion, not a learner feature                                           |
 | Admin article CMS       | `features/admin/article-*` (body editor, publish)                          | Keep as **seed / ops** until import exists; not the product identity                   |
 
 ### 2.2 REFACTOR
 
-| Area                     | Where it lives                                                                 | What’s wrong                                        | Direction                                                   |
-| ------------------------ | ------------------------------------------------------------------------------ | --------------------------------------------------- | ----------------------------------------------------------- |
-| Content atom             | `article` table: one short `body`, `level`, `themes`, `estimatedMinutes`       | Built for **curated 5–20 min articles**, not ebooks | Evolve toward a **document** with parts/chapters—see §4.1   |
-| Wire mock → API          | discover, shelf, history, reader, book-detail                                  | UI prototypes only                                  | Connect to `/api/articles`, `/api/learn/*`, `/api/progress` |
-| Short-article library v1 | [`feature-short-article-library-v1.md`](./feature-short-article-library-v1.md) | Shipped the **old** atom                            | **Archived**; new supply is import-first                    |
-| History metrics copy     | `features/history/**`                                                          | Mock data; “learning days” wording may linger       | Evolve toward reading minutes / volume when API wired       |
+| Area                     | Where it lives                                                                 | What’s wrong                                        | Direction                                                                         |
+| ------------------------ | ------------------------------------------------------------------------------ | --------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Content atom             | `article` table: one short `body`, `level`, `themes`, `estimatedMinutes`       | Built for **curated 5–20 min articles**, not ebooks | Evolve toward a **document** with parts/chapters—see §4.1                         |
+| Wire mock → API          | discover, shelf, history, reader, book-detail                                  | UI prototypes only                                  | Connect to `/api/articles`, `/api/shelf`, `/api/reader/*`, `/api/reading-history` |
+| Short-article library v1 | [`feature-short-article-library-v1.md`](./feature-short-article-library-v1.md) | Shipped the **old** atom                            | **Archived**; new supply is import-first                                          |
+| History metrics copy     | `features/history/**`                                                          | Mock data; “learning days” wording may linger       | Evolve toward reading minutes / volume when API wired                             |
 
 ### 2.3 POSTPONE (leave code; hide from V1 loop)
 
@@ -71,7 +71,7 @@ Audit date: **2026-08-20** (frontend learner cleanup: **2026-08-23**). Paths bel
 | **Review system**            | `/review`; `modules/review/**`; admin review workspace; materialize job; tables `review_*`                                                                | Daily SRS-shaped queue                                             |
 | Practice / review shell CTAs | Dashboard「继续练习」; Room「练几道小题」; nav「复习」                                                                                                    | Forced a second activity                                           |
 | **Learner Library page**     | `features/library/**`; route `/library`                                                                                                                   | Replaced by **发现** (`/discover`) — deleted 2026-08-23            |
-| **Learner learn-room UI**    | `features/learn/**`; route `/learn/:id`                                                                                                                   | Replaced by **Reader** (`/read/[bookId]`) — deleted earlier        |
+| **Learner learn-room UI**    | `features/learn/**`; route `/learn/:id`                                                                                                                   | Replaced by **Reader** (`/read/[articleId]`) — deleted earlier     |
 | **Progress / 成长 page**     | `features/progress/**`; route `/progress`                                                                                                                 | Replaced by **阅读历史** (`/reading-history`) — deleted 2026-08-23 |
 | **Dashboard home route**     | `/dashboard`                                                                                                                                              | Replaced by **我的书架** (`/my-shelf`) — deleted 2026-08-23        |
 
@@ -84,7 +84,7 @@ There is **no separate vocabulary product** (no word-bank / SRS tables). Lookup 
 | Content import          | **Absent.** Admin paste-only CMS. Learners cannot upload.                                   |
 | Ebook parsing           | **Absent.** Explicitly deferred in old content strategy.                                    |
 | Long-form reading       | Reader assumes one short `body`. No chapter TOC, no EPUB structure.                         |
-| User shelf (learner UI) | **Mock** at `/my-shelf`. Backend `/api/learn/shelf` exists but is not wired.                |
+| User shelf (learner UI) | **Mock** at `/my-shelf`. Backend `/api/shelf` exists but is not wired.                      |
 | Discover catalog        | **Mock** at `/discover`. Backend `GET /api/articles` exists but is not wired on learner UI. |
 
 TTS, translation, and assist exist but are wired to the short-article atom—they need to work on **imported documents**, not only CMS articles.
@@ -107,7 +107,7 @@ Practice/Review **removal is done** (2026-08-20). Remaining work is the reading 
 | ---- | --------------- | -------------------------------------------------------------------- |
 | 1    | Reading home    | **我的书架** = continue reading + shelf (mock → API)                 |
 | 2    | Document model  | Import EPUB/text → readable document (see §4.1)                      |
-| 3    | User shelf      | Wire shelf to `/api/learn/shelf` (+ optional seed via discover)      |
+| 3    | User shelf      | Wire shelf to `/api/shelf` (+ optional seed via discover)            |
 | 4    | Same companion  | Assist, translate, TTS operate on the current document/chapter       |
 | 5    | Progress polish | Optional: year / 30-day reading volume copy—without drills           |
 | 6    | Copy            | Landing + READMEs already pointed at vision; keep UI Chinese in sync |
@@ -143,7 +143,7 @@ Large schema change → Ask before migrate (`core`).
 | `assist`, `translate`, `tts`, `article-audio` | Wire mock discover/shelf/history/reader | Admin practice/review generate  |
 | `ai` gateway, prompts for assist/translate    | Import/parse (new, V1)                  |                                 |
 | Auth, admin LLM/TTS config                    | Conversations stay document-scoped      |                                 |
-| `modules/progress` (API)                      | History UI metrics copy                 | Learner `/progress` page        |
+| `modules/reading-history` (API)               | History UI metrics copy                 | Learner `/progress` page        |
 
 ### 4.3 Prototypes
 

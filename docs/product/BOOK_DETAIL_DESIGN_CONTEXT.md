@@ -62,14 +62,14 @@ Returning users’ first action: **continue the unfinished text** on **我的书
 
 Sources: `mvp-1-modules.md` §3–6, `prototype-flows.md` §3–4.
 
-### Current shipped routes (2026-08-23)
+### Current shipped routes (2026-08-24)
 
 ```text
-我的书架 (/my-shelf)     → mock; continue / grid → /read/[bookId]
-发现 (/discover)         → mock; card → /discover/[bookId] (detail) or /read/[bookId]
-书籍详情 (/discover/[id]) → mock; CTA → /read/[bookId]
-阅读历史 (/reading-history) → mock; work row → /read/[bookId]
-Reader (/read/[bookId])  → mock immersive reader (no AppShell nav)
+我的书架 (/my-shelf)     → mock; continue / grid → /read/[articleId]
+发现 (/discover)         → mock; card → /discover/[articleId] (detail) or /read/[articleId]
+书籍详情 (/discover/[articleId]) → mock; CTA → /read/[articleId]
+阅读历史 (/reading-history) → mock; work row → /read/[articleId]
+Reader (/read/[articleId])  → mock immersive reader (no AppShell nav)
 ```
 
 Implementation: `features/shelf/**`, `features/discover/**`, `features/book-detail/**`, `features/history/**`, `features/reader/**`.
@@ -185,19 +185,19 @@ ArticleAudio {                    # article_audio, PK (articleId, role)
 }
 ```
 
-Learner open payload includes `audioAvailable: { us, uk }` (`LearnArticleData`).
+Reader open payload includes `audioAvailable: { us, uk }` (`ReaderSessionData`).
 
-### Learner open payload (**Existing Code**) — what Reader fetches
+### Reader open payload (**Existing Code**) — what Reader fetches
 
 ```text
-LearnArticleData {
+ReaderSessionData {
   id, title, body, level, themes, estimatedMinutes,
   progress: { status, progressRatio, lastReadAt, completedAt },
   audioAvailable: { us, uk }
 }
 ```
 
-Opening Reader **upserts** progress if missing (`getLearnArticle` touches day + creates `in_progress`).
+Opening Reader **upserts** progress if missing (`getReaderSession` touches `reading_day` + creates `in_progress`).
 
 ### Assist / conversation (**Existing Code**)
 
@@ -428,18 +428,18 @@ Constraints for any Stitch / prototype pass (facts + Locked rules — still **no
 
 ## Source index
 
-| Kind                            | Path                                                                                          |
-| ------------------------------- | --------------------------------------------------------------------------------------------- |
-| Vision / principles             | `docs/product/product-vision.md`, `product-principles.md`                                     |
-| MVP capabilities                | `docs/product/mvp-scope.md`                                                                   |
-| Module IA (Locked)              | `docs/product/mvp-1-modules.md`                                                               |
-| Nav journeys (Locked)           | `docs/product/prototype-flows.md`                                                             |
-| Content / fields intent         | `docs/product/content-strategy.md`                                                            |
-| Code vs product                 | `docs/product/feature-audit.md`                                                               |
-| Guardrails                      | `docs/product/design-guardrails.md`                                                           |
-| Roadmap                         | `docs/product/roadmap.md`                                                                     |
-| Visual SSOT                     | `DESIGN.md`, `apps/web/app/globals.css`                                                       |
-| Schema                          | `packages/db/src/schema.ts`                                                                   |
-| Article / learn DTOs            | `packages/shared/src/api/articles.ts`, `learn.ts`                                             |
-| Library / Dashboard / Reader UI | `apps/web/features/library/**`, `dashboard/**`, `learn/**`                                    |
-| TextStack reference             | https://github.com/mrviduus/textstack (`BookDetailPage`, `BookDetailHero`, `BookDetail` type) |
+| Kind                         | Path                                                                                          |
+| ---------------------------- | --------------------------------------------------------------------------------------------- |
+| Vision / principles          | `docs/product/product-vision.md`, `product-principles.md`                                     |
+| MVP capabilities             | `docs/product/mvp-scope.md`                                                                   |
+| Module IA (Locked)           | `docs/product/mvp-1-modules.md`                                                               |
+| Nav journeys (Locked)        | `docs/product/prototype-flows.md`                                                             |
+| Content / fields intent      | `docs/product/content-strategy.md`                                                            |
+| Code vs product              | `docs/product/feature-audit.md`                                                               |
+| Guardrails                   | `docs/product/design-guardrails.md`                                                           |
+| Roadmap                      | `docs/product/roadmap.md`                                                                     |
+| Visual SSOT                  | `DESIGN.md`, `apps/web/app/globals.css`                                                       |
+| Schema                       | `packages/db/src/schema.ts`                                                                   |
+| Article / reader DTOs        | `packages/shared/src/api/articles.ts`, `reader.ts`, `shelf.ts`                                |
+| Shelf / Discover / Reader UI | `apps/web/features/shelf/**`, `discover/**`, `book-detail/**`, `reader/**`                    |
+| TextStack reference          | https://github.com/mrviduus/textstack (`BookDetailPage`, `BookDetailHero`, `BookDetail` type) |

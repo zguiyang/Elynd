@@ -17,7 +17,8 @@ English is the **single language** for product and engineering documentation in 
 | 9     | [`prototype-flows.md`](./prototype-flows.md)               | First-time + daily reading loop; nav SSOT                              |
 | 10    | [`success-metrics.md`](./success-metrics.md)               | North star: engaged reading minutes                                    |
 | 11    | [`feature-decision-guide.md`](./feature-decision-guide.md) | Before building a feature                                              |
-| 12    | [`design-guardrails.md`](./design-guardrails.md)           | Reviews, walkthroughs, retros                                          |
+| 12    | [`engineering-vocabulary.md`](./engineering-vocabulary.md) | Product vs engineering naming; MVP 1a entities                         |
+| 13    | [`design-guardrails.md`](./design-guardrails.md)           | Reviews, walkthroughs, retros                                          |
 
 Historical (superseded, do not use as V1 scope): [`feature-short-article-library-v1.md`](./feature-short-article-library-v1.md).
 

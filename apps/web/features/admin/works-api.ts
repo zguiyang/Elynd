@@ -11,6 +11,7 @@ import {
   type AdminWorkListQuery,
   adminWorkSchema,
   type CreateAdminTextWorkBody,
+  createEpubWorkResultSchema,
   type UpdatePartBody,
   type UpdateWorkBody,
 } from '@gloaming/shared/api/works';
@@ -58,6 +59,17 @@ export async function createAdminTextWork(body: CreateAdminTextWorkBody, init?: 
     signal: init?.signal,
   });
   return normalizeAdminWork(raw);
+}
+
+export async function uploadAdminEpub(file: File, init?: { signal?: AbortSignal }) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiRequest('/api/admin/works/epub', {
+    method: 'POST',
+    body: formData,
+    schema: createEpubWorkResultSchema,
+    signal: init?.signal,
+  });
 }
 
 export async function updateAdminWork(id: string, body: UpdateWorkBody, init?: { signal?: AbortSignal }) {

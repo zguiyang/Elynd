@@ -1,5 +1,5 @@
-import { WorksFormPage } from '@/features/admin/works-form-page';
+import { WorksNewPage } from '@/features/admin/works-new-page';
 
 export default function AdminWorkNewPage() {
-  return <WorksFormPage mode="new" />;
+  return <WorksNewPage />;
 }

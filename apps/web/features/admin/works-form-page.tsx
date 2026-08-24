@@ -61,6 +61,7 @@ function WorksFormEditor({ mode, workId, work, initial }: WorksFormEditorProps) 
   const [body, setBody] = useState(initial.body);
   const [sourceNote, setSourceNote] = useState(initial.sourceNote);
   const [tagsText, setTagsText] = useState(initial.tagsText);
+  const isEpubWork = work?.originKind === 'admin_epub';
 
   async function handleSaveDraft() {
     try {
@@ -117,10 +118,19 @@ function WorksFormEditor({ mode, workId, work, initial }: WorksFormEditorProps) 
           <Label htmlFor="title">标题</Label>
           <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="body">正文</Label>
-          <Textarea id="body" rows={16} value={body} onChange={(e) => setBody(e.target.value)} />
-        </div>
+        {isEpubWork ? (
+          <div className="space-y-2">
+            <Label>正文</Label>
+            <div className="rounded-xl border border-dashed border-border bg-secondary/40 px-4 py-6 text-center text-sm text-muted-foreground">
+              作品等待解析，正文将由 EPUB 解析生成（流程即将上线）
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Label htmlFor="body">正文</Label>
+            <Textarea id="body" rows={16} value={body} onChange={(e) => setBody(e.target.value)} />
+          </div>
+        )}
         <div className="space-y-2">
           <Label htmlFor="sourceNote">来源说明（发布必填）</Label>
           <Input id="sourceNote" value={sourceNote} onChange={(e) => setSourceNote(e.target.value)} />
@@ -143,7 +153,7 @@ function WorksFormEditor({ mode, workId, work, initial }: WorksFormEditorProps) 
           >
             保存草稿
           </Button>
-          {mode === 'edit' && workId ? (
+          {mode === 'edit' && workId && work?.parts.length ? (
             <Button
               type="button"
               variant="secondary"

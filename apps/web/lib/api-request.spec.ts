@@ -48,6 +48,23 @@ describe('apiRequest', () => {
     expect(new Headers(init.headers).get('Content-Type')).toBe('application/json');
   });
 
+  it('localizes 401 Unauthorized to Chinese', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
+
+    await expect(apiRequest('/api/shelf', { schema: pingSchema })).rejects.toMatchObject({
+      message: '未登录或登录已过期，请重新登录',
+      status: 401,
+    });
+  });
+
   it('throws ApiRequestError with message and details from error JSON', async () => {
     vi.stubGlobal(
       'fetch',

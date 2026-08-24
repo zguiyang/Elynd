@@ -1,42 +1,105 @@
 # Engineering vocabulary
 
-Gloaming uses **product language** in UX and **engineering language** in code/APIs. This doc maps the two and records MVP 1a entity names.
+Gloaming uses **product language** in UX and **engineering language** in code/APIs. This doc maps the two and records the **Reading Content** domain (ADR-001).
+
+**Domain SSOT:** [`docs/adr/001-reading-content-domain-model.md`](../adr/001-reading-content-domain-model.md)
+
+---
+
+## Domain model
+
+| Product concept (UX) | Engineering entity | Table / module (target) |
+| -------------------- | ------------------ | ----------------------- |
+| 一本书 / 一份阅读内容 | **ReadingWork** | `reading_work` |
+| 章节 / 阅读单元 | **ReadingPart** | `reading_part` |
+| 我的阅读状态 / 书架上的进度 | **ReadingState** | `reading_state` |
+| 文件 / 音频等资源 | **ContentAsset** | `content_asset` |
+| AI 对话（本书上下文） | **Conversation** | `conversation` (`subject_type = reading_work`) |
+| 我的书架 | **Shelf** | Read model — `reading_state` JOIN `reading_work` (no table) |
+
+UI copy may still say **书 / Book / 封面 / 章节** — intentional user metaphor, not legacy engineering names.
+
+---
 
 ## Product surfaces (user-facing)
 
-| Surface             | Route / API                                                | Meaning                                          |
-| ------------------- | ---------------------------------------------------------- | ------------------------------------------------ |
-| **Discover**        | `/discover`, `GET /api/articles`                           | Browse published content; pick what to read next |
-| **Shelf**           | `/my-shelf`, `GET /api/shelf`                              | Continue reading + progress-backed items         |
-| **Reader**          | `/read/[articleId]`, `GET /api/reader/articles/:articleId` | Immersive reading session                        |
-| **Reading History** | `/reading-history`, `GET /api/reading-history`             | Calm overview of reading activity over time      |
+| Surface | Route (target) | API (target) | Meaning |
+| ------- | -------------- | ------------ | ------- |
+| **Discover** | `/discover` | `GET /api/catalog/works` | Browse published official works |
+| **Shelf** | `/my-shelf` | `GET /api/shelf` | Continue reading + shelf items |
+| **Reader** | `/read/[workId]` | `GET /api/reader/works/:workId` | Immersive reading session |
+| **Reading History** | `/reading-history` | `GET /api/reading-history` | Calm overview of reading activity |
 
-UI copy may still say **书 / Book / 封面 / 章节** — that is intentional user metaphor, not the engineering entity name.
+Part-scoped APIs (target): TTS / translate / assist use `partId` (+ `workId` for thread scope).
 
-## Engineering entities (MVP 1a)
+---
 
-| Entity              | Table / type                                                               | Notes                                                                                                      |
-| ------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| **Article**         | `article`, `@gloaming/shared/api/articles`                                 | Single content unit for MVP 1a. Admin CMS uses **Article** naming (`AdminArticle`, `/api/admin/articles`). |
-| **ReadingProgress** | `reading_progress`, `ReadingProgress` in `@gloaming/shared/api/reader`     | Per user × article position and completion                                                                 |
-| **ReadingDay**      | `reading_day`, `ReadingHistory*` in `@gloaming/shared/api/reading-history` | One calendar day (Asia/Shanghai) with recorded reading activity                                            |
+## Current code vs target domain
 
-## Shared API contracts (cross-app)
+| Layer | Current (pre–Phase 3) | Target (ADR-001) |
+| ----- | --------------------- | ---------------- |
+| Content root | `Article` / `article` table | **ReadingWork** / `reading_work` |
+| Text body | `article.body` (single blob) | **ReadingPart.body** (ordered parts) |
+| Shelf / progress | `reading_progress` | **ReadingState** |
+| TTS / audio rows | `article_audio` | **ContentAsset** (`kind = audio_us` / `audio_uk`) |
+| Discover API | `GET /api/articles` | `GET /api/catalog/works` |
+| Admin CMS | `/api/admin/articles` | `/api/admin/works` |
+| Reader API | `/api/reader/articles/:articleId` | `/api/reader/works/:workId` |
+| Conversation subject | `subject_type = article` | `subject_type = reading_work` |
 
-| Module                    | Key types                                                                                 |
-| ------------------------- | ----------------------------------------------------------------------------------------- |
-| `api/shelf`               | `ShelfData`, `ShelfItem`                                                                  |
-| `api/reader`              | `ReaderSessionData`, `ReaderItemSummary`, `ReaderAudioTrack`, `UpdateReadingProgressBody` |
-| `api/reading-history`     | `ReadingHistoryData`, `ReadingHistorySummary`, `ReadingHistoryCompletion`                 |
-| `api/articles` (Discover) | `DiscoverListData`, `DiscoverListQuery` — public published list only                      |
+**Phase 3** executes code migration: `packages/db` → `packages/shared` → `apps/backend` → `apps/web`. Until then, shipped code may still use legacy names — **do not** extend the Article model; implement against the target names above.
+
+---
+
+## Shared API contracts (target)
+
+| Module | Key types (target) |
+| ------ | ------------------ |
+| `api/works` / catalog | `WorkSummary`, `DiscoverListData`, `AdminWork` |
+| `api/shelf` | `ShelfData`, `ShelfItem` (`work` + `state`, not `article`) |
+| `api/reader` | `ReaderSessionData`, `UpdateReadingStateBody`, `ReaderAudioTrack` |
+| `api/reading-history` | `ReadingHistoryData`, completions with `workId` |
+| `api/content-assets` | Part/work asset views (TTS admin) |
+
+---
+
+## Content origins (MVP)
+
+| `origin_kind` | MVP | Role |
+| ------------- | --- | ---- |
+| `admin_epub` | **Yes — primary** | Official catalog supply: upload → process → publish |
+| `admin_text` | Internal only | Dev/test seed: 1 work + 1 part (`kind=body`); **not** product identity |
+| `user_epub`, `user_pdf`, `web`, … | No (Phase 1b+) | Reserved in schema; not implemented in MVP |
+
+---
 
 ## Retired names (do not reintroduce)
 
-- `Learn*`, `/api/learn/*` — old Learning Platform module
-- `Progress*`, `/api/progress` — old progress dashboard semantics
-- `learner_day`, `learningDays` — replaced by `reading_day`, `readingDays`
-- `CatalogArticle*` — user Discover DTOs; use `Discover*` instead (Admin **Article** unchanged)
+**Legacy content model**
 
-## Phase 1b (future — not implemented)
+- `Article`, `article`, `articleId`, `AdminArticle`
+- `reading_progress`, `ReadingProgress`
+- `article_audio`, `ArticleAudio`, `ArticleLevel`
+- `seriesId`, `seriesOrder`, `ARTICLE_BODY_MAX_WORDS`
+- `GET /api/articles`, `/api/admin/articles`, `/api/reader/articles/:articleId`
+- `@gloaming/shared/api/articles`, `@gloaming/shared/api/article-audio`
 
-MVP 1a **article** will evolve into a **work + part** content model (e.g. book + chapters). Do not implement work/part tables or routes until Phase 1b is scoped and migrated.
+**Legacy product modules**
+
+- `Learn*`, `/api/learn/*` — old Learning Platform
+- `Progress*`, `/api/progress` — old progress dashboard
+- `CatalogArticle*` — use `Discover*` / `WorkSummary`
+- Short Article Library as product identity — see [`docs/archive/feature-short-article-library-v1.md`](../archive/feature-short-article-library-v1.md)
+
+**Removed study loop (code gone)**
+
+- Practice / Review modules, lesson/course entities as product surfaces
+
+---
+
+## Revision log
+
+| Date | Change |
+| ---- | ------ |
+| 2026-08-24 | Rewritten for ReadingWork domain (ADR-001); Article retired; target API table. |
+| 2026-08-24 | Prior version listed Article as MVP 1a entity. |

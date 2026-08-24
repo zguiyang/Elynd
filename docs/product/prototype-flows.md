@@ -2,14 +2,16 @@
 
 **SSOT for “which screen leads where.”** Wire the shipped app against the tables below. Visual tokens: [`DESIGN.md`](../../DESIGN.md).
 
-Related: [`mvp-scope.md`](./mvp-scope.md) · [`mvp-1-modules.md`](./mvp-1-modules.md) · [`product-vision.md`](./product-vision.md) · [`feature-audit.md`](./feature-audit.md)
+Related: [`mvp-scope.md`](./mvp-scope.md) · [`mvp-1-modules.md`](./mvp-1-modules.md) · [`engineering-vocabulary.md`](./engineering-vocabulary.md) · ADR-001 [`../adr/001-reading-content-domain-model.md`](../adr/001-reading-content-domain-model.md)
 
 **How to use**
 
 - Wire the app against the tables below.
 - **Module inventory SSOT for MVP 1:** [`mvp-1-modules.md`](./mvp-1-modules.md).
-- **Confirmed** = product decisions (auth 2026-08-05; reading loop 2026-08-20; learner IA 2026-08-20).
-- Do not revive Practice or Review screens. Do not add upload to MVP 1 flows (Phase 1b).
+- **Confirmed** = product decisions (auth 2026-08-05; reading loop 2026-08-20; learner IA 2026-08-20; ReadingWork domain 2026-08-24).
+- Do not revive Practice or Review screens. Do not add **user** upload to MVP 1 learner flows (Phase 1b).
+
+**Target routes:** `/read/[workId]`, `/discover/[workId]` (detail). **Current code drift:** may still use `[articleId]` until Phase 3.
 
 ---
 
@@ -20,31 +22,17 @@ Related: [`mvp-scope.md`](./mvp-scope.md) · [`mvp-1-modules.md`](./mvp-1-module
 | Landing         | Logged-out | Story / CTA into auth                           |
 | Sign in / up    | Logged-out | Auth                                            |
 | **我的书架**    | Logged-in  | Default home: continue reading + my shelf       |
-| **发现**        | Logged-in  | Official catalog; add to shelf; may open reader |
+| **发现**        | Logged-in  | Official **ReadingWork** catalog; add to shelf  |
 | **阅读历史**    | Logged-in  | Reading-history overview                        |
-| Reader          | Logged-in  | Core surface: read + assist / translate / TTS   |
+| Reader          | Logged-in  | Read **ReadingPart** + assist / translate / TTS |
 
-Practice and Review surfaces are **removed**. User upload / import is **out of MVP 1** (Phase 1b).
+Practice and Review surfaces are **removed**. **User** upload / import is **out of MVP 1** (Phase 1b). Admin EPUB upload is **ops-only**, not in learner nav.
 
 ---
 
 ## 2. Auth & marketing flow
 
 Unchanged in structure. Landing primary CTA → Sign in. Sign-up → verify email → auto sign-in → **home**. Reset password → auto sign-in → **home**.
-
-```mermaid
-flowchart TD
-  L[Landing] -->|CTA: Sign in| SI[Sign in]
-  L -->|Optional: Sign up| SU[Sign up]
-  SI <--> SU
-  SI --> FP[Forgot password]
-  FP --> Mail[Mailbox]
-  Mail --> RP[Reset password]
-  RP --> H[Home]
-  SI --> H
-  SU --> Verify[Email verification]
-  Verify --> H
-```
 
 | From                   | To                          | Status                                  |
 | ---------------------- | --------------------------- | --------------------------------------- |
@@ -60,8 +48,8 @@ flowchart TD
 ```text
 Sign in
   → 我的书架
-  → 发现 → 加入书架 (or open)
-  → Reader opens
+  → 发现 → 加入书架 (creates ReadingState) or open
+  → Reader (ReadingWork / current ReadingPart)
   → Read
   → Language barrier → contextual help / translation / TTS
   → Keep reading
@@ -81,9 +69,9 @@ flowchart TD
   L --> R
 ```
 
-**Confirmed (2026-08-20):** first success is **read a real page with help available**, not finish a practice set. Daily first action is **resume the unfinished text** on **我的书架**.
+**Confirmed (2026-08-20):** first success is **read a real page with help available**, not finish a practice set. Daily first action is **resume the unfinished ReadingWork** on **我的书架**.
 
-**Confirmed (2026-08-20, IA):** MVP 1 supply is **发现 → 书架**. User upload is Phase **1b** ([`mvp-1-modules.md`](./mvp-1-modules.md)).
+**Confirmed (2026-08-24):** MVP 1 catalog supply = **admin-published ReadingWorks** (EPUB pipeline). **User** upload is Phase **1b**.
 
 ---
 
@@ -91,21 +79,11 @@ flowchart TD
 
 ```text
 Open Gloaming
-  → 我的书架 → Resume last document
-  → Read
+  → 我的书架 → Resume last ReadingWork (ReadingState)
+  → Reader → current ReadingPart
   → AI help when stuck
   → Keep reading
-  → Leave (closing the book completes the session)
-```
-
-```mermaid
-flowchart TD
-  Shelf[我的书架] -->|继续阅读 Confirmed| R[Reader]
-  Shelf -->|去发现| Discover[发现]
-  Discover -->|加入书架_或_打开 Confirmed| Shelf
-  Discover -->|打开 Confirmed| R
-  R -->|Help_in_place| R
-  R -->|Leave Confirmed| Shelf
+  → Leave
 ```
 
 | From     | Entry                             | To                | Status                |
@@ -119,11 +97,9 @@ flowchart TD
 | Reader   | Done for now                      | 我的书架 or close | **Confirmed**         |
 | Reader   | Practice CTA                      | —                 | **Retired** (removed) |
 | Any      | 复习                              | —                 | **Retired** (removed) |
-| Any      | Upload (MVP 1)                    | —                 | **Deferred** (1b)     |
+| Any      | **User** upload (MVP 1)           | —                 | **Deferred** (1b)     |
 
-**Shell (Confirmed 2026-08-20):** default nav is **我的书架 + 发现 + 阅读历史**. No Practice or Review. Reader is reached via content.
-
-**我的书架 primary CTA (Confirmed):** **继续阅读** opens the current document in the reader.
+**Shell (Confirmed):** default nav is **我的书架 + 发现 + 阅读历史**. Reader is reached via content only.
 
 ---
 
@@ -131,8 +107,8 @@ flowchart TD
 
 ```text
 Sign in → 我的书架
-  → resume or 发现 → add / open
-  → Reader (read + optional listen + on-demand help)
+  → resume or 发现 → add / open ReadingWork
+  → Reader (ReadingPart + optional listen + on-demand help)
   → leave
 ```
 
@@ -148,39 +124,39 @@ Auth without this loop is **infra**, not product MVP 1.
 | AI / lookup secondary inside the reader; not chat-home | vision + principles                      |
 | No required practice or review                         | V1 non-goals                             |
 | 阅读历史 is reading history, not streak theater        | guardrails + feature-audit               |
-| No upload in MVP 1 chrome                              | mvp-1-modules Phase 1a                   |
+| No **user** upload in MVP 1 learner chrome             | mvp-1-modules Phase 1a                   |
+| Content = ReadingWork + ReadingPart (ADR-001)          | engineering-vocabulary                   |
 | Module inventory SSOT                                  | [`mvp-1-modules.md`](./mvp-1-modules.md) |
-| This doc is navigation journey SSOT                    | this file                                |
 
 ---
 
 ## 7. Confirmed decisions
 
-| #   | Decision                                              | When                                |
-| --- | ----------------------------------------------------- | ----------------------------------- |
-| 1   | Landing primary CTA → Sign in                         | 2026-08-05                          |
-| 2   | Sign-up → verify → reading home                       | 2026-08-05                          |
-| 3   | 我的书架 continue → Reader (current document)         | 2026-08-20 (replaces “今日 → 练习”) |
-| 4   | Default nav → 我的书架 + 发现 + 阅读历史              | 2026-08-20                          |
-| 5   | Practice / Review not in the loop                     | 2026-08-20                          |
-| 6   | MVP 1 = Phase 1a catalog→shelf; import = Phase 1b     | 2026-08-20                          |
-| 7   | Shelf source labels `官方` / `用户` (`用户` = 1b)     | 2026-08-20                          |
-| 8   | No independent Search page; no global upload in MVP 1 | 2026-08-20                          |
+| #   | Decision                                              | When       |
+| --- | ----------------------------------------------------- | ---------- |
+| 1   | Landing primary CTA → Sign in                         | 2026-08-05 |
+| 2   | Sign-up → verify → reading home                       | 2026-08-05 |
+| 3   | 我的书架 continue → Reader (current ReadingWork)        | 2026-08-20 |
+| 4   | Default nav → 我的书架 + 发现 + 阅读历史              | 2026-08-20 |
+| 5   | Practice / Review not in the loop                     | 2026-08-20 |
+| 6   | MVP 1a = admin EPUB catalog → shelf; user import = 1b | 2026-08-24 |
+| 7   | Shelf source labels `官方` / `用户` (`用户` = 1b)     | 2026-08-20 |
+| 8   | No independent Search page; no **user** upload in MVP 1 | 2026-08-20 |
 
-Retired (2026-08-05, no longer Confirmed): Practice mainly from Room; nav 今日 / 图书馆 / 复习 / 成长; after Practice → Dashboard.  
-Superseded (2026-08-20): “Import + parse are required before calling V1 done” as a single gate—now split 1a / 1b.
+Retired: Practice / Review nav; Dashboard / 图书馆 / 复习 / 成长 study loop.
 
 ---
 
 ## 8. Known drift
 
-| Where           | Issue                                                                | Action                                         |
-| --------------- | -------------------------------------------------------------------- | ---------------------------------------------- |
-| Learner mock UI | discover / shelf / history / reader / detail use local fixtures only | Wire to backend APIs when ready                |
-| Content atom    | Short curated `article.body`                                         | Document / chapters later (feature-audit §4.1) |
-| History metrics | Mock heatmap; no year/30d volume yet                                 | Evolve when `/api/reading-history` is wired    |
+| Where           | Issue                                                                 | Action                          |
+| --------------- | --------------------------------------------------------------------- | ------------------------------- |
+| Learner mock UI | discover / shelf / history / reader use local fixtures                | Wire to target Work APIs (Ph 3) |
+| Content model   | **Code:** legacy `Article` / `article.body`                           | **Target:** ReadingWork + ReadingPart ([`feature-audit.md`](./feature-audit.md)) |
+| Routes          | **Code:** `/read/[articleId]`                                         | **Target:** `/read/[workId]`    |
+| History metrics | Mock heatmap; no year/30d volume yet                                  | Evolve when API wired           |
 
-**Resolved (2026-08-23):** App nav → 我的书架 / 发现 / 阅读历史; home → `/my-shelf`; AppShell → `features/app-shell/`; old routes `/dashboard`, `/progress`, `/library`, `/learn` removed (404).
+**Resolved (2026-08-23):** Nav IA → 我的书架 / 发现 / 阅读历史; legacy `/dashboard`, `/progress`, `/library`, `/learn` removed.
 
 **North star:** weekly minutes of engaged reading of authentic English—not practice completion, not review queues, not chat turns.
 
@@ -188,10 +164,8 @@ Superseded (2026-08-20): “Import + parse are required before calling V1 done�
 
 ## 9. Change log
 
-| Date       | Change                                                                                                 |
-| ---------- | ------------------------------------------------------------------------------------------------------ |
-| 2026-08-23 | Frontend cleanup: removed learner library/progress UI and legacy routes; nav IA matches mvp-1-modules. |
-| 2026-08-20 | Learner IA: 我的书架 / 发现 / 阅读历史; MVP 1 = catalog→shelf; import deferred to 1b.                  |
-| 2026-08-20 | Removed `prd/` HTML prototypes; Practice/Review gone from code; Progress kept as reading history.      |
-| 2026-08-20 | Replace study loop with first-time import + daily resume; retire Practice/Review from confirmed nav.   |
-| 2026-08-05 | Initial SSOT from docs + `prd` auth wiring (superseded loop).                                          |
+| Date       | Change                                                                                  |
+| ---------- | --------------------------------------------------------------------------------------- |
+| 2026-08-24 | ReadingWork / workId routes; admin EPUB in 1a; user upload wording; known drift updated. |
+| 2026-08-23 | Frontend cleanup; nav IA matches mvp-1-modules.                                         |
+| 2026-08-20 | Learner IA locked; Practice/Review retired.                                             |

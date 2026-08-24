@@ -4,9 +4,9 @@
 Use this doc to decide _what modules exist_ and _what each is for_. Do **not** invent extra learner modules here.  
 Per-module interaction details (controls, empty states, copy variants) are **out of scope** for this file—plan those later against each module.
 
-**Related:** [`mvp-scope.md`](./mvp-scope.md) (capability must/must-not) · [`prototype-flows.md`](./prototype-flows.md) (nav journeys) · [`product-vision.md`](./product-vision.md) · [`roadmap.md`](./roadmap.md)
+**Related:** [`mvp-scope.md`](./mvp-scope.md) (capability must/must-not) · [`prototype-flows.md`](./prototype-flows.md) (nav journeys) · [`product-vision.md`](./product-vision.md) · [`roadmap.md`](./roadmap.md) · ADR-001 [`../adr/001-reading-content-domain-model.md`](../adr/001-reading-content-domain-model.md)
 
-**Locked (2026-08-20):** Learner module set = shelf + discover + reading history + Reader; **no user upload in MVP 1**.
+**Locked (2026-08-24):** Learner module set = shelf + discover + reading history + Reader; **no user upload in MVP 1**; **admin EPUB pipeline in MVP 1a**.
 
 ---
 
@@ -17,7 +17,7 @@ Per-module interaction details (controls, empty states, copy variants) are **out
 | Which **modules** exist in MVP 1                                                           | Page **layout** / grid / spacing / type scale                      |
 | Each module’s **responsibility** and coarse capabilities                                   | Visual chrome (bottom bar vs sidebar vs top nav **presentation**)  |
 | Which destinations are in the learner **IA** (书架 / 发现 / 阅读历史 + Reader via content) | How those destinations are **visually arranged** on screen         |
-| Must-not list (upload, Practice, Search page, …)                                           | Current shipped UI structure — expect it to change with prototypes |
+| Must-not list (**user** upload, Practice, Search page, …)                                  | Current shipped UI structure — expect it to change with prototypes |
 | Journeys at module-path level                                                              | Component hierarchy, cards, density, motion                        |
 
 **Existing app layouts are not a spec.** Prototypes may replace them entirely as long as the module set and responsibilities still match this doc. Visual tokens stay in [`DESIGN.md`](../../DESIGN.md) when implementing—not a freeze of today’s feature layouts.
@@ -28,7 +28,7 @@ Per-module interaction details (controls, empty states, copy variants) are **out
 
 | Role          | Use                                                                                                                                      |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Prototype     | Keep the **module set** in §3–§4; invent **any** layout that serves those responsibilities. No Practice, Review, Search page, or Upload. |
+| Prototype     | Keep the **module set** in §3–§4; invent **any** layout that serves those responsibilities. No Practice, Review, Search page, or **user** Upload. |
 | Product / eng | A feature belongs in MVP 1 only if it sits under a module below. Else defer or refuse.                                                   |
 | Review        | New **top-level learner module** → reject unless this doc is updated. New **layout** for an existing module → OK.                        |
 
@@ -40,12 +40,12 @@ Capability rules (AI identity, no drills, etc.) still come from [`mvp-scope.md`]
 
 Full Phase 1 outcome remains “language reading environment” ([`roadmap.md`](./roadmap.md)). Split so prototypes and builds do not silently pull in import:
 
-| Slice  | Name            | In MVP 1?                        | Outcome                                                                         |
-| ------ | --------------- | -------------------------------- | ------------------------------------------------------------------------------- |
-| **1a** | Catalog → shelf | **Yes — this document’s target** | Browse official catalog, add to **我的书架**, resume, read with companion helps |
-| **1b** | User import     | **No — deferred**                | Upload / EPUB pipeline / `用户` source books (sync & rights)                    |
+| Slice  | Name                     | In MVP 1?                        | Outcome                                                                                              |
+| ------ | ------------------------ | -------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **1a** | Admin EPUB catalog → shelf | **Yes — this document’s target** | Admin EPUB upload → process → publish **ReadingWork**; Discover → shelf → Reader + companion       |
+| **1b** | User import              | **No — deferred**                | User EPUB/PDF/web import; `用户` source on shelf                                                     |
 
-MVP 1 prototypes and MVP 1 engineering **stop at 1a**. Do not require upload to call MVP 1 “done.”
+MVP 1 prototypes and MVP 1 engineering **stop at 1a**. Do not require **user** upload to call MVP 1 “done.” Admin EPUB ops **is** in 1a.
 
 ---
 
@@ -115,7 +115,7 @@ Infra for the reading loop, not a product destination.
 | **Responsibility**     | Default home after login: show **what I am reading** and get me back into the book fast.                                                                                                                            |
 | **Rough capabilities** | **Continue reading** (last unfinished text); shelf grid of books I added; open a book → Reader; per-item **source label** (`官方` in MVP 1; `用户` reserved for Phase 1b); empty state that points toward **发现**. |
 
-No Tab split (mine vs catalog). No upload on this page in MVP 1. Optional light local filter later—not required.
+No Tab split (mine vs catalog). No **user** upload on this page in MVP 1. Optional light local filter later—not required.
 
 ### 4.4 发现 (Discover)
 
@@ -140,9 +140,9 @@ Must not reintroduce Practice / Review. Must not become the reason to open the a
 |                        |                                                                                                                                                           |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Responsibility**     | Be the **core product**: a calm, book-like place to read authentic English and resume position.                                                           |
-| **Rough capabilities** | Present the text (typography / page or scroll); remember and restore reading position; quiet chrome; leave / return without a “finish today’s task” gate. |
+| **Rough capabilities** | Present **ReadingPart** text (typography / page or scroll); chapter/part navigation; restore **ReadingState** (part + anchor); quiet chrome. |
 
-Entered only via content (shelf or discover)—not a shell tab.
+Entered only via content (shelf or discover)—not a shell tab. Target route: `/read/[workId]`.
 
 ### 4.7 Reader — AI companion
 
@@ -167,14 +167,14 @@ If AI is off, reading still works.
 | **Responsibility**     | Let the user **listen** to the current text when that helps them keep going. |
 | **Rough capabilities** | Play current text audio; degrade gracefully if TTS unavailable.              |
 
-### 4.10 Catalog ops (supporting)
+### 4.10 Admin Work Management (catalog ops — supporting)
 
-|                        |                                                                             |
-| ---------------------- | --------------------------------------------------------------------------- |
-| **Responsibility**     | Keep the official catalog that feeds **发现** publishable and maintainable. |
-| **Rough capabilities** | Admin/ops create, edit, publish (or unpublish) official texts.              |
+|                        |                                                                                                                                 |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Responsibility**     | Keep the official **ReadingWork** catalog that feeds **发现** publishable and maintainable.                                     |
+| **Rough capabilities** | Upload EPUB → processing → review **ReadingPart[]** → publish (or unpublish) official works; optional **`admin_text`** for internal dev/test seed only. |
 
-Ops tool—not the learner product identity. Not in learner shell nav.
+Ops tool—not the learner product identity. Not in learner shell nav. **`admin_text` is not a product capability** — see [`content-strategy.md`](./content-strategy.md) §2.1.
 
 ### 4.11 Session / account chrome (supporting)
 
@@ -193,8 +193,8 @@ Do not add these as modules or prototype screens for MVP 1:
 
 | Out                                               | Why                                    |
 | ------------------------------------------------- | -------------------------------------- |
-| User upload / import / global upload entry        | Slice **1b**                           |
-| EPUB / long-form document pipeline as identity    | Slice **1b** (+ later content model)   |
+| **User** upload / import / global upload entry    | Slice **1b**                           |
+| Short Article Library / paste CMS as product      | Superseded — ADR-001 ReadingWork       |
 | Independent Search page                           | Not needed; shelf volume stays small   |
 | Shelf Tabs (“mine” vs “catalog”)                  | Use **source labels** on items instead |
 | Practice / Review / SRS / quiz                    | Removed; identity conflict             |
@@ -233,7 +233,7 @@ Before a prototype is accepted for MVP 1:
 
 - [ ] Learner **destinations** are exactly: 我的书架 / 发现 / 阅读历史 (layout of that nav is free)
 - [ ] Reader is reachable only via content (not a fourth primary destination)
-- [ ] No upload control required in chrome
+- [ ] No **user** upload control required in learner chrome
 - [ ] No Practice / Review / Search **module**
 - [ ] Discover primary story is **add to shelf** (open-to-read allowed)
 - [ ] Shelf includes source-label concept (`官方`; `用户` not required until 1b)
@@ -246,6 +246,7 @@ Before a prototype is accepted for MVP 1:
 
 | Date       | Change                                                                                                 |
 | ---------- | ------------------------------------------------------------------------------------------------------ |
+| 2026-08-24 | §4.10 Admin Work Management (EPUB upload); 1a includes admin pipeline; user upload still 1b; ADR-001.   |
 | 2026-08-20 | Clarified: modules/IA locked; **layouts not locked** (§0).                                             |
 | 2026-08-20 | Added per-module responsibility + rough capabilities (§4).                                             |
 | 2026-08-20 | Initial MVP 1 module roadmap: 1a catalog-to-shelf; 1b import deferred; nav 我的书架 / 发现 / 阅读历史. |

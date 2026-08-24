@@ -2,7 +2,7 @@
 
 SSOT for **what people read** and **how it enters Gloaming**—under the AI Native Language Reading Environment bet.
 
-Related: [`mvp-scope.md`](./mvp-scope.md) · [`mvp-1-modules.md`](./mvp-1-modules.md) · [`product-vision.md`](./product-vision.md) · [`feature-audit.md`](./feature-audit.md)
+Related: [`mvp-scope.md`](./mvp-scope.md) · [`mvp-1-modules.md`](./mvp-1-modules.md) · [`engineering-vocabulary.md`](./engineering-vocabulary.md) · ADR-001 [`../adr/001-reading-content-domain-model.md`](../adr/001-reading-content-domain-model.md)
 
 **Language:** Product docs are English. User-facing copy may be Chinese.
 
@@ -14,40 +14,56 @@ Content exists so someone can **read real English**.
 
 Gloaming is not a corpus-building project, not a course publisher, and not an AI writing mill.
 
-**MVP 1 (Phase 1a):** users add texts from the official **发现** catalog to **我的书架**.  
-**Later (Phase 1b):** users bring files they chose (import).  
+**MVP supply (Phase 1a):** official **ReadingWork** catalog via admin EPUB upload → **发现** → **我的书架**.  
+**Later (Phase 1b):** users bring their own files (import).  
 **Never:** generated “learning English” articles as the product. Gloaming does not manufacture learning materials.
 
 ---
 
-## 2. Scope decisions (locked 2026-08-20; Phase split same day)
+## 2. Scope decisions (locked)
 
-| Decision                                          | Stance                                                                                                                                                  |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| MVP 1 supply                                      | **Official catalog → shelf** (**发现** → **我的书架**)                                                                                                  |
-| User import                                       | **Phase 1b** — deferred (sync / rights); not required for MVP 1 prototypes                                                                              |
-| Real content pipeline (EPUB)                      | **Phase 1b** — clean EPUB, organize chapters, present like a book. Do **not** rewrite into lessons                                                      |
-| Seed / catalog texts                              | Team-owned or clearly licensed; feed **发现**                                                                                                           |
-| Admin paste CMS                                   | **Keep as ops/catalog** for 1a; not the product identity ([`feature-short-article-library-v1.md`](./feature-short-article-library-v1.md) is historical) |
-| Scraping / crawl                                  | **Out**                                                                                                                                                 |
-| AI rewrite of the user’s book into graded lessons | **Out** — that is a content generator                                                                                                                   |
-| AI at read time                                   | Explain / translate / TTS on **this** document                                                                                                          |
-| Memes / joke packs / syllabus trees               | **Out** of identity                                                                                                                                     |
-| User-generated marketplace                        | **Out** of MVP 1                                                                                                                                        |
+| Decision | Stance |
+| -------- | ------ |
+| MVP 1 primary supply | **Admin EPUB upload** → processing → **ReadingWork** + **ReadingPart[]** → publish → Discover |
+| User import | **Phase 1b** — deferred; not required for MVP 1 |
+| Real content pipeline (EPUB) | **In MVP 1a (admin)** — clean EPUB, organize chapters, present like a book; do **not** rewrite into lessons |
+| Official catalog | Team-owned or licensed EPUBs; feed **发现** |
+| `admin_text` fallback | **Internal only** — dev/test/seed; see §2.1; **not** Short Article Library |
+| Scraping / crawl | **Out** |
+| AI rewrite into graded lessons | **Out** — content generator |
+| AI at read time | Explain / translate / TTS on **this part** of **this work** |
+| Memes / syllabus trees | **Out** of identity |
+| User-generated marketplace | **Out** of MVP 1 |
 
-Module SSOT: [`mvp-1-modules.md`](./mvp-1-modules.md). Older “import first as immediate V1 gate” is superseded by the **1a / 1b** split.
+Module SSOT: [`mvp-1-modules.md`](./mvp-1-modules.md).
+
+### 2.1 `admin_text` (internal fallback — not product)
+
+`admin_text` creates **ReadingWork + one ReadingPart (`kind=body`)** from a title + body paste. Use for:
+
+- Development and migration testing
+- Automated test fixtures
+- Demo seed without uploading EPUB every time
+
+**It is not:**
+
+- The Short Article Library product (archived — [`docs/archive/feature-short-article-library-v1.md`](../archive/feature-short-article-library-v1.md))
+- What learners should see as the main catalog story
+- A reason to keep `Article`, `level`, `seriesId`, or 300-word caps
+
+Gloaming’s content identity is **ReadingWork**, not short articles.
 
 ---
 
 ## 3. What “authentic” means here
 
-Authentic = **not manufactured as an Gloaming lesson**.
+Authentic = **not manufactured as a Gloaming lesson**.
 
 Examples that fit:
 
-- A book the user already owns (EPUB)
-- An essay or article they saved (when file import supports it)
-- A seed short text that is still a _piece of writing_, not a worksheet
+- A licensed EPUB the team publishes to Discover
+- A book the user imports (Phase 1b)
+- An essay they saved (when import supports it)
 
 Examples that do not:
 
@@ -55,109 +71,119 @@ Examples that do not:
 - Dialogue drills
 - Vocab-pack paragraphs
 
-Difficulty is handled by **help on the page**, not by only shipping easy fables. Seed texts may still be shorter/easier so a first session is kind—without pretending the product is a graded reader catalog.
+Difficulty is handled by **help on the page**, not by only shipping easy fables.
 
 ---
 
-## 4. Document shape (product contract)
+## 4. Reading content shape (product contract)
 
-The reading atom is a **document they are in the middle of**, not “today’s 250-word unit.”
+The reading atom is a **ReadingWork** the user is in the middle of—not “today’s 250-word unit.”
 
-### 4.1 V1 fields (intent)
+### 4.1 Domain entities (ADR-001)
 
-| Concern                          | V1 need                                                   |
-| -------------------------------- | --------------------------------------------------------- |
-| Title                            | Yes                                                       |
-| Body or ordered parts (chapters) | Yes — ebooks are not one blob if the format has structure |
-| Source                           | Import vs seed; rights/provenance for seed                |
-| Owner                            | User-owned import vs published seed                       |
-| Reading position                 | Per user × document (and chapter if parts exist)          |
-| Level / tags                     | Optional metadata; **not** a syllabus                     |
+| Entity | User concept | Responsibility |
+| ------ | ------------ | -------------- |
+| **ReadingWork** | 书 / 阅读内容 | Metadata, source, publish status, visibility — **no body** |
+| **ReadingPart** | 章节 | Ordered text — Reader / TTS / Translate / Assist boundary |
+| **ReadingState** | 阅读状态 / 书架成员 | Per user × work position; shelf membership |
+| **ContentAsset** | (internal) | EPUB file, cover, TTS audio, future derivatives |
+| **Conversation** | AI 帮助 | Thread scoped to `reading_work` |
+| **Shelf** | 我的书架 | Read model over `reading_state` |
 
-Exact schema is an engineering decision ([`feature-audit.md`](./feature-audit.md) §4.1). Product rule: **one kind of thing you read**, not Article-the-lesson plus Book-the-other-app.
+**Product rule:** one kind of thing you read — not Article-the-lesson plus Book-the-other-app.
 
-### 4.2 Length
+### 4.2 Work fields (intent)
 
-No 300-word cap on imported books. Seed pieces may stay short so a first sitting is easy.
+| Concern | Need |
+| ------- | ---- |
+| Title, description, language | Yes |
+| Ordered parts (chapters) | Yes for EPUB |
+| `origin_kind` / `origin_meta` | Yes — source SSOT |
+| Owner / visibility | Official catalog vs user (1b) |
+| Reading position | Per user × work (+ part + anchor) |
+| Tags | Optional metadata — **not** a syllabus |
 
----
+**Forbidden on Work:** `level`, `seriesId`, `estimatedMinutes`, single `body` blob.
 
-### 4.3 Real content pipeline (after upload)
+### 4.3 Length
 
-User-imported files should **read like a book**, not like a dumped zip of HTML.
-
-```text
-Upload authentic file
-  → Clean EPUB (strip junk, keep the work)
-  → Organize chapters
-  → Book-like typography in the reader
-```
-
-This is presentation and structure. It is **not** simplifying, grading, or generating a parallel “learning” text.
+No 300-word cap on EPUB works. Part bodies are bounded by engineering limits only.
 
 ---
 
 ## 5. End-to-end flows
 
-### 5.1 Learner (V1)
+### 5.1 Primary — Admin EPUB (MVP)
 
 ```text
-Import file or pick seed
-  → Shelf (my library)
-  → Reader (read + optional listen + on-demand assist / translation)
-  → Resume next time
+Admin upload EPUB
+  → ReadingWork (draft → processing)
+  → Parse → ReadingPart[] (chapters)
+  → ContentAsset (origin_file)
+  → Publish
+  → 发现 → 加入书架 → Reader
+  → Resume via ReadingState
+```
+
+### 5.2 Learner (MVP)
+
+```text
+发现 → choose ReadingWork → 加入书架 (ReadingState)
+  → Reader (current ReadingPart)
+  → Assist / translate / TTS on this part
+  → Keep reading
 ```
 
 No practice or review step.
 
-### 5.2 Import (V1)
+### 5.3 User import (Phase 1b — not MVP)
 
 ```text
-Choose EPUB (or text)
-  → Clean + chapter structure (real content pipeline)
-  → Store as the user’s document
-  → Open at the start (or last position)
+User chooses EPUB/PDF/…
+  → Clean + chapter structure
+  → ReadingWork (owner = user, visibility = private)
+  → Open at last ReadingState
 ```
 
-Parse failures must be explicit. Do not silently send the whole book through an LLM to “simplify.”
+Parse failures must be explicit. Do not LLM-“simplify” the book.
 
-### 5.3 Seed / admin (until import carries the product)
+### 5.4 Internal — admin_text (dev only)
 
 ```text
-Operator pastes or edits a seed text
-  → Publish
-  → Appears as seed on the shelf (not as “today’s lesson”)
+Operator paste title + body (admin_text)
+  → 1 ReadingWork + 1 ReadingPart (kind=body)
+  → Publish (optional, for test catalog)
 ```
 
-Users do not edit the seed catalog. They do own their imports.
+Not the product supply story. Not Short Article Library.
 
-### 5.4 What we do not run
+### 5.5 What we do not run
 
 ```text
 Crawl the web → auto-AI “course” → ship to users
 LLM rewrites this novel into units with quizzes
+AI-generated article library as main shelf filler
 ```
 
 ---
 
 ## 6. Quality bar
 
-A seed piece is publishable only if:
+A catalog work is publishable only if:
 
-1. A reader might **want to finish it**
-2. Source/rights are clear
-3. It does not push Gloaming toward **course pack**, **vocab list**, **chatbot**, or **AI-generated library**
-
-Imported user content is not “quality-reviewed” by us beyond parse safety (size limits, format, malware/DoS basics). We do not become their editor.
+1. A reader might **want to keep reading it**
+2. Source/rights are clear (`source_note`, licensed EPUB)
+3. It does not push Gloaming toward **course pack**, **vocab deck**, **chatbot**, or **AI-generated library**
 
 ---
 
 ## 7. Phase note
 
-| When         | Content work                                                       |
-| ------------ | ------------------------------------------------------------------ |
-| V1 (Phase 1) | Import + EPUB parse + reader on that document; seed optional       |
-| Phase 2+     | Only if Phase 1 is used as a reader—more sources, not a CMS empire |
+| When | Content work |
+| ---- | ------------ |
+| MVP (Phase 1a) | Admin EPUB pipeline + ReadingWork reader + companion on parts |
+| Phase 1b | User import; `用户` source label on shelf |
+| Phase 2+ | More sources via `origin_kind` — same Work/Part model |
 
 Empty reader is a failure mode. Filling it with generated articles is a worse failure mode.
 
@@ -165,9 +191,8 @@ Empty reader is a failure mode. Filling it with generated articles is a worse fa
 
 ## 8. Revision log
 
-| Date       | Change                                                                                              |
-| ---------- | --------------------------------------------------------------------------------------------------- |
-| 2026-08-20 | Name the real content pipeline (clean / chapters / book-like present). Reading Environment wording. |
-| 2026-08-20 | Supersede curated-article MVP: user import + ebook parse in V1; seed CMS demoted.                   |
-| 2026-08-11 | Pointed v1 admin path to paste-only feature brief (historical).                                     |
-| 2026-08-05 | Initial curated lean library SSOT.                                                                  |
+| Date | Change |
+| ---- | ------ |
+| 2026-08-24 | ReadingWork domain; admin EPUB primary; admin_text internal; ADR-001 alignment. |
+| 2026-08-20 | Real content pipeline wording; 1a/1b split. |
+| 2026-08-05 | Initial curated lean library SSOT (superseded). |

@@ -37,6 +37,7 @@ Standards inform; they do not override the reader bet.
 | Daily card quota / SRS                    | Anki                   | No review queue in V1                       |
 | Chat as default home                      | ChatGPT reading plugin | Assist inside the book                      |
 | Kitchen-sink panels / learning-stats home | Control-panel product  | Reader chrome; stats never outrank the page |
+| Reintroduce **Article** as content SSOT in docs or APIs | Wrong domain — use **ReadingWork** (ADR-001) | Reject; Phase 3 migrates code |
 
 ### 2.3 Pressure / willpower return
 

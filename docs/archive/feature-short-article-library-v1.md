@@ -1,15 +1,23 @@
 # Feature: Short-article Library loop (v1)
 
+> **ARCHIVED**
+>
+> This document describes the historical Short Article Library product model.
+>
+> It is no longer an active product specification.
+>
+> Current domain model: [`docs/adr/001-reading-content-domain-model.md`](../adr/001-reading-content-domain-model.md)
+
 > **Historical.** Superseded. Do **not** use as V1 scope.
 >
-> Current product: **AI Native Language Reading Environment**. EPUB import is **in** V1; curated short articles are seed/ops only.
+> Current product: **AI Native Language Reading Environment**. Official MVP supply is **admin EPUB upload** → ReadingWork + ReadingPart (see [`content-strategy.md`](../product/content-strategy.md)).
 >
-> Current SSOT: [`content-strategy.md`](./content-strategy.md) · [`mvp-scope.md`](./mvp-scope.md) · [`feature-audit.md`](./feature-audit.md)
+> Current SSOT: [`content-strategy.md`](../product/content-strategy.md) · [`mvp-scope.md`](../product/mvp-scope.md) · [`feature-audit.md`](../product/feature-audit.md)
 
 **Status:** Shipped as the old content atom (admin paste → published catalog → short reader). Frozen as identity.  
 **Splits into:** multiple engineering tasks (see §6). Do not ship this whole brief as a single change set.
 
-Related (current): [`content-strategy.md`](./content-strategy.md) · [`mvp-scope.md`](./mvp-scope.md) · [`product-vision.md`](./product-vision.md)
+Related (current): [`content-strategy.md`](../product/content-strategy.md) · [`mvp-scope.md`](../product/mvp-scope.md) · [`product-vision.md`](../product/product-vision.md)
 
 ---
 
@@ -109,8 +117,8 @@ Optional later (not v1): in-app generate, EPUB chunk adapter, TTS, assist, pract
 
 ## 7. Doc ownership
 
-- **This file** is **historical**. Current supply SSOT is [`content-strategy.md`](./content-strategy.md).
-- Keep it to explain what shipped (paste CMS + short reader). Do not extend this loop as the product.
+- **This file is archived.** Current supply SSOT is [`content-strategy.md`](../product/content-strategy.md) and ADR-001.
+- Keep it to explain what shipped historically (paste CMS + short reader). Do not extend this loop as the product.
 
 ---
 
@@ -118,6 +126,7 @@ Optional later (not v1): in-app generate, EPUB chunk adapter, TTS, assist, pract
 
 | Date       | Change                                                                                                                              |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-24 | Moved to `docs/archive/`; banner added; superseded by ReadingWork (ADR-001).                                                      |
 | 2026-08-11 | Initial brief from product discussion: paste-only v1; EPUB/AI deferred; weak series + soft next; pure read; suggested T1–T5 splits. |
 | 2026-08-11 | T1 shipped: article table + admin CRUD/publish + learner published reads (no UI wiring yet).                                        |
 | 2026-08-11 | T2 admin paste form wired to real article APIs (list/create/edit/publish/unpublish).                                                |

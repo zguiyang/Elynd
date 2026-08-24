@@ -10,7 +10,7 @@
 
 目标用户：不限年龄——学生、成人学习者、英语爱好者、高级读者。缺的不是资料，而是一个能读下去、卡住能获得帮助的环境。
 
-产品理念与决策文档（英文 SSOT）：[`docs/product/`](./docs/product/)。
+产品理念与决策文档（英文 SSOT）：[`docs/product/`](./docs/product/)。领域模型：[`docs/adr/001-reading-content-domain-model.md`](./docs/adr/001-reading-content-domain-model.md)。
 
 ### 产品方向（主循环）
 
@@ -20,7 +20,7 @@
 
 | 表面   | 说明                           |
 | ------ | ------------------------------ |
-| Shelf  | 自己的书 / 文件 + 少量种子内容 |
+| Shelf  | 官方书目（admin EPUB catalog）+ Phase 1b 用户导入 |
 | Reader | 安静阅读；划词解释、翻译、TTS  |
 | AI     | 页内同伴，不需要时消失         |
 

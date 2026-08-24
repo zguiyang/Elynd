@@ -61,7 +61,7 @@ Soft target for feature page/shell/component modules (not API helpers, not `comp
 | 401–500 | Prefer split if 2+ UI concerns; OK if still one cohesive surface |
 | **>500** | **Must split** — do not leave god/page megacomponents |
 
-Colocate page-owned pieces as siblings under the same feature dir (e.g. `learn-room-page.tsx` + `learn-article-reader.tsx` + `learn-help-rail.tsx`). A single real consumer is OK when the split exists to enforce this ceiling / isolation — that overrides the “1 consumer → inline” row above for this case only.
+Colocate page-owned pieces as siblings under the same feature dir (e.g. `reader-page.tsx` + `reader-part.tsx` + `reader-ai-drawer.tsx`). A single real consumer is OK when the split exists to enforce this ceiling / isolation — that overrides the “1 consumer → inline” row above for this case only.
 
 Do **not**: invent shared abstractions for the split; extract tiny 30-line wrappers; promote to `packages/*` for one page.
 

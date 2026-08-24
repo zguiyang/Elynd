@@ -40,7 +40,7 @@ Do **not** treat practice completion, review return, or words “saved” as V1 
 | Streak length                  | Shame mechanics                     |
 | Words “collected”              | LingQ/Anki identity                 |
 | Time in app (undifferentiated) | Settings and menus                  |
-| Seed articles finished only    | Ignores whether import/reader works |
+| Seed **works** opened but reader broken | Ignores whether EPUB/reader pipeline works |
 
 **Rule:** If a metric can go up while north-star minutes go down, do not use it as a primary success signal.
 

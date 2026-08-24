@@ -10,7 +10,7 @@
 
 Who: **no age gate**—students, adult learners, enthusiasts, advanced readers. They are not short of materials. They are short of an environment that lets them keep reading, with help when stuck.
 
-Product vision and decision docs (English SSOT): [`docs/product/`](./docs/product/).
+Product vision and decision docs (English SSOT): [`docs/product/`](./docs/product/). Domain model: [`docs/adr/001-reading-content-domain-model.md`](./docs/adr/001-reading-content-domain-model.md).
 
 ### Product direction (main loop)
 
@@ -20,7 +20,7 @@ Choose authentic English → Read → Contextual help when stuck → Keep readin
 
 | Surface | Role                                          |
 | ------- | --------------------------------------------- |
-| Shelf   | Your books/files + a small seed library       |
+| Shelf   | Official catalog (admin EPUB) + user import in Phase 1b |
 | Reader  | Calm reading; lookup, translation, TTS        |
 | AI      | In-page companion; disappears when not needed |
 

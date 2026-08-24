@@ -8,6 +8,7 @@ Canonical product docs (English): [`docs/product/`](docs/product/).
 
 | Doc                                                                                | Use                                                        |
 | ---------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| [`docs/adr/001-reading-content-domain-model.md`](docs/adr/001-reading-content-domain-model.md) | **Domain SSOT** — ReadingWork, Part, State, Asset |
 | [`docs/product/README.md`](docs/product/README.md)                                 | Index / read order                                         |
 | [`docs/product/product-vision.md`](docs/product/product-vision.md)                 | What Gloaming is / is not; personas; experience references |
 | [`docs/product/product-principles.md`](docs/product/product-principles.md)         | Reading-first decision rules                               |
@@ -16,13 +17,38 @@ Canonical product docs (English): [`docs/product/`](docs/product/).
 | [`docs/product/roadmap.md`](docs/product/roadmap.md)                               | Phase 1–3 outcomes; Phase 1a vs 1b                         |
 | [`docs/product/feature-audit.md`](docs/product/feature-audit.md)                   | KEEP / hide / migrate existing code                        |
 | [`docs/product/learning-philosophy.md`](docs/product/learning-philosophy.md)       | Why authentic reading                                      |
-| [`docs/product/content-strategy.md`](docs/product/content-strategy.md)             | Import-first supply                                        |
+| [`docs/product/content-strategy.md`](docs/product/content-strategy.md)             | ReadingWork supply; admin EPUB (MVP); user import (1b)   |
+| [`docs/product/engineering-vocabulary.md`](docs/product/engineering-vocabulary.md) | Product vs engineering naming; target APIs                 |
 | [`docs/product/prototype-flows.md`](docs/product/prototype-flows.md)               | First-time + daily reading loop                            |
 | [`docs/product/success-metrics.md`](docs/product/success-metrics.md)               | North star and drift metrics                               |
 | [`docs/product/feature-decision-guide.md`](docs/product/feature-decision-guide.md) | Should we build this?                                      |
 | [`docs/product/design-guardrails.md`](docs/product/design-guardrails.md)           | Anti-drift review                                          |
 
 **One-liner:** Gloaming is an AI Native Language Reading Environment—read authentic English like a modern ebook reader, with contextual AI when you get stuck. Not a course, not drills, not a chatbot. The core is helping people keep reading English they actually want to read.
+
+## Domain model rules
+
+The content domain is **ReadingWork-based** (ADR-001). Read [`docs/adr/001-reading-content-domain-model.md`](docs/adr/001-reading-content-domain-model.md) and [`docs/product/engineering-vocabulary.md`](docs/product/engineering-vocabulary.md) before schema or API work.
+
+**Do not introduce:**
+
+- `Article` as the content root (legacy — Phase 3 removes it)
+- `reading_progress`, `article_audio` (use **ReadingState**, **ContentAsset**)
+- Lesson / course / Learn* product entities
+- Short Article Library as product identity
+- Article compatibility aliases or dual models
+
+**Use:**
+
+- **ReadingWork** — catalog / shelf / conversation root (no body)
+- **ReadingPart** — Reader, TTS, Translate, Assist text boundary
+- **ReadingState** — shelf membership + position
+- **ContentAsset** — EPUB file, TTS audio, cover, derivatives
+- **Conversation** with `subject_type = reading_work`
+
+**MVP supply:** `admin_epub` (primary). **`admin_text`** = internal dev/test fallback only — not product.
+
+Shipped code may still use legacy Article names until **Phase 3** migration — do not extend the Article model; implement toward target names in docs.
 
 ## Visual design (UI)
 

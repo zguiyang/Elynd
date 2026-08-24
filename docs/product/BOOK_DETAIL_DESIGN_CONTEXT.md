@@ -64,12 +64,14 @@ Sources: `mvp-1-modules.md` §3–6, `prototype-flows.md` §3–4.
 
 ### Current shipped routes (2026-08-24)
 
+**Target (ADR-001):** `/read/[workId]`, `/discover/[workId]`. **Code drift:** still `[articleId]` until Phase 3.
+
 ```text
-我的书架 (/my-shelf)     → mock; continue / grid → /read/[articleId]
-发现 (/discover)         → mock; card → /discover/[articleId] (detail) or /read/[articleId]
-书籍详情 (/discover/[articleId]) → mock; CTA → /read/[articleId]
-阅读历史 (/reading-history) → mock; work row → /read/[articleId]
-Reader (/read/[articleId])  → mock immersive reader (no AppShell nav)
+我的书架 (/my-shelf)              → mock; continue / grid → /read/[workId] (code: [articleId])
+发现 (/discover)                  → mock; card → /discover/[workId] or /read/[workId]
+书籍详情 (/discover/[workId])     → mock; CTA → /read/[workId]
+阅读历史 (/reading-history)       → mock; completion row → /read/[workId]
+Reader (/read/[workId])           → mock; renders ReadingPart text (code: single article.body)
 ```
 
 Implementation: `features/shelf/**`, `features/discover/**`, `features/book-detail/**`, `features/history/**`, `features/reader/**`.
@@ -128,114 +130,93 @@ Design must treat this as a **possible** insert, not as Locked SSOT, until produ
 
 ## Data Model
 
-### Content atom today (**Existing Code**)
+**SSOT:** ADR-001 [`../adr/001-reading-content-domain-model.md`](../adr/001-reading-content-domain-model.md) · [`engineering-vocabulary.md`](./engineering-vocabulary.md)
 
-There is **no** `book` / `document` table. The unit is **`article`** (short curated CMS body).
+Do **not** use legacy **Article** fields as design authority.
 
-```text
-Article {                         # packages/db article + @gloaming/shared/api/articles
-  id:               text PK                    # Existing
-  title:            text                       # Existing
-  body:             text (default '')          # Existing — single blob, not chapters
-  level:            easy | mid | stretch       # Existing — metadata; must not become syllabus (Postpone identity)
-  themes:           string[] jsonb             # Existing
-  sourceNote:       text                       # Existing — required to publish
-  status:           draft | published          # Existing
-  seriesId:         text | null                # Existing — weak series; Postpone as “next lesson”
-  seriesOrder:      int | null                 # Existing
-  estimatedMinutes: int | null (1–30)          # Existing
-  publishedAt:      timestamp | null           # Existing
-  createdAt/updatedAt                          # Existing
-}
-
-# Absent on article today
-  author:           —                          # 暂无
-  coverImage:       —                          # 暂无 (UI uses tint + title)
-  description/blurb:—                          # 暂无 (beyond body itself)
-  chapters/parts:   —                          # 暂无
-  shelfMembership:  —                          # 暂无 (“my shelf” not modeled)
-  sourceLabel:      官方 | 用户                # Future (Locked concept; 用户 = Phase 1b)
-}
-```
-
-**Publish gates (**Existing Code**):** non-empty title, body, sourceNote; ≥1 theme; body word/char caps (e.g. `ARTICLE_BODY_MAX_WORDS = 300` in shared API — short-article era).
-
-### Reading progress (**Existing Code**)
+### Target domain model (**Accepted — ADR-001**)
 
 ```text
-ReadingProgress {                 # reading_progress
-  id:
-  userId:
-  articleId:                      # unique with userId
-  status:           in_progress | completed
-  progressRatio:    0–100 int %
-  lastReadAt:
-  completedAt:      nullable
+ReadingWork {                     # reading_work — catalog / shelf / AI thread root
+  id, title, description, language,
+  status:           draft | processing | published | failed | archived
+  visibility:       catalog | private
+  owner_user_id:    null = official catalog
+  origin_kind:      admin_epub | admin_text | (future user_* …)
+  origin_meta, tags, source_note, cover_asset_id,
+  published_at, created_at, updated_at
+  # No body, level, seriesId, estimatedMinutes
 }
+
+ReadingPart {                     # reading_part — Reader / TTS / Assist text boundary
+  id, work_id, sort_order,
+  kind:             chapter | body | (section | segment reserved)
+  title, body, meta
+}
+
+ReadingState {                    # reading_state — shelf + position (replaces reading_progress)
+  id, user_id, work_id,
+  current_part_id, anchor_kind, anchor_value,
+  status, added_at, last_read_at, completed_at
+  # progressRatio = computed UI only
+}
+
+ContentAsset {                    # content_asset — origin EPUB, TTS, cover, …
+  id, work_id?, part_id?, kind, storage_key, mime_type,
+  content_hash, meta, status, …
+}
+
+Conversation {
+  subject_type:     reading_work
+  subject_id:       work.id
+  # Assist calls also pass partId + selection
+}
+
+Shelf = read model: reading_state JOIN reading_work (no shelf_entry table in MVP)
 ```
 
-No chapter offset / CFI / scroll anchor beyond percent — **Existing Code**.
+**Reader session (target):** work metadata + parts[] + current part body + ReadingState + part-level `audioAvailable`.
 
-### Audio (**Existing Code**)
+### Current implementation drift (**Existing Code — Phase 3 migrates away**)
+
+Legacy **`article`** table still ships. **Do not design new UI against these fields.**
 
 ```text
-ArticleAudio {                    # article_audio, PK (articleId, role)
-  role:             us | uk
-  status, voice, contentHash, storageKey, mimeType, durationMs, wordTimings, …
-}
+article { title, body, level, themes, seriesId, … }   ← DELETE in Phase 3
+reading_progress { articleId, progressRatio }         ← DELETE in Phase 3
+article_audio { articleId, role, … }                  ← DELETE in Phase 3
+conversation.subject_type = 'article'                   ← → reading_work
+Routes/APIs: /read/[articleId], /api/articles, …       ← → workId APIs
 ```
 
-Reader open payload includes `audioAvailable: { us, uk }` (`ReaderSessionData`).
+Short-article era (`ARTICLE_BODY_MAX_WORDS`, level bands) is **archived product** — see [`docs/archive/feature-short-article-library-v1.md`](../archive/feature-short-article-library-v1.md).
 
-### Reader open payload (**Existing Code**) — what Reader fetches
-
-```text
-ReaderSessionData {
-  id, title, body, level, themes, estimatedMinutes,
-  progress: { status, progressRatio, lastReadAt, completedAt },
-  audioAvailable: { us, uk }
-}
-```
-
-Opening Reader **upserts** progress if missing (`getReaderSession` touches `reading_day` + creates `in_progress`).
-
-### Assist / conversation (**Existing Code**)
-
-Document-scoped help transcripts (`conversation` / messages); subject is article id. Lives in Reader rail — not a catalog concern.
-
-### Future document shape (**Future** / product contract)
-
-From `content-strategy.md` §4.1 and `feature-audit.md` §4.1:
-
-| Concern                                          | V1 need             | Status                                                                                   |
-| ------------------------------------------------ | ------------------- | ---------------------------------------------------------------------------------------- |
-| Title                                            | Yes                 | Existing                                                                                 |
-| Body or ordered parts (chapters)                 | Yes for ebooks      | Future (1b pipeline); schema fork **Open Question** (extend `article` vs new `document`) |
-| Source (官方 / 用户)                             | Yes                 | Future labels Locked; data absent                                                        |
-| Owner                                            | User import vs seed | Future (1b)                                                                              |
-| Reading position per user × document (+ chapter) | Yes                 | Partial Existing (article + % only)                                                      |
-| Level / tags                                     | Optional metadata   | Existing; not syllabus                                                                   |
-
-**No parallel “Book app” beside Article** — product rule: one kind of thing you read.
+**One reading type:** ReadingWork — not Article plus a separate Book app.
 
 ---
 
 ## Existing Components
 
-### Routes & features (**Existing Code**)
+### Routes & features
 
-| Area                     | Path / module                                                                                                     | Notes                                               |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| Home (今日)              | `features/dashboard/dashboard-home.tsx`                                                                           | Resume hero + continue list + catalog picks         |
-| Library (发现 candidate) | `features/library/library-page.tsx`                                                                               | Published catalog grid; `VolumeCard`                |
-| Reader                   | `features/learn/learn-room-page.tsx` + `learn-article-reader.tsx` + `learn-help-rail.tsx` + `learn-audio-bar.tsx` | `/learn/:articleId`                                 |
-| Reading history          | `features/progress/**`                                                                                            | Keep as history; rename 成长 → 阅读历史             |
-| Admin CMS                | `features/admin/article-*`                                                                                        | Ops catalog for 1a                                  |
-| App shell nav            | `app-shell.tsx`                                                                                                   | Labels still 今日 / 图书馆 / 成长 (**Known drift**) |
+**Target (ADR-001):** `features/shelf/**`, `discover/**`, `book-detail/**`, `reader/**`, `history/**`; admin **`work-*`** (Phase 3).
+
+**Current code drift (legacy — Phase 3):**
+
+| Area | Current path | Target |
+| ---- | ------------ | ------ |
+| Shelf | `features/shelf/**` → `/my-shelf` | Unchanged |
+| Discover | `features/discover/**` → `/discover` | Lists **ReadingWork** |
+| Book detail | `features/book-detail/**` → `/discover/[workId]` | Code: `[articleId]` |
+| Reader | `features/reader/**` → `/read/[workId]` | Code: `[articleId]`; renders **ReadingPart** |
+| History | `features/history/**` → `/reading-history` | Completions by **workId** |
+| Admin catalog | `features/admin/article-*` | → `admin/work-*`; EPUB upload |
+
+**Removed (do not reference):** `features/dashboard/**`, `features/library/**`, `features/learn/**`, `/progress`, `/dashboard`.
 
 ### Book Detail page
 
-**None.** No `/book/:id`, no detail feature module, no admin “learner preview detail” for learners.
+**Exists (mock):** `features/book-detail/**` at `/discover/[workId]` (code: `[articleId]`). Metadata for **ReadingWork** before Reader entry.
 
 ### Reusable UI atoms (**Existing Code**)
 
@@ -439,7 +420,8 @@ Constraints for any Stitch / prototype pass (facts + Locked rules — still **no
 | Guardrails                   | `docs/product/design-guardrails.md`                                                           |
 | Roadmap                      | `docs/product/roadmap.md`                                                                     |
 | Visual SSOT                  | `DESIGN.md`, `apps/web/app/globals.css`                                                       |
-| Schema                       | `packages/db/src/schema.ts`                                                                   |
-| Article / reader DTOs        | `packages/shared/src/api/articles.ts`, `reader.ts`, `shelf.ts`                                |
+| Domain SSOT                  | `docs/adr/001-reading-content-domain-model.md`, `docs/product/engineering-vocabulary.md`     |
+| Schema (target)              | `packages/db/src/schema.ts` — **Phase 3:** `reading_work`, `reading_part`, `reading_state`, `content_asset` |
+| Shared DTOs (target)         | `@gloaming/shared/api/works`, `reader`, `shelf` — **Phase 3** retires `api/articles`         |
 | Shelf / Discover / Reader UI | `apps/web/features/shelf/**`, `discover/**`, `book-detail/**`, `reader/**`                    |
 | TextStack reference          | https://github.com/mrviduus/textstack (`BookDetailPage`, `BookDetailHero`, `BookDetail` type) |

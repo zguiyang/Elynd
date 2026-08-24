@@ -55,12 +55,11 @@ Example shape:
 ```text
 features/reader/
   reader-page.tsx          # session + chrome + compose
-  reader-article.tsx       # body + selection toolbar
+  reader-part.tsx          # current ReadingPart body + selection toolbar
   reader-ai-drawer.tsx     # assist drawer
-  reader-mock.ts
 ```
 
-Shared content helpers live in `features/content/content-model.ts` (level labels, cover tints).
+Shared content helpers live in `features/content/content-model.ts` (cover tints, paragraph split). Domain: **ReadingWork** / **ReadingPart** — see ADR-001; do not add **ArticleLevel** or article-centric types in new feature code (Phase 3 migrates legacy).
 
 ## Styling
 

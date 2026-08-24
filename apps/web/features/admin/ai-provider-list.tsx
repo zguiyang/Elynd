@@ -50,7 +50,7 @@ export function AiProviderList({
 }: AiProviderListProps) {
   if (providers.length === 0) {
     return (
-      <Empty className="rounded-3xl border border-dashed border-border bg-card py-14">
+      <Empty className="rounded-2xl border border-dashed border-border bg-card py-14">
         <EmptyHeader>
           <EmptyMedia variant="icon">
             <Plus />
@@ -58,7 +58,7 @@ export function AiProviderList({
           <EmptyTitle>还没有服务商</EmptyTitle>
           <EmptyDescription>添加第一个 OpenAI 兼容服务商，再挂载可用模型。</EmptyDescription>
         </EmptyHeader>
-        <Button className="mt-2 rounded-xl px-5 hover:bg-brand-deep" onClick={onAddProvider}>
+        <Button className="mt-2 h-10 rounded-xl px-6 hover:bg-brand-deep" onClick={onAddProvider}>
           添加服务商
         </Button>
       </Empty>
@@ -66,7 +66,7 @@ export function AiProviderList({
   }
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-border bg-card">
+    <div className="overflow-hidden rounded-2xl border border-border bg-card">
       <ul className="divide-y divide-border">
         {providers.map((provider) => {
           const isExpanded = expandedIds.has(provider.id);
@@ -126,9 +126,9 @@ export function AiProviderList({
                     编辑
                   </Button>
                   <Button
-                    variant="ghost"
+                    variant="destructive"
                     size="sm"
-                    className="rounded-xl text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    className="rounded-xl"
                     onClick={() => onDeleteProvider(provider)}
                   >
                     删除
@@ -150,7 +150,7 @@ export function AiProviderList({
               ) : null}
 
               {isExpanded ? (
-                <div className="border-t border-border/70 bg-muted/20 px-5 py-4 md:pl-12">
+                <div className="border-t border-border/70 bg-surface-container-low px-5 py-4 md:pl-12">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <p className="text-sm font-medium text-foreground">模型</p>
                     <Button variant="outline" size="sm" className="rounded-xl" onClick={() => onAddModel(provider)}>
@@ -166,12 +166,12 @@ export function AiProviderList({
                       <Table className="min-w-[36rem]">
                         <TableHeader>
                           <TableRow className="hover:bg-transparent">
-                            <TableHead className="h-10 bg-muted/30 px-4">显示名</TableHead>
-                            <TableHead className="h-10 bg-muted/30 px-4">Model ID</TableHead>
-                            <TableHead className="h-10 bg-muted/30 px-4">温度</TableHead>
-                            <TableHead className="h-10 bg-muted/30 px-4">Max tokens</TableHead>
-                            <TableHead className="h-10 bg-muted/30 px-4">状态</TableHead>
-                            <TableHead className="h-10 bg-muted/30 px-4">操作</TableHead>
+                            <TableHead className="h-10 bg-surface-container-low px-4">显示名</TableHead>
+                            <TableHead className="h-10 bg-surface-container-low px-4">Model ID</TableHead>
+                            <TableHead className="h-10 bg-surface-container-low px-4">温度</TableHead>
+                            <TableHead className="h-10 bg-surface-container-low px-4">Max tokens</TableHead>
+                            <TableHead className="h-10 bg-surface-container-low px-4">状态</TableHead>
+                            <TableHead className="h-10 bg-surface-container-low px-4">操作</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -203,9 +203,9 @@ export function AiProviderList({
                                     编辑
                                   </Button>
                                   <Button
-                                    variant="ghost"
+                                    variant="destructive"
                                     size="sm"
-                                    className="rounded-xl text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                    className="rounded-xl"
                                     onClick={() => onDeleteModel(model)}
                                   >
                                     删除

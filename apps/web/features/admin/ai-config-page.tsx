@@ -257,10 +257,10 @@ export function AiConfigPage() {
     <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700 mx-auto max-w-6xl">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <h1 className="font-heading text-4xl font-bold tracking-tight md:text-5xl">AI 配置</h1>
+          <h1 className="font-heading text-3xl font-bold tracking-tight">AI 配置</h1>
           <p className="mt-3 text-lg text-muted-foreground">配置 OpenAI 兼容服务商与模型，并指定阅读助手默认调用。</p>
         </div>
-        <Button className="h-11 shrink-0 rounded-xl px-7 hover:bg-brand-deep" onClick={openCreateProvider}>
+        <Button className="h-10 shrink-0 rounded-xl px-6 hover:bg-brand-deep" onClick={openCreateProvider}>
           <Plus data-icon="inline-start" />
           添加服务商
         </Button>
@@ -269,11 +269,11 @@ export function AiConfigPage() {
       <div className="mt-10 flex flex-col gap-8">
         {isPending ? (
           <>
-            <Skeleton className="h-40 w-full rounded-3xl bg-muted/70" />
-            <Skeleton className="h-72 w-full rounded-3xl bg-muted/70" />
+            <Skeleton className="h-40 w-full rounded-2xl bg-muted/70" />
+            <Skeleton className="h-72 w-full rounded-2xl bg-muted/70" />
           </>
         ) : loadError ? (
-          <p className="rounded-3xl border border-border bg-secondary/60 px-5 py-8 text-sm text-destructive md:px-6">
+          <p className="rounded-2xl border border-border bg-secondary/60 px-5 py-8 text-sm text-destructive md:px-6">
             {formatAdminLlmApiError(loadError)}
           </p>
         ) : (

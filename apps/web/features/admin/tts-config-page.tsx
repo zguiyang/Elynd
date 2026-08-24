@@ -104,9 +104,9 @@ function TtsConfigForm({ config, presets }: { config: TtsConfigView; presets: Tt
   });
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-10">
+    <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700 mx-auto flex w-full max-w-3xl flex-col gap-10">
       <header className="flex flex-col gap-2">
-        <h1 className="font-serif text-3xl font-semibold tracking-tight text-foreground">语音配置</h1>
+        <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">语音配置</h1>
         <p className="text-sm leading-6 text-muted-foreground">
           配置 Azure Speech（TTS）凭证与默认音色。仅支持 Azure；密钥加密存储，页面只展示脱敏信息。
         </p>
@@ -218,7 +218,7 @@ function TtsConfigForm({ config, presets }: { config: TtsConfigView; presets: Tt
         <div className="mt-6 flex justify-end">
           <Button
             type="button"
-            className="rounded-xl"
+            className="h-10 rounded-xl px-6 hover:bg-brand-deep"
             disabled={saveMutation.isPending || !region.trim()}
             onClick={() => saveMutation.mutate()}
           >
@@ -310,7 +310,7 @@ export function TtsConfigPage() {
   if (isPending) {
     return (
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-        <Skeleton className="h-10 w-48" />
+        <Skeleton className="h-10 w-48 rounded-2xl" />
         <Skeleton className="h-64 w-full rounded-2xl" />
       </div>
     );
@@ -319,7 +319,9 @@ export function TtsConfigPage() {
   if (loadError || !config || !presets) {
     return (
       <div className="mx-auto w-full max-w-3xl">
-        <p className="text-sm text-destructive">{formatAdminTtsApiError(loadError ?? new Error('配置加载失败'))}</p>
+        <p className="rounded-2xl border border-border bg-secondary/60 px-5 py-8 text-sm text-destructive md:px-6">
+          {formatAdminTtsApiError(loadError ?? new Error('配置加载失败'))}
+        </p>
       </div>
     );
   }

@@ -75,7 +75,7 @@ export function AiPurposePanel({
         <p className="mt-1 text-sm text-muted-foreground">决定各业务能力实际调用哪一个已启用模型。</p>
       </div>
 
-      <ul className="overflow-hidden rounded-3xl border border-border bg-secondary/60">
+      <ul className="overflow-hidden rounded-2xl border border-border bg-secondary/60">
         {settings.map((setting) => {
           const copy = AI_PURPOSE_LABELS[setting.key];
           const draft = draftByKey[setting.key] ?? setting.modelId ?? '';
@@ -152,7 +152,7 @@ export function AiPurposePanel({
                     </SelectContent>
                   </Select>
                   <Button
-                    className="h-10 shrink-0 rounded-xl px-5 hover:bg-brand-deep"
+                    className="h-10 shrink-0 rounded-xl px-6 hover:bg-brand-deep"
                     disabled={!draft || !isDirty}
                     onClick={() => onSave(setting.key)}
                   >

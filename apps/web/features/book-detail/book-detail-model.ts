@@ -1,45 +1,29 @@
 import type { ArticleLevel } from '@gloaming/shared/api/articles';
+import type { ReadingProgressStatus } from '@gloaming/shared/api/reader';
 
 import { LEVEL_LABEL } from '@/features/content/content-model';
 
-/** Reading lifecycle for book detail CTA / progress chrome (UI mock). */
+/** Reading lifecycle for book detail CTA / progress chrome. */
 export type BookReadingStatus = 'unread' | 'in_progress' | 'completed';
-
-export type BookChapterStatus = 'read' | 'current' | 'unread';
-
-export type BookChapter = {
-  id: string;
-  index: number;
-  title: string;
-  estimatedMinutes: number;
-  wordCount: number;
-  status: BookChapterStatus;
-};
 
 export type BookDetailShelfStatus = 'available' | 'on_shelf';
 
 export type BookDetail = {
   id: string;
   title: string;
-  author: string;
   level: ArticleLevel;
-  category: string;
   themes: string[];
-  estimatedMinutes: number;
+  estimatedMinutes: number | null;
+  publishedAt: string | null;
+  sourceNote: string;
   wordCount: number;
-  /** Short hook under the title (serif italic). */
   teaser: string;
-  /** Longer about paragraphs (reading serif). */
-  about: string[];
   sourceLabel: '官方';
-  languageLabel: string;
   shelfStatus: BookDetailShelfStatus;
   readingStatus: BookReadingStatus;
   progressRatio: number | null;
   lastReadAt: string | null;
   completedAt: string | null;
-  chapters: BookChapter[];
-  relatedIds: string[];
 };
 
 export function primaryReadLabel(status: BookReadingStatus): string {
@@ -81,7 +65,10 @@ export function formatWordCount(count: number): string {
   return String(count);
 }
 
-export function formatMinutes(minutes: number): string {
+export function formatMinutes(minutes: number | null): string {
+  if (minutes == null || minutes <= 0) {
+    return '—';
+  }
   if (minutes >= 60) {
     const hours = Math.floor(minutes / 60);
     const rest = minutes % 60;
@@ -105,12 +92,31 @@ export function levelStarCount(level: ArticleLevel): number {
   return 3;
 }
 
-export function chapterStatusLabel(status: BookChapterStatus): string | null {
-  if (status === 'read') {
-    return '已读';
+export function readingStatusFromProgress(
+  status: ReadingProgressStatus | null,
+  progressRatio: number | null,
+): BookReadingStatus {
+  if (status === 'completed') {
+    return 'completed';
   }
-  if (status === 'current') {
-    return '当前阅读';
+  if (status === 'in_progress' && progressRatio != null && progressRatio > 0) {
+    return 'in_progress';
   }
-  return null;
+  return 'unread';
+}
+
+export function teaserFromBody(body: string, sourceNote: string): string {
+  const firstParagraph = body
+    .trim()
+    .split(/\n\s*\n/)[0]
+    ?.trim();
+  if (firstParagraph) {
+    const clipped = firstParagraph.length > 180 ? `${firstParagraph.slice(0, 177)}…` : firstParagraph;
+    return clipped;
+  }
+  const note = sourceNote.trim();
+  if (note) {
+    return note.length > 180 ? `${note.slice(0, 177)}…` : note;
+  }
+  return '';
 }

@@ -1,8 +1,7 @@
 'use client';
 
-import { BookmarkIcon, BookOpenIcon, CheckIcon } from 'lucide-react';
+import { BookmarkIcon, BookOpenIcon, CheckIcon, Loader2Icon } from 'lucide-react';
 import Link from 'next/link';
-import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { AUTH_ROUTES } from '@/constants';
@@ -14,15 +13,15 @@ type BookDetailHeroProps = {
   book: BookDetail;
   onShelf: boolean;
   onAddToShelf: () => void;
+  isAddingToShelf?: boolean;
 };
 
-export function BookDetailHero({ book, onShelf, onAddToShelf }: BookDetailHeroProps) {
+export function BookDetailHero({ book, onShelf, onAddToShelf, isAddingToShelf }: BookDetailHeroProps) {
   const readHref = AUTH_ROUTES.readBook(book.id);
   const readLabel = primaryReadLabel(book.readingStatus);
   const lastRead = formatRelativeReadTime(book.lastReadAt);
   const hasProgress = book.readingStatus === 'in_progress' && book.progressRatio != null && book.progressRatio > 0;
   const isCompleted = book.readingStatus === 'completed';
-  const themeChips = [...book.themes.slice(0, 2), book.category].filter(Boolean);
 
   return (
     <section className="grid grid-cols-1 items-center gap-8 md:grid-cols-12 md:gap-12 lg:gap-16">
@@ -40,16 +39,14 @@ export function BookDetailHero({ book, onShelf, onAddToShelf }: BookDetailHeroPr
             <span className="rounded bg-primary/10 px-2 py-1 text-[11px] font-semibold tracking-[0.08em] text-primary uppercase">
               {book.sourceLabel}
             </span>
-            <span className="text-sm text-muted-foreground">{book.languageLabel}</span>
           </div>
           <h1 className="font-heading text-3xl leading-tight font-bold tracking-tight text-foreground text-balance md:text-5xl md:leading-[1.15]">
             {book.title}
           </h1>
-          <p className="font-heading text-lg text-muted-foreground italic md:text-2xl md:leading-8">{book.author}</p>
         </div>
 
         <div className="flex flex-wrap justify-center gap-2 md:justify-start">
-          {themeChips.map((chip) => (
+          {book.themes.slice(0, 3).map((chip) => (
             <span
               key={chip}
               className="rounded-full border border-border/40 bg-surface-container-highest/80 px-3.5 py-1.5 text-sm text-muted-foreground"
@@ -59,11 +56,12 @@ export function BookDetailHero({ book, onShelf, onAddToShelf }: BookDetailHeroPr
           ))}
         </div>
 
-        <p className="font-reading mx-auto max-w-2xl text-base leading-7 text-muted-foreground md:mx-0 md:text-lg md:leading-8 md:italic">
-          {book.teaser}
-        </p>
+        {book.teaser ? (
+          <p className="font-reading mx-auto max-w-2xl text-base leading-7 text-muted-foreground md:mx-0 md:text-lg md:leading-8 md:italic">
+            {book.teaser}
+          </p>
+        ) : null}
 
-        {/* Desktop / tablet CTAs + progress (matches desktop prototype under actions) */}
         <div className="hidden max-w-xl flex-col gap-4 pt-1 md:flex">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <Button
@@ -74,7 +72,12 @@ export function BookDetailHero({ book, onShelf, onAddToShelf }: BookDetailHeroPr
               <BookOpenIcon className="size-4" strokeWidth={1.5} aria-hidden />
               {readLabel}
             </Button>
-            <ShelfButton onShelf={onShelf} onAdd={onAddToShelf} className="h-11 flex-1 rounded-xl px-8 text-base" />
+            <ShelfButton
+              onShelf={onShelf}
+              onAdd={onAddToShelf}
+              isAdding={isAddingToShelf}
+              className="h-11 flex-1 rounded-xl px-8 text-base"
+            />
           </div>
 
           {hasProgress ? (
@@ -106,11 +109,8 @@ export function BookDetailHero({ book, onShelf, onAddToShelf }: BookDetailHeroPr
           ) : null}
         </div>
 
-        {/* Mobile meta line under title cluster */}
         <p className="text-sm text-muted-foreground md:hidden">
-          {[book.estimatedMinutes != null ? `${book.estimatedMinutes} 分钟` : null, book.category]
-            .filter(Boolean)
-            .join(' · ')}
+          {book.estimatedMinutes != null ? `${book.estimatedMinutes} 分钟` : null}
         </p>
       </div>
     </section>
@@ -163,10 +163,12 @@ export function BookDetailStickyCta({
   book,
   onShelf,
   onAddToShelf,
+  isAddingToShelf,
 }: {
   book: BookDetail;
   onShelf: boolean;
   onAddToShelf: () => void;
+  isAddingToShelf?: boolean;
 }) {
   const readHref = AUTH_ROUTES.readBook(book.id);
   const readLabel = primaryReadLabel(book.readingStatus);
@@ -187,13 +189,17 @@ export function BookDetailStickyCta({
             type="button"
             variant="outline"
             className="h-12 shrink-0 rounded-xl px-4"
+            disabled={isAddingToShelf}
             onClick={() => {
               onAddToShelf();
-              toast.success('已加入书架（原型预览）');
             }}
             aria-label="加入书架"
           >
-            <BookmarkIcon className="size-4" strokeWidth={1.5} aria-hidden />
+            {isAddingToShelf ? (
+              <Loader2Icon className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <BookmarkIcon className="size-4" strokeWidth={1.5} aria-hidden />
+            )}
           </Button>
         ) : null}
       </div>
@@ -201,7 +207,17 @@ export function BookDetailStickyCta({
   );
 }
 
-function ShelfButton({ onShelf, onAdd, className }: { onShelf: boolean; onAdd: () => void; className?: string }) {
+function ShelfButton({
+  onShelf,
+  onAdd,
+  isAdding,
+  className,
+}: {
+  onShelf: boolean;
+  onAdd: () => void;
+  isAdding?: boolean;
+  className?: string;
+}) {
   if (onShelf) {
     return (
       <Button
@@ -223,12 +239,13 @@ function ShelfButton({ onShelf, onAdd, className }: { onShelf: boolean; onAdd: (
     <Button
       type="button"
       variant="outline"
+      disabled={isAdding}
       className={cn('gap-2 border-outline/50 bg-card shadow-none hover:bg-surface-container-low', className)}
       onClick={() => {
         onAdd();
-        toast.success('已加入书架（原型预览）');
       }}
     >
+      {isAdding ? <Loader2Icon className="size-4 animate-spin" aria-hidden /> : null}
       <BookmarkIcon className="size-4" strokeWidth={1.5} aria-hidden />
       加入书架
     </Button>

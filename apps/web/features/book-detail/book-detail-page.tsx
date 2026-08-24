@@ -2,32 +2,57 @@
 
 import { ArrowLeftIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { toast } from 'sonner';
 
 import { AUTH_ROUTES } from '@/constants';
 import { BookDetailAbout } from '@/features/book-detail/book-detail-about';
+import { formatBookDetailApiError, useBookDetailQuery } from '@/features/book-detail/book-detail-api';
 import { BookDetailHero, BookDetailMobileProgress, BookDetailStickyCta } from '@/features/book-detail/book-detail-hero';
-import { BOOK_DETAIL_DEMO_IDS, getBookDetail, getRelatedBooks } from '@/features/book-detail/book-detail-mock';
-import { BookDetailRelated } from '@/features/book-detail/book-detail-related';
 import { BookDetailStats } from '@/features/book-detail/book-detail-stats';
-import { BookDetailToc } from '@/features/book-detail/book-detail-toc';
 import { BookDetailUnavailable } from '@/features/book-detail/book-detail-unavailable';
+import { useAddToShelfMutation } from '@/features/discover/discover-api';
 import { cn } from '@/lib/utils';
 
-/**
- * Book detail UI prototype: local mock catalog only (no shelf API).
- * Reading CTAs route to the existing Reader; shelf add is toast-only.
- */
-export function BookDetailPage({ bookId }: { bookId: string }) {
-  const book = getBookDetail(bookId);
-  const [isShelfOverride, setIsShelfOverride] = useState<boolean | null>(null);
+function BookDetailSkeleton() {
+  return (
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 py-8" aria-hidden>
+      <div className="h-8 w-32 animate-pulse rounded bg-surface-container-high" />
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
+        <div className="mx-auto aspect-[2/3] w-48 animate-pulse rounded-sm bg-surface-container-high md:col-span-4" />
+        <div className="space-y-4 md:col-span-8">
+          <div className="h-10 w-3/4 animate-pulse rounded bg-surface-container-high" />
+          <div className="h-6 w-1/2 animate-pulse rounded bg-surface-container-high" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
-  if (!book || bookId === BOOK_DETAIL_DEMO_IDS.unavailable) {
-    return <BookDetailUnavailable />;
+export function BookDetailPage({ articleId }: { articleId: string }) {
+  const detailQuery = useBookDetailQuery(articleId);
+  const addToShelf = useAddToShelfMutation();
+
+  if (detailQuery.isPending) {
+    return <BookDetailSkeleton />;
   }
 
-  const isOnShelf = isShelfOverride ?? book.shelfStatus === 'on_shelf';
-  const related = getRelatedBooks(book);
+  if (detailQuery.isError) {
+    return (
+      <div className="mx-auto max-w-5xl py-16 text-center">
+        <BookDetailUnavailable message={formatBookDetailApiError(detailQuery.error)} />
+      </div>
+    );
+  }
+
+  const book = detailQuery.data;
+  const isOnShelf = book.shelfStatus === 'on_shelf';
+
+  function handleAddToShelf() {
+    addToShelf.mutate(book.id, {
+      onSuccess: () => toast.success('已加入书架'),
+      onError: (error) => toast.error(formatBookDetailApiError(error)),
+    });
+  }
 
   return (
     <div
@@ -36,37 +61,6 @@ export function BookDetailPage({ bookId }: { bookId: string }) {
         'mx-auto flex w-full max-w-5xl flex-col gap-8 pb-36 md:gap-14 md:pb-8',
       )}
     >
-      <p className="text-center text-xs text-muted-foreground">
-        界面预览（假数据）· 状态示例：
-        <Link
-          href={AUTH_ROUTES.bookDetail(BOOK_DETAIL_DEMO_IDS.unread)}
-          className="mx-1 underline-offset-2 hover:text-primary hover:underline"
-        >
-          未读
-        </Link>
-        /
-        <Link
-          href={AUTH_ROUTES.bookDetail(BOOK_DETAIL_DEMO_IDS.inProgress)}
-          className="mx-1 underline-offset-2 hover:text-primary hover:underline"
-        >
-          有进度
-        </Link>
-        /
-        <Link
-          href={AUTH_ROUTES.bookDetail(BOOK_DETAIL_DEMO_IDS.completed)}
-          className="mx-1 underline-offset-2 hover:text-primary hover:underline"
-        >
-          已读完
-        </Link>
-        /
-        <Link
-          href={AUTH_ROUTES.bookDetail(BOOK_DETAIL_DEMO_IDS.unavailable)}
-          className="mx-1 underline-offset-2 hover:text-primary hover:underline"
-        >
-          无法打开
-        </Link>
-      </p>
-
       <div className="md:hidden">
         <Link
           href={AUTH_ROUTES.discover}
@@ -77,29 +71,28 @@ export function BookDetailPage({ bookId }: { bookId: string }) {
         </Link>
       </div>
 
-      <BookDetailHero book={book} onShelf={isOnShelf} onAddToShelf={() => setIsShelfOverride(true)} />
+      <BookDetailHero
+        book={book}
+        onShelf={isOnShelf}
+        onAddToShelf={handleAddToShelf}
+        isAddingToShelf={addToShelf.isPending}
+      />
       <BookDetailMobileProgress book={book} />
       <div className="flex flex-col gap-8 md:gap-14">
-        <div className="order-1">
-          <BookDetailStats book={book} />
-        </div>
-        <div className="order-3 md:order-2">
-          <BookDetailAbout book={book} />
-        </div>
-        <div className="order-2 md:order-3">
-          <BookDetailToc book={book} />
-        </div>
-        <div className="order-4">
-          <BookDetailRelated books={related} />
-        </div>
+        <BookDetailStats book={book} />
+        <BookDetailAbout book={book} />
       </div>
 
       <footer className="border-t border-border/50 pt-8 text-center text-sm text-muted-foreground">
         <p className="mb-1">Gloaming — The Quiet Art of Slow Reading.</p>
-        <p className="text-xs tracking-wide uppercase opacity-70">Editorial Preview</p>
       </footer>
 
-      <BookDetailStickyCta book={book} onShelf={isOnShelf} onAddToShelf={() => setIsShelfOverride(true)} />
+      <BookDetailStickyCta
+        book={book}
+        onShelf={isOnShelf}
+        onAddToShelf={handleAddToShelf}
+        isAddingToShelf={addToShelf.isPending}
+      />
     </div>
   );
 }

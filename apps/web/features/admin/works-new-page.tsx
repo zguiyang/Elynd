@@ -178,7 +178,7 @@ export function WorksNewPage() {
           return (
             <Fragment key={step.id}>
               {index > 0 ? (
-                <div className={cn('h-px w-5 shrink-0 sm:w-7', isDone ? 'bg-brand/50' : 'bg-border')} />
+                <div className={cn('h-px w-5 shrink-0 sm:w-7', isDone ? 'bg-brand-deep/50' : 'bg-border')} />
               ) : null}
               <button
                 type="button"
@@ -193,7 +193,7 @@ export function WorksNewPage() {
                 <span
                   className={cn(
                     'flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
-                    isDone || isActive ? 'bg-brand text-white' : 'bg-muted text-muted-foreground',
+                    isDone || isActive ? 'bg-brand-deep text-white' : 'bg-muted text-muted-foreground',
                   )}
                 >
                   {isDone ? <Check className="size-3.5" /> : index + 1}
@@ -210,7 +210,7 @@ export function WorksNewPage() {
           {created ? (
             <div>
               <div className="flex items-center gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand text-white">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-deep text-white">
                   <Check className="size-5" />
                 </div>
                 <div>

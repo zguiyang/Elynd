@@ -8,9 +8,10 @@ import { articleAudioRoutes } from '@/modules/article-audio/route';
 import { articlesRoutes } from '@/modules/articles/route';
 import { assistRoutes } from '@/modules/assist/route';
 import { conversationsRoutes } from '@/modules/conversations/route';
-import { learnRoutes } from '@/modules/learn/route';
 import { llmConfigRoutes } from '@/modules/llm-config/route';
-import { progressRoutes } from '@/modules/progress/route';
+import { readerRoutes } from '@/modules/reader/route';
+import { readingHistoryRoutes } from '@/modules/reading-history/route';
+import { shelfRoutes } from '@/modules/shelf/route';
 import { translateRoutes } from '@/modules/translate/route';
 import { ttsRoutes } from '@/modules/tts/route';
 
@@ -39,8 +40,9 @@ routes.post('/api/admin/jobs/ping', requireAdmin, async (c) => {
 
 routes.route('/', articlesRoutes);
 routes.route('/', articleAudioRoutes);
-routes.route('/', learnRoutes);
-routes.route('/', progressRoutes);
+routes.route('/', shelfRoutes);
+routes.route('/', readerRoutes);
+routes.route('/', readingHistoryRoutes);
 routes.route('/', llmConfigRoutes);
 routes.route('/', aiRoutes);
 routes.route('/', assistRoutes);

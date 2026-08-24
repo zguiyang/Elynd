@@ -5,7 +5,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 
 import { article as articleTable, readingProgress as readingProgressTable, user as userTable } from '@gloaming/db';
 import type { Article } from '@gloaming/shared/api/articles';
-import { calendarDateInTimeZone, type ProgressData } from '@gloaming/shared/api/progress';
+import { calendarDateInTimeZone, type ReadingHistoryData } from '@gloaming/shared/api/reading-history';
 import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 
 import app from '@/app';
@@ -98,13 +98,13 @@ async function createPublishedArticle(adminCookie: string, title: string): Promi
   return article;
 }
 
-async function getProgress(cookie: string): Promise<ProgressData> {
-  const response = await app.request('/api/progress', { headers: { cookie } });
+async function getReadingHistory(cookie: string): Promise<ReadingHistoryData> {
+  const response = await app.request('/api/reading-history', { headers: { cookie } });
   expect(response.status).toBe(200);
-  return (await response.json()) as ProgressData;
+  return (await response.json()) as ReadingHistoryData;
 }
 
-describe('Progress HTTP', () => {
+describe('Reading history HTTP', () => {
   const createdEmails: string[] = [];
   const createdArticleIds: string[] = [];
 
@@ -117,22 +117,22 @@ describe('Progress HTTP', () => {
     }
   });
 
-  it('requires a session and does not treat shelf or reading-history views as a reading-activity day', async () => {
-    const anonymous = await app.request('/api/progress');
+  it('requires a session and does not treat shelf as a reading-activity day', async () => {
+    const anonymous = await app.request('/api/reading-history');
     expect(anonymous.status).toBe(HTTP_STATUS.UNAUTHORIZED);
 
     const learner = await createSession('user');
     createdEmails.push(learner.email);
 
-    expect((await app.request('/api/learn/today', { headers: { cookie: learner.cookie } })).status).toBe(200);
+    expect((await app.request('/api/shelf', { headers: { cookie: learner.cookie } })).status).toBe(200);
 
-    const empty = await getProgress(learner.cookie);
+    const empty = await getReadingHistory(learner.cookie);
     expect(empty.today).toBe(calendarDateInTimeZone());
     expect(empty.activity).toEqual([]);
     expect(empty.completions).toEqual([]);
     expect(empty.portrait).toEqual({
       consecutiveDays: 0,
-      learningDays: 0,
+      readingDays: 0,
       completedArticles: 0,
       lookedUpWords: 0,
     });
@@ -142,7 +142,7 @@ describe('Progress HTTP', () => {
     const admin = await createSession('admin');
     const learner = await createSession('user');
     createdEmails.push(admin.email, learner.email);
-    const article = await createPublishedArticle(admin.cookie, 'Progress Sea');
+    const article = await createPublishedArticle(admin.cookie, 'History Sea');
     createdArticleIds.push(article.id);
 
     const createdAt = new Date('2026-01-10T04:00:00.000Z');
@@ -158,16 +158,16 @@ describe('Progress HTTP', () => {
       completedAt: null,
     });
 
-    const backfilled = await getProgress(learner.cookie);
+    const backfilled = await getReadingHistory(learner.cookie);
     expect(backfilled.activity.map((day) => day.date)).toEqual(
       expect.arrayContaining([calendarDateInTimeZone(createdAt), calendarDateInTimeZone(lastReadAt)]),
     );
     expect(backfilled.activity.some((day) => day.date === calendarDateInTimeZone())).toBe(false);
 
     expect(
-      (await app.request(`/api/learn/articles/${article.id}`, { headers: { cookie: learner.cookie } })).status,
+      (await app.request(`/api/reader/articles/${article.id}`, { headers: { cookie: learner.cookie } })).status,
     ).toBe(200);
-    const complete = await app.request(`/api/learn/articles/${article.id}/progress`, {
+    const complete = await app.request(`/api/reader/articles/${article.id}/progress`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
       body: JSON.stringify({ status: 'completed' }),
@@ -175,22 +175,22 @@ describe('Progress HTTP', () => {
     expect(complete.status).toBe(200);
 
     const today = calendarDateInTimeZone();
-    const live = await getProgress(learner.cookie);
+    const live = await getReadingHistory(learner.cookie);
     expect(live.activity.some((day) => day.date === today && day.level === 1)).toBe(true);
     expect(live.portrait.completedArticles).toBe(1);
-    expect(live.portrait.learningDays).toBeGreaterThanOrEqual(2);
-    expect(live.completions[0]).toMatchObject({ title: 'Progress Sea', articleId: article.id, date: today });
+    expect(live.portrait.readingDays).toBeGreaterThanOrEqual(2);
+    expect(live.completions[0]).toMatchObject({ title: 'History Sea', articleId: article.id, date: today });
   });
 
   it('counts distinct lookup selections', async () => {
     const admin = await createSession('admin');
     const learner = await createSession('user');
     createdEmails.push(admin.email, learner.email);
-    const article = await createPublishedArticle(admin.cookie, 'Progress Lookups');
+    const article = await createPublishedArticle(admin.cookie, 'History Lookups');
     createdArticleIds.push(article.id);
 
     expect(
-      (await app.request(`/api/learn/articles/${article.id}`, { headers: { cookie: learner.cookie } })).status,
+      (await app.request(`/api/reader/articles/${article.id}`, { headers: { cookie: learner.cookie } })).status,
     ).toBe(200);
 
     await conversationsService.appendAssistTurn({
@@ -234,7 +234,7 @@ describe('Progress HTTP', () => {
       userMetadata: { actionId: 'meaning', selection: 'mysteries' },
     });
 
-    const snapshot = await getProgress(learner.cookie);
+    const snapshot = await getReadingHistory(learner.cookie);
     expect(snapshot.portrait.lookedUpWords).toBe(2);
   });
 });

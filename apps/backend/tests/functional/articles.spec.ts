@@ -15,7 +15,7 @@ import {
   type AdminArticleListData,
   type Article,
   ARTICLE_BODY_MAX_WORDS,
-  type CatalogArticleListData,
+  type DiscoverListData,
 } from '@gloaming/shared/api/articles';
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, DEFAULT_SORT_ORDER } from '@gloaming/shared/api/pagination';
 import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
@@ -217,7 +217,7 @@ describe('Articles HTTP', () => {
       headers: { cookie: learner.cookie },
     });
     expect(learnerList.status).toBe(200);
-    const learnerListBody = (await learnerList.json()) as CatalogArticleListData;
+    const learnerListBody = (await learnerList.json()) as DiscoverListData;
     expect(learnerListBody.items.some((item) => item.id === created.id)).toBe(true);
     expect(learnerListBody.pagination).toMatchObject({
       page: DEFAULT_PAGE,
@@ -315,7 +315,7 @@ describe('Articles HTTP', () => {
       headers: { cookie: learner.cookie },
     });
     expect(byTheme.status).toBe(200);
-    const themeBody = (await byTheme.json()) as CatalogArticleListData;
+    const themeBody = (await byTheme.json()) as DiscoverListData;
     expect(themeBody.items.map((item) => item.id)).toEqual([scienceId]);
     expect(themeBody.themes).toEqual(expect.arrayContaining(['science', 'story', 'nature']));
 
@@ -323,14 +323,14 @@ describe('Articles HTTP', () => {
       headers: { cookie: learner.cookie },
     });
     expect(byQuery.status).toBe(200);
-    const queryBody = (await byQuery.json()) as CatalogArticleListData;
+    const queryBody = (await byQuery.json()) as DiscoverListData;
     expect(queryBody.items.map((item) => item.id)).toEqual([storyId]);
 
     const pageOne = await app.request('/api/articles?page=1&pageSize=2&sortBy=createdAt&sortOrder=asc', {
       headers: { cookie: learner.cookie },
     });
     expect(pageOne.status).toBe(200);
-    const pageOneBody = (await pageOne.json()) as CatalogArticleListData;
+    const pageOneBody = (await pageOne.json()) as DiscoverListData;
     expect(pageOneBody.items).toHaveLength(2);
     expect(pageOneBody.pagination).toMatchObject({
       page: 1,

@@ -1,23 +1,14 @@
 import { randomUUID } from 'node:crypto';
 
-import { and, desc, eq, ne, notExists } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 import { article as articleTable, readingProgress as readingProgressTable } from '@gloaming/db';
-import {
-  LEARN_CONTINUE_READING_LIMIT,
-  LEARN_SHELF_ITEMS_LIMIT,
-  LEARN_TODAY_RECOMMENDATIONS_LIMIT,
-  type LearnArticleData,
-  type LearnArticleSummary,
-  type LearnShelfData,
-  type LearnTodayData,
-  type UpdateReadingProgressBody,
-} from '@gloaming/shared/api/learn';
+import { type ReaderSessionData, type UpdateReadingProgressBody } from '@gloaming/shared/api/reader';
 
 import { db } from '@/db';
 import { AppError, NotFoundError } from '@/lib/errors';
 import { getArticleAudioAvailability } from '@/modules/article-audio/service';
-import { touchLearnerDay } from '@/modules/progress/service';
+import { touchReadingDay } from '@/modules/reading-history/service';
 
 type ArticleRow = typeof articleTable.$inferSelect;
 type ProgressRow = typeof readingProgressTable.$inferSelect;
@@ -26,19 +17,9 @@ function toIso(value: Date): string {
   return value.toISOString();
 }
 
-function toSummary(row: ArticleRow): LearnArticleSummary {
-  return {
-    id: row.id,
-    title: row.title,
-    level: row.level as LearnArticleSummary['level'],
-    themes: row.themes,
-    estimatedMinutes: row.estimatedMinutes,
-  };
-}
-
 function toProgress(row: ProgressRow) {
   return {
-    status: row.status as LearnArticleData['progress']['status'],
+    status: row.status as ReaderSessionData['progress']['status'],
     progressRatio: row.progressRatio,
     lastReadAt: toIso(row.lastReadAt),
     completedAt: row.completedAt ? toIso(row.completedAt) : null,
@@ -57,101 +38,8 @@ async function requirePublishedArticle(articleId: string): Promise<ArticleRow> {
   return row;
 }
 
-export async function getToday(userId: string): Promise<LearnTodayData> {
-  const progressRows = await db
-    .select({
-      progress: readingProgressTable,
-      article: articleTable,
-    })
-    .from(readingProgressTable)
-    .innerJoin(articleTable, eq(readingProgressTable.articleId, articleTable.id))
-    .where(
-      and(
-        eq(readingProgressTable.userId, userId),
-        eq(readingProgressTable.status, 'in_progress'),
-        eq(articleTable.status, 'published'),
-      ),
-    )
-    .orderBy(desc(readingProgressTable.lastReadAt), desc(readingProgressTable.id))
-    .limit(LEARN_CONTINUE_READING_LIMIT + 1);
-
-  const currentRow = progressRows[0] ?? null;
-  const continueRows = progressRows.slice(1, LEARN_CONTINUE_READING_LIMIT + 1);
-
-  const recommendationRows = await db
-    .select()
-    .from(articleTable)
-    .where(
-      and(
-        eq(articleTable.status, 'published'),
-        notExists(
-          db
-            .select({ id: readingProgressTable.id })
-            .from(readingProgressTable)
-            .where(and(eq(readingProgressTable.userId, userId), eq(readingProgressTable.articleId, articleTable.id))),
-        ),
-      ),
-    )
-    .orderBy(desc(articleTable.publishedAt), desc(articleTable.id))
-    .limit(LEARN_TODAY_RECOMMENDATIONS_LIMIT);
-
-  return {
-    current: currentRow ? { article: toSummary(currentRow.article), progress: toProgress(currentRow.progress) } : null,
-    continueReading: continueRows.map((row) => ({
-      article: toSummary(row.article),
-      progress: toProgress(row.progress),
-    })),
-    recommendations: recommendationRows.map((row) => toSummary(row)),
-  };
-}
-
-/** My shelf: latest in-progress as continue hero; remaining progress rows as grid. */
-export async function getShelf(userId: string): Promise<LearnShelfData> {
-  const [currentRow] = await db
-    .select({
-      progress: readingProgressTable,
-      article: articleTable,
-    })
-    .from(readingProgressTable)
-    .innerJoin(articleTable, eq(readingProgressTable.articleId, articleTable.id))
-    .where(
-      and(
-        eq(readingProgressTable.userId, userId),
-        eq(readingProgressTable.status, 'in_progress'),
-        eq(articleTable.status, 'published'),
-      ),
-    )
-    .orderBy(desc(readingProgressTable.lastReadAt), desc(readingProgressTable.id))
-    .limit(1);
-
-  const itemConditions = [
-    eq(readingProgressTable.userId, userId),
-    eq(articleTable.status, 'published'),
-    ...(currentRow ? [ne(readingProgressTable.id, currentRow.progress.id)] : []),
-  ];
-
-  const itemRows = await db
-    .select({
-      progress: readingProgressTable,
-      article: articleTable,
-    })
-    .from(readingProgressTable)
-    .innerJoin(articleTable, eq(readingProgressTable.articleId, articleTable.id))
-    .where(and(...itemConditions))
-    .orderBy(desc(readingProgressTable.lastReadAt), desc(readingProgressTable.id))
-    .limit(LEARN_SHELF_ITEMS_LIMIT);
-
-  return {
-    current: currentRow ? { article: toSummary(currentRow.article), progress: toProgress(currentRow.progress) } : null,
-    items: itemRows.map((row) => ({
-      article: toSummary(row.article),
-      progress: toProgress(row.progress),
-    })),
-  };
-}
-
 /** Open reader content and track reading progress (unless already completed). */
-export async function getLearnArticle(userId: string, articleId: string): Promise<LearnArticleData> {
+export async function getReaderSession(userId: string, articleId: string): Promise<ReaderSessionData> {
   const article = await requirePublishedArticle(articleId);
   const now = new Date();
 
@@ -196,13 +84,13 @@ export async function getLearnArticle(userId: string, articleId: string): Promis
   }
 
   const audioAvailable = await getArticleAudioAvailability(articleId);
-  await touchLearnerDay(userId);
+  await touchReadingDay(userId);
 
   return {
     id: article.id,
     title: article.title,
     body: article.body,
-    level: article.level as LearnArticleData['level'],
+    level: article.level as ReaderSessionData['level'],
     themes: article.themes,
     estimatedMinutes: article.estimatedMinutes,
     progress: toProgress(progress),
@@ -214,7 +102,7 @@ export async function updateReadingProgress(
   userId: string,
   articleId: string,
   input: UpdateReadingProgressBody,
-): Promise<LearnArticleData['progress']> {
+): Promise<ReaderSessionData['progress']> {
   await requirePublishedArticle(articleId);
   const now = new Date();
 

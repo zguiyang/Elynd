@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 
 import { type AuthVariables, requireAdmin, requireAuth } from '@/middleware/auth';
 import * as articleAudioService from '@/modules/article-audio/service';
-import { validateGenerateArticleAudio, validateLearnArticleAudioQuery } from '@/modules/article-audio/validator';
+import { validateGenerateArticleAudio, validateReaderArticleAudioQuery } from '@/modules/article-audio/validator';
 
 export const articleAudioRoutes = new Hono<{ Variables: AuthVariables }>();
 
@@ -24,11 +24,11 @@ articleAudioRoutes.post(
   },
 );
 
-/** Learner playback — published article track only. */
+/** Reader playback — published article track only. */
 articleAudioRoutes.get(
-  '/api/learn/articles/:articleId/audio',
+  '/api/reader/articles/:articleId/audio',
   requireAuth,
-  validateLearnArticleAudioQuery,
+  validateReaderArticleAudioQuery,
   async (c) => {
     return c.json(
       await articleAudioService.getPublishedArticleAudioTrack(c.req.param('articleId'), c.req.valid('query').role),

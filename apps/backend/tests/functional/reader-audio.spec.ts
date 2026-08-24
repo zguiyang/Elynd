@@ -7,7 +7,7 @@ import {
   ttsConfig as ttsConfigTable,
   user as userTable,
 } from '@gloaming/db';
-import type { LearnArticleAudioTrack, LearnArticleData } from '@gloaming/shared/api/learn';
+import type { ReaderAudioTrack, ReaderSessionData } from '@gloaming/shared/api/reader';
 import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 
 import app from '@/app';
@@ -174,7 +174,7 @@ describe('learner article audio', () => {
       wordTimings: [{ text: 'Listen', audioOffsetMs: 0, durationMs: 100, textOffset: 0 }],
     }));
 
-    const draftAudio = await app.request(`/api/learn/articles/${article.id}/audio?role=us`, {
+    const draftAudio = await app.request(`/api/reader/articles/${article.id}/audio?role=us`, {
       headers: { Cookie: learner.cookie },
     });
     expect(draftAudio.status).toBe(404);
@@ -188,11 +188,11 @@ describe('learner article audio', () => {
       ).status,
     ).toBe(200);
 
-    const before = await app.request(`/api/learn/articles/${article.id}`, {
+    const before = await app.request(`/api/reader/articles/${article.id}`, {
       headers: { Cookie: learner.cookie },
     });
     expect(before.status).toBe(200);
-    expect(((await before.json()) as LearnArticleData).audioAvailable).toEqual({ us: false, uk: false });
+    expect(((await before.json()) as ReaderSessionData).audioAvailable).toEqual({ us: false, uk: false });
 
     expect(
       (
@@ -204,17 +204,17 @@ describe('learner article audio', () => {
       ).status,
     ).toBe(200);
 
-    const after = await app.request(`/api/learn/articles/${article.id}`, {
+    const after = await app.request(`/api/reader/articles/${article.id}`, {
       headers: { Cookie: learner.cookie },
     });
     expect(after.status).toBe(200);
-    expect(((await after.json()) as LearnArticleData).audioAvailable).toEqual({ us: true, uk: true });
+    expect(((await after.json()) as ReaderSessionData).audioAvailable).toEqual({ us: true, uk: true });
 
-    const usTrack = await app.request(`/api/learn/articles/${article.id}/audio?role=us`, {
+    const usTrack = await app.request(`/api/reader/articles/${article.id}/audio?role=us`, {
       headers: { Cookie: learner.cookie },
     });
     expect(usTrack.status).toBe(200);
-    const usBody = (await usTrack.json()) as LearnArticleAudioTrack;
+    const usBody = (await usTrack.json()) as ReaderAudioTrack;
     expect(usBody.role).toBe('us');
     expect(usBody.voice).toBe('en-US-GuyNeural');
     expect(usBody.audioBase64).toBeTruthy();
@@ -228,15 +228,15 @@ describe('learner article audio', () => {
 
     const contentHash = hashArticleContent('Listen Title', 'Listen body here.');
     objectStore.store.delete(articleAudioObjectKey(article.id, 'uk', contentHash));
-    const ukGone = await app.request(`/api/learn/articles/${article.id}/audio?role=uk`, {
+    const ukGone = await app.request(`/api/reader/articles/${article.id}/audio?role=uk`, {
       headers: { Cookie: learner.cookie },
     });
     expect(ukGone.status).toBe(404);
 
-    const avail = await app.request(`/api/learn/articles/${article.id}`, {
+    const avail = await app.request(`/api/reader/articles/${article.id}`, {
       headers: { Cookie: learner.cookie },
     });
-    expect(((await avail.json()) as LearnArticleData).audioAvailable).toEqual({ us: true, uk: false });
+    expect(((await avail.json()) as ReaderSessionData).audioAvailable).toEqual({ us: true, uk: false });
 
     expect(
       (
@@ -248,12 +248,12 @@ describe('learner article audio', () => {
       ).status,
     ).toBe(200);
 
-    const staleAvail = await app.request(`/api/learn/articles/${article.id}`, {
+    const staleAvail = await app.request(`/api/reader/articles/${article.id}`, {
       headers: { Cookie: learner.cookie },
     });
-    expect(((await staleAvail.json()) as LearnArticleData).audioAvailable).toEqual({ us: false, uk: false });
+    expect(((await staleAvail.json()) as ReaderSessionData).audioAvailable).toEqual({ us: false, uk: false });
 
-    const staleTrack = await app.request(`/api/learn/articles/${article.id}/audio?role=us`, {
+    const staleTrack = await app.request(`/api/reader/articles/${article.id}/audio?role=us`, {
       headers: { Cookie: learner.cookie },
     });
     expect(staleTrack.status).toBe(404);

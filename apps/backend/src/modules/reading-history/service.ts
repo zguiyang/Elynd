@@ -6,11 +6,15 @@ import {
   article as articleTable,
   conversation as conversationTable,
   conversationMessage as conversationMessageTable,
-  learnerDay as learnerDayTable,
+  readingDay as readingDayTable,
   readingProgress as readingProgressTable,
 } from '@gloaming/db';
-import type { ProgressCompletion, ProgressData, ProgressPortrait } from '@gloaming/shared/api/progress';
-import { calendarDateInTimeZone } from '@gloaming/shared/api/progress';
+import type {
+  ReadingHistoryCompletion,
+  ReadingHistoryData,
+  ReadingHistorySummary,
+} from '@gloaming/shared/api/reading-history';
+import { calendarDateInTimeZone } from '@gloaming/shared/api/reading-history';
 
 import { db } from '@/db';
 
@@ -26,7 +30,7 @@ function addCalendarDays(date: string, days: number): string {
   return `${yy}-${mm}-${dd}`;
 }
 
-function consecutiveLearningDays(today: string, dates: ReadonlySet<string>): number {
+function consecutiveReadingDays(today: string, dates: ReadonlySet<string>): number {
   let countDays = 0;
   let cursor = today;
   while (dates.has(cursor)) {
@@ -36,19 +40,19 @@ function consecutiveLearningDays(today: string, dates: ReadonlySet<string>): num
   return countDays;
 }
 
-async function insertLearnerDays(userId: string, dates: Iterable<string>): Promise<void> {
+async function insertReadingDays(userId: string, dates: Iterable<string>): Promise<void> {
   const unique = [...new Set(dates)];
   if (unique.length === 0) {
     return;
   }
   await db
-    .insert(learnerDayTable)
+    .insert(readingDayTable)
     .values(unique.map((localDate) => ({ id: randomUUID(), userId, localDate })))
-    .onConflictDoNothing({ target: [learnerDayTable.userId, learnerDayTable.localDate] });
+    .onConflictDoNothing({ target: [readingDayTable.userId, readingDayTable.localDate] });
 }
 
-export async function touchLearnerDay(userId: string, now = new Date()): Promise<void> {
-  await insertLearnerDays(userId, [calendarDateInTimeZone(now)]);
+export async function touchReadingDay(userId: string, now = new Date()): Promise<void> {
+  await insertReadingDays(userId, [calendarDateInTimeZone(now)]);
 }
 
 function pushShanghaiDates(target: Set<string>, ...values: Array<Date | null | undefined>): void {
@@ -60,7 +64,7 @@ function pushShanghaiDates(target: Set<string>, ...values: Array<Date | null | u
 }
 
 /** Reconstruct days from existing reading progress. Safe to call after touch (unique / onConflict). */
-async function backfillLearnerDays(userId: string): Promise<void> {
+async function backfillReadingDays(userId: string): Promise<void> {
   const dates = new Set<string>();
 
   const progressRows = await db
@@ -75,7 +79,7 @@ async function backfillLearnerDays(userId: string): Promise<void> {
     pushShanghaiDates(dates, row.createdAt, row.lastReadAt, row.completedAt);
   }
 
-  await insertLearnerDays(userId, dates);
+  await insertReadingDays(userId, dates);
 }
 
 async function countLookedUpWords(userId: string): Promise<number> {
@@ -106,14 +110,14 @@ async function countCompletedArticles(userId: string): Promise<number> {
 
 async function listActivityDates(userId: string): Promise<string[]> {
   const rows = await db
-    .select({ localDate: learnerDayTable.localDate })
-    .from(learnerDayTable)
-    .where(eq(learnerDayTable.userId, userId))
-    .orderBy(asc(learnerDayTable.localDate));
+    .select({ localDate: readingDayTable.localDate })
+    .from(readingDayTable)
+    .where(eq(readingDayTable.userId, userId))
+    .orderBy(asc(readingDayTable.localDate));
   return rows.map((row) => row.localDate);
 }
 
-async function listCompletions(userId: string): Promise<ProgressCompletion[]> {
+async function listCompletions(userId: string): Promise<ReadingHistoryCompletion[]> {
   const rows = await db
     .select({
       completedAt: readingProgressTable.completedAt,
@@ -145,16 +149,16 @@ async function listCompletions(userId: string): Promise<ProgressCompletion[]> {
   });
 }
 
-export async function getProgress(userId: string): Promise<ProgressData> {
+export async function getReadingHistory(userId: string): Promise<ReadingHistoryData> {
   const today = calendarDateInTimeZone();
-  await backfillLearnerDays(userId);
+  await backfillReadingDays(userId);
 
   const activityDates = await listActivityDates(userId);
   const dateSet = new Set(activityDates);
 
-  const portrait: ProgressPortrait = {
-    consecutiveDays: consecutiveLearningDays(today, dateSet),
-    learningDays: activityDates.length,
+  const portrait: ReadingHistorySummary = {
+    consecutiveDays: consecutiveReadingDays(today, dateSet),
+    readingDays: activityDates.length,
     completedArticles: await countCompletedArticles(userId),
     lookedUpWords: await countLookedUpWords(userId),
   };

@@ -1,7 +1,6 @@
 export * from './api/ai-invocations.ts';
-export * from './api/article-audio.ts';
-export * from './api/articles.ts';
 export * from './api/assist.ts';
+export * from './api/content-assets.ts';
 export * from './api/conversations.ts';
 export * from './api/llm-config.ts';
 export * from './api/llm-config-keys.ts';
@@ -12,4 +11,5 @@ export * from './api/shelf.ts';
 export * from './api/translate.ts';
 export * from './api/tts.ts';
 export * from './api/tts-invocations.ts';
+export * from './api/works.ts';
 export * from './auth/policy.ts';

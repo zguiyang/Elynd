@@ -91,7 +91,7 @@ export const ttsInvocationListQuerySchema = paginationQuerySchema
     from: queryDateSchema,
     to: queryDateSchema,
     status: invocationStatusQuerySchema,
-    articleId: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    partId: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
   })
   .superRefine(refineInvocationRange);
 
@@ -105,8 +105,9 @@ export const ttsInvocationLogSchema = z.object({
   errorMessage: z.string().nullable(),
   source: z.string(),
   userId: z.string().nullable(),
-  articleId: z.string().nullable(),
-  articleTitle: z.string().nullable(),
+  workId: z.string().nullable(),
+  partId: z.string().nullable(),
+  partTitle: z.string().nullable(),
   voice: z.string().nullable(),
   role: z.enum(ttsVoiceRoleValues).nullable(),
   textPreview: z.string().nullable(),

@@ -27,7 +27,7 @@ export type ReadingHistoryActivityDay = z.infer<typeof readingHistoryActivityDay
 export const readingHistoryCompletionSchema = z.object({
   date: calendarDateSchema,
   title: z.string().min(1),
-  articleId: z.string().min(1),
+  workId: z.string().min(1),
 });
 
 export type ReadingHistoryCompletion = z.infer<typeof readingHistoryCompletionSchema>;
@@ -35,7 +35,7 @@ export type ReadingHistoryCompletion = z.infer<typeof readingHistoryCompletionSc
 export const readingHistorySummarySchema = z.object({
   consecutiveDays: z.number().int().min(0),
   readingDays: z.number().int().min(0),
-  completedArticles: z.number().int().min(0),
+  completedWorks: z.number().int().min(0),
   lookedUpWords: z.number().int().min(0),
 });
 

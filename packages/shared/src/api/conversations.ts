@@ -11,7 +11,7 @@ import {
 export const CONVERSATION_SURFACES = ['assist-read'] as const;
 export type ConversationSurface = (typeof CONVERSATION_SURFACES)[number];
 
-export const CONVERSATION_SUBJECT_TYPES = ['article'] as const;
+export const CONVERSATION_SUBJECT_TYPES = ['reading_work'] as const;
 export type ConversationSubjectType = (typeof CONVERSATION_SUBJECT_TYPES)[number];
 
 export const CONVERSATION_MESSAGE_ROLES = ['user', 'assistant'] as const;

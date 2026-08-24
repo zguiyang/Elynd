@@ -7,15 +7,16 @@ describe('shelf api contracts', () => {
     expect(shelfDataSchema.parse({ current: null, items: [] })).toEqual({ current: null, items: [] });
     const populated = shelfDataSchema.parse({
       current: {
-        article: {
-          id: 'a1',
+        work: {
+          id: 'w1',
           title: 'Ocean Quiet',
-          level: 'mid',
-          themes: ['science'],
-          estimatedMinutes: 8,
+          description: '',
+          tags: ['science'],
+          publishedAt: '2026-08-21T00:00:00.000Z',
         },
-        progress: {
+        state: {
           status: 'in_progress',
+          currentPartId: 'p1',
           progressRatio: 40,
           lastReadAt: '2026-08-21T00:00:00.000Z',
           completedAt: null,
@@ -23,7 +24,7 @@ describe('shelf api contracts', () => {
       },
       items: [],
     });
-    expect(populated.current?.article.id).toBe('a1');
+    expect(populated.current?.work.id).toBe('w1');
     expect(SHELF_ITEMS_LIMIT).toBe(48);
   });
 });

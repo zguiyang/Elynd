@@ -2,21 +2,21 @@ import { describe, expect, it } from 'vitest';
 
 import {
   bilingualCachePayloadSchema,
-  translateArticleBodySchema,
+  translatePartBodySchema,
   translateSseDoneSchema,
   translateSseMetaSchema,
   translateSseSentenceSchema,
   translateSseTitleSchema,
 } from './translate.ts';
 
-describe('translate article body', () => {
-  it('accepts articleId', () => {
-    const parsed = translateArticleBodySchema.parse({ articleId: 'art_1' });
-    expect(parsed.articleId).toBe('art_1');
+describe('translate part body', () => {
+  it('accepts partId', () => {
+    const parsed = translatePartBodySchema.parse({ partId: 'part_1' });
+    expect(parsed.partId).toBe('part_1');
   });
 
-  it('rejects empty articleId', () => {
-    const result = translateArticleBodySchema.safeParse({ articleId: '' });
+  it('rejects empty partId', () => {
+    const result = translatePartBodySchema.safeParse({ partId: '' });
     expect(result.success).toBe(false);
   });
 });

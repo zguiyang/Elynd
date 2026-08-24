@@ -4,12 +4,13 @@ export const ASSIST_ACTION_IDS = ['meaning', 'simpler', 'referent', 'explain', '
 
 export type AssistActionId = (typeof ASSIST_ACTION_IDS)[number];
 
-/** Actions that require a non-empty selection (not article-level). */
+/** Actions that require a non-empty selection (not part-level). */
 const SELECTION_REQUIRED_ACTIONS = new Set<AssistActionId>(['meaning', 'simpler', 'referent', 'explain', 'lookup']);
 
 export const assistAskBodySchema = z
   .object({
-    articleId: z.string().min(1),
+    workId: z.string().min(1),
+    partId: z.string().min(1),
     actionId: z.enum(ASSIST_ACTION_IDS),
     selection: z.string().trim().min(1).max(4000).optional(),
     question: z.string().trim().max(2000).optional(),

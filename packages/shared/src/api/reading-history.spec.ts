@@ -5,11 +5,11 @@ import { calendarDateInTimeZone, readingHistoryDataSchema } from './reading-hist
 const valid = {
   today: '2026-08-19',
   activity: [{ date: '2026-08-19', level: 1 as const }],
-  completions: [{ date: '2026-08-18', title: 'A Warm Current', articleId: 'art_1' }],
+  completions: [{ date: '2026-08-18', title: 'A Warm Current', workId: 'work_1' }],
   portrait: {
     consecutiveDays: 1,
     readingDays: 1,
-    completedArticles: 1,
+    completedWorks: 1,
     lookedUpWords: 0,
   },
 };

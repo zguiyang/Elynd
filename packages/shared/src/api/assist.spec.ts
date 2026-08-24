@@ -5,7 +5,8 @@ import { assistAskBodySchema, assistSseDoneSchema } from './assist.ts';
 describe('assist ask body', () => {
   it('accepts gist without selection', () => {
     const parsed = assistAskBodySchema.parse({
-      articleId: 'art_1',
+      workId: 'work_1',
+      partId: 'part_1',
       actionId: 'gist',
     });
     expect(parsed.actionId).toBe('gist');
@@ -14,7 +15,8 @@ describe('assist ask body', () => {
 
   it('accepts qa without selection when question is present', () => {
     const parsed = assistAskBodySchema.parse({
-      articleId: 'art_1',
+      workId: 'work_1',
+      partId: 'part_1',
       actionId: 'qa',
       question: '这篇在讲什么？',
     });
@@ -24,7 +26,8 @@ describe('assist ask body', () => {
 
   it('rejects qa without question', () => {
     const result = assistAskBodySchema.safeParse({
-      articleId: 'art_1',
+      workId: 'work_1',
+      partId: 'part_1',
       actionId: 'qa',
     });
     expect(result.success).toBe(false);
@@ -32,7 +35,8 @@ describe('assist ask body', () => {
 
   it('rejects meaning without selection', () => {
     const result = assistAskBodySchema.safeParse({
-      articleId: 'art_1',
+      workId: 'work_1',
+      partId: 'part_1',
       actionId: 'meaning',
     });
     expect(result.success).toBe(false);
@@ -40,7 +44,8 @@ describe('assist ask body', () => {
 
   it('accepts meaning with selection', () => {
     const parsed = assistAskBodySchema.parse({
-      articleId: 'art_1',
+      workId: 'work_1',
+      partId: 'part_1',
       actionId: 'meaning',
       selection: 'The fox jumped.',
     });
@@ -49,7 +54,8 @@ describe('assist ask body', () => {
 
   it('accepts optional conversationId', () => {
     const parsed = assistAskBodySchema.parse({
-      articleId: 'art_1',
+      workId: 'work_1',
+      partId: 'part_1',
       actionId: 'gist',
       conversationId: 'conv_1',
     });

@@ -1,30 +1,49 @@
 import { z } from 'zod';
 
-import { ARTICLE_LEVELS } from '@gloaming/shared/api/articles';
 import { ttsVoiceRoleValues, ttsWordTimingSchema } from '@gloaming/shared/api/tts';
+import { partSummarySchema, workSchema } from '@gloaming/shared/api/works';
 
-export const READING_PROGRESS_STATUSES = ['in_progress', 'completed'] as const;
-export type ReadingProgressStatus = (typeof READING_PROGRESS_STATUSES)[number];
+export const READING_STATE_STATUSES = ['in_progress', 'completed'] as const;
+export type ReadingStateStatus = (typeof READING_STATE_STATUSES)[number];
 
-export const readingProgressSchema = z.object({
-  status: z.enum(READING_PROGRESS_STATUSES),
+export const readingStateSchema = z.object({
+  status: z.enum(READING_STATE_STATUSES),
+  currentPartId: z.string().nullable(),
+  /** Computed for UI — not persisted. */
   progressRatio: z.number().int().min(0).max(100),
   lastReadAt: z.union([z.string(), z.date()]),
   completedAt: z.union([z.string(), z.date()]).nullable(),
 });
 
-export type ReadingProgress = z.infer<typeof readingProgressSchema>;
+export type ReadingState = z.infer<typeof readingStateSchema>;
 
-/** Compact article card for shelf / reader surfaces (no body). */
-export const readerItemSummarySchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  level: z.enum(ARTICLE_LEVELS),
-  themes: z.array(z.string()),
-  estimatedMinutes: z.number().int().nullable(),
+/** Compute UI progress from persisted anchor fields. */
+export function computeProgressRatio(input: {
+  status: ReadingStateStatus;
+  anchorKind: string | null;
+  anchorValue: string | null;
+}): number {
+  if (input.status === 'completed') {
+    return 100;
+  }
+  if (input.anchorKind === 'percent' && input.anchorValue != null) {
+    const parsed = Number.parseInt(input.anchorValue, 10);
+    if (!Number.isNaN(parsed)) {
+      return Math.min(100, Math.max(0, parsed));
+    }
+  }
+  return 0;
+}
+
+export const readerWorkSummarySchema = workSchema.pick({
+  id: true,
+  title: true,
+  description: true,
+  tags: true,
+  publishedAt: true,
 });
 
-export type ReaderItemSummary = z.infer<typeof readerItemSummarySchema>;
+export type ReaderWorkSummary = z.infer<typeof readerWorkSummarySchema>;
 
 export const readerAudioAvailabilitySchema = z.object({
   us: z.boolean(),
@@ -33,25 +52,32 @@ export const readerAudioAvailabilitySchema = z.object({
 
 export type ReaderAudioAvailability = z.infer<typeof readerAudioAvailabilitySchema>;
 
-export const readerSessionDataSchema = z.object({
+export const readerCurrentPartSchema = z.object({
   id: z.string(),
+  workId: z.string(),
+  sortOrder: z.number().int(),
+  kind: partSummarySchema.shape.kind,
   title: z.string(),
   body: z.string(),
-  level: z.enum(ARTICLE_LEVELS),
-  themes: z.array(z.string()),
-  estimatedMinutes: z.number().int().nullable(),
-  progress: readingProgressSchema,
-  /** Ready tracks with Redis bytes still present. */
+});
+
+export type ReaderCurrentPart = z.infer<typeof readerCurrentPartSchema>;
+
+export const readerSessionDataSchema = z.object({
+  work: readerWorkSummarySchema,
+  parts: z.array(partSummarySchema),
+  currentPart: readerCurrentPartSchema,
+  state: readingStateSchema,
   audioAvailable: readerAudioAvailabilitySchema,
 });
 
 export type ReaderSessionData = z.infer<typeof readerSessionDataSchema>;
 
-export const readerArticleAudioQuerySchema = z.object({
+export const readerPartAudioQuerySchema = z.object({
   role: z.enum(ttsVoiceRoleValues),
 });
 
-export type ReaderArticleAudioQuery = z.infer<typeof readerArticleAudioQuerySchema>;
+export type ReaderPartAudioQuery = z.infer<typeof readerPartAudioQuerySchema>;
 
 export const readerAudioTrackSchema = z.object({
   role: z.enum(ttsVoiceRoleValues),
@@ -63,13 +89,17 @@ export const readerAudioTrackSchema = z.object({
 
 export type ReaderAudioTrack = z.infer<typeof readerAudioTrackSchema>;
 
-export const updateReadingProgressBodySchema = z
+export const updateReadingStateBodySchema = z
   .object({
     progressRatio: z.number().int().min(0).max(100).optional(),
-    status: z.enum(READING_PROGRESS_STATUSES).optional(),
+    status: z.enum(READING_STATE_STATUSES).optional(),
+    currentPartId: z.string().min(1).optional(),
   })
-  .refine((value) => value.progressRatio !== undefined || value.status !== undefined, {
-    message: 'At least one of progressRatio or status is required',
-  });
+  .refine(
+    (value) => value.progressRatio !== undefined || value.status !== undefined || value.currentPartId !== undefined,
+    {
+      message: 'At least one of progressRatio, status, or currentPartId is required',
+    },
+  );
 
-export type UpdateReadingProgressBody = z.infer<typeof updateReadingProgressBodySchema>;
+export type UpdateReadingStateBody = z.infer<typeof updateReadingStateBodySchema>;

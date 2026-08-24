@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
-export const translateArticleBodySchema = z.object({
-  articleId: z.string().min(1),
+export const translatePartBodySchema = z.object({
+  partId: z.string().min(1),
 });
 
-export type TranslateArticleBody = z.infer<typeof translateArticleBodySchema>;
+export type TranslatePartBody = z.infer<typeof translatePartBodySchema>;
 
-/** SSE `event:` names for POST /api/translate/article */
+/** SSE `event:` names for POST /api/translate/part */
 export const TRANSLATE_SSE_EVENT = {
   meta: 'meta',
   title: 'title',

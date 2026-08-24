@@ -8,7 +8,6 @@ import {
   jsonb,
   numeric,
   pgTable,
-  primaryKey,
   text,
   timestamp,
   unique,
@@ -113,20 +112,22 @@ export const accountRelations = relations(account, ({ one }) => ({
   }),
 }));
 
-/** Short-article catalog unit (admin CMS + Discover). */
-export const article = pgTable(
-  'article',
+/** Reading catalog root — metadata only, no body (ADR-001). */
+export const readingWork = pgTable(
+  'reading_work',
   {
     id: text('id').primaryKey(),
     title: text('title').notNull(),
-    body: text('body').notNull().default(''),
-    level: text('level').notNull().default('easy'),
-    themes: jsonb('themes').$type<string[]>().notNull().default([]),
-    sourceNote: text('source_note').notNull().default(''),
+    description: text('description').notNull().default(''),
+    language: text('language').notNull().default('en'),
     status: text('status').notNull().default('draft'),
-    seriesId: text('series_id'),
-    seriesOrder: integer('series_order'),
-    estimatedMinutes: integer('estimated_minutes'),
+    visibility: text('visibility').notNull().default('catalog'),
+    ownerUserId: text('owner_user_id').references(() => user.id, { onDelete: 'set null' }),
+    originKind: text('origin_kind').notNull().default('admin_text'),
+    originMeta: jsonb('origin_meta').$type<Record<string, unknown>>().notNull().default({}),
+    tags: jsonb('tags').$type<string[]>().notNull().default([]),
+    sourceNote: text('source_note').notNull().default(''),
+    coverAssetId: text('cover_asset_id'),
     publishedAt: timestamp('published_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
@@ -135,25 +136,52 @@ export const article = pgTable(
       .notNull(),
   },
   (table) => [
-    index('article_status_idx').on(table.status),
-    index('article_series_idx').on(table.seriesId, table.seriesOrder),
+    index('reading_work_status_idx').on(table.status),
+    index('reading_work_published_at_idx').on(table.publishedAt),
   ],
 );
 
-/** Learner reading position per user × article (Today resume). */
-export const readingProgress = pgTable(
-  'reading_progress',
+/** Ordered readable unit — SSOT for Reader, TTS, Translate, Assist. */
+export const readingPart = pgTable(
+  'reading_part',
+  {
+    id: text('id').primaryKey(),
+    workId: text('work_id')
+      .notNull()
+      .references(() => readingWork.id, { onDelete: 'cascade' }),
+    sortOrder: integer('sort_order').notNull().default(0),
+    kind: text('kind').notNull().default('body'),
+    title: text('title').notNull().default(''),
+    body: text('body').notNull().default(''),
+    meta: jsonb('meta').$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [
+    unique('reading_part_work_sort_uidx').on(table.workId, table.sortOrder),
+    index('reading_part_work_idx').on(table.workId),
+  ],
+);
+
+/** User × work shelf membership and reading position (ADR-001). */
+export const readingState = pgTable(
+  'reading_state',
   {
     id: text('id').primaryKey(),
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
-    articleId: text('article_id')
+    workId: text('work_id')
       .notNull()
-      .references(() => article.id, { onDelete: 'cascade' }),
+      .references(() => readingWork.id, { onDelete: 'cascade' }),
+    currentPartId: text('current_part_id').references(() => readingPart.id, { onDelete: 'set null' }),
+    anchorKind: text('anchor_kind'),
+    anchorValue: text('anchor_value'),
     status: text('status').notNull().default('in_progress'),
-    /** 0–100 integer percent. */
-    progressRatio: integer('progress_ratio').notNull().default(0),
+    addedAt: timestamp('added_at').defaultNow().notNull(),
     lastReadAt: timestamp('last_read_at').defaultNow().notNull(),
     completedAt: timestamp('completed_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -163,20 +191,36 @@ export const readingProgress = pgTable(
       .notNull(),
   },
   (table) => [
-    unique('reading_progress_user_article_uidx').on(table.userId, table.articleId),
-    index('reading_progress_user_last_read_idx').on(table.userId, table.lastReadAt),
-    index('reading_progress_article_idx').on(table.articleId),
+    unique('reading_state_user_work_uidx').on(table.userId, table.workId),
+    index('reading_state_user_last_read_idx').on(table.userId, table.lastReadAt),
+    index('reading_state_work_idx').on(table.workId),
   ],
 );
 
-export const readingProgressRelations = relations(readingProgress, ({ one }) => ({
+export const readingWorkRelations = relations(readingWork, ({ many }) => ({
+  parts: many(readingPart),
+  states: many(readingState),
+}));
+
+export const readingPartRelations = relations(readingPart, ({ one }) => ({
+  work: one(readingWork, {
+    fields: [readingPart.workId],
+    references: [readingWork.id],
+  }),
+}));
+
+export const readingStateRelations = relations(readingState, ({ one }) => ({
   user: one(user, {
-    fields: [readingProgress.userId],
+    fields: [readingState.userId],
     references: [user.id],
   }),
-  article: one(article, {
-    fields: [readingProgress.articleId],
-    references: [article.id],
+  work: one(readingWork, {
+    fields: [readingState.workId],
+    references: [readingWork.id],
+  }),
+  currentPart: one(readingPart, {
+    fields: [readingState.currentPartId],
+    references: [readingPart.id],
   }),
 }));
 
@@ -246,41 +290,60 @@ export const ttsConfig = pgTable('tts_config', {
     .notNull(),
 });
 
-/** Word boundary timings for article audio (mirrors TTS wordTimings). */
-export type ArticleAudioWordTiming = {
+/** Word boundary timings for part audio (mirrors TTS wordTimings). */
+export type ContentAssetWordTiming = {
   text: string;
   audioOffsetMs: number;
   durationMs: number;
   textOffset: number;
 };
 
-/** Per-article per-role TTS audio metadata (bytes live in object storage). */
-export const articleAudio = pgTable(
-  'article_audio',
+export type ContentAssetMeta = {
+  voice?: string;
+  durationMs?: number;
+  wordTimings?: ContentAssetWordTiming[];
+  lastError?: string;
+  generatedAt?: string;
+};
+
+/** Unified storage for origin files, covers, TTS audio, future derivatives (ADR-001). */
+export const contentAsset = pgTable(
+  'content_asset',
   {
-    articleId: text('article_id')
-      .notNull()
-      .references(() => article.id, { onDelete: 'cascade' }),
-    /** `us` | `uk` — one row per accent track. */
-    role: text('role').notNull(),
-    status: text('status').notNull(),
-    voice: text('voice').notNull(),
-    contentHash: text('content_hash').notNull(),
+    id: text('id').primaryKey(),
+    workId: text('work_id').references(() => readingWork.id, { onDelete: 'cascade' }),
+    partId: text('part_id').references(() => readingPart.id, { onDelete: 'cascade' }),
+    kind: text('kind').notNull(),
     storageKey: text('storage_key').notNull(),
     mimeType: text('mime_type').notNull(),
-    durationMs: integer('duration_ms'),
-    wordTimings: jsonb('word_timings').$type<ArticleAudioWordTiming[]>().notNull().default([]),
-    lastError: text('last_error'),
-    generatedAt: timestamp('generated_at'),
+    contentHash: text('content_hash').notNull(),
+    meta: jsonb('meta').$type<ContentAssetMeta>().notNull().default({}),
+    status: text('status').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
       .defaultNow()
       .$onUpdate(() => /* @__PURE__ */ new Date())
       .notNull(),
   },
-  (table) => [primaryKey({ columns: [table.articleId, table.role] })],
+  (table) => [
+    unique('content_asset_part_kind_uidx').on(table.partId, table.kind),
+    index('content_asset_work_idx').on(table.workId),
+    index('content_asset_part_idx').on(table.partId),
+  ],
 );
 
-/** Append-only TTS synthesis audit log (article generate / admin test). */
+export const contentAssetRelations = relations(contentAsset, ({ one }) => ({
+  work: one(readingWork, {
+    fields: [contentAsset.workId],
+    references: [readingWork.id],
+  }),
+  part: one(readingPart, {
+    fields: [contentAsset.partId],
+    references: [readingPart.id],
+  }),
+}));
+
+/** Append-only TTS synthesis audit log (part generate / admin test). */
 export const ttsInvocationLog = pgTable(
   'tts_invocation_log',
   {
@@ -291,7 +354,8 @@ export const ttsInvocationLog = pgTable(
     errorMessage: text('error_message'),
     source: text('source').notNull(),
     userId: text('user_id'),
-    articleId: text('article_id'),
+    workId: text('work_id'),
+    partId: text('part_id'),
     voice: text('voice'),
     role: text('role'),
     textPreview: text('text_preview'),
@@ -302,7 +366,7 @@ export const ttsInvocationLog = pgTable(
   (table) => [
     index('tts_invocation_log_created_at_idx').on(table.createdAt),
     index('tts_invocation_log_status_created_idx').on(table.status, table.createdAt),
-    index('tts_invocation_log_article_created_idx').on(table.articleId, table.createdAt),
+    index('tts_invocation_log_part_created_idx').on(table.partId, table.createdAt),
   ],
 );
 
@@ -370,7 +434,7 @@ export const llmModelRelations = relations(llmModel, ({ one }) => ({
  * User-scoped chat transcript SSOT (thread header).
  * Future embeddings / RAG / memory / cache must store pointers to these rows —
  * never duplicate full message bodies in derived tables.
- * `subjectId` is polymorphic (no article FK) so surfaces beyond reading stay possible.
+ * `subjectId` is polymorphic (no reading_work FK) so surfaces beyond reading stay possible.
  */
 export type ConversationMessageMetadata = {
   actionId?: string;
@@ -389,9 +453,9 @@ export const conversation = pgTable(
       .references(() => user.id, { onDelete: 'cascade' }),
     /** e.g. assist-read — which product surface owns this thread. */
     surface: text('surface').notNull(),
-    /** e.g. article — polymorphic subject kind. */
+    /** e.g. reading_work — polymorphic subject kind. */
     subjectType: text('subject_type').notNull(),
-    /** Subject id (article id today); no FK — keeps transcripts after subject deletion. */
+    /** Subject id (work id); no FK — keeps transcripts after subject deletion. */
     subjectId: text('subject_id').notNull(),
     preview: text('preview').notNull().default(''),
     /** Null while open; set when superseded by a newer thread in the same scope. */

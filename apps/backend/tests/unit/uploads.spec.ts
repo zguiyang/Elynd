@@ -5,9 +5,11 @@ import { resetObjectStoreCache, setObjectStoreForTests } from '@/modules/oss';
 import {
   fileExtension,
   hashFileContent,
+  isValidContentHash,
   isZipFile,
   uploadObjectFile,
   type UploadSpec,
+  validateUploadInput,
 } from '@/modules/uploads/service';
 
 import { createMemoryObjectStore } from '../helpers/memory-oss';
@@ -17,6 +19,7 @@ const EPUB_SPEC: UploadSpec = {
   allowedMimeTypes: ['application/epub+zip', 'application/zip', 'application/octet-stream'],
   maxBytes: 10 * 1024,
   validateContent: (body) => (isZipFile(body) ? null : 'EPUB 文件内容无效（非 ZIP 格式）'),
+  keyBuilder: (contentHash) => `epub/${contentHash}.epub`,
 };
 
 const ZIP_BYTES = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x00, 0x00]);
@@ -47,6 +50,60 @@ describe('hashFileContent', () => {
   it('returns a stable sha256 hex digest', () => {
     expect(hashFileContent(Buffer.from('abc'))).toBe(hashFileContent(Buffer.from('abc')));
     expect(hashFileContent(Buffer.from('abc'))).toMatch(/^[a-f0-9]{64}$/);
+  });
+});
+
+describe('isValidContentHash', () => {
+  it('accepts 64-char lowercase hex only', () => {
+    const valid = hashFileContent(Buffer.from('abc'));
+    expect(isValidContentHash(valid)).toBe(true);
+    expect(isValidContentHash(valid.toUpperCase())).toBe(false);
+    expect(isValidContentHash(valid.slice(1))).toBe(false);
+    expect(isValidContentHash('not-a-hash')).toBe(false);
+    expect(isValidContentHash('')).toBe(false);
+  });
+});
+
+describe('validateUploadInput', () => {
+  it('returns the normalized MIME type for valid input', () => {
+    expect(
+      validateUploadInput({
+        fileName: 'b.epub',
+        body: zipBody(),
+        contentType: 'application/epub+zip',
+        spec: EPUB_SPEC,
+      }),
+    ).toEqual({
+      mimeType: 'application/epub+zip',
+    });
+    expect(validateUploadInput({ fileName: 'b.epub', body: zipBody(), contentType: '', spec: EPUB_SPEC })).toEqual({
+      mimeType: 'application/octet-stream',
+    });
+  });
+
+  it('rejects bad extensions, MIME types, sizes and content without touching storage', () => {
+    expect(() =>
+      validateUploadInput({ fileName: 'b.pdf', body: zipBody(), contentType: 'application/pdf', spec: EPUB_SPEC }),
+    ).toThrow(AppError);
+    expect(() =>
+      validateUploadInput({ fileName: 'b.epub', body: zipBody(), contentType: 'application/x-flash', spec: EPUB_SPEC }),
+    ).toThrow(AppError);
+    expect(() =>
+      validateUploadInput({
+        fileName: 'b.epub',
+        body: zipBody(EPUB_SPEC.maxBytes + 1),
+        contentType: 'application/epub+zip',
+        spec: EPUB_SPEC,
+      }),
+    ).toThrow(AppError);
+    expect(() =>
+      validateUploadInput({
+        fileName: 'b.epub',
+        body: Buffer.from('plain'),
+        contentType: 'application/epub+zip',
+        spec: EPUB_SPEC,
+      }),
+    ).toThrow(AppError);
   });
 });
 

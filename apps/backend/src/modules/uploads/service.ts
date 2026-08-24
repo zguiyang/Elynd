@@ -1,13 +1,21 @@
+import { randomUUID } from 'node:crypto';
 import { createHash } from 'node:crypto';
 
+import { eq, sql } from 'drizzle-orm';
+
+import { uploadedObject as uploadedObjectTable } from '@gloaming/db';
+
 import { HTTP_STATUS } from '@/constants';
+import { db } from '@/db';
 import { AppError } from '@/lib/errors';
-import { putObject } from '@/modules/oss';
+import { rootLogger } from '@/lib/logger';
+import { deleteObject, putObject } from '@/modules/oss';
 
 /**
  * Generic object upload capability. Callers (works EPUB, future avatars) supply
- * a spec (allowed extensions / MIME types / size cap / content check) plus the
- * object key — this service validates and stores, nothing more.
+ * a spec (allowed extensions / MIME types / size cap / content check / key
+ * strategy) — this service validates, stores, and dedupes. Nothing here knows
+ * about business tables; dedup bookkeeping lives in `uploaded_object`.
  */
 
 export type UploadSpec = {
@@ -18,6 +26,8 @@ export type UploadSpec = {
   maxBytes: number;
   /** Optional content-level check — returns an error message when invalid. */
   validateContent?: (body: Buffer) => string | null;
+  /** Content-addressed key strategy, e.g. `hash => \`epub/${hash}.epub\``. */
+  keyBuilder: (contentHash: string) => string;
 };
 
 export type UploadedFileMeta = {
@@ -26,6 +36,18 @@ export type UploadedFileMeta = {
   contentHash: string;
   size: number;
 };
+
+export type AcquireUploadedObjectInput =
+  | { kind: 'file'; fileName: string; body: Buffer; contentType: string; spec: UploadSpec }
+  | { kind: 'hash'; fileName: string; contentHash: string; spec: UploadSpec };
+
+export type AcquireUploadedObjectResult = {
+  meta: UploadedFileMeta;
+  /** True when the object already existed — caller may skip upload / show instant completion. */
+  duplicated: boolean;
+};
+
+const uploadLogger = rootLogger.child({ module: 'Uploads' });
 
 export function fileExtension(fileName: string): string {
   const match = /\.([^.]+)$/.exec(fileName);
@@ -41,14 +63,15 @@ export function isZipFile(body: Buffer): boolean {
   return body.length >= 4 && body[0] === 0x50 && body[1] === 0x4b && body[2] === 0x03 && body[3] === 0x04;
 }
 
-export async function uploadObjectFile(input: {
-  key: string;
-  fileName: string;
-  body: Buffer;
-  contentType: string;
-  spec: UploadSpec;
-}): Promise<UploadedFileMeta> {
-  const { key, fileName, body, contentType, spec } = input;
+export function isValidContentHash(hash: string): boolean {
+  return /^[a-f0-9]{64}$/.test(hash);
+}
+
+/** Validate a file against the spec without touching storage. Throws AppError on failure. */
+export function validateUploadInput(input: { fileName: string; body: Buffer; contentType: string; spec: UploadSpec }): {
+  mimeType: string;
+} {
+  const { fileName, body, contentType, spec } = input;
 
   const extension = fileExtension(fileName);
   if (!extension || !spec.allowedExtensions.includes(extension)) {
@@ -73,12 +96,145 @@ export async function uploadObjectFile(input: {
     }
   }
 
-  await putObject({ key, body, contentType: normalizedType || 'application/octet-stream' });
+  return { mimeType: normalizedType || 'application/octet-stream' };
+}
+
+export async function findUploadedObjectByHash(contentHash: string): Promise<UploadedFileMeta | null> {
+  const [row] = await db
+    .select({
+      storageKey: uploadedObjectTable.storageKey,
+      mimeType: uploadedObjectTable.mimeType,
+      size: uploadedObjectTable.size,
+    })
+    .from(uploadedObjectTable)
+    .where(eq(uploadedObjectTable.contentHash, contentHash))
+    .limit(1);
+  if (!row) {
+    return null;
+  }
+  return { storageKey: row.storageKey, mimeType: row.mimeType, contentHash, size: row.size };
+}
+
+async function registerUploadedObject(input: {
+  contentHash: string;
+  storageKey: string;
+  mimeType: string;
+  size: number;
+}): Promise<void> {
+  await db.insert(uploadedObjectTable).values({
+    id: randomUUID(),
+    contentHash: input.contentHash,
+    storageKey: input.storageKey,
+    mimeType: input.mimeType,
+    size: input.size,
+    refCount: 1,
+  });
+}
+
+/** Atomic increment of the dedup ref count for an existing object. */
+async function incrementUploadedObjectRef(contentHash: string): Promise<void> {
+  await db
+    .update(uploadedObjectTable)
+    .set({ refCount: sql`${uploadedObjectTable.refCount} + 1` })
+    .where(eq(uploadedObjectTable.contentHash, contentHash));
+}
+
+/**
+ * Low-level put without dedup bookkeeping. Use `acquireUploadedObject` for
+ * content-addressed uploads; this remains for callers that manage keys themselves.
+ */
+export async function uploadObjectFile(input: {
+  key: string;
+  fileName: string;
+  body: Buffer;
+  contentType: string;
+  spec: UploadSpec;
+}): Promise<UploadedFileMeta> {
+  const { key, fileName, body, contentType, spec } = input;
+  const { mimeType } = validateUploadInput({ fileName, body, contentType, spec });
+  await putObject({ key, body, contentType: mimeType });
+  return { storageKey: key, mimeType, contentHash: hashFileContent(body), size: body.length };
+}
+
+/**
+ * Dedupe-aware upload:
+ * - `kind: 'file'` — validate + hash + dedupe. Existing object is reused (ref +1);
+ *   otherwise the bytes are stored and registered.
+ * - `kind: 'hash'` — reuse path without file bytes (instant upload). Returns null
+ *   when the object is unknown so the caller can fall back to a file upload.
+ * Returns `duplicated: true` when the object already existed.
+ */
+export async function acquireUploadedObject(
+  input: AcquireUploadedObjectInput,
+): Promise<AcquireUploadedObjectResult | null> {
+  const { fileName, spec } = input;
+
+  const contentHash = input.kind === 'file' ? hashFileContent(input.body) : input.contentHash;
+  if (!isValidContentHash(contentHash)) {
+    throw new AppError(HTTP_STATUS.BAD_REQUEST, '文件哈希无效');
+  }
+
+  const existing = await findUploadedObjectByHash(contentHash);
+  if (existing) {
+    await incrementUploadedObjectRef(contentHash);
+    return { meta: existing, duplicated: true };
+  }
+
+  if (input.kind === 'hash') {
+    return null;
+  }
+
+  const { mimeType } = validateUploadInput({ fileName, body: input.body, contentType: input.contentType, spec });
+  const storageKey = spec.keyBuilder(contentHash);
+
+  try {
+    await putObject({ key: storageKey, body: input.body, contentType: mimeType });
+  } catch (error) {
+    uploadLogger.error({ err: error, storageKey }, 'Object store put failed');
+    throw error;
+  }
+
+  try {
+    await registerUploadedObject({ contentHash, storageKey, mimeType, size: input.body.length });
+  } catch (error) {
+    try {
+      await deleteObject(storageKey);
+    } catch (cleanupError) {
+      uploadLogger.warn({ err: cleanupError, storageKey }, 'Failed to clean up orphaned upload object');
+    }
+    throw error;
+  }
 
   return {
-    storageKey: key,
-    mimeType: normalizedType || 'application/octet-stream',
-    contentHash: hashFileContent(body),
-    size: body.length,
+    meta: { storageKey, mimeType, contentHash, size: input.body.length },
+    duplicated: false,
   };
+}
+
+/**
+ * Drop one reference to a registered object. When the last reference is
+ * released, the object is deleted from storage. Unknown keys are ignored
+ * (callers manage unregistered objects themselves).
+ */
+export async function releaseUploadedObject(storageKey: string): Promise<void> {
+  const [row] = await db
+    .select({ id: uploadedObjectTable.id })
+    .from(uploadedObjectTable)
+    .where(eq(uploadedObjectTable.storageKey, storageKey))
+    .limit(1);
+  if (!row) {
+    return;
+  }
+
+  const [updated] = await db
+    .update(uploadedObjectTable)
+    .set({ refCount: sql`${uploadedObjectTable.refCount} - 1` })
+    .where(eq(uploadedObjectTable.id, row.id))
+    .returning({ refCount: uploadedObjectTable.refCount });
+
+  const remaining = updated?.refCount ?? 0;
+  if (remaining <= 0) {
+    await db.delete(uploadedObjectTable).where(eq(uploadedObjectTable.id, row.id));
+    await deleteObject(storageKey);
+  }
 }

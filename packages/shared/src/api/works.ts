@@ -115,6 +115,22 @@ export const createEpubWorkResultSchema = z.object({
 
 export type CreateEpubWorkResult = z.infer<typeof createEpubWorkResultSchema>;
 
+/** Body of `POST /api/admin/works/epub/reuse` — instant-upload dedupe lookup. */
+export const checkEpubWorkReuseBodySchema = z.object({
+  fileName: z.string().trim().min(1).max(255),
+  contentHash: z.string().regex(/^[a-f0-9]{64}$/, '文件哈希无效'),
+});
+
+export type CheckEpubWorkReuseBody = z.infer<typeof checkEpubWorkReuseBodySchema>;
+
+/** Response of the reuse endpoint — either an instant-created work or a miss. */
+export const epubReuseResultSchema = z.discriminatedUnion('duplicated', [
+  createEpubWorkResultSchema.extend({ duplicated: z.literal(true) }),
+  z.object({ duplicated: z.literal(false) }),
+]);
+
+export type EpubReuseResult = z.infer<typeof epubReuseResultSchema>;
+
 export const updateWorkBodySchema = z.object({
   title: z.string().trim().min(1).max(WORK_TITLE_MAX).optional(),
   description: z.string().max(WORK_DESCRIPTION_MAX).optional(),

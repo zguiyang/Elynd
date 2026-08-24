@@ -8,7 +8,7 @@ export type PromptRoleId = (typeof PROMPT_ROLE)[keyof typeof PROMPT_ROLE];
 /** Prompt scene ids (directories under `prompts/scenes/`). */
 export const PROMPT_SCENE = {
   assistRead: 'assist-read',
-  translateArticle: 'translate-article',
+  translatePart: 'translate-part',
 } as const;
 
 export type PromptSceneId = (typeof PROMPT_SCENE)[keyof typeof PROMPT_SCENE];

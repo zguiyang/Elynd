@@ -1,0 +1,64 @@
+import { Hono } from 'hono';
+
+import { HTTP_STATUS } from '@/constants';
+import { type AuthVariables, requireAdmin } from '@/middleware/auth';
+import * as worksService from '@/modules/works/service';
+import {
+  validateAdminWorkListQuery,
+  validateCatalogListQuery,
+  validateCreateAdminTextWork,
+  validateUpdatePart,
+  validateUpdateWork,
+} from '@/modules/works/validator';
+
+export const worksRoutes = new Hono<{ Variables: AuthVariables }>();
+
+worksRoutes.post('/api/admin/works', requireAdmin, validateCreateAdminTextWork, async (c) => {
+  const work = await worksService.createAdminTextWork(c.req.valid('json'));
+  return c.json(work, HTTP_STATUS.CREATED);
+});
+
+worksRoutes.get('/api/admin/works', requireAdmin, validateAdminWorkListQuery, async (c) => {
+  const data = await worksService.listAdminWorks(c.req.valid('query'));
+  return c.json(data);
+});
+
+worksRoutes.get('/api/admin/works/:id', requireAdmin, async (c) => {
+  const work = await worksService.getAdminWork(c.req.param('id'));
+  return c.json(work);
+});
+
+worksRoutes.patch('/api/admin/works/:id', requireAdmin, validateUpdateWork, async (c) => {
+  const work = await worksService.updateWork(c.req.param('id'), c.req.valid('json'));
+  return c.json(work);
+});
+
+worksRoutes.patch('/api/admin/works/:workId/parts/:partId', requireAdmin, validateUpdatePart, async (c) => {
+  const work = await worksService.updatePart(c.req.param('workId'), c.req.param('partId'), c.req.valid('json'));
+  return c.json(work);
+});
+
+worksRoutes.post('/api/admin/works/:id/publish', requireAdmin, async (c) => {
+  const work = await worksService.publishWork(c.req.param('id'));
+  return c.json(work);
+});
+
+worksRoutes.post('/api/admin/works/:id/unpublish', requireAdmin, async (c) => {
+  const work = await worksService.unpublishWork(c.req.param('id'));
+  return c.json(work);
+});
+
+worksRoutes.delete('/api/admin/works/:id', requireAdmin, async (c) => {
+  await worksService.deleteWork(c.req.param('id'));
+  return c.body(null, HTTP_STATUS.NO_CONTENT);
+});
+
+worksRoutes.get('/api/catalog/works', validateCatalogListQuery, async (c) => {
+  const data = await worksService.listCatalogWorks(c.req.valid('query'));
+  return c.json(data);
+});
+
+worksRoutes.get('/api/catalog/works/:id', async (c) => {
+  const work = await worksService.getPublishedWork(c.req.param('id'));
+  return c.json(work);
+});

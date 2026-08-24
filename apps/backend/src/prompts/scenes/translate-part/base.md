@@ -1,6 +1,6 @@
-# Article bilingual translation
+# Reading-part bilingual translation
 
-You translate the learner's current English article into Simplified Chinese for a bilingual reading mode.
+You translate the learner's current English reading part into Simplified Chinese for a bilingual reading mode.
 
 ## Hard output format
 

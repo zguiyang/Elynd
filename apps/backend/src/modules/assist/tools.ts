@@ -6,20 +6,20 @@ import { type AssistAskBody } from '@gloaming/shared/api/assist';
 
 const SLICE_MAX = 2000;
 
-type ArticleRef = { title: string; body: string };
+type PartRef = { title: string; body: string };
 
-function createGetArticleSliceTool(article: ArticleRef) {
+function createGetPartSliceTool(part: PartRef) {
   return tool(
     async ({ offset, length }: { offset: number; length: number }) => {
-      const start = Math.max(0, Math.min(offset, article.body.length));
+      const start = Math.max(0, Math.min(offset, part.body.length));
       const size = Math.max(1, Math.min(length, SLICE_MAX));
-      const text = article.body.slice(start, start + size);
+      const text = part.body.slice(start, start + size);
       return JSON.stringify({ offset: start, length: text.length, text });
     },
     {
-      name: 'get_article_slice',
+      name: 'get_part_slice',
       description:
-        'Read a slice of the current article body by character offset and length. Use when nearby context is not enough for meaning, structure, or referents.',
+        'Read a slice of the current reading part body by character offset and length. Use when nearby context is not enough for meaning, structure, or referents.',
       schema: z.object({
         offset: z.number().int().min(0).describe('0-based character offset'),
         length: z.number().int().min(1).max(SLICE_MAX).describe('Max characters to return'),
@@ -28,7 +28,7 @@ function createGetArticleSliceTool(article: ArticleRef) {
   );
 }
 
-function createSearchArticleTool(article: ArticleRef) {
+function createSearchPartTool(part: PartRef) {
   return tool(
     async ({ query, window }: { query: string; window?: number }) => {
       const q = query.trim().toLowerCase();
@@ -36,7 +36,7 @@ function createSearchArticleTool(article: ArticleRef) {
         return JSON.stringify({ matches: [] });
       }
       const win = Math.min(Math.max(window ?? 80, 20), 200);
-      const lower = article.body.toLowerCase();
+      const lower = part.body.toLowerCase();
       const matches: { index: number; excerpt: string }[] = [];
       let from = 0;
       while (matches.length < 5) {
@@ -45,16 +45,16 @@ function createSearchArticleTool(article: ArticleRef) {
           break;
         }
         const start = Math.max(0, index - win);
-        const end = Math.min(article.body.length, index + q.length + win);
-        matches.push({ index, excerpt: article.body.slice(start, end) });
+        const end = Math.min(part.body.length, index + q.length + win);
+        matches.push({ index, excerpt: part.body.slice(start, end) });
         from = index + q.length;
       }
-      return JSON.stringify({ title: article.title, matches });
+      return JSON.stringify({ title: part.title, matches });
     },
     {
-      name: 'search_article',
+      name: 'search_part',
       description:
-        'Search the current article body for a keyword and return nearby excerpts. Use for word-card examples or to locate related sentences.',
+        'Search the current reading part body for a keyword and return nearby excerpts. Use for word-card examples or to locate related sentences.',
       schema: z.object({
         query: z.string().min(1).max(100),
         window: z.number().int().min(20).max(200).optional(),
@@ -63,19 +63,17 @@ function createSearchArticleTool(article: ArticleRef) {
   );
 }
 
-/** Article-scoped tools — article body is closed over; model cannot pick another article. */
-export function createArticleAssistTools(article: ArticleRef): StructuredToolInterface[] {
-  return [createGetArticleSliceTool(article), createSearchArticleTool(article)];
+export function createPartAssistTools(part: PartRef): StructuredToolInterface[] {
+  return [createGetPartSliceTool(part), createSearchPartTool(part)];
 }
 
-/** Mount tools by assist action: lookup = search only; others = slice + search. */
 export function resolveAssistToolsForAction(
   actionId: AssistAskBody['actionId'],
-  article: ArticleRef,
+  part: PartRef,
 ): StructuredToolInterface[] {
-  const search = createSearchArticleTool(article);
+  const search = createSearchPartTool(part);
   if (actionId === 'lookup') {
     return [search];
   }
-  return [createGetArticleSliceTool(article), search];
+  return [createGetPartSliceTool(part), search];
 }

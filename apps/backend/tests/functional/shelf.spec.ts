@@ -1,9 +1,9 @@
 import { eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { article as articleTable, user as userTable } from '@gloaming/db';
-import type { Article } from '@gloaming/shared/api/articles';
+import { readingWork as readingWorkTable, user as userTable } from '@gloaming/db';
 import type { ShelfData } from '@gloaming/shared/api/shelf';
+import type { AdminWork } from '@gloaming/shared/api/works';
 import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 
 import app from '@/app';
@@ -68,11 +68,11 @@ async function createSession(role: 'user' | 'admin' = 'user') {
 
 describe('Shelf HTTP', () => {
   const createdEmails: string[] = [];
-  const createdArticleIds: string[] = [];
+  const createdWorkIds: string[] = [];
 
   afterAll(async () => {
-    if (createdArticleIds.length > 0) {
-      await db.delete(articleTable).where(inArray(articleTable.id, createdArticleIds));
+    if (createdWorkIds.length > 0) {
+      await db.delete(readingWorkTable).where(inArray(readingWorkTable.id, createdWorkIds));
     }
     for (const email of createdEmails) {
       await db.delete(userTable).where(eq(userTable.email, email));
@@ -84,30 +84,35 @@ describe('Shelf HTTP', () => {
     const learner = await createSession('user');
     createdEmails.push(admin.email, learner.email);
 
-    async function createAndPublish(title: string): Promise<Article> {
-      const create = await app.request('/api/admin/articles', {
+    async function createAndPublish(title: string): Promise<AdminWork> {
+      const create = await app.request('/api/admin/works', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
         body: JSON.stringify({
           title,
           body: `${title} body for shelf.`,
-          level: 'easy',
-          themes: ['story'],
-          sourceNote: 'demo',
-          estimatedMinutes: 4,
         }),
       });
       expect(create.status).toBe(201);
-      const article = (await create.json()) as Article;
+      const work = (await create.json()) as AdminWork;
       expect(
         (
-          await app.request(`/api/admin/articles/${article.id}/publish`, {
+          await app.request(`/api/admin/works/${work.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+            body: JSON.stringify({ sourceNote: 'demo', tags: ['story'] }),
+          })
+        ).status,
+      ).toBe(200);
+      expect(
+        (
+          await app.request(`/api/admin/works/${work.id}/publish`, {
             method: 'POST',
             headers: { cookie: admin.cookie },
           })
         ).status,
       ).toBe(200);
-      return article;
+      return work;
     }
 
     const emptyShelf = await app.request('/api/shelf', { headers: { cookie: learner.cookie } });
@@ -116,14 +121,14 @@ describe('Shelf HTTP', () => {
 
     const first = await createAndPublish('Shelf First');
     const second = await createAndPublish('Shelf Second');
-    createdArticleIds.push(first.id, second.id);
+    createdWorkIds.push(first.id, second.id);
 
-    expect(
-      (await app.request(`/api/reader/articles/${first.id}`, { headers: { cookie: learner.cookie } })).status,
-    ).toBe(200);
+    expect((await app.request(`/api/reader/works/${first.id}`, { headers: { cookie: learner.cookie } })).status).toBe(
+      200,
+    );
     expect(
       (
-        await app.request(`/api/reader/articles/${first.id}/progress`, {
+        await app.request(`/api/reader/works/${first.id}/state`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
           body: JSON.stringify({ status: 'completed', progressRatio: 100 }),
@@ -131,12 +136,12 @@ describe('Shelf HTTP', () => {
       ).status,
     ).toBe(200);
 
-    expect(
-      (await app.request(`/api/reader/articles/${second.id}`, { headers: { cookie: learner.cookie } })).status,
-    ).toBe(200);
+    expect((await app.request(`/api/reader/works/${second.id}`, { headers: { cookie: learner.cookie } })).status).toBe(
+      200,
+    );
     expect(
       (
-        await app.request(`/api/reader/articles/${second.id}/progress`, {
+        await app.request(`/api/reader/works/${second.id}/state`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
           body: JSON.stringify({ progressRatio: 55 }),
@@ -147,10 +152,10 @@ describe('Shelf HTTP', () => {
     const shelf = await app.request('/api/shelf', { headers: { cookie: learner.cookie } });
     expect(shelf.status).toBe(200);
     const shelfData = (await shelf.json()) as ShelfData;
-    expect(shelfData.current?.article.id).toBe(second.id);
-    expect(shelfData.current?.progress.progressRatio).toBe(55);
+    expect(shelfData.current?.work.id).toBe(second.id);
+    expect(shelfData.current?.state.progressRatio).toBe(55);
     expect(shelfData.items).toHaveLength(1);
-    expect(shelfData.items[0]?.article.id).toBe(first.id);
-    expect(shelfData.items[0]?.progress.status).toBe('completed');
+    expect(shelfData.items[0]?.work.id).toBe(first.id);
+    expect(shelfData.items[0]?.state.status).toBe('completed');
   });
 });

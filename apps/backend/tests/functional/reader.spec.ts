@@ -1,9 +1,8 @@
 import { eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { article as articleTable, user as userTable } from '@gloaming/db';
-import type { Article } from '@gloaming/shared/api/articles';
-import { type ReaderSessionData, type ReadingProgress } from '@gloaming/shared/api/reader';
+import { readingWork as readingWorkTable, user as userTable } from '@gloaming/db';
+import { type ReaderSessionData, type ReadingState } from '@gloaming/shared/api/reader';
 import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 
 import app from '@/app';
@@ -68,11 +67,11 @@ async function createSession(role: 'user' | 'admin' = 'user') {
 
 describe('Reader HTTP', () => {
   const createdEmails: string[] = [];
-  const createdArticleIds: string[] = [];
+  const createdWorkIds: string[] = [];
 
   afterAll(async () => {
-    if (createdArticleIds.length > 0) {
-      await db.delete(articleTable).where(inArray(articleTable.id, createdArticleIds));
+    if (createdWorkIds.length > 0) {
+      await db.delete(readingWorkTable).where(inArray(readingWorkTable.id, createdWorkIds));
     }
     for (const email of createdEmails) {
       await db.delete(userTable).where(eq(userTable.email, email));
@@ -84,56 +83,58 @@ describe('Reader HTTP', () => {
     const learner = await createSession('user');
     createdEmails.push(admin.email, learner.email);
 
-    const create = await app.request('/api/admin/articles', {
+    const create = await app.request('/api/admin/works', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
       body: JSON.stringify({
         title: 'Ocean Quiet',
         body: 'The sea is wide.\n\nLife hides below.',
-        level: 'mid',
-        themes: ['science'],
-        sourceNote: 'demo',
-        estimatedMinutes: 8,
       }),
     });
     expect(create.status).toBe(201);
-    const article = (await create.json()) as Article;
-    createdArticleIds.push(article.id);
+    const work = (await create.json()) as { id: string };
+    createdWorkIds.push(work.id);
 
-    const publish = await app.request(`/api/admin/articles/${article.id}/publish`, {
+    await app.request(`/api/admin/works/${work.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+      body: JSON.stringify({ sourceNote: 'demo', tags: ['science'] }),
+    });
+
+    const publish = await app.request(`/api/admin/works/${work.id}/publish`, {
       method: 'POST',
       headers: { cookie: admin.cookie },
     });
     expect(publish.status).toBe(200);
 
-    const anonymousSession = await app.request(`/api/reader/articles/${article.id}`);
+    const anonymousSession = await app.request(`/api/reader/works/${work.id}`);
     expect(anonymousSession.status).toBe(200);
-    expect(((await anonymousSession.json()) as ReaderSessionData).progress.progressRatio).toBe(0);
+    expect(((await anonymousSession.json()) as ReaderSessionData).state.progressRatio).toBe(0);
 
-    const session = await app.request(`/api/reader/articles/${article.id}`, {
+    const session = await app.request(`/api/reader/works/${work.id}`, {
       headers: { cookie: learner.cookie },
     });
     expect(session.status).toBe(200);
     const sessionData = (await session.json()) as ReaderSessionData;
     expect(sessionData.audioAvailable).toEqual({ us: false, uk: false });
-    expect(sessionData.progress.status).toBe('in_progress');
-    expect(sessionData.progress.progressRatio).toBe(0);
+    expect(sessionData.state.status).toBe('in_progress');
+    expect(sessionData.state.progressRatio).toBe(0);
 
-    const progressPatch = await app.request(`/api/reader/articles/${article.id}/progress`, {
+    const statePatch = await app.request(`/api/reader/works/${work.id}/state`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
       body: JSON.stringify({ progressRatio: 40 }),
     });
-    expect(progressPatch.status).toBe(200);
-    const progress = (await progressPatch.json()) as ReadingProgress;
-    expect(progress.progressRatio).toBe(40);
+    expect(statePatch.status).toBe(200);
+    const state = (await statePatch.json()) as ReadingState;
+    expect(state.progressRatio).toBe(40);
 
-    const progressDown = await app.request(`/api/reader/articles/${article.id}/progress`, {
+    const stateDown = await app.request(`/api/reader/works/${work.id}/state`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
       body: JSON.stringify({ progressRatio: 10 }),
     });
-    expect(progressDown.status).toBe(200);
-    expect(((await progressDown.json()) as ReadingProgress).progressRatio).toBe(40);
+    expect(stateDown.status).toBe(200);
+    expect(((await stateDown.json()) as ReadingState).progressRatio).toBe(40);
   });
 });

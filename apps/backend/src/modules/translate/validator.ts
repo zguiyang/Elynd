@@ -2,7 +2,7 @@ import { zValidator } from '@hono/zod-validator';
 import type { Context, ValidationTargets } from 'hono';
 import type { ZodType } from 'zod';
 
-import { translateArticleBodySchema } from '@gloaming/shared/api/translate';
+import { translatePartBodySchema } from '@gloaming/shared/api/translate';
 
 import { sendValidationError } from '@/lib/response';
 
@@ -20,4 +20,4 @@ function validated<T extends ZodType, Target extends keyof ValidationTargets>(ta
   });
 }
 
-export const validateTranslateArticle = validated('json', translateArticleBodySchema);
+export const validateTranslatePart = validated('json', translatePartBodySchema);

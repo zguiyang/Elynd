@@ -1,13 +1,13 @@
 /**
- * Idempotent dev seed: ensures at least one published article for Discover → Reader.
+ * Idempotent dev seed: ensures at least one published work for Discover → Reader.
  * Run: pnpm --filter @gloaming/backend seed:dev
  */
 import { eq } from 'drizzle-orm';
 
-import { article as articleTable } from '@gloaming/db';
+import { readingWork as readingWorkTable } from '@gloaming/db';
 
 import { db } from '../src/db/index.ts';
-import { createArticle, publishArticle } from '../src/modules/articles/service.ts';
+import { createAdminTextWork, publishWork, updateWork } from '../src/modules/works/service.ts';
 
 const SEED_SOURCE_NOTE = 'dev-seed:v1';
 const SEED_TITLE = '[dev-seed] Morning Light';
@@ -24,34 +24,33 @@ The sea did not hurry. Neither would he.`;
 
 async function main() {
   const [existing] = await db
-    .select({ id: articleTable.id, status: articleTable.status })
-    .from(articleTable)
-    .where(eq(articleTable.sourceNote, SEED_SOURCE_NOTE))
+    .select({ id: readingWorkTable.id, status: readingWorkTable.status })
+    .from(readingWorkTable)
+    .where(eq(readingWorkTable.sourceNote, SEED_SOURCE_NOTE))
     .limit(1);
 
   if (existing?.status === 'published') {
-    console.log(`Dev seed article already published: ${existing.id}`);
+    console.log(`Dev seed work already published: ${existing.id}`);
     process.exit(0);
   }
 
-  let articleId = existing?.id;
-  if (!articleId) {
-    const created = await createArticle({
+  let workId = existing?.id;
+  if (!workId) {
+    const created = await createAdminTextWork({
       title: SEED_TITLE,
       body: SEED_BODY,
-      level: 'easy',
-      themes: ['story', 'daily-life'],
-      sourceNote: SEED_SOURCE_NOTE,
-      estimatedMinutes: 5,
-      seriesId: null,
-      seriesOrder: null,
     });
-    articleId = created.id;
-    console.log(`Created draft article: ${articleId}`);
+    workId = created.id;
+    console.log(`Created draft work: ${workId}`);
   }
 
-  const published = await publishArticle(articleId);
-  console.log(`Published dev seed article: ${published.id} — "${published.title}"`);
+  await updateWork(workId, {
+    sourceNote: SEED_SOURCE_NOTE,
+    tags: ['story', 'daily-life'],
+  });
+
+  const published = await publishWork(workId);
+  console.log(`Published dev seed work: ${published.id} — "${published.title}"`);
   process.exit(0);
 }
 

@@ -3,11 +3,11 @@ import { randomUUID } from 'node:crypto';
 import { and, asc, count, desc, eq, isNotNull, sql } from 'drizzle-orm';
 
 import {
-  article as articleTable,
   conversation as conversationTable,
   conversationMessage as conversationMessageTable,
   readingDay as readingDayTable,
-  readingProgress as readingProgressTable,
+  readingState as readingStateTable,
+  readingWork as readingWorkTable,
 } from '@gloaming/db';
 import type {
   ReadingHistoryCompletion,
@@ -63,19 +63,18 @@ function pushShanghaiDates(target: Set<string>, ...values: Array<Date | null | u
   }
 }
 
-/** Reconstruct days from existing reading progress. Safe to call after touch (unique / onConflict). */
 async function backfillReadingDays(userId: string): Promise<void> {
   const dates = new Set<string>();
 
-  const progressRows = await db
+  const stateRows = await db
     .select({
-      createdAt: readingProgressTable.createdAt,
-      lastReadAt: readingProgressTable.lastReadAt,
-      completedAt: readingProgressTable.completedAt,
+      createdAt: readingStateTable.createdAt,
+      lastReadAt: readingStateTable.lastReadAt,
+      completedAt: readingStateTable.completedAt,
     })
-    .from(readingProgressTable)
-    .where(eq(readingProgressTable.userId, userId));
-  for (const row of progressRows) {
+    .from(readingStateTable)
+    .where(eq(readingStateTable.userId, userId));
+  for (const row of stateRows) {
     pushShanghaiDates(dates, row.createdAt, row.lastReadAt, row.completedAt);
   }
 
@@ -100,11 +99,11 @@ async function countLookedUpWords(userId: string): Promise<number> {
   return Number(row?.value ?? 0);
 }
 
-async function countCompletedArticles(userId: string): Promise<number> {
+async function countCompletedWorks(userId: string): Promise<number> {
   const [row] = await db
     .select({ value: count() })
-    .from(readingProgressTable)
-    .where(and(eq(readingProgressTable.userId, userId), eq(readingProgressTable.status, 'completed')));
+    .from(readingStateTable)
+    .where(and(eq(readingStateTable.userId, userId), eq(readingStateTable.status, 'completed')));
   return Number(row?.value ?? 0);
 }
 
@@ -120,20 +119,20 @@ async function listActivityDates(userId: string): Promise<string[]> {
 async function listCompletions(userId: string): Promise<ReadingHistoryCompletion[]> {
   const rows = await db
     .select({
-      completedAt: readingProgressTable.completedAt,
-      title: articleTable.title,
-      articleId: articleTable.id,
+      completedAt: readingStateTable.completedAt,
+      title: readingWorkTable.title,
+      workId: readingWorkTable.id,
     })
-    .from(readingProgressTable)
-    .innerJoin(articleTable, eq(articleTable.id, readingProgressTable.articleId))
+    .from(readingStateTable)
+    .innerJoin(readingWorkTable, eq(readingWorkTable.id, readingStateTable.workId))
     .where(
       and(
-        eq(readingProgressTable.userId, userId),
-        eq(readingProgressTable.status, 'completed'),
-        isNotNull(readingProgressTable.completedAt),
+        eq(readingStateTable.userId, userId),
+        eq(readingStateTable.status, 'completed'),
+        isNotNull(readingStateTable.completedAt),
       ),
     )
-    .orderBy(desc(readingProgressTable.completedAt), asc(articleTable.title));
+    .orderBy(desc(readingStateTable.completedAt), asc(readingWorkTable.title));
 
   return rows.flatMap((row) => {
     if (!row.completedAt) {
@@ -143,7 +142,7 @@ async function listCompletions(userId: string): Promise<ReadingHistoryCompletion
       {
         date: calendarDateInTimeZone(row.completedAt),
         title: row.title,
-        articleId: row.articleId,
+        workId: row.workId,
       },
     ];
   });
@@ -159,7 +158,7 @@ export async function getReadingHistory(userId: string): Promise<ReadingHistoryD
   const portrait: ReadingHistorySummary = {
     consecutiveDays: consecutiveReadingDays(today, dateSet),
     readingDays: activityDates.length,
-    completedArticles: await countCompletedArticles(userId),
+    completedWorks: await countCompletedWorks(userId),
     lookedUpWords: await countLookedUpWords(userId),
   };
 

@@ -1,25 +1,25 @@
 import { describe, expect, it } from 'vitest';
 
-import { hashArticleContent } from '@/modules/articles/content-hash';
-import { createTranslateLineParser, parseTranslateOutputLine, splitArticleSentences } from '@/modules/translate/split';
+import { createTranslateLineParser, parseTranslateOutputLine, splitPartSentences } from '@/modules/translate/split';
+import { hashPartContent } from '@/modules/works/content-hash';
 
-describe('hashArticleContent', () => {
+describe('hashPartContent', () => {
   it('is stable for equivalent whitespace', () => {
-    const a = hashArticleContent('Hello', 'One.\n\nTwo.');
-    const b = hashArticleContent('Hello', 'One.\n\n\nTwo.');
+    const a = hashPartContent('Hello', 'One.\n\nTwo.');
+    const b = hashPartContent('Hello', 'One.\n\n\nTwo.');
     expect(a).toBe(b);
   });
 
   it('changes when body changes', () => {
-    const a = hashArticleContent('Hello', 'One.');
-    const b = hashArticleContent('Hello', 'Two.');
+    const a = hashPartContent('Hello', 'One.');
+    const b = hashPartContent('Hello', 'Two.');
     expect(a).not.toBe(b);
   });
 });
 
-describe('splitArticleSentences', () => {
+describe('splitPartSentences', () => {
   it('splits paragraphs and sentences with global indices', () => {
-    const sentences = splitArticleSentences('Hello world. Next sentence.\n\nNew paragraph!');
+    const sentences = splitPartSentences('Hello world. Next sentence.\n\nNew paragraph!');
     expect(sentences).toEqual([
       { index: 0, paragraphIndex: 0, en: 'Hello world.' },
       { index: 1, paragraphIndex: 0, en: 'Next sentence.' },
@@ -28,7 +28,7 @@ describe('splitArticleSentences', () => {
   });
 
   it('keeps Mr. from hard-splitting', () => {
-    const sentences = splitArticleSentences('Mr. Smith smiled. Then he left.');
+    const sentences = splitPartSentences('Mr. Smith smiled. Then he left.');
     expect(sentences).toHaveLength(2);
     expect(sentences[0]?.en).toBe('Mr. Smith smiled.');
   });

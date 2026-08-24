@@ -1,13 +1,10 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import {
-  article as articleTable,
-  articleAudio as articleAudioTable,
-  ttsConfig as ttsConfigTable,
-  user as userTable,
-} from '@gloaming/db';
+import { readingWork as readingWorkTable, ttsConfig as ttsConfigTable, user as userTable } from '@gloaming/db';
+import { audioKindForRole } from '@gloaming/shared/api/content-assets';
 import type { ReaderAudioTrack, ReaderSessionData } from '@gloaming/shared/api/reader';
+import type { AdminWork } from '@gloaming/shared/api/works';
 import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 
 import app from '@/app';
@@ -15,10 +12,10 @@ import { db } from '@/db';
 import { encryptApiKey } from '@/lib/llm';
 import * as redisLib from '@/lib/redis';
 import * as azureTts from '@/lib/tts/azure';
-import { articleAudioObjectKey } from '@/modules/article-audio/service';
-import { hashArticleContent } from '@/modules/articles/content-hash';
+import { partAudioObjectKey } from '@/modules/content-assets/service';
 import { resetObjectStoreCache, setObjectStoreForTests } from '@/modules/oss';
 import { TTS_CONFIG_ID } from '@/modules/tts/service';
+import { hashPartContent } from '@/modules/works/content-hash';
 
 import { createMemoryObjectStore } from '../helpers/memory-oss';
 
@@ -143,26 +140,33 @@ afterAll(async () => {
   resetObjectStoreCache();
 });
 
-describe('learner article audio', () => {
+describe('learner part audio', () => {
   it('exposes availability and serves published fresh tracks only', async () => {
     const admin = await createSession('admin');
     const learner = await createSession('user');
     await ensureTtsConfig();
 
-    const create = await app.request('/api/admin/articles', {
+    const create = await app.request('/api/admin/works', {
       method: 'POST',
       headers: { Cookie: admin.cookie, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: 'Listen Title',
         body: 'Listen body here.',
-        level: 'easy',
-        themes: ['daily'],
-        sourceNote: 'demo',
-        estimatedMinutes: 5,
       }),
     });
     expect(create.status).toBe(201);
-    const article = (await create.json()) as { id: string };
+    const work = (await create.json()) as AdminWork;
+    const partId = work.parts[0]!.id;
+
+    expect(
+      (
+        await app.request(`/api/admin/works/${work.id}`, {
+          method: 'PATCH',
+          headers: { Cookie: admin.cookie, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sourceNote: 'demo', tags: ['daily'] }),
+        })
+      ).status,
+    ).toBe(200);
 
     const memoryRedis = createMemoryRedis();
     const objectStore = createMemoryObjectStore();
@@ -174,21 +178,21 @@ describe('learner article audio', () => {
       wordTimings: [{ text: 'Listen', audioOffsetMs: 0, durationMs: 100, textOffset: 0 }],
     }));
 
-    const draftAudio = await app.request(`/api/reader/articles/${article.id}/audio?role=us`, {
+    const draftAudio = await app.request(`/api/reader/parts/${partId}/audio?role=us`, {
       headers: { Cookie: learner.cookie },
     });
     expect(draftAudio.status).toBe(404);
 
     expect(
       (
-        await app.request(`/api/admin/articles/${article.id}/publish`, {
+        await app.request(`/api/admin/works/${work.id}/publish`, {
           method: 'POST',
           headers: { Cookie: admin.cookie },
         })
       ).status,
     ).toBe(200);
 
-    const before = await app.request(`/api/reader/articles/${article.id}`, {
+    const before = await app.request(`/api/reader/works/${work.id}`, {
       headers: { Cookie: learner.cookie },
     });
     expect(before.status).toBe(200);
@@ -196,7 +200,7 @@ describe('learner article audio', () => {
 
     expect(
       (
-        await app.request(`/api/admin/articles/${article.id}/audio/generate`, {
+        await app.request(`/api/admin/parts/${partId}/audio/generate`, {
           method: 'POST',
           headers: { Cookie: admin.cookie, 'Content-Type': 'application/json' },
           body: JSON.stringify({}),
@@ -204,13 +208,13 @@ describe('learner article audio', () => {
       ).status,
     ).toBe(200);
 
-    const after = await app.request(`/api/reader/articles/${article.id}`, {
+    const after = await app.request(`/api/reader/works/${work.id}`, {
       headers: { Cookie: learner.cookie },
     });
     expect(after.status).toBe(200);
     expect(((await after.json()) as ReaderSessionData).audioAvailable).toEqual({ us: true, uk: true });
 
-    const usTrack = await app.request(`/api/reader/articles/${article.id}/audio?role=us`, {
+    const usTrack = await app.request(`/api/reader/parts/${partId}/audio?role=us`, {
       headers: { Cookie: learner.cookie },
     });
     expect(usTrack.status).toBe(200);
@@ -226,21 +230,21 @@ describe('learner article audio', () => {
       textOffset: 0,
     });
 
-    const contentHash = hashArticleContent('Listen Title', 'Listen body here.');
-    objectStore.store.delete(articleAudioObjectKey(article.id, 'uk', contentHash));
-    const ukGone = await app.request(`/api/reader/articles/${article.id}/audio?role=uk`, {
+    const contentHash = hashPartContent('Listen Title', 'Listen body here.');
+    objectStore.store.delete(partAudioObjectKey(partId, audioKindForRole('uk'), contentHash));
+    const ukGone = await app.request(`/api/reader/parts/${partId}/audio?role=uk`, {
       headers: { Cookie: learner.cookie },
     });
     expect(ukGone.status).toBe(404);
 
-    const avail = await app.request(`/api/reader/articles/${article.id}`, {
+    const avail = await app.request(`/api/reader/works/${work.id}`, {
       headers: { Cookie: learner.cookie },
     });
     expect(((await avail.json()) as ReaderSessionData).audioAvailable).toEqual({ us: true, uk: false });
 
     expect(
       (
-        await app.request(`/api/admin/articles/${article.id}`, {
+        await app.request(`/api/admin/works/${work.id}/parts/${partId}`, {
           method: 'PATCH',
           headers: { Cookie: admin.cookie, 'Content-Type': 'application/json' },
           body: JSON.stringify({ body: 'Listen body changed.' }),
@@ -248,18 +252,17 @@ describe('learner article audio', () => {
       ).status,
     ).toBe(200);
 
-    const staleAvail = await app.request(`/api/reader/articles/${article.id}`, {
+    const staleAvail = await app.request(`/api/reader/works/${work.id}`, {
       headers: { Cookie: learner.cookie },
     });
     expect(((await staleAvail.json()) as ReaderSessionData).audioAvailable).toEqual({ us: false, uk: false });
 
-    const staleTrack = await app.request(`/api/reader/articles/${article.id}/audio?role=us`, {
+    const staleTrack = await app.request(`/api/reader/parts/${partId}/audio?role=us`, {
       headers: { Cookie: learner.cookie },
     });
     expect(staleTrack.status).toBe(404);
 
-    await db.delete(articleAudioTable).where(eq(articleAudioTable.articleId, article.id));
-    await db.delete(articleTable).where(eq(articleTable.id, article.id));
+    await db.delete(readingWorkTable).where(eq(readingWorkTable.id, work.id));
     redisSpy.mockRestore();
     vi.restoreAllMocks();
     resetObjectStoreCache();

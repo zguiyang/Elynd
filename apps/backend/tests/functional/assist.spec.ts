@@ -2,11 +2,13 @@ import { eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 
 import {
-  article as articleTable,
   conversationMessage as conversationMessageTable,
+  readingWork as readingWorkTable,
   user as userTable,
 } from '@gloaming/db';
 import { ASSIST_SSE_EVENT, type AssistSseDone, type AssistSseError } from '@gloaming/shared/api/assist';
+import type { AdminWork } from '@gloaming/shared/api/works';
+import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 
 import app from '@/app';
 import { HTTP_STATUS } from '@/constants';
@@ -47,6 +49,10 @@ async function markEmailVerified(email: string) {
   await db.update(userTable).set({ emailVerified: true }).where(eq(userTable.email, email));
 }
 
+async function setUserRole(email: string, role: string) {
+  await db.update(userTable).set({ role }).where(eq(userTable.email, email));
+}
+
 async function signInEmail(email: string) {
   return app.request('/api/auth/sign-in/email', {
     method: 'POST',
@@ -55,14 +61,45 @@ async function signInEmail(email: string) {
   });
 }
 
-async function createSession() {
-  const email = uniqueEmail('assist');
-  const username = `assist_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
-  expect((await signUp({ email, username, name: 'assist' })).status).toBe(200);
+async function createSession(role: 'user' | 'admin' = 'user') {
+  const email = uniqueEmail(role);
+  const username = `${role}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+  expect((await signUp({ email, username, name: role })).status).toBe(200);
   await markEmailVerified(email);
+  if (role === 'admin') {
+    await setUserRole(email, AUTH_ADMIN_ROLE);
+  }
   const login = await signInEmail(email);
   expect(login.status).toBe(200);
   return { email, cookie: cookieHeader(login) };
+}
+
+async function createPublishedWork(adminCookie: string, title: string, body: string): Promise<AdminWork> {
+  const create = await app.request('/api/admin/works', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', cookie: adminCookie },
+    body: JSON.stringify({ title, body }),
+  });
+  expect(create.status).toBe(201);
+  const work = (await create.json()) as AdminWork;
+  expect(
+    (
+      await app.request(`/api/admin/works/${work.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', cookie: adminCookie },
+        body: JSON.stringify({ sourceNote: 'demo', tags: ['test'] }),
+      })
+    ).status,
+  ).toBe(200);
+  expect(
+    (
+      await app.request(`/api/admin/works/${work.id}/publish`, {
+        method: 'POST',
+        headers: { cookie: adminCookie },
+      })
+    ).status,
+  ).toBe(200);
+  return work;
 }
 
 type ParsedSse = { event?: string; data: string };
@@ -99,11 +136,11 @@ async function* okStream(): AsyncGenerator<aiService.AiStreamEvent> {
 
 describe('Assist HTTP', () => {
   const createdEmails: string[] = [];
-  const createdArticleIds: string[] = [];
+  const createdWorkIds: string[] = [];
 
   afterAll(async () => {
-    if (createdArticleIds.length > 0) {
-      await db.delete(articleTable).where(inArray(articleTable.id, createdArticleIds));
+    if (createdWorkIds.length > 0) {
+      await db.delete(readingWorkTable).where(inArray(readingWorkTable.id, createdWorkIds));
     }
     for (const email of createdEmails) {
       await db.delete(userTable).where(eq(userTable.email, email));
@@ -111,20 +148,17 @@ describe('Assist HTTP', () => {
   });
 
   it('streams assist reply via ai.stream and surfaces AI errors as SSE error events', async () => {
+    const admin = await createSession('admin');
     const user = await createSession();
-    createdEmails.push(user.email);
+    createdEmails.push(admin.email, user.email);
 
-    const articleId = `art_${Date.now().toString(36)}`;
-    createdArticleIds.push(articleId);
-    await db.insert(articleTable).values({
-      id: articleId,
-      title: 'Assist Test',
-      body: 'The fox jumped over the lazy dog near the river.',
-      level: 'easy',
-      themes: ['test'],
-      status: 'published',
-      publishedAt: new Date(),
-    });
+    const work = await createPublishedWork(
+      admin.cookie,
+      'Assist Test',
+      'The fox jumped over the lazy dog near the river.',
+    );
+    createdWorkIds.push(work.id);
+    const partId = work.parts[0]!.id;
 
     const streamSpy = vi.spyOn(aiService, 'streamAi').mockImplementation(() => okStream());
     const invokeSpy = vi.spyOn(aiService, 'invokeAi').mockResolvedValue({
@@ -137,7 +171,8 @@ describe('Assist HTTP', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', cookie: user.cookie },
       body: JSON.stringify({
-        articleId,
+        workId: work.id,
+        partId,
         actionId: 'meaning',
         selection: 'The fox jumped over the lazy dog',
       }),
@@ -167,7 +202,7 @@ describe('Assist HTTP', () => {
 
     async function* failStream(): AsyncGenerator<aiService.AiStreamEvent> {
       throw new AppError(HTTP_STATUS.SERVICE_UNAVAILABLE, 'AI unavailable');
-      yield { type: 'delta', text: '' }; // unreachable — keeps generator typing
+      yield { type: 'delta', text: '' };
     }
 
     streamSpy.mockImplementation(() => failStream());
@@ -175,7 +210,8 @@ describe('Assist HTTP', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', cookie: user.cookie },
       body: JSON.stringify({
-        articleId,
+        workId: work.id,
+        partId,
         actionId: 'meaning',
         selection: 'The fox jumped over the lazy dog',
       }),
@@ -184,26 +220,23 @@ describe('Assist HTTP', () => {
     const errEvents = parseSseBlocks(await unavailable.text());
     expect(errEvents.some((e) => e.event === ASSIST_SSE_EVENT.error)).toBe(true);
     const errPayload = JSON.parse(errEvents.find((e) => e.event === ASSIST_SSE_EVENT.error)!.data) as AssistSseError;
-    expect(errPayload.error).toMatch(/AI unavailable|Article/i);
+    expect(errPayload.error).toMatch(/AI unavailable/i);
     streamSpy.mockRestore();
     invokeSpy.mockRestore();
   });
 
   it('accepts gist without selection and omits suggestions when follow-ups fail', async () => {
+    const admin = await createSession('admin');
     const user = await createSession();
-    createdEmails.push(user.email);
+    createdEmails.push(admin.email, user.email);
 
-    const articleId = `art_gist_${Date.now().toString(36)}`;
-    createdArticleIds.push(articleId);
-    await db.insert(articleTable).values({
-      id: articleId,
-      title: 'Gist Test',
-      body: 'The ocean covers more than seventy percent of Earth.',
-      level: 'easy',
-      themes: ['test'],
-      status: 'published',
-      publishedAt: new Date(),
-    });
+    const work = await createPublishedWork(
+      admin.cookie,
+      'Gist Test',
+      'The ocean covers more than seventy percent of Earth.',
+    );
+    createdWorkIds.push(work.id);
+    const partId = work.parts[0]!.id;
 
     const streamSpy = vi.spyOn(aiService, 'streamAi').mockImplementation(() => okStream());
     const invokeSpy = vi.spyOn(aiService, 'invokeAi').mockRejectedValue(new Error('follow-up failed'));
@@ -212,7 +245,8 @@ describe('Assist HTTP', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', cookie: user.cookie },
       body: JSON.stringify({
-        articleId,
+        workId: work.id,
+        partId,
         actionId: 'gist',
       }),
     });
@@ -233,26 +267,20 @@ describe('Assist HTTP', () => {
   });
 
   it('rejects meaning without selection and qa without question', async () => {
+    const admin = await createSession('admin');
     const user = await createSession();
-    createdEmails.push(user.email);
+    createdEmails.push(admin.email, user.email);
 
-    const articleId = `art_val_${Date.now().toString(36)}`;
-    createdArticleIds.push(articleId);
-    await db.insert(articleTable).values({
-      id: articleId,
-      title: 'Validation Test',
-      body: 'Hello world.',
-      level: 'easy',
-      themes: ['test'],
-      status: 'published',
-      publishedAt: new Date(),
-    });
+    const work = await createPublishedWork(admin.cookie, 'Validation Test', 'Hello world.');
+    createdWorkIds.push(work.id);
+    const partId = work.parts[0]!.id;
 
     const missingSelection = await app.request('/api/assist/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', cookie: user.cookie },
       body: JSON.stringify({
-        articleId,
+        workId: work.id,
+        partId,
         actionId: 'meaning',
       }),
     });
@@ -262,7 +290,8 @@ describe('Assist HTTP', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', cookie: user.cookie },
       body: JSON.stringify({
-        articleId,
+        workId: work.id,
+        partId,
         actionId: 'qa',
       }),
     });
@@ -270,20 +299,13 @@ describe('Assist HTTP', () => {
   });
 
   it('accepts qa without selection when question is present', async () => {
+    const admin = await createSession('admin');
     const user = await createSession();
-    createdEmails.push(user.email);
+    createdEmails.push(admin.email, user.email);
 
-    const articleId = `art_qa_${Date.now().toString(36)}`;
-    createdArticleIds.push(articleId);
-    await db.insert(articleTable).values({
-      id: articleId,
-      title: 'QA Test',
-      body: 'Birds fly south in winter.',
-      level: 'easy',
-      themes: ['test'],
-      status: 'published',
-      publishedAt: new Date(),
-    });
+    const work = await createPublishedWork(admin.cookie, 'QA Test', 'Birds fly south in winter.');
+    createdWorkIds.push(work.id);
+    const partId = work.parts[0]!.id;
 
     const streamSpy = vi.spyOn(aiService, 'streamAi').mockImplementation(() => okStream());
     const invokeSpy = vi.spyOn(aiService, 'invokeAi').mockResolvedValue({
@@ -296,7 +318,8 @@ describe('Assist HTTP', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', cookie: user.cookie },
       body: JSON.stringify({
-        articleId,
+        workId: work.id,
+        partId,
         actionId: 'qa',
         question: '这篇在讲什么？',
       }),
@@ -309,33 +332,20 @@ describe('Assist HTTP', () => {
     invokeSpy.mockRestore();
   });
 
-  it('appends a second ask to the same conversation and rejects wrong article id', async () => {
+  it('appends a second ask to the same conversation and rejects wrong work id', async () => {
+    const admin = await createSession('admin');
     const user = await createSession();
-    createdEmails.push(user.email);
+    createdEmails.push(admin.email, user.email);
 
-    const articleId = `art_resume_${Date.now().toString(36)}`;
-    const otherArticleId = `art_other_${Date.now().toString(36)}`;
-    createdArticleIds.push(articleId, otherArticleId);
-    await db.insert(articleTable).values([
-      {
-        id: articleId,
-        title: 'Resume Test',
-        body: 'The fox jumped over the lazy dog near the river.',
-        level: 'easy',
-        themes: ['test'],
-        status: 'published',
-        publishedAt: new Date(),
-      },
-      {
-        id: otherArticleId,
-        title: 'Other',
-        body: 'Another published article body.',
-        level: 'easy',
-        themes: ['test'],
-        status: 'published',
-        publishedAt: new Date(),
-      },
-    ]);
+    const work = await createPublishedWork(
+      admin.cookie,
+      'Resume Test',
+      'The fox jumped over the lazy dog near the river.',
+    );
+    const other = await createPublishedWork(admin.cookie, 'Other', 'Another published work body.');
+    createdWorkIds.push(work.id, other.id);
+    const partId = work.parts[0]!.id;
+    const otherPartId = other.parts[0]!.id;
 
     const streamSpy = vi.spyOn(aiService, 'streamAi').mockImplementation(() => okStream());
     const invokeSpy = vi.spyOn(aiService, 'invokeAi').mockResolvedValue({
@@ -348,7 +358,8 @@ describe('Assist HTTP', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', cookie: user.cookie },
       body: JSON.stringify({
-        articleId,
+        workId: work.id,
+        partId,
         actionId: 'meaning',
         selection: 'The fox jumped over the lazy dog',
       }),
@@ -363,7 +374,8 @@ describe('Assist HTTP', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', cookie: user.cookie },
       body: JSON.stringify({
-        articleId,
+        workId: work.id,
+        partId,
         actionId: 'qa',
         question: '还有别的意思吗？',
         conversationId: firstDone.conversationId,
@@ -381,40 +393,38 @@ describe('Assist HTTP', () => {
       .where(eq(conversationMessageTable.conversationId, firstDone.conversationId!));
     expect(messageCount).toHaveLength(4);
 
-    const wrongArticle = await app.request('/api/assist/ask', {
+    const wrongWork = await app.request('/api/assist/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', cookie: user.cookie },
       body: JSON.stringify({
-        articleId: otherArticleId,
+        workId: other.id,
+        partId: otherPartId,
         actionId: 'gist',
         conversationId: firstDone.conversationId,
       }),
     });
-    expect(wrongArticle.status).toBe(200);
-    const wrongEvents = parseSseBlocks(await wrongArticle.text());
+    expect(wrongWork.status).toBe(200);
+    const wrongEvents = parseSseBlocks(await wrongWork.text());
     expect(wrongEvents.some((e) => e.event === ASSIST_SSE_EVENT.error)).toBe(true);
     const errPayload = JSON.parse(wrongEvents.find((e) => e.event === ASSIST_SSE_EVENT.error)!.data) as AssistSseError;
-    expect(errPayload.error).toMatch(/conversation does not match article/i);
+    expect(errPayload.error).toMatch(/conversation does not match work/i);
 
     streamSpy.mockRestore();
     invokeSpy.mockRestore();
   });
 
   it('still returns reply when transcript persist fails', async () => {
+    const admin = await createSession('admin');
     const user = await createSession();
-    createdEmails.push(user.email);
+    createdEmails.push(admin.email, user.email);
 
-    const articleId = `art_persist_${Date.now().toString(36)}`;
-    createdArticleIds.push(articleId);
-    await db.insert(articleTable).values({
-      id: articleId,
-      title: 'Persist Fail',
-      body: 'The fox jumped over the lazy dog near the river.',
-      level: 'easy',
-      themes: ['test'],
-      status: 'published',
-      publishedAt: new Date(),
-    });
+    const work = await createPublishedWork(
+      admin.cookie,
+      'Persist Fail',
+      'The fox jumped over the lazy dog near the river.',
+    );
+    createdWorkIds.push(work.id);
+    const partId = work.parts[0]!.id;
 
     const streamSpy = vi.spyOn(aiService, 'streamAi').mockImplementation(() => okStream());
     const invokeSpy = vi.spyOn(aiService, 'invokeAi').mockResolvedValue({
@@ -428,7 +438,8 @@ describe('Assist HTTP', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', cookie: user.cookie },
       body: JSON.stringify({
-        articleId,
+        workId: work.id,
+        partId,
         actionId: 'gist',
       }),
     });

@@ -3,9 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { article as articleTable, readingProgress as readingProgressTable, user as userTable } from '@gloaming/db';
-import type { Article } from '@gloaming/shared/api/articles';
+import { readingState as readingStateTable, readingWork as readingWorkTable, user as userTable } from '@gloaming/db';
 import { calendarDateInTimeZone, type ReadingHistoryData } from '@gloaming/shared/api/reading-history';
+import type { AdminWork } from '@gloaming/shared/api/works';
 import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 
 import app from '@/app';
@@ -74,28 +74,34 @@ async function createSession(role: 'user' | 'admin' = 'user') {
   return { email, cookie, userId: user.id };
 }
 
-async function createPublishedArticle(adminCookie: string, title: string): Promise<Article> {
-  const create = await app.request('/api/admin/articles', {
+async function createPublishedWork(adminCookie: string, title: string): Promise<AdminWork> {
+  const create = await app.request('/api/admin/works', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', cookie: adminCookie },
     body: JSON.stringify({
       title,
       body: 'The ocean is full of mysteries.\n\nA warm current carries nutrients.',
-      level: 'mid',
-      themes: ['science'],
-      sourceNote: 'demo',
-      estimatedMinutes: 6,
     }),
   });
   expect(create.status).toBe(201);
-  const article = (await create.json()) as Article;
+  const work = (await create.json()) as AdminWork;
 
-  const publish = await app.request(`/api/admin/articles/${article.id}/publish`, {
+  expect(
+    (
+      await app.request(`/api/admin/works/${work.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', cookie: adminCookie },
+        body: JSON.stringify({ sourceNote: 'demo', tags: ['science'] }),
+      })
+    ).status,
+  ).toBe(200);
+
+  const publish = await app.request(`/api/admin/works/${work.id}/publish`, {
     method: 'POST',
     headers: { cookie: adminCookie },
   });
   expect(publish.status).toBe(200);
-  return article;
+  return work;
 }
 
 async function getReadingHistory(cookie: string): Promise<ReadingHistoryData> {
@@ -106,11 +112,11 @@ async function getReadingHistory(cookie: string): Promise<ReadingHistoryData> {
 
 describe('Reading history HTTP', () => {
   const createdEmails: string[] = [];
-  const createdArticleIds: string[] = [];
+  const createdWorkIds: string[] = [];
 
   afterAll(async () => {
-    if (createdArticleIds.length > 0) {
-      await db.delete(articleTable).where(inArray(articleTable.id, createdArticleIds));
+    if (createdWorkIds.length > 0) {
+      await db.delete(readingWorkTable).where(inArray(readingWorkTable.id, createdWorkIds));
     }
     for (const email of createdEmails) {
       await db.delete(userTable).where(eq(userTable.email, email));
@@ -133,7 +139,7 @@ describe('Reading history HTTP', () => {
     expect(empty.portrait).toEqual({
       consecutiveDays: 0,
       readingDays: 0,
-      completedArticles: 0,
+      completedWorks: 0,
       lookedUpWords: 0,
     });
   });
@@ -142,17 +148,20 @@ describe('Reading history HTTP', () => {
     const admin = await createSession('admin');
     const learner = await createSession('user');
     createdEmails.push(admin.email, learner.email);
-    const article = await createPublishedArticle(admin.cookie, 'History Sea');
-    createdArticleIds.push(article.id);
+    const work = await createPublishedWork(admin.cookie, 'History Sea');
+    createdWorkIds.push(work.id);
+    const partId = work.parts[0]!.id;
 
     const createdAt = new Date('2026-01-10T04:00:00.000Z');
     const lastReadAt = new Date('2026-01-15T04:00:00.000Z');
-    await db.insert(readingProgressTable).values({
+    await db.insert(readingStateTable).values({
       id: randomUUID(),
       userId: learner.userId,
-      articleId: article.id,
+      workId: work.id,
+      currentPartId: partId,
+      anchorKind: 'percent',
+      anchorValue: '20',
       status: 'in_progress',
-      progressRatio: 20,
       createdAt,
       lastReadAt,
       completedAt: null,
@@ -164,10 +173,10 @@ describe('Reading history HTTP', () => {
     );
     expect(backfilled.activity.some((day) => day.date === calendarDateInTimeZone())).toBe(false);
 
-    expect(
-      (await app.request(`/api/reader/articles/${article.id}`, { headers: { cookie: learner.cookie } })).status,
-    ).toBe(200);
-    const complete = await app.request(`/api/reader/articles/${article.id}/progress`, {
+    expect((await app.request(`/api/reader/works/${work.id}`, { headers: { cookie: learner.cookie } })).status).toBe(
+      200,
+    );
+    const complete = await app.request(`/api/reader/works/${work.id}/state`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
       body: JSON.stringify({ status: 'completed' }),
@@ -177,27 +186,27 @@ describe('Reading history HTTP', () => {
     const today = calendarDateInTimeZone();
     const live = await getReadingHistory(learner.cookie);
     expect(live.activity.some((day) => day.date === today && day.level === 1)).toBe(true);
-    expect(live.portrait.completedArticles).toBe(1);
+    expect(live.portrait.completedWorks).toBe(1);
     expect(live.portrait.readingDays).toBeGreaterThanOrEqual(2);
-    expect(live.completions[0]).toMatchObject({ title: 'History Sea', articleId: article.id, date: today });
+    expect(live.completions[0]).toMatchObject({ title: 'History Sea', workId: work.id, date: today });
   });
 
   it('counts distinct lookup selections', async () => {
     const admin = await createSession('admin');
     const learner = await createSession('user');
     createdEmails.push(admin.email, learner.email);
-    const article = await createPublishedArticle(admin.cookie, 'History Lookups');
-    createdArticleIds.push(article.id);
+    const work = await createPublishedWork(admin.cookie, 'History Lookups');
+    createdWorkIds.push(work.id);
 
-    expect(
-      (await app.request(`/api/reader/articles/${article.id}`, { headers: { cookie: learner.cookie } })).status,
-    ).toBe(200);
+    expect((await app.request(`/api/reader/works/${work.id}`, { headers: { cookie: learner.cookie } })).status).toBe(
+      200,
+    );
 
     await conversationsService.appendAssistTurn({
       userId: learner.userId,
       surface: 'assist-read',
-      subjectType: 'article',
-      subjectId: article.id,
+      subjectType: 'reading_work',
+      subjectId: work.id,
       userContent: 'Ocean',
       assistantContent: '海。',
       assistantStatus: 'complete',
@@ -206,8 +215,8 @@ describe('Reading history HTTP', () => {
     await conversationsService.appendAssistTurn({
       userId: learner.userId,
       surface: 'assist-read',
-      subjectType: 'article',
-      subjectId: article.id,
+      subjectType: 'reading_work',
+      subjectId: work.id,
       userContent: 'ocean',
       assistantContent: '海。',
       assistantStatus: 'complete',
@@ -216,8 +225,8 @@ describe('Reading history HTTP', () => {
     await conversationsService.appendAssistTurn({
       userId: learner.userId,
       surface: 'assist-read',
-      subjectType: 'article',
-      subjectId: article.id,
+      subjectType: 'reading_work',
+      subjectId: work.id,
       userContent: 'current',
       assistantContent: '洋流。',
       assistantStatus: 'complete',
@@ -226,8 +235,8 @@ describe('Reading history HTTP', () => {
     await conversationsService.appendAssistTurn({
       userId: learner.userId,
       surface: 'assist-read',
-      subjectType: 'article',
-      subjectId: article.id,
+      subjectType: 'reading_work',
+      subjectId: work.id,
       userContent: 'Why?',
       assistantContent: 'Because…',
       assistantStatus: 'complete',

@@ -1,78 +1,83 @@
 import { and, desc, eq, ne } from 'drizzle-orm';
 
-import { article as articleTable, readingProgress as readingProgressTable } from '@gloaming/db';
-import { type ReaderItemSummary } from '@gloaming/shared/api/reader';
+import { readingState as readingStateTable, readingWork as readingWorkTable } from '@gloaming/db';
+import { computeProgressRatio } from '@gloaming/shared/api/reader';
 import { SHELF_ITEMS_LIMIT, type ShelfData } from '@gloaming/shared/api/shelf';
 
 import { db } from '@/db';
 
-type ArticleRow = typeof articleTable.$inferSelect;
-type ProgressRow = typeof readingProgressTable.$inferSelect;
+type WorkRow = typeof readingWorkTable.$inferSelect;
+type StateRow = typeof readingStateTable.$inferSelect;
 
 function toIso(value: Date): string {
   return value.toISOString();
 }
 
-function toSummary(row: ArticleRow): ReaderItemSummary {
+function toWorkSummary(row: WorkRow) {
   return {
     id: row.id,
     title: row.title,
-    level: row.level as ReaderItemSummary['level'],
-    themes: row.themes,
-    estimatedMinutes: row.estimatedMinutes,
+    description: row.description,
+    tags: row.tags,
+    publishedAt: row.publishedAt ? toIso(row.publishedAt) : null,
   };
 }
 
-function toProgress(row: ProgressRow) {
+function toState(row: StateRow) {
   return {
     status: row.status as 'in_progress' | 'completed',
-    progressRatio: row.progressRatio,
+    currentPartId: row.currentPartId,
+    progressRatio: computeProgressRatio({
+      status: row.status as 'in_progress' | 'completed',
+      anchorKind: row.anchorKind,
+      anchorValue: row.anchorValue,
+    }),
     lastReadAt: toIso(row.lastReadAt),
     completedAt: row.completedAt ? toIso(row.completedAt) : null,
   };
 }
 
-/** My shelf: latest in-progress as continue hero; remaining progress rows as grid. */
+/** My shelf: latest in-progress as continue hero; remaining state rows as grid. */
 export async function getShelf(userId: string): Promise<ShelfData> {
   const [currentRow] = await db
     .select({
-      progress: readingProgressTable,
-      article: articleTable,
+      state: readingStateTable,
+      work: readingWorkTable,
     })
-    .from(readingProgressTable)
-    .innerJoin(articleTable, eq(readingProgressTable.articleId, articleTable.id))
+    .from(readingStateTable)
+    .innerJoin(readingWorkTable, eq(readingStateTable.workId, readingWorkTable.id))
     .where(
       and(
-        eq(readingProgressTable.userId, userId),
-        eq(readingProgressTable.status, 'in_progress'),
-        eq(articleTable.status, 'published'),
+        eq(readingStateTable.userId, userId),
+        eq(readingStateTable.status, 'in_progress'),
+        eq(readingWorkTable.status, 'published'),
       ),
     )
-    .orderBy(desc(readingProgressTable.lastReadAt), desc(readingProgressTable.id))
+    .orderBy(desc(readingStateTable.lastReadAt), desc(readingStateTable.id))
     .limit(1);
 
   const itemConditions = [
-    eq(readingProgressTable.userId, userId),
-    eq(articleTable.status, 'published'),
-    ...(currentRow ? [ne(readingProgressTable.id, currentRow.progress.id)] : []),
+    eq(readingStateTable.userId, userId),
+    eq(readingWorkTable.status, 'published'),
+    ...(currentRow ? [ne(readingStateTable.id, currentRow.state.id)] : []),
   ];
 
   const itemRows = await db
     .select({
-      progress: readingProgressTable,
-      article: articleTable,
+      state: readingStateTable,
+      work: readingWorkTable,
     })
-    .from(readingProgressTable)
-    .innerJoin(articleTable, eq(readingProgressTable.articleId, articleTable.id))
+    .from(readingStateTable)
+    .innerJoin(readingWorkTable, eq(readingStateTable.workId, readingWorkTable.id))
     .where(and(...itemConditions))
-    .orderBy(desc(readingProgressTable.lastReadAt), desc(readingProgressTable.id))
+    .orderBy(desc(readingStateTable.lastReadAt), desc(readingStateTable.id))
     .limit(SHELF_ITEMS_LIMIT);
 
   return {
-    current: currentRow ? { article: toSummary(currentRow.article), progress: toProgress(currentRow.progress) } : null,
+    current: currentRow ? { work: toWorkSummary(currentRow.work), state: toState(currentRow.state) } : null,
     items: itemRows.map((row) => ({
-      article: toSummary(row.article),
-      progress: toProgress(row.progress),
+      work: toWorkSummary(row.work),
+      state: toState(row.state),
     })),
   };
 }

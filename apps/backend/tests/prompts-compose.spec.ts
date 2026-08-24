@@ -29,13 +29,13 @@ describe('prompt compose', () => {
     expect(withQuestion).toContain('Learner question');
     expect(withQuestion).not.toContain('Nearby context');
 
-    const articleLevel = await renderPrompt('scenes/assist-read/user', {
+    const partLevelPrompt = await renderPrompt('scenes/assist-read/user', {
       question: '这篇大意？',
-      selectionNote: 'No text selection — answer for the article as a whole (use tools if you need the body).',
+      selectionNote: 'No text selection — answer for the reading part as a whole (use tools if you need the body).',
     });
-    expect(articleLevel).toContain('No text selection');
-    expect(articleLevel).toContain('Learner question');
-    expect(articleLevel).not.toContain('Selection:');
+    expect(partLevelPrompt).toContain('No text selection');
+    expect(partLevelPrompt).toContain('Learner question');
+    expect(partLevelPrompt).not.toContain('Selection:');
   });
 
   it('composes language-teacher + assist-read with refuse-and-steer scope', async () => {
@@ -47,8 +47,7 @@ describe('prompt compose', () => {
       vars: {
         targetLanguage: 'English',
         replyLanguage: 'Chinese',
-        articleTitle: 'Sample',
-        articleLevel: 'easy',
+        workTitle: 'Sample',
         selection: 'orbit',
         neighbor: 'the planet orbit',
       },
@@ -76,8 +75,7 @@ describe('prompt compose', () => {
       vars: {
         targetLanguage: 'English',
         replyLanguage: 'Chinese',
-        articleTitle: 'Sample',
-        articleLevel: 'easy',
+        workTitle: 'Sample',
         selection: 'a long sentence',
       },
     });
@@ -94,9 +92,8 @@ describe('prompt compose', () => {
       vars: {
         targetLanguage: 'English',
         replyLanguage: 'Chinese',
-        articleTitle: 'Ocean',
-        articleLevel: 'easy',
-        selectionNote: 'No text selection — answer for the article as a whole (use tools if you need the body).',
+        workTitle: 'Ocean',
+        selectionNote: 'No text selection — answer for the reading part as a whole (use tools if you need the body).',
       },
     });
     expect(messages[0]!.content).toMatch(/gist|大意|summary/i);
@@ -105,21 +102,15 @@ describe('prompt compose', () => {
 });
 
 describe('resolveAssistToolsForAction', () => {
-  const article = { title: 'T', body: 'hello world hello' };
+  const part = { title: 'T', body: 'hello world hello' };
 
   it('gives lookup search only', () => {
-    const tools = resolveAssistToolsForAction('lookup', article);
-    expect(tools.map((t) => t.name)).toEqual(['search_article']);
+    const tools = resolveAssistToolsForAction('lookup', part);
+    expect(tools.map((t) => t.name)).toEqual(['search_part']);
   });
 
   it('gives meaning and gist slice and search', () => {
-    expect(resolveAssistToolsForAction('meaning', article).map((t) => t.name)).toEqual([
-      'get_article_slice',
-      'search_article',
-    ]);
-    expect(resolveAssistToolsForAction('gist', article).map((t) => t.name)).toEqual([
-      'get_article_slice',
-      'search_article',
-    ]);
+    expect(resolveAssistToolsForAction('meaning', part).map((t) => t.name)).toEqual(['get_part_slice', 'search_part']);
+    expect(resolveAssistToolsForAction('gist', part).map((t) => t.name)).toEqual(['get_part_slice', 'search_part']);
   });
 });

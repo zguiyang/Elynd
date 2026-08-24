@@ -1,10 +1,10 @@
 import { and, eq } from 'drizzle-orm';
 
-import { article as articleTable } from '@gloaming/db';
+import { readingPart as readingPartTable, readingWork as readingWorkTable } from '@gloaming/db';
 import {
   type BilingualCachePayload,
   bilingualCachePayloadSchema,
-  type TranslateArticleBody,
+  type TranslatePartBody,
 } from '@gloaming/shared/api/translate';
 
 import { db } from '@/db';
@@ -16,14 +16,13 @@ import { streamAi } from '@/modules/ai';
 import {
   createTranslateLineParser,
   formatSentenceListForPrompt,
-  hashArticleContent,
-  splitArticleSentences,
+  hashPartContent,
+  splitPartSentences,
   type SplitSentence,
 } from '@/modules/translate/split';
 
 const translateLogger = rootLogger.child({ module: 'Translate' });
 
-/** 30 days */
 const BILINGUAL_CACHE_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 export type TranslateStreamMetaEvent = {
@@ -53,76 +52,76 @@ export type TranslateStreamDoneEvent = {
 export type TranslateStreamEvent =
   TranslateStreamMetaEvent | TranslateStreamTitleEvent | TranslateStreamSentenceEvent | TranslateStreamDoneEvent;
 
-export type StreamTranslateArticleOptions = {
+export type StreamTranslatePartOptions = {
   signal?: AbortSignal;
 };
 
-function cacheKey(articleId: string, contentHash: string): string {
-  return `gloaming:bilingual:v1:${articleId}:${contentHash}`;
+function cacheKey(partId: string, contentHash: string): string {
+  return `gloaming:bilingual:v2:${partId}:${contentHash}`;
 }
 
-function bilingualCacheMatch(articleId: string): string {
-  return `gloaming:bilingual:v1:${articleId}:*`;
+function bilingualCacheMatch(partId: string): string {
+  return `gloaming:bilingual:v2:${partId}:*`;
 }
 
-/** Best-effort: drop cached bilingual payloads for this article. */
-export async function deleteBilingualCacheForArticle(articleId: string): Promise<void> {
+export async function deleteBilingualCacheForPart(partId: string): Promise<void> {
   try {
     const redis = getRedis();
     let cursor = '0';
     do {
-      const [next, keys] = await redis.scan(cursor, 'MATCH', bilingualCacheMatch(articleId), 'COUNT', 100);
+      const [next, keys] = await redis.scan(cursor, 'MATCH', bilingualCacheMatch(partId), 'COUNT', 100);
       cursor = next;
       if (keys.length > 0) {
         await redis.del(...keys);
       }
     } while (cursor !== '0');
   } catch (error) {
-    translateLogger.warn({ err: error, articleId }, 'Redis bilingual cache delete failed');
+    translateLogger.warn({ err: error, partId }, 'Redis bilingual cache delete failed');
   }
 }
 
-async function loadPublishedArticle(articleId: string): Promise<{ id: string; title: string; body: string }> {
+async function loadPublishedPart(partId: string): Promise<{ id: string; title: string; body: string }> {
   const rows = await db
     .select({
-      id: articleTable.id,
-      title: articleTable.title,
-      body: articleTable.body,
+      id: readingPartTable.id,
+      title: readingPartTable.title,
+      body: readingPartTable.body,
     })
-    .from(articleTable)
-    .where(and(eq(articleTable.id, articleId), eq(articleTable.status, 'published')))
+    .from(readingPartTable)
+    .innerJoin(readingWorkTable, eq(readingPartTable.workId, readingWorkTable.id))
+    .where(and(eq(readingPartTable.id, partId), eq(readingWorkTable.status, 'published')))
     .limit(1);
 
   const row = rows[0];
   if (!row) {
-    throw new NotFoundError('Article not found');
+    throw new NotFoundError('Part not found');
   }
   return row;
 }
 
-async function readCache(articleId: string, contentHash: string): Promise<BilingualCachePayload | null> {
+async function readCache(partId: string, contentHash: string): Promise<BilingualCachePayload | null> {
   try {
-    const raw = await getRedis().get(cacheKey(articleId, contentHash));
+    const raw = await getRedis().get(cacheKey(partId, contentHash));
     if (!raw) {
       return null;
     }
     const parsed = bilingualCachePayloadSchema.safeParse(JSON.parse(raw) as unknown);
     if (!parsed.success) {
-      translateLogger.warn({ articleId, contentHash }, 'Invalid bilingual cache payload; ignoring');
+      translateLogger.warn({ partId, contentHash }, 'Invalid bilingual cache payload; ignoring');
       return null;
     }
     return parsed.data;
   } catch (error) {
-    translateLogger.warn({ err: error, articleId }, 'Redis bilingual cache read failed');
+    translateLogger.warn({ err: error, partId }, 'Redis bilingual cache read failed');
     return null;
   }
 }
 
-async function writeCache(articleId: string, contentHash: string, payload: BilingualCachePayload): Promise<void> {
+async function writeCache(partId: string, contentHash: string, payload: BilingualCachePayload): Promise<void> {
   try {
-    await getRedis().set(cacheKey(articleId, contentHash), JSON.stringify(payload), 'EX', BILINGUAL_CACHE_TTL_SECONDS);
+    await getRedis().set(cacheKey(partId, contentHash), JSON.stringify(payload), 'EX', BILINGUAL_CACHE_TTL_SECONDS);
   } catch (error) {
-    translateLogger.warn({ err: error, articleId }, 'Redis bilingual cache write failed');
+    translateLogger.warn({ err: error, partId }, 'Redis bilingual cache write failed');
   }
 }
 
@@ -140,19 +139,16 @@ function* emitCachedPayload(contentHash: string, payload: BilingualCachePayload)
   yield { type: 'done', contentHash, cached: true };
 }
 
-/**
- * Stream bilingual translation for a published article (Redis cache → AI line protocol).
- */
-export async function* streamTranslateArticle(
+export async function* streamTranslatePart(
   _userId: string,
-  body: TranslateArticleBody,
-  options: StreamTranslateArticleOptions = {},
+  body: TranslatePartBody,
+  options: StreamTranslatePartOptions = {},
 ): AsyncGenerator<TranslateStreamEvent> {
-  const article = await loadPublishedArticle(body.articleId);
-  const contentHash = hashArticleContent(article.title, article.body);
-  const sentences = splitArticleSentences(article.body);
+  const part = await loadPublishedPart(body.partId);
+  const contentHash = hashPartContent(part.title, part.body);
+  const sentences = splitPartSentences(part.body);
 
-  const cached = await readCache(article.id, contentHash);
+  const cached = await readCache(part.id, contentHash);
   if (cached) {
     yield* emitCachedPayload(contentHash, cached);
     return;
@@ -161,23 +157,23 @@ export async function* streamTranslateArticle(
   yield {
     type: 'meta',
     contentHash,
-    titleEn: article.title,
+    titleEn: part.title,
     sentences,
   };
 
-  if (sentences.length === 0 && !article.title.trim()) {
+  if (sentences.length === 0 && !part.title.trim()) {
     yield { type: 'done', contentHash, cached: false };
     return;
   }
 
   const messages = await composePromptMessages({
     roleId: PROMPT_ROLE.languageTeacher,
-    sceneId: PROMPT_SCENE.translateArticle,
+    sceneId: PROMPT_SCENE.translatePart,
     actionId: 'translate',
     vars: {
       targetLanguage: 'English',
       replyLanguage: 'Chinese',
-      titleEn: article.title,
+      titleEn: part.title,
       sentenceList: formatSentenceListForPrompt(sentences),
     },
   });
@@ -188,7 +184,7 @@ export async function* streamTranslateArticle(
 
   for await (const event of streamAi({
     purpose: 'translate',
-    source: 'translate.article',
+    source: 'translate.part',
     userId: _userId,
     messages,
     signal: options.signal,
@@ -209,7 +205,6 @@ export async function* streamTranslateArticle(
       continue;
     }
 
-    // done from streamAi — flush remainder
     for (const line of parser.flush()) {
       if (line.kind === 'title') {
         if (titleZh == null) {
@@ -227,9 +222,9 @@ export async function* streamTranslateArticle(
     return;
   }
 
-  const resolvedTitleZh = titleZh?.trim() || article.title.trim() || '（无标题）';
+  const resolvedTitleZh = titleZh?.trim() || part.title.trim() || '（无标题）';
   const assembled: BilingualCachePayload = {
-    titleEn: article.title,
+    titleEn: part.title,
     titleZh: resolvedTitleZh,
     sentences: sentences.map((sentence) => {
       const zh = zhByIndex.get(sentence.index)?.trim();
@@ -240,16 +235,15 @@ export async function* streamTranslateArticle(
     }),
   };
 
-  // Title-only article (no sentences) still caches titleZh.
-  if (assembled.sentences.length === 0 && !titleZh?.trim() && !article.title.trim()) {
+  if (assembled.sentences.length === 0 && !titleZh?.trim() && !part.title.trim()) {
     yield { type: 'done', contentHash, cached: false };
     return;
   }
 
-  if (titleZh == null && article.title.trim()) {
+  if (titleZh == null && part.title.trim()) {
     yield { type: 'title', zh: resolvedTitleZh };
   }
 
-  await writeCache(article.id, contentHash, assembled);
+  await writeCache(part.id, contentHash, assembled);
   yield { type: 'done', contentHash, cached: false };
 }

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 
 /** Normalize title+body so source hash is stable across trivial whitespace churn. */
-export function normalizeArticleContent(title: string, body: string): string {
+export function normalizePartContent(title: string, body: string): string {
   const normalizedTitle = title.replace(/\s+/g, ' ').trim();
   const normalizedBody = body
     .replace(/\r\n/g, '\n')
@@ -14,6 +14,6 @@ export function normalizeArticleContent(title: string, body: string): string {
 }
 
 /** SSOT source-content hash for derived projections (audio, translate cache). */
-export function hashArticleContent(title: string, body: string): string {
-  return createHash('sha256').update(normalizeArticleContent(title, body), 'utf8').digest('hex');
+export function hashPartContent(title: string, body: string): string {
+  return createHash('sha256').update(normalizePartContent(title, body), 'utf8').digest('hex');
 }

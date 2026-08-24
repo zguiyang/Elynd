@@ -1,7 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { article as articleTable } from '@gloaming/db';
+import { readingPart as readingPartTable, readingWork as readingWorkTable } from '@gloaming/db';
 import { type AssistAskBody } from '@gloaming/shared/api/assist';
 
 import { db } from '@/db';
@@ -19,7 +19,6 @@ const followUpSuggestionsSchema = z.object({
   suggestions: z.array(z.string().min(1).max(48)).length(3),
 });
 
-/** Max notes / chars injected into the system prompt when memory is wired. */
 const MEMORY_NOTES_MAX = 5;
 const MEMORY_NOTES_CHARS_MAX = 800;
 
@@ -67,7 +66,8 @@ function formatMemoryNotes(notes: string[]): string {
 
 export type LearnerMemoryInput = {
   userId: string;
-  articleId: string;
+  workId: string;
+  partId: string;
   actionId: AssistAskBody['actionId'];
   selection?: string;
   question?: string;
@@ -75,21 +75,9 @@ export type LearnerMemoryInput = {
 };
 
 export type LearnerMemoryResult = {
-  /** Short facts to inject into the assist system prompt — not full transcripts. */
   notes: string[];
 };
 
-/**
- * LEARNER MEMORY / RAG INJECTION POINT
- *
- * Swap this no-op for vector search, profile lookup, or a memory service later.
- * Retrieve by `userId` (optionally scoped by article / selection) and return short
- * `notes` only. Derived stores must keep `source_message_id` pointers — never
- * duplicate full conversation_message bodies here.
- *
- * Do NOT implement memory inside `invokeAi` / audit logging.
- * Do NOT dump the current thread history into the model prompt (context-window bound).
- */
 export async function loadLearnerMemory(_input: LearnerMemoryInput): Promise<LearnerMemoryResult> {
   return { notes: [] };
 }
@@ -106,8 +94,7 @@ export type AssistStreamDoneEvent = AiStreamDoneEvent & {
 export type AssistStreamEvent = AiStreamDeltaEvent | AssistStreamDoneEvent;
 
 async function buildFollowUpMessages(input: {
-  articleTitle: string;
-  articleLevel: string;
+  workTitle: string;
   actionId: AssistAskBody['actionId'];
   selection?: string;
   question?: string;
@@ -116,8 +103,7 @@ async function buildFollowUpMessages(input: {
   const vars = {
     targetLanguage: 'English',
     replyLanguage: 'Chinese',
-    articleTitle: input.articleTitle,
-    articleLevel: input.articleLevel,
+    workTitle: input.workTitle,
   };
   const [role, base, task] = await Promise.all([
     renderPrompt(`roles/${PROMPT_ROLE.languageTeacher}`, vars),
@@ -138,47 +124,59 @@ async function buildFollowUpMessages(input: {
   ];
 }
 
-/**
- * Article-grounded assist as an async event stream (plain-text deltas + done).
- * After the main reply, optionally attaches follow-up suggestion chips and
- * persists the turn to the user-scoped conversation transcript.
- */
+async function loadPublishedPart(workId: string, partId: string) {
+  const rows = await db
+    .select({
+      workId: readingWorkTable.id,
+      workTitle: readingWorkTable.title,
+      partId: readingPartTable.id,
+      partTitle: readingPartTable.title,
+      body: readingPartTable.body,
+    })
+    .from(readingPartTable)
+    .innerJoin(readingWorkTable, eq(readingPartTable.workId, readingWorkTable.id))
+    .where(
+      and(
+        eq(readingPartTable.id, partId),
+        eq(readingPartTable.workId, workId),
+        eq(readingWorkTable.status, 'published'),
+      ),
+    )
+    .limit(1);
+  const row = rows[0];
+  if (!row) {
+    throw new NotFoundError('Part');
+  }
+  return row;
+}
+
 export async function* streamAssistAsk(
   userId: string,
   body: AssistAskBody,
   options?: StreamAssistAskOptions,
 ): AsyncGenerator<AssistStreamEvent> {
-  const rows = await db
-    .select()
-    .from(articleTable)
-    .where(and(eq(articleTable.id, body.articleId), eq(articleTable.status, 'published')))
-    .limit(1);
-  const article = rows[0];
-  if (!article) {
-    throw new NotFoundError('Article');
-  }
+  const part = await loadPublishedPart(body.workId, body.partId);
 
   if (body.conversationId) {
     await conversationsService.assertAssistConversation({
       userId,
       conversationId: body.conversationId,
-      articleId: article.id,
+      workId: part.workId,
     });
   }
 
   const selection = body.selection?.trim() || undefined;
   const question = body.question?.trim() || undefined;
-  const neighbor = selection ? neighborWindow(article.body, selection) : '';
+  const neighbor = selection ? neighborWindow(part.body, selection) : '';
   const tools = resolveAssistToolsForAction(body.actionId, {
-    title: article.title,
-    body: article.body,
+    title: part.partTitle,
+    body: part.body,
   });
 
-  // MEMORY HOOK — replace loadLearnerMemory with RAG / profile retrieval later.
-  // Keep notes short; do not inject full thread history into the prompt.
   const memory = await loadLearnerMemory({
     userId,
-    articleId: article.id,
+    workId: part.workId,
+    partId: part.partId,
     actionId: body.actionId,
     selection,
     question,
@@ -193,12 +191,11 @@ export async function* streamAssistAsk(
     vars: {
       targetLanguage: 'English',
       replyLanguage: 'Chinese',
-      articleTitle: article.title,
-      articleLevel: article.level,
+      workTitle: part.workTitle,
       selection,
       selectionNote: selection
         ? undefined
-        : 'No text selection — answer for the article as a whole (use tools if you need the body).',
+        : 'No text selection — answer for the reading part as a whole (use tools if you need the body).',
       neighbor: neighbor || undefined,
       question,
     },
@@ -217,7 +214,7 @@ export async function* streamAssistAsk(
     purpose: 'assist',
     source: 'assist.ask',
     userId,
-    ref: { type: 'article', id: article.id },
+    ref: { type: 'reading_work', id: part.workId },
     tools,
     signal: options?.signal,
     requestSummaryExtra: { actionId: body.actionId },
@@ -241,8 +238,7 @@ export async function* streamAssistAsk(
   let suggestions: string[] | undefined;
   try {
     const followUpMessages = await buildFollowUpMessages({
-      articleTitle: article.title,
-      articleLevel: article.level,
+      workTitle: part.workTitle,
       actionId: body.actionId,
       selection,
       question,
@@ -252,7 +248,7 @@ export async function* streamAssistAsk(
       purpose: 'assist',
       source: 'assist.ask.followups',
       userId,
-      ref: { type: 'article', id: article.id },
+      ref: { type: 'reading_work', id: part.workId },
       messages: followUpMessages,
       outputSchema: followUpSuggestionsSchema,
       timeoutMs: 20_000,
@@ -260,7 +256,7 @@ export async function* streamAssistAsk(
     });
     suggestions = followUp.content.suggestions;
   } catch {
-    // Follow-ups are optional — main reply still ships.
+    // Follow-ups are optional.
   }
 
   if (options?.signal?.aborted) {
@@ -273,8 +269,8 @@ export async function* streamAssistAsk(
       userId,
       conversationId: body.conversationId,
       surface: 'assist-read',
-      subjectType: 'article',
-      subjectId: article.id,
+      subjectType: 'reading_work',
+      subjectId: part.workId,
       userContent: userDisplayContent(body),
       assistantContent: doneEvent.content,
       assistantStatus: 'complete',

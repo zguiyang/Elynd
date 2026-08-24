@@ -4,7 +4,7 @@ export type SplitSentence = {
   en: string;
 };
 
-export { hashArticleContent, normalizeArticleContent } from '@/modules/articles/content-hash';
+export { hashPartContent, normalizePartContent } from '@/modules/works/content-hash';
 
 function paragraphsFromBody(body: string): string[] {
   const trimmed = body.replace(/\r\n/g, '\n').trim();
@@ -17,10 +17,6 @@ function paragraphsFromBody(body: string): string[] {
     .filter(Boolean);
 }
 
-/**
- * Split a paragraph into sentences (English punctuation).
- * Keeps abbreviations like "Mr." / "Dr." / "U.S." from hard-splitting when possible.
- */
 function splitParagraphSentences(paragraph: string): string[] {
   const text = paragraph.trim();
   if (!text) {
@@ -38,8 +34,8 @@ function splitParagraphSentences(paragraph: string): string[] {
   return sentences.length > 0 ? sentences : [text];
 }
 
-/** Sentence-split article body; indices are global across paragraphs. */
-export function splitArticleSentences(body: string): SplitSentence[] {
+/** Sentence-split part body; indices are global across paragraphs. */
+export function splitPartSentences(body: string): SplitSentence[] {
   const paragraphs = paragraphsFromBody(body);
   const sentences: SplitSentence[] = [];
   let index = 0;
@@ -59,7 +55,6 @@ export function formatSentenceListForPrompt(sentences: SplitSentence[]): string 
 
 export type ParsedTranslateLine = { kind: 'title'; zh: string } | { kind: 'sentence'; index: number; zh: string };
 
-/** Parse one complete model output line (`TITLE\\t…` or `{index}\\t…`). */
 export function parseTranslateOutputLine(line: string): ParsedTranslateLine | null {
   const trimmed = line.trim();
   if (!trimmed) {
@@ -83,9 +78,6 @@ export function parseTranslateOutputLine(line: string): ParsedTranslateLine | nu
   return null;
 }
 
-/**
- * Feed streamed text chunks; yield completed protocol lines as they arrive.
- */
 export function createTranslateLineParser(): {
   push: (chunk: string) => ParsedTranslateLine[];
   flush: () => ParsedTranslateLine[];

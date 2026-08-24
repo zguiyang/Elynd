@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { and, asc, count, desc, eq, gte, lte, type SQL, sql } from 'drizzle-orm';
 
-import { article as articleTable, ttsInvocationLog as ttsInvocationLogTable } from '@gloaming/db';
+import { readingPart as readingPartTable, ttsInvocationLog as ttsInvocationLogTable } from '@gloaming/db';
 import { buildPaginationMeta } from '@gloaming/shared/api/pagination';
 import { type TtsVoiceRole } from '@gloaming/shared/api/tts';
 import {
@@ -26,7 +26,8 @@ export type TtsInvocationLogInput = {
   errorMessage?: string | null;
   source: string;
   userId?: string | null;
-  articleId?: string | null;
+  workId?: string | null;
+  partId?: string | null;
   voice?: string | null;
   role?: TtsVoiceRole | null;
   textPreview?: string | null;
@@ -46,7 +47,6 @@ function truncateErrorMessage(message: string): string {
   return truncatePreview(message, ERROR_MESSAGE_MAX);
 }
 
-/** Persist one business-level TTS invocation (truncated preview — no full text). */
 export async function recordTtsInvocation(input: TtsInvocationLogInput): Promise<void> {
   await db.insert(ttsInvocationLogTable).values({
     id: randomUUID(),
@@ -55,7 +55,8 @@ export async function recordTtsInvocation(input: TtsInvocationLogInput): Promise
     errorMessage: input.errorMessage ? truncateErrorMessage(input.errorMessage) : null,
     source: input.source,
     userId: input.userId ?? null,
-    articleId: input.articleId ?? null,
+    workId: input.workId ?? null,
+    partId: input.partId ?? null,
     voice: input.voice ?? null,
     role: input.role ?? null,
     textPreview: input.textPreview ? truncatePreview(input.textPreview) : null,
@@ -75,7 +76,7 @@ function toRole(value: string | null): TtsVoiceRole | null {
   return value === 'us' || value === 'uk' ? value : null;
 }
 
-function toLog(row: InvocationLogRow, articleTitle: string | null): TtsInvocationLog {
+function toLog(row: InvocationLogRow, partTitle: string | null): TtsInvocationLog {
   return {
     id: row.id,
     createdAt: row.createdAt.toISOString(),
@@ -84,8 +85,9 @@ function toLog(row: InvocationLogRow, articleTitle: string | null): TtsInvocatio
     errorMessage: row.errorMessage,
     source: row.source,
     userId: row.userId,
-    articleId: row.articleId,
-    articleTitle,
+    workId: row.workId,
+    partId: row.partId,
+    partTitle,
     voice: row.voice,
     role: toRole(row.role),
     textPreview: row.textPreview,
@@ -95,10 +97,9 @@ function toLog(row: InvocationLogRow, articleTitle: string | null): TtsInvocatio
   };
 }
 
-/** App Date vs Postgres `now()` can skew; keep list/stats inclusive of just-inserted rows. */
 const QUERY_TO_SKEW_MS = 60_000;
 
-function invocationWhere(filter: { from: Date; to: Date; status?: TtsInvocationStatus; articleId?: string }): SQL {
+function invocationWhere(filter: { from: Date; to: Date; status?: TtsInvocationStatus; partId?: string }): SQL {
   const parts: SQL[] = [
     gte(ttsInvocationLogTable.createdAt, filter.from),
     lte(ttsInvocationLogTable.createdAt, new Date(filter.to.getTime() + QUERY_TO_SKEW_MS)),
@@ -106,8 +107,8 @@ function invocationWhere(filter: { from: Date; to: Date; status?: TtsInvocationS
   if (filter.status) {
     parts.push(eq(ttsInvocationLogTable.status, filter.status));
   }
-  if (filter.articleId) {
-    parts.push(eq(ttsInvocationLogTable.articleId, filter.articleId));
+  if (filter.partId) {
+    parts.push(eq(ttsInvocationLogTable.partId, filter.partId));
   }
   return and(...parts)!;
 }
@@ -117,7 +118,7 @@ export async function listTtsInvocations(query: TtsInvocationListQuery): Promise
   const where = invocationWhere({
     ...window,
     status: query.status,
-    articleId: query.articleId,
+    partId: query.partId,
   });
   const offset = (query.page - 1) * query.pageSize;
   const createdAtOrder =
@@ -129,17 +130,17 @@ export async function listTtsInvocations(query: TtsInvocationListQuery): Promise
   const rows = await db
     .select({
       log: ttsInvocationLogTable,
-      articleTitle: articleTable.title,
+      partTitle: readingPartTable.title,
     })
     .from(ttsInvocationLogTable)
-    .leftJoin(articleTable, eq(ttsInvocationLogTable.articleId, articleTable.id))
+    .leftJoin(readingPartTable, eq(ttsInvocationLogTable.partId, readingPartTable.id))
     .where(where)
     .orderBy(createdAtOrder, idOrder)
     .limit(query.pageSize)
     .offset(offset);
 
   return {
-    items: rows.map((row) => toLog(row.log, row.articleTitle ?? null)),
+    items: rows.map((row) => toLog(row.log, row.partTitle ?? null)),
     pagination: buildPaginationMeta({
       page: query.page,
       pageSize: query.pageSize,

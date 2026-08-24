@@ -8,7 +8,7 @@ Selection:
 {{/selectionNote}}
 
 {{#neighbor}}
-Nearby context (from article):
+Nearby context (from reading part):
 {{neighbor}}
 {{/neighbor}}
 
@@ -17,4 +17,4 @@ Learner question:
 {{question}}
 {{/question}}
 
-If the question is outside English learning or this article, refuse per the scene rules and steer back to reading.
+If the question is outside English learning or this reading part, refuse per the scene rules and steer back to reading.

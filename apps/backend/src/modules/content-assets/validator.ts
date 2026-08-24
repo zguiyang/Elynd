@@ -2,8 +2,7 @@ import { zValidator } from '@hono/zod-validator';
 import type { Context, ValidationTargets } from 'hono';
 import type { ZodType } from 'zod';
 
-import { generateArticleAudioBodySchema } from '@gloaming/shared/api/article-audio';
-import { readerArticleAudioQuerySchema } from '@gloaming/shared/api/reader';
+import { generatePartAudioBodySchema } from '@gloaming/shared/api/content-assets';
 
 import { sendValidationError } from '@/lib/response';
 
@@ -21,5 +20,4 @@ function validated<T extends ZodType, Target extends keyof ValidationTargets>(ta
   });
 }
 
-export const validateGenerateArticleAudio = validated('json', generateArticleAudioBodySchema);
-export const validateReaderArticleAudioQuery = validated('query', readerArticleAudioQuerySchema);
+export const validateGeneratePartAudio = validated('json', generatePartAudioBodySchema);

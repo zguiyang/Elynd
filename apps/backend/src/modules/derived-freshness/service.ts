@@ -1,13 +1,14 @@
 import { inArray } from 'drizzle-orm';
 
-import { articleAudio as articleAudioTable } from '@gloaming/db';
-import { type DerivedFreshness, type DerivedState } from '@gloaming/shared/api/articles';
+import { contentAsset as contentAssetTable } from '@gloaming/db';
+import { type DerivedFreshness, type DerivedState } from '@gloaming/shared/api/works';
 
 import { db } from '@/db';
-import { hashArticleContent } from '@/modules/articles/content-hash';
+import { hashPartContent } from '@/modules/works/content-hash';
 
-export type ArticleSourceInput = {
+export type WorkPartSourceInput = {
   id: string;
+  partId: string;
   title: string;
   body: string;
 };
@@ -23,46 +24,43 @@ function audioStateForRows(rows: Array<{ status: string; contentHash: string }>,
   return 'fresh';
 }
 
-/**
- * Pull-based derived freshness for registered kinds.
- * New kinds register here once they persist a source content hash.
- */
-export async function getArticlesDerivedFreshness(
-  articles: ArticleSourceInput[],
-): Promise<Map<string, DerivedFreshness>> {
+export async function getWorksDerivedFreshness(works: WorkPartSourceInput[]): Promise<Map<string, DerivedFreshness>> {
   const result = new Map<string, DerivedFreshness>();
-  if (articles.length === 0) {
+  if (works.length === 0) {
     return result;
   }
 
-  const ids = articles.map((article) => article.id);
+  const partIds = works.map((work) => work.partId);
   const audioRows = await db
     .select({
-      articleId: articleAudioTable.articleId,
-      status: articleAudioTable.status,
-      contentHash: articleAudioTable.contentHash,
+      partId: contentAssetTable.partId,
+      status: contentAssetTable.status,
+      contentHash: contentAssetTable.contentHash,
     })
-    .from(articleAudioTable)
-    .where(inArray(articleAudioTable.articleId, ids));
+    .from(contentAssetTable)
+    .where(inArray(contentAssetTable.partId, partIds));
 
-  const audioByArticle = new Map<string, Array<{ status: string; contentHash: string }>>();
+  const audioByPart = new Map<string, Array<{ status: string; contentHash: string }>>();
   for (const row of audioRows) {
-    const list = audioByArticle.get(row.articleId) ?? [];
+    if (!row.partId) {
+      continue;
+    }
+    const list = audioByPart.get(row.partId) ?? [];
     list.push({ status: row.status, contentHash: row.contentHash });
-    audioByArticle.set(row.articleId, list);
+    audioByPart.set(row.partId, list);
   }
 
-  for (const article of articles) {
-    const sourceHash = hashArticleContent(article.title, article.body);
-    result.set(article.id, {
-      audio: audioStateForRows(audioByArticle.get(article.id) ?? [], sourceHash),
+  for (const work of works) {
+    const sourceHash = hashPartContent(work.title, work.body);
+    result.set(work.id, {
+      audio: audioStateForRows(audioByPart.get(work.partId) ?? [], sourceHash),
     });
   }
 
   return result;
 }
 
-export async function getArticleDerivedFreshness(article: ArticleSourceInput): Promise<DerivedFreshness> {
-  const map = await getArticlesDerivedFreshness([article]);
-  return map.get(article.id) ?? { audio: 'missing' };
+export async function getWorkDerivedFreshness(work: WorkPartSourceInput): Promise<DerivedFreshness> {
+  const map = await getWorksDerivedFreshness([work]);
+  return map.get(work.id) ?? { audio: 'missing' };
 }

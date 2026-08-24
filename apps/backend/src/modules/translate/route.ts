@@ -6,11 +6,11 @@ import { TRANSLATE_SSE_EVENT } from '@gloaming/shared/api/translate';
 import { AppError, NotFoundError } from '@/lib/errors';
 import { type AuthVariables, requireAuth } from '@/middleware/auth';
 import * as translateService from '@/modules/translate/service';
-import { validateTranslateArticle } from '@/modules/translate/validator';
+import { validateTranslatePart } from '@/modules/translate/validator';
 
 export const translateRoutes = new Hono<{ Variables: AuthVariables }>();
 
-translateRoutes.post('/api/translate/article', requireAuth, validateTranslateArticle, async (c) => {
+translateRoutes.post('/api/translate/part', requireAuth, validateTranslatePart, async (c) => {
   const user = c.get('user');
   const body = c.req.valid('json');
 
@@ -24,7 +24,7 @@ translateRoutes.post('/api/translate/article', requireAuth, validateTranslateArt
     });
 
     try {
-      for await (const event of translateService.streamTranslateArticle(user!.id, body, { signal: abort.signal })) {
+      for await (const event of translateService.streamTranslatePart(user!.id, body, { signal: abort.signal })) {
         if (abort.signal.aborted) {
           return;
         }

@@ -1,7 +1,7 @@
 import { eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 
-import { article as articleTable, user as userTable } from '@gloaming/db';
+import { readingPart as readingPartTable, readingWork as readingWorkTable, user as userTable } from '@gloaming/db';
 import {
   TRANSLATE_SSE_EVENT,
   type TranslateSseDone,
@@ -14,7 +14,7 @@ import app from '@/app';
 import { db } from '@/db';
 import * as redisLib from '@/lib/redis';
 import * as aiService from '@/modules/ai/service';
-import { hashArticleContent } from '@/modules/translate/split';
+import { hashPartContent } from '@/modules/translate/split';
 
 const password = 'password123';
 
@@ -114,11 +114,11 @@ async function* translateStream(): AsyncGenerator<aiService.AiStreamEvent> {
 
 describe('Translate HTTP', () => {
   const createdEmails: string[] = [];
-  const createdArticleIds: string[] = [];
+  const createdWorkIds: string[] = [];
 
   afterAll(async () => {
-    if (createdArticleIds.length > 0) {
-      await db.delete(articleTable).where(inArray(articleTable.id, createdArticleIds));
+    if (createdWorkIds.length > 0) {
+      await db.delete(readingWorkTable).where(inArray(readingWorkTable.id, createdWorkIds));
     }
     for (const email of createdEmails) {
       await db.delete(userTable).where(eq(userTable.email, email));
@@ -129,28 +129,34 @@ describe('Translate HTTP', () => {
     const user = await createSession();
     createdEmails.push(user.email);
 
-    const articleId = `art_tr_${Date.now().toString(36)}`;
-    createdArticleIds.push(articleId);
+    const workId = `work_tr_${Date.now().toString(36)}`;
+    const partId = `part_tr_${Date.now().toString(36)}`;
+    createdWorkIds.push(workId);
     const title = 'Fox Test';
     const body = 'The fox jumped over the lazy dog.';
-    await db.insert(articleTable).values({
-      id: articleId,
+    await db.insert(readingWorkTable).values({
+      id: workId,
       title,
-      body,
-      level: 'easy',
-      themes: ['test'],
       status: 'published',
       publishedAt: new Date(),
+    });
+    await db.insert(readingPartTable).values({
+      id: partId,
+      workId,
+      sortOrder: 0,
+      kind: 'body',
+      title,
+      body,
     });
 
     const memory = createMemoryRedis();
     const redisSpy = vi.spyOn(redisLib, 'getRedis').mockReturnValue(memory.client as never);
     const streamSpy = vi.spyOn(aiService, 'streamAi').mockImplementation(() => translateStream());
 
-    const first = await app.request('/api/translate/article', {
+    const first = await app.request('/api/translate/part', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', cookie: user.cookie },
-      body: JSON.stringify({ articleId }),
+      body: JSON.stringify({ partId }),
     });
     expect(first.status).toBe(200);
     const firstEvents = parseSseBlocks(await first.text());
@@ -162,7 +168,7 @@ describe('Translate HTTP', () => {
     ]);
 
     const meta = JSON.parse(firstEvents[0]!.data) as TranslateSseMeta;
-    expect(meta.contentHash).toBe(hashArticleContent(title, body));
+    expect(meta.contentHash).toBe(hashPartContent(title, body));
     expect(meta.sentences).toHaveLength(1);
     expect(meta.sentences[0]?.en).toContain('fox');
 
@@ -177,10 +183,10 @@ describe('Translate HTTP', () => {
     expect(memory.client.set).toHaveBeenCalled();
 
     streamSpy.mockClear();
-    const second = await app.request('/api/translate/article', {
+    const second = await app.request('/api/translate/part', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', cookie: user.cookie },
-      body: JSON.stringify({ articleId }),
+      body: JSON.stringify({ partId }),
     });
     expect(second.status).toBe(200);
     const secondEvents = parseSseBlocks(await second.text());
@@ -194,12 +200,12 @@ describe('Translate HTTP', () => {
     expect(secondDone.cached).toBe(true);
     expect(streamSpy).not.toHaveBeenCalled();
 
-    await db.update(articleTable).set({ body: 'The fox slept.' }).where(eq(articleTable.id, articleId));
+    await db.update(readingPartTable).set({ body: 'The fox slept.' }).where(eq(readingPartTable.id, partId));
     streamSpy.mockImplementation(() => translateStream());
-    const third = await app.request('/api/translate/article', {
+    const third = await app.request('/api/translate/part', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', cookie: user.cookie },
-      body: JSON.stringify({ articleId }),
+      body: JSON.stringify({ partId }),
     });
     expect(third.status).toBe(200);
     const thirdEvents = parseSseBlocks(await third.text());

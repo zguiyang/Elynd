@@ -2,7 +2,7 @@ import { zValidator } from '@hono/zod-validator';
 import type { Context, ValidationTargets } from 'hono';
 import type { ZodType } from 'zod';
 
-import { updateReadingProgressBodySchema } from '@gloaming/shared/api/reader';
+import { updateReadingStateBodySchema } from '@gloaming/shared/api/reader';
 
 import { sendValidationError } from '@/lib/response';
 
@@ -20,4 +20,4 @@ function validated<T extends ZodType, Target extends keyof ValidationTargets>(ta
   });
 }
 
-export const validateUpdateReadingProgress = validated('json', updateReadingProgressBodySchema);
+export const validateUpdateReadingState = validated('json', updateReadingStateBodySchema);

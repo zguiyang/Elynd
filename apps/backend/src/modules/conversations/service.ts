@@ -197,13 +197,13 @@ export async function getConversation(userId: string, conversationId: string): P
 }
 
 /**
- * Ensure an existing conversation belongs to the user and matches assist-read + article.
+ * Ensure an existing conversation belongs to the user and matches assist-read + reading work.
  * Call before streaming so a bad id fails fast (404 / 400) instead of after the reply.
  */
 export async function assertAssistConversation(input: {
   userId: string;
   conversationId: string;
-  articleId: string;
+  workId: string;
 }): Promise<void> {
   const rows = await db
     .select()
@@ -214,11 +214,11 @@ export async function assertAssistConversation(input: {
   if (!row) {
     throw new NotFoundError('Conversation');
   }
-  if (row.surface !== 'assist-read' || row.subjectType !== 'article') {
+  if (row.surface !== 'assist-read' || row.subjectType !== 'reading_work') {
     throw new AppError(HTTP_STATUS.BAD_REQUEST, 'conversation does not match surface');
   }
-  if (row.subjectId !== input.articleId) {
-    throw new AppError(HTTP_STATUS.BAD_REQUEST, 'conversation does not match article');
+  if (row.subjectId !== input.workId) {
+    throw new AppError(HTTP_STATUS.BAD_REQUEST, 'conversation does not match work');
   }
 }
 
@@ -261,7 +261,7 @@ export async function appendAssistTurn(input: AppendTurnInput): Promise<{ conver
         throw new AppError(HTTP_STATUS.BAD_REQUEST, 'conversation does not match surface');
       }
       if (row.subjectId !== input.subjectId) {
-        throw new AppError(HTTP_STATUS.BAD_REQUEST, 'conversation does not match article');
+        throw new AppError(HTTP_STATUS.BAD_REQUEST, 'conversation does not match work');
       }
 
       await endOpenInScope(tx as unknown as typeof db, {

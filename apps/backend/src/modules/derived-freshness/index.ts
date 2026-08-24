@@ -1,5 +1,5 @@
 export {
-  type ArticleSourceInput,
-  getArticleDerivedFreshness,
-  getArticlesDerivedFreshness,
+  getWorkDerivedFreshness,
+  getWorksDerivedFreshness,
+  type WorkPartSourceInput,
 } from '@/modules/derived-freshness/service';

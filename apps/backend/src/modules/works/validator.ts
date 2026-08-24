@@ -3,11 +3,12 @@ import type { Context, ValidationTargets } from 'hono';
 import type { ZodType } from 'zod';
 
 import {
-  adminArticleListQuerySchema,
-  createArticleBodySchema,
-  discoverListQuerySchema,
-  updateArticleBodySchema,
-} from '@gloaming/shared/api/articles';
+  adminWorkListQuerySchema,
+  catalogListQuerySchema,
+  createAdminTextWorkBodySchema,
+  updatePartBodySchema,
+  updateWorkBodySchema,
+} from '@gloaming/shared/api/works';
 
 import { sendValidationError } from '@/lib/response';
 
@@ -25,7 +26,8 @@ function validated<T extends ZodType, Target extends keyof ValidationTargets>(ta
   });
 }
 
-export const validateCreateArticle = validated('json', createArticleBodySchema);
-export const validateUpdateArticle = validated('json', updateArticleBodySchema);
-export const validateAdminArticleListQuery = validated('query', adminArticleListQuerySchema);
-export const validateDiscoverListQuery = validated('query', discoverListQuerySchema);
+export const validateCreateAdminTextWork = validated('json', createAdminTextWorkBodySchema);
+export const validateUpdateWork = validated('json', updateWorkBodySchema);
+export const validateUpdatePart = validated('json', updatePartBodySchema);
+export const validateAdminWorkListQuery = validated('query', adminWorkListQuerySchema);
+export const validateCatalogListQuery = validated('query', catalogListQuerySchema);

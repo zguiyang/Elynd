@@ -84,15 +84,15 @@ describe('Conversations HTTP', () => {
     const bob = await createSession('conv_bob');
     createdEmails.push(alice.email, bob.email);
 
-    const articleId = `art_conv_${Date.now().toString(36)}`;
+    const workId = `work_conv_${Date.now().toString(36)}`;
 
     const first = await app.request('/api/conversations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', cookie: alice.cookie },
       body: JSON.stringify({
         surface: 'assist-read',
-        subjectType: 'article',
-        subjectId: articleId,
+        subjectType: 'reading_work',
+        subjectId: workId,
       }),
     });
     expect(first.status).toBe(HTTP_STATUS.CREATED);
@@ -105,8 +105,8 @@ describe('Conversations HTTP', () => {
       headers: { 'Content-Type': 'application/json', cookie: alice.cookie },
       body: JSON.stringify({
         surface: 'assist-read',
-        subjectType: 'article',
-        subjectId: articleId,
+        subjectType: 'reading_work',
+        subjectId: workId,
       }),
     });
     expect(second.status).toBe(HTTP_STATUS.CREATED);
@@ -117,7 +117,7 @@ describe('Conversations HTTP', () => {
     expect(firstRow?.endedAt).not.toBeNull();
 
     const emptyList = await app.request(
-      `/api/conversations?surface=assist-read&subjectType=article&subjectId=${articleId}`,
+      `/api/conversations?surface=assist-read&subjectType=reading_work&subjectId=${workId}`,
       { headers: { cookie: alice.cookie } },
     );
     expect(emptyList.status).toBe(200);
@@ -128,8 +128,8 @@ describe('Conversations HTTP', () => {
       userId: alice.userId,
       conversationId: secondBody.id,
       surface: 'assist-read',
-      subjectType: 'article',
-      subjectId: articleId,
+      subjectType: 'reading_work',
+      subjectId: workId,
       userContent: '这句话什么意思',
       assistantContent: '大意是…',
       assistantStatus: 'complete',
@@ -137,7 +137,7 @@ describe('Conversations HTTP', () => {
     });
 
     const list = await app.request(
-      `/api/conversations?surface=assist-read&subjectType=article&subjectId=${articleId}`,
+      `/api/conversations?surface=assist-read&subjectType=reading_work&subjectId=${workId}`,
       { headers: { cookie: alice.cookie } },
     );
     expect(list.status).toBe(200);

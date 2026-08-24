@@ -32,7 +32,15 @@ import { rootLogger } from '@/lib/logger';
 import { getWorksDerivedFreshness } from '@/modules/derived-freshness';
 import { deleteObject } from '@/modules/oss';
 import { deleteBilingualCacheForPart } from '@/modules/translate/service';
-import { fileExtension, isZipFile, uploadObjectFile, type UploadSpec } from '@/modules/uploads/service';
+import {
+  acquireUploadedObject,
+  fileExtension,
+  isValidContentHash,
+  isZipFile,
+  releaseUploadedObject,
+  type UploadedFileMeta,
+  type UploadSpec,
+} from '@/modules/uploads/service';
 
 type WorkRow = typeof readingWorkTable.$inferSelect;
 type PartRow = typeof readingPartTable.$inferSelect;
@@ -192,11 +200,8 @@ export const EPUB_UPLOAD_SPEC: UploadSpec = {
   allowedMimeTypes: ['application/epub+zip', 'application/zip', 'application/octet-stream'],
   maxBytes: EPUB_UPLOAD_MAX_BYTES,
   validateContent: (body) => (isZipFile(body) ? null : 'EPUB 文件内容无效（非 ZIP 格式）'),
+  keyBuilder: (contentHash) => `epub/${contentHash}.epub`,
 };
-
-export function epubObjectKey(workId: string): string {
-  return `epub/${workId}.epub`;
-}
 
 function stripFileExtension(fileName: string): string {
   const extension = fileExtension(fileName);
@@ -204,9 +209,69 @@ function stripFileExtension(fileName: string): string {
 }
 
 /**
- * Admin EPUB upload → store file in OS, then create ReadingWork (draft, admin_epub)
- * + ContentAsset (kind=origin_file). Parsing/processing comes later (Phase 3B).
- * DB stores only the object storage key — never the file content.
+ * Create the ReadingWork (draft, admin_epub) + ContentAsset (origin_file) rows
+ * that reference an uploaded object. DB stores only the object storage key.
+ * On failure the acquired reference is released (may garbage-collect the object).
+ */
+async function insertEpubWorkAndAsset(input: {
+  fileName: string;
+  meta: UploadedFileMeta;
+  reused: boolean;
+}): Promise<CreateEpubWorkResult> {
+  const workId = randomUUID();
+  const title = stripFileExtension(input.fileName).slice(0, 200) || input.fileName;
+
+  try {
+    await db.insert(readingWorkTable).values({
+      id: workId,
+      title,
+      description: '',
+      status: 'draft',
+      originKind: 'admin_epub',
+      originMeta: { originalFileName: input.fileName, reused: input.reused },
+      tags: [],
+      sourceNote: '',
+      publishedAt: null,
+    });
+
+    await db.insert(contentAssetTable).values({
+      id: randomUUID(),
+      workId,
+      kind: 'origin_file',
+      status: 'ready',
+      storageKey: input.meta.storageKey,
+      mimeType: input.meta.mimeType,
+      contentHash: input.meta.contentHash,
+      meta: { size: input.meta.size, originalFileName: input.fileName, reused: input.reused },
+    });
+  } catch (error) {
+    try {
+      await releaseUploadedObject(input.meta.storageKey);
+    } catch (cleanupError) {
+      workLogger.warn({ err: cleanupError, storageKey: input.meta.storageKey }, 'Failed to release upload reference');
+    }
+    throw error;
+  }
+
+  return {
+    id: workId,
+    title,
+    status: 'draft',
+    originKind: 'admin_epub',
+    originMeta: { originalFileName: input.fileName, reused: input.reused },
+    asset: {
+      storageKey: input.meta.storageKey,
+      mimeType: input.meta.mimeType,
+      contentHash: input.meta.contentHash,
+      size: input.meta.size,
+    },
+  };
+}
+
+/**
+ * Admin EPUB upload (multipart) — dedupe-aware store, then create work + asset.
+ * When the same file was uploaded before, the existing object is reused
+ * (instant upload, `duplicated: true`) and no bytes are written.
  */
 export async function createAdminEpubWork(input: {
   fileName: string;
@@ -218,58 +283,57 @@ export async function createAdminEpubWork(input: {
     throw new ValidationFailedError([{ path: 'file', message: '请选择要上传的 EPUB 文件' }]);
   }
 
-  const workId = randomUUID();
-  const storageKey = epubObjectKey(workId);
-  const title = stripFileExtension(fileName).slice(0, 200) || fileName;
-
-  const meta = await uploadObjectFile({
-    key: storageKey,
+  const result = await acquireUploadedObject({
+    kind: 'file',
     fileName,
     body: input.body,
     contentType: input.contentType,
     spec: EPUB_UPLOAD_SPEC,
   });
-
-  try {
-    await db.insert(readingWorkTable).values({
-      id: workId,
-      title,
-      description: '',
-      status: 'draft',
-      originKind: 'admin_epub',
-      originMeta: { originalFileName: fileName },
-      tags: [],
-      sourceNote: '',
-      publishedAt: null,
-    });
-
-    await db.insert(contentAssetTable).values({
-      id: randomUUID(),
-      workId,
-      kind: 'origin_file',
-      status: 'ready',
-      storageKey,
-      mimeType: meta.mimeType,
-      contentHash: meta.contentHash,
-      meta: { size: meta.size, originalFileName: fileName },
-    });
-  } catch (error) {
-    try {
-      await deleteObject(storageKey);
-    } catch (cleanupError) {
-      workLogger.warn({ err: cleanupError, storageKey }, 'Failed to clean up orphaned EPUB object');
-    }
-    throw error;
+  if (!result) {
+    throw new AppError(500, 'Failed to upload EPUB');
   }
 
-  return {
-    id: workId,
-    title,
-    status: 'draft',
-    originKind: 'admin_epub',
-    originMeta: { originalFileName: fileName },
-    asset: { storageKey, mimeType: meta.mimeType, contentHash: meta.contentHash, size: meta.size },
-  };
+  return insertEpubWorkAndAsset({
+    fileName,
+    meta: result.meta,
+    reused: result.duplicated,
+  });
+}
+
+/**
+ * Instant upload (reuse) path — client already computed the file hash and asks
+ * whether the object exists. Returns null when unknown (caller falls back to a
+ * real upload); otherwise creates work + asset reusing the stored object.
+ */
+export async function reuseAdminEpubWork(input: {
+  fileName: string;
+  contentHash: string;
+}): Promise<CreateEpubWorkResult | null> {
+  const fileName = input.fileName.trim();
+  if (!fileName) {
+    throw new ValidationFailedError([{ path: 'fileName', message: '请提供文件名' }]);
+  }
+  if (!isValidContentHash(input.contentHash)) {
+    throw new ValidationFailedError([{ path: 'contentHash', message: '文件哈希无效' }]);
+  }
+
+  const extension = fileExtension(fileName);
+  if (!extension || !EPUB_UPLOAD_SPEC.allowedExtensions.includes(extension)) {
+    throw new AppError(HTTP_STATUS.BAD_REQUEST, '仅支持 .epub 格式文件');
+  }
+
+  const result = await acquireUploadedObject({
+    kind: 'hash',
+    fileName,
+    contentHash: input.contentHash,
+    spec: EPUB_UPLOAD_SPEC,
+  });
+  if (!result) {
+    return null;
+  }
+
+  return insertEpubWorkAndAsset({ fileName, meta: result.meta, reused: true });
 }
 
 export async function listAdminWorks(query: AdminWorkListQuery): Promise<AdminWorkListData> {
@@ -422,12 +486,22 @@ export async function deleteWork(id: string): Promise<void> {
 
   const parts = await loadPartsForWork(id);
   const assetRows = await db
-    .select({ storageKey: contentAssetTable.storageKey, partId: contentAssetTable.partId })
+    .select({
+      storageKey: contentAssetTable.storageKey,
+      kind: contentAssetTable.kind,
+      partId: contentAssetTable.partId,
+    })
     .from(contentAssetTable)
     .where(eq(contentAssetTable.workId, id));
 
   for (const row of assetRows) {
-    if (row.storageKey) {
+    if (!row.storageKey) {
+      continue;
+    }
+    if (row.kind === 'origin_file') {
+      // Dedup-registered objects: release one reference; garbage-collected at zero.
+      await releaseUploadedObject(row.storageKey);
+    } else {
       await deleteObject(row.storageKey);
     }
   }

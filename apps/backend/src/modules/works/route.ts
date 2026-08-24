@@ -8,6 +8,7 @@ import * as worksService from '@/modules/works/service';
 import {
   validateAdminWorkListQuery,
   validateCatalogListQuery,
+  validateCheckEpubWorkReuse,
   validateCreateAdminTextWork,
   validateUpdatePart,
   validateUpdateWork,
@@ -18,6 +19,15 @@ export const worksRoutes = new Hono<{ Variables: AuthVariables }>();
 worksRoutes.post('/api/admin/works', requireAdmin, validateCreateAdminTextWork, async (c) => {
   const work = await worksService.createAdminTextWork(c.req.valid('json'));
   return c.json(work, HTTP_STATUS.CREATED);
+});
+
+/** Instant upload — dedupe lookup by content hash. Creates the work when the object exists. */
+worksRoutes.post('/api/admin/works/epub/reuse', requireAdmin, validateCheckEpubWorkReuse, async (c) => {
+  const result = await worksService.reuseAdminEpubWork(c.req.valid('json'));
+  if (!result) {
+    return c.json({ duplicated: false });
+  }
+  return c.json({ ...result, duplicated: true }, HTTP_STATUS.CREATED);
 });
 
 worksRoutes.post('/api/admin/works/epub', requireAdmin, async (c) => {

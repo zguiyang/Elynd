@@ -27,7 +27,7 @@ export function AdminSegmentedTabsTrigger({ className, ...props }: ComponentProp
         'border border-transparent shadow-none',
         'transition-colors duration-300 ease-out-soft',
         'hover:text-foreground',
-        'data-active:border-border/80 data-active:bg-card data-active:font-semibold data-active:text-foreground data-active:shadow-sm',
+        'data-active:border-border/80 data-active:bg-card data-active:font-semibold data-active:text-foreground data-active:shadow-card',
         'after:hidden',
         className,
       )}

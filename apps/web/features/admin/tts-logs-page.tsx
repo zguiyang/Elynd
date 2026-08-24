@@ -93,12 +93,13 @@ function LogsTableSkeleton({ rows }: { rows: number }) {
     <Table className="min-w-[48rem]" aria-hidden>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
-          <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">时间</TableHead>
-          <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">文章</TableHead>
-          <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">Voice</TableHead>
-          <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">状态</TableHead>
-          <TableHead className="h-12 bg-muted/30 px-5 text-right text-muted-foreground">延迟</TableHead>
-          <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">错误</TableHead>
+          <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">时间</TableHead>
+          <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">片段</TableHead>
+          <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">Voice</TableHead>
+          <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">来源</TableHead>
+          <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">状态</TableHead>
+          <TableHead className="h-12 bg-surface-container-low px-5 text-right text-muted-foreground">延迟</TableHead>
+          <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">错误</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -112,6 +113,9 @@ function LogsTableSkeleton({ rows }: { rows: number }) {
             </TableCell>
             <TableCell className="px-5 py-4">
               <Skeleton className="h-4 w-24 bg-muted/70" />
+            </TableCell>
+            <TableCell className="px-5 py-4">
+              <Skeleton className="h-4 w-16 bg-muted/70" />
             </TableCell>
             <TableCell className="px-5 py-4">
               <Skeleton className="h-5 w-12 rounded-full bg-muted/70" />
@@ -130,7 +134,7 @@ function LogsTableSkeleton({ rows }: { rows: number }) {
 }
 
 function StatsSkeleton() {
-  return <Skeleton className="h-[7.25rem] w-full rounded-3xl bg-muted/70" />;
+  return <Skeleton className="h-[7.25rem] w-full rounded-2xl bg-muted/70" />;
 }
 
 function StatsCell({ label, value }: { label: string; value: string }) {
@@ -144,7 +148,7 @@ function StatsCell({ label, value }: { label: string; value: string }) {
 
 function StatsRow({ stats }: { stats: TtsInvocationStats }) {
   return (
-    <div className="grid grid-cols-1 divide-y divide-border overflow-hidden rounded-3xl border border-border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+    <div className="grid grid-cols-1 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0">
       <StatsCell label="成功" value={formatCount(stats.successCount)} />
       <StatsCell label="失败" value={formatCount(stats.failureCount)} />
       <StatsCell label="合计" value={formatCount(stats.totalCount)} />
@@ -188,7 +192,7 @@ export function TtsLogsPage() {
   return (
     <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700 mx-auto max-w-6xl">
       <div className="min-w-0">
-        <h1 className="font-heading text-4xl font-bold tracking-tight md:text-5xl">音频调用日志</h1>
+        <h1 className="font-heading text-3xl font-bold tracking-tight">音频调用日志</h1>
         <p className="mt-3 text-lg text-muted-foreground">查看文章 TTS 生成与连通测试记录。</p>
       </div>
 
@@ -196,7 +200,7 @@ export function TtsLogsPage() {
         {statsQuery.isPending ? (
           <StatsSkeleton />
         ) : statsQuery.isError ? (
-          <p className="rounded-3xl border border-border bg-secondary/60 px-5 py-8 text-sm text-destructive md:px-6">
+          <p className="rounded-2xl border border-border bg-secondary/60 px-5 py-8 text-sm text-destructive md:px-6">
             {formatAdminTtsLogsApiError(statsQuery.error)}
           </p>
         ) : statsQuery.data ? (
@@ -223,7 +227,7 @@ export function TtsLogsPage() {
           />
 
           <div
-            className="overflow-hidden rounded-3xl border border-border bg-card"
+            className="overflow-hidden rounded-2xl border border-border bg-card"
             aria-busy={list.isInitialLoading || list.isSoftRefreshing}
           >
             {list.isInitialLoading ? (
@@ -253,20 +257,22 @@ export function TtsLogsPage() {
                 <Table className="min-w-[48rem]">
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
-                      <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">时间</TableHead>
-                      <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">片段</TableHead>
-                      <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">Voice</TableHead>
-                      <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">来源</TableHead>
-                      <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">状态</TableHead>
-                      <TableHead className="h-12 bg-muted/30 px-5 text-right text-muted-foreground">延迟</TableHead>
-                      <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">错误</TableHead>
+                      <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">时间</TableHead>
+                      <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">片段</TableHead>
+                      <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">Voice</TableHead>
+                      <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">来源</TableHead>
+                      <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">状态</TableHead>
+                      <TableHead className="h-12 bg-surface-container-low px-5 text-right text-muted-foreground">
+                        延迟
+                      </TableHead>
+                      <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">错误</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {list.items.map((log) => (
                       <TableRow
                         key={log.id}
-                        className="border-border transition-colors duration-300 ease-out-soft hover:bg-muted/30"
+                        className="border-border transition-colors duration-300 ease-out-soft hover:bg-surface-container-low"
                       >
                         <TableCell className="px-5 py-4 tabular-nums text-muted-foreground">
                           {formatDateTime(log.createdAt)}

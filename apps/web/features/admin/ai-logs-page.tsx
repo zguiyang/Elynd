@@ -97,13 +97,15 @@ function LogsTableSkeleton({ rows }: { rows: number }) {
     <Table className="min-w-[48rem]" aria-hidden>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
-          <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">时间</TableHead>
-          <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">来源</TableHead>
-          <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">类型</TableHead>
-          <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">状态</TableHead>
-          <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">模型</TableHead>
-          <TableHead className="h-12 bg-muted/30 px-5 text-right text-muted-foreground">Token</TableHead>
-          <TableHead className="h-12 w-[1%] bg-muted/30 px-5 text-right text-muted-foreground">操作</TableHead>
+          <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">时间</TableHead>
+          <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">来源</TableHead>
+          <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">类型</TableHead>
+          <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">状态</TableHead>
+          <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">模型</TableHead>
+          <TableHead className="h-12 bg-surface-container-low px-5 text-right text-muted-foreground">Token</TableHead>
+          <TableHead className="h-12 w-[1%] bg-surface-container-low px-5 text-right text-muted-foreground">
+            操作
+          </TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -138,7 +140,7 @@ function LogsTableSkeleton({ rows }: { rows: number }) {
 }
 
 function StatsSkeleton() {
-  return <Skeleton className="h-[7.25rem] w-full rounded-3xl bg-muted/70" />;
+  return <Skeleton className="h-[7.25rem] w-full rounded-2xl bg-muted/70" />;
 }
 
 function StatsCell({ label, value, hint }: { label: string; value: string; hint?: string }) {
@@ -155,7 +157,7 @@ function StatsCell({ label, value, hint }: { label: string; value: string; hint?
 
 function StatsRow({ stats }: { stats: AiInvocationStats }) {
   return (
-    <div className="grid grid-cols-1 divide-y divide-border overflow-hidden rounded-3xl border border-border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+    <div className="grid grid-cols-1 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card sm:grid-cols-3 sm:divide-x sm:divide-y-0">
       <StatsCell label="输入 Token" value={formatCount(stats.inputTokens)} />
       <StatsCell label="输出 Token" value={formatCount(stats.outputTokens)} />
       <StatsCell label="费用" value="¥ 0" hint="暂无计价" />
@@ -200,7 +202,7 @@ export function AiLogsPage() {
   return (
     <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700 mx-auto max-w-6xl">
       <div className="min-w-0">
-        <h1 className="font-heading text-4xl font-bold tracking-tight md:text-5xl">AI 调用日志</h1>
+        <h1 className="font-heading text-3xl font-bold tracking-tight">AI 调用日志</h1>
         <p className="mt-3 text-lg text-muted-foreground">查看调用消耗与摘要。</p>
       </div>
 
@@ -208,7 +210,7 @@ export function AiLogsPage() {
         {statsQuery.isPending ? (
           <StatsSkeleton />
         ) : statsQuery.isError ? (
-          <p className="rounded-3xl border border-border bg-secondary/60 px-5 py-8 text-sm text-destructive md:px-6">
+          <p className="rounded-2xl border border-border bg-secondary/60 px-5 py-8 text-sm text-destructive md:px-6">
             {formatAdminAiLogsApiError(statsQuery.error)}
           </p>
         ) : statsQuery.data ? (
@@ -235,7 +237,7 @@ export function AiLogsPage() {
           />
 
           <div
-            className="overflow-hidden rounded-3xl border border-border bg-card"
+            className="overflow-hidden rounded-2xl border border-border bg-card"
             aria-busy={list.isInitialLoading || list.isSoftRefreshing}
           >
             {list.isInitialLoading ? (
@@ -265,13 +267,15 @@ export function AiLogsPage() {
                 <Table className="min-w-[48rem]">
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
-                      <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">时间</TableHead>
-                      <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">来源</TableHead>
-                      <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">类型</TableHead>
-                      <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">状态</TableHead>
-                      <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">模型</TableHead>
-                      <TableHead className="h-12 bg-muted/30 px-5 text-right text-muted-foreground">Token</TableHead>
-                      <TableHead className="h-12 w-[1%] bg-muted/30 px-5 text-right text-muted-foreground">
+                      <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">时间</TableHead>
+                      <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">来源</TableHead>
+                      <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">类型</TableHead>
+                      <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">状态</TableHead>
+                      <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">模型</TableHead>
+                      <TableHead className="h-12 bg-surface-container-low px-5 text-right text-muted-foreground">
+                        Token
+                      </TableHead>
+                      <TableHead className="h-12 w-[1%] bg-surface-container-low px-5 text-right text-muted-foreground">
                         操作
                       </TableHead>
                     </TableRow>
@@ -280,7 +284,7 @@ export function AiLogsPage() {
                     {list.items.map((log) => (
                       <TableRow
                         key={log.id}
-                        className="border-border transition-colors duration-300 ease-out-soft hover:bg-muted/30"
+                        className="border-border transition-colors duration-300 ease-out-soft hover:bg-surface-container-low"
                       >
                         <TableCell className="px-5 py-4 tabular-nums text-muted-foreground">
                           {formatDateTime(log.createdAt)}

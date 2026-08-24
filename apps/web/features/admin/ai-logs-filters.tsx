@@ -102,7 +102,7 @@ function DateTimeEndpoint({ id, label, value, onChange }: DateTimeEndpointProps)
           <Button
             variant="ghost"
             className={cn(
-              'h-full min-h-0 min-w-[11.5rem] flex-1 justify-start rounded-xl border-0 bg-card px-3 font-normal shadow-sm',
+              'h-full min-h-0 min-w-[11.5rem] flex-1 justify-start rounded-xl border-0 bg-card px-3 font-normal shadow-card',
               'hover:bg-card hover:text-foreground',
               'aria-expanded:bg-card aria-expanded:text-foreground',
             )}
@@ -115,7 +115,7 @@ function DateTimeEndpoint({ id, label, value, onChange }: DateTimeEndpointProps)
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="w-auto gap-0 overflow-hidden rounded-2xl p-0 shadow-sm ring-1 ring-foreground/10"
+        className="w-auto gap-0 overflow-hidden rounded-2xl p-0 shadow-card ring-1 ring-foreground/10"
       >
         <Calendar
           mode="single"

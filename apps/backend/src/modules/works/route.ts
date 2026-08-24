@@ -1,5 +1,7 @@
 import { Hono } from 'hono';
 
+import { EPUB_UPLOAD_MAX_BYTES } from '@gloaming/shared/api/works';
+
 import { HTTP_STATUS } from '@/constants';
 import { type AuthVariables, requireAdmin } from '@/middleware/auth';
 import * as worksService from '@/modules/works/service';
@@ -16,6 +18,31 @@ export const worksRoutes = new Hono<{ Variables: AuthVariables }>();
 worksRoutes.post('/api/admin/works', requireAdmin, validateCreateAdminTextWork, async (c) => {
   const work = await worksService.createAdminTextWork(c.req.valid('json'));
   return c.json(work, HTTP_STATUS.CREATED);
+});
+
+worksRoutes.post('/api/admin/works/epub', requireAdmin, async (c) => {
+  const contentLength = Number(c.req.header('content-length') ?? 0);
+  if (contentLength > EPUB_UPLOAD_MAX_BYTES + 1024) {
+    return c.json({ error: '文件大小超过上限（50MB）' }, HTTP_STATUS.BAD_REQUEST);
+  }
+
+  const form = await c.req.parseBody();
+  const file = form['file'];
+  if (!file || typeof file !== 'object' || !('arrayBuffer' in file)) {
+    return c.json({ error: '请选择要上传的 EPUB 文件' }, HTTP_STATUS.BAD_REQUEST);
+  }
+
+  const bytes = Buffer.from(await (file as File).arrayBuffer());
+  if (bytes.length > EPUB_UPLOAD_MAX_BYTES) {
+    return c.json({ error: '文件大小超过上限（50MB）' }, HTTP_STATUS.BAD_REQUEST);
+  }
+
+  const result = await worksService.createAdminEpubWork({
+    fileName: (file as File).name,
+    body: bytes,
+    contentType: (file as File).type,
+  });
+  return c.json(result, HTTP_STATUS.CREATED);
 });
 
 worksRoutes.get('/api/admin/works', requireAdmin, validateAdminWorkListQuery, async (c) => {

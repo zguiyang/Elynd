@@ -16,6 +16,8 @@ import {
   type CatalogListData,
   type CatalogListQuery,
   type CreateAdminTextWorkBody,
+  type CreateEpubWorkResult,
+  EPUB_UPLOAD_MAX_BYTES,
   getPublishWorkIssues,
   type Part,
   type UpdatePartBody,
@@ -26,12 +28,16 @@ import {
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';
 import { AppError, NotFoundError, ValidationFailedError } from '@/lib/errors';
+import { rootLogger } from '@/lib/logger';
 import { getWorksDerivedFreshness } from '@/modules/derived-freshness';
 import { deleteObject } from '@/modules/oss';
 import { deleteBilingualCacheForPart } from '@/modules/translate/service';
+import { fileExtension, isZipFile, uploadObjectFile, type UploadSpec } from '@/modules/uploads/service';
 
 type WorkRow = typeof readingWorkTable.$inferSelect;
 type PartRow = typeof readingPartTable.$inferSelect;
+
+const workLogger = rootLogger.child({ module: 'Works' });
 
 function toIso(value: Date): string {
   return value.toISOString();
@@ -178,6 +184,92 @@ export async function createAdminTextWork(input: CreateAdminTextWorkBody): Promi
   }
 
   return toAdminWork(workRow, [partRow]);
+}
+
+/** EPUB upload spec — MVP only accepts EPUB files (UI advertises TXT/PDF but they are rejected). */
+export const EPUB_UPLOAD_SPEC: UploadSpec = {
+  allowedExtensions: ['epub'],
+  allowedMimeTypes: ['application/epub+zip', 'application/zip', 'application/octet-stream'],
+  maxBytes: EPUB_UPLOAD_MAX_BYTES,
+  validateContent: (body) => (isZipFile(body) ? null : 'EPUB 文件内容无效（非 ZIP 格式）'),
+};
+
+export function epubObjectKey(workId: string): string {
+  return `epub/${workId}.epub`;
+}
+
+function stripFileExtension(fileName: string): string {
+  const extension = fileExtension(fileName);
+  return extension ? fileName.slice(0, -(extension.length + 1)) : fileName;
+}
+
+/**
+ * Admin EPUB upload → store file in OS, then create ReadingWork (draft, admin_epub)
+ * + ContentAsset (kind=origin_file). Parsing/processing comes later (Phase 3B).
+ * DB stores only the object storage key — never the file content.
+ */
+export async function createAdminEpubWork(input: {
+  fileName: string;
+  body: Buffer;
+  contentType: string;
+}): Promise<CreateEpubWorkResult> {
+  const fileName = input.fileName.trim();
+  if (!fileName) {
+    throw new ValidationFailedError([{ path: 'file', message: '请选择要上传的 EPUB 文件' }]);
+  }
+
+  const workId = randomUUID();
+  const storageKey = epubObjectKey(workId);
+  const title = stripFileExtension(fileName).slice(0, 200) || fileName;
+
+  const meta = await uploadObjectFile({
+    key: storageKey,
+    fileName,
+    body: input.body,
+    contentType: input.contentType,
+    spec: EPUB_UPLOAD_SPEC,
+  });
+
+  try {
+    await db.insert(readingWorkTable).values({
+      id: workId,
+      title,
+      description: '',
+      status: 'draft',
+      originKind: 'admin_epub',
+      originMeta: { originalFileName: fileName },
+      tags: [],
+      sourceNote: '',
+      publishedAt: null,
+    });
+
+    await db.insert(contentAssetTable).values({
+      id: randomUUID(),
+      workId,
+      kind: 'origin_file',
+      status: 'ready',
+      storageKey,
+      mimeType: meta.mimeType,
+      contentHash: meta.contentHash,
+      meta: { size: meta.size, originalFileName: fileName },
+    });
+  } catch (error) {
+    try {
+      await deleteObject(storageKey);
+    } catch (cleanupError) {
+      workLogger.warn({ err: cleanupError, storageKey }, 'Failed to clean up orphaned EPUB object');
+    }
+    throw error;
+  }
+
+  return {
+    id: workId,
+    title,
+    status: 'draft',
+    originKind: 'admin_epub',
+    originMeta: { originalFileName: fileName },
+    asset: { storageKey, mimeType: meta.mimeType, contentHash: meta.contentHash, size: meta.size },
+  };
 }
 
 export async function listAdminWorks(query: AdminWorkListQuery): Promise<AdminWorkListData> {

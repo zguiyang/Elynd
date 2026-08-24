@@ -32,6 +32,7 @@ export {
   sessionRelations,
   ttsConfig,
   ttsInvocationLog,
+  uploadedObject,
   user,
   userRelations,
   verification,

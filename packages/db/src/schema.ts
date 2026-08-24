@@ -307,6 +307,8 @@ export type ContentAssetMeta = {
   /** Origin file uploads (kind = origin_file). */
   originalFileName?: string;
   size?: number;
+  /** True when the upload reused an already-stored object (dedupe / instant upload). */
+  reused?: boolean;
 };
 
 /** Unified storage for origin files, covers, TTS audio, future derivatives (ADR-001). */
@@ -541,3 +543,27 @@ export const readingDayRelations = relations(readingDay, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+/**
+ * Content-addressed object registry for the generic upload service.
+ * One row per unique file (contentHash unique). `refCount` tracks how many
+ * business rows (e.g. content_asset.origin_file) hold this object, so the
+ * service can garbage-collect objects without knowing business tables.
+ */
+export const uploadedObject = pgTable(
+  'uploaded_object',
+  {
+    id: text('id').primaryKey(),
+    contentHash: text('content_hash').notNull().unique(),
+    storageKey: text('storage_key').notNull(),
+    mimeType: text('mime_type').notNull(),
+    size: integer('size').notNull(),
+    refCount: integer('ref_count').notNull().default(1),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [index('uploaded_object_storage_key_idx').on(table.storageKey)],
+);

@@ -77,7 +77,7 @@ describe('apiRequest', () => {
     );
 
     try {
-      await apiRequest('/api/articles/x', { schema: pingSchema });
+      await apiRequest('/api/catalog/works/x', { schema: pingSchema });
       expect.unreachable('expected ApiRequestError');
     } catch (error) {
       expect(error).toBeInstanceOf(ApiRequestError);

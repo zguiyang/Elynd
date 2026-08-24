@@ -4,9 +4,9 @@ import { type NextRequest, NextResponse } from 'next/server';
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Stay on Next (do not rewrite): logout clears HttpOnly cookie; SSE must
-  // stream through a Route Handler — proxy rewrites can buffer until done.
-  if (pathname === '/api/auth/logout' || pathname === '/api/assist/ask' || pathname === '/api/translate/article') {
+  // Stay on Next (do not rewrite): logout clears HttpOnly cookie; assist/translate
+  // SSE must stream through a Route Handler — proxy rewrites can buffer until done.
+  if (pathname === '/api/auth/logout' || pathname === '/api/assist/ask' || pathname === '/api/translate/part') {
     return NextResponse.next();
   }
 

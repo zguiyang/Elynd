@@ -28,8 +28,8 @@ function BookDetailSkeleton() {
   );
 }
 
-export function BookDetailPage({ articleId }: { articleId: string }) {
-  const detailQuery = useBookDetailQuery(articleId);
+export function BookDetailPage({ workId }: { workId: string }) {
+  const detailQuery = useBookDetailQuery(workId);
   const addToShelf = useAddToShelfMutation();
 
   if (detailQuery.isPending) {

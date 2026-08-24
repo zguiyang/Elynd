@@ -1,7 +1,6 @@
 'use client';
 
 import type { HistoryViewModel } from '@/features/history/history-model';
-import { cn } from '@/lib/utils';
 
 const SUMMARY_ITEMS: ReadonlyArray<{
   key: keyof HistoryViewModel['portrait'] | 'consecutive';
@@ -11,7 +10,7 @@ const SUMMARY_ITEMS: ReadonlyArray<{
 }> = [
   { key: 'readingDays', label: '阅读日', mobileLabel: '阅读日', format: (s) => String(s.readingDays) },
   { key: 'consecutive', label: '连续阅读', mobileLabel: '连续阅读', format: (s) => `${s.consecutiveDays} 天` },
-  { key: 'completedArticles', label: '读完篇数', mobileLabel: '读完篇数', format: (s) => String(s.completedArticles) },
+  { key: 'completedWorks', label: '读完作品', mobileLabel: '读完作品', format: (s) => String(s.completedWorks) },
   {
     key: 'lookedUpWords',
     label: '查词',

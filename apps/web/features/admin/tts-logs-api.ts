@@ -52,8 +52,8 @@ function buildListQuery(params: AdminTtsInvocationListParams): string {
   if (params.sortOrder) {
     search.set('sortOrder', params.sortOrder);
   }
-  if (params.articleId) {
-    search.set('articleId', params.articleId);
+  if (params.partId) {
+    search.set('partId', params.partId);
   }
   return search.toString();
 }

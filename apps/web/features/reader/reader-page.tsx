@@ -10,11 +10,10 @@ import { ReaderAiInline } from '@/features/reader/reader-ai-inline';
 import {
   formatReaderApiError,
   getReaderAudioTrack,
-  updateReadingProgress,
+  updateReadingState,
   useReaderSessionQuery,
-  useUpdateReadingProgressMutation,
+  useUpdateReadingStateMutation,
 } from '@/features/reader/reader-api';
-import { ReaderArticle, ReaderArticleSkeleton } from '@/features/reader/reader-article';
 import { streamAssistAsk } from '@/features/reader/reader-assist-api';
 import { ReaderChrome } from '@/features/reader/reader-chrome';
 import type {
@@ -24,6 +23,7 @@ import type {
   ReaderFontSize,
   ReaderSelection,
 } from '@/features/reader/reader-model';
+import { ReaderPart, ReaderPartSkeleton } from '@/features/reader/reader-part';
 import { pendingProgressFlushRatio, scrollProgressRatio } from '@/features/reader/reader-progress';
 import { ReaderSelectionToolbar } from '@/features/reader/reader-selection-toolbar';
 import { ReaderTts } from '@/features/reader/reader-tts';
@@ -32,7 +32,7 @@ import { ApiRequestError } from '@/lib/api-request';
 import { authClient } from '@/lib/auth';
 
 type ReaderPageProps = {
-  articleId: string;
+  workId: string;
 };
 
 type InlineAssistKind = 'explain' | 'translate' | 'ask';
@@ -52,13 +52,13 @@ function inlineUserPrompt(kind: InlineAssistKind, selectedText: string): string 
   return `解释：${selectedText}`;
 }
 
-export function ReaderPage({ articleId }: ReaderPageProps) {
+export function ReaderPage({ workId }: ReaderPageProps) {
   const router = useRouter();
   const { openLogin } = useAuthDialog();
   const { data: authData } = authClient.useSession();
   const isAuthenticated = Boolean(authData?.user);
-  const sessionQuery = useReaderSessionQuery(articleId);
-  const progressMutation = useUpdateReadingProgressMutation(articleId);
+  const sessionQuery = useReaderSessionQuery(workId);
+  const stateMutation = useUpdateReadingStateMutation(workId);
 
   const [isChromeVisible, setIsChromeVisible] = useState(false);
   const [aiMode, setAiMode] = useState<ReaderAiMode>('closed');
@@ -97,10 +97,10 @@ export function ReaderPage({ articleId }: ReaderPageProps) {
       }
       const pending = pendingProgressFlushRatio(pendingRatioRef.current, lastSentRatioRef.current);
       if (isAuthenticated && pending != null) {
-        void updateReadingProgress(articleId, { progressRatio: pending });
+        void updateReadingState(workId, { progressRatio: pending });
       }
     };
-  }, [articleId, isAuthenticated]);
+  }, [workId, isAuthenticated]);
 
   const flushProgress = useCallback(
     (ratio: number) => {
@@ -113,9 +113,9 @@ export function ReaderPage({ articleId }: ReaderPageProps) {
       }
       lastSentRatioRef.current = ratio;
       pendingRatioRef.current = null;
-      progressMutation.mutate({ progressRatio: ratio });
+      stateMutation.mutate({ progressRatio: ratio });
     },
-    [isAuthenticated, progressMutation],
+    [isAuthenticated, stateMutation],
   );
 
   const handleScroll = useCallback(
@@ -166,7 +166,8 @@ export function ReaderPage({ articleId }: ReaderPageProps) {
     try {
       const done = await streamAssistAsk(
         {
-          articleId,
+          workId,
+          partId: session?.partId ?? '',
           actionId,
           selection: selectedText,
           question: kind === 'ask' ? question : undefined,
@@ -255,7 +256,7 @@ export function ReaderPage({ articleId }: ReaderPageProps) {
 
     setAudioStatus('loading');
     try {
-      const track = await getReaderAudioTrack(articleId, role);
+      const track = await getReaderAudioTrack(session.partId, role);
       const src = `data:${track.mimeType};base64,${track.audioBase64}`;
       audioRef.current?.pause();
       const audio = new Audio(src);
@@ -281,13 +282,13 @@ export function ReaderPage({ articleId }: ReaderPageProps) {
     }
     pendingRatioRef.current = null;
     lastSentRatioRef.current = 100;
-    progressMutation.mutate({ progressRatio: 100, status: 'completed' }, { onSuccess: () => router.push('/my-shelf') });
+    stateMutation.mutate({ progressRatio: 100, status: 'completed' }, { onSuccess: () => router.push('/my-shelf') });
   }
 
   if (sessionQuery.isPending) {
     return (
       <div className="relative flex h-[100dvh] flex-col overflow-hidden bg-background">
-        <ReaderArticleSkeleton />
+        <ReaderPartSkeleton />
       </div>
     );
   }
@@ -309,7 +310,7 @@ export function ReaderPage({ articleId }: ReaderPageProps) {
       <ReaderChrome
         visible={isChromeVisible}
         title={session.title}
-        progressRatio={session.progress.progressRatio}
+        progressRatio={session.state.progressRatio}
         fontSize={fontSize}
         aiOpen={isDrawerOpen}
         isListening={audioStatus === 'playing' || audioStatus === 'paused' || audioStatus === 'loading'}
@@ -324,7 +325,7 @@ export function ReaderPage({ articleId }: ReaderPageProps) {
         }}
       />
 
-      <ReaderArticle
+      <ReaderPart
         title={session.title}
         paragraphs={session.paragraphs}
         fontSize={fontSize}

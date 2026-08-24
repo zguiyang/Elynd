@@ -18,10 +18,10 @@ export const AUTH_ROUTES = {
 
 export const ADMIN_ROUTES = {
   root: '/admin',
-  articles: '/admin/articles',
-  articleNew: '/admin/articles/new',
-  articleEdit: (id: string) => `/admin/articles/${id}/edit` as const,
-  articleAudio: (id: string) => `/admin/articles/${id}/audio` as const,
+  works: '/admin/works',
+  workNew: '/admin/works/new',
+  workEdit: (id: string) => `/admin/works/${id}/edit` as const,
+  partAudio: (workId: string, partId: string) => `/admin/works/${workId}/parts/${partId}/audio` as const,
   ai: '/admin/ai',
   aiLogs: '/admin/ai-logs',
   tts: '/admin/tts',

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useRequireAuth } from '@/features/auth';
 import {
   formatDiscoverApiError,
-  themeFilterParam,
+  tagFilterParam,
   useAddToShelfMutation,
   useDiscoverCatalogQuery,
 } from '@/features/discover/discover-api';
@@ -16,7 +16,7 @@ import { DiscoverEmptyState } from '@/features/discover/discover-empty-state';
 import { DiscoverFilters } from '@/features/discover/discover-filters';
 import { DiscoverGrid } from '@/features/discover/discover-grid';
 import { DiscoverHeader } from '@/features/discover/discover-header';
-import { DISCOVER_ALL_THEME, DISCOVER_PAGE_SIZE, type DiscoverThemeFilter } from '@/features/discover/discover-model';
+import { DISCOVER_ALL_TAG, DISCOVER_PAGE_SIZE, type DiscoverTagFilter } from '@/features/discover/discover-model';
 import { DiscoverPagination } from '@/features/discover/discover-pagination';
 import { cn } from '@/lib/utils';
 
@@ -34,7 +34,7 @@ export function DiscoverPage() {
   const searchParams = useSearchParams();
   const isEmptyPreview = searchParams.get('empty') === '1';
 
-  const [theme, setTheme] = useState<DiscoverThemeFilter>(DISCOVER_ALL_THEME);
+  const [tag, setTag] = useState<DiscoverTagFilter>(DISCOVER_ALL_TAG);
   const [page, setPage] = useState(1);
   const [mobileVisible, setMobileVisible] = useState(DISCOVER_PAGE_SIZE);
 
@@ -42,9 +42,9 @@ export function DiscoverPage() {
     () => ({
       page,
       pageSize: DISCOVER_PAGE_SIZE,
-      theme: themeFilterParam(theme),
+      tag: tagFilterParam(tag),
     }),
-    [page, theme],
+    [page, tag],
   );
 
   const catalogQuery = useDiscoverCatalogQuery(listParams, { enabled: !isEmptyPreview });
@@ -89,22 +89,22 @@ export function DiscoverPage() {
 
   const catalog = catalogQuery.data;
   const items = catalog.items;
-  const themes = catalog.themes;
+  const tags = catalog.tags;
   const totalPages = catalog.pagination.totalPages;
   const safePage = Math.min(page, Math.max(1, totalPages));
   const desktopPageItems = items;
   const mobileItems = items.slice(0, mobileVisible);
   const hasMoreMobile = mobileVisible < items.length;
-  const isCatalogEmpty = items.length === 0 && theme === DISCOVER_ALL_THEME;
+  const isCatalogEmpty = items.length === 0 && tag === DISCOVER_ALL_TAG;
 
   function resetFilters() {
-    setTheme(DISCOVER_ALL_THEME);
+    setTag(DISCOVER_ALL_TAG);
     setPage(1);
     setMobileVisible(DISCOVER_PAGE_SIZE);
   }
 
-  function handleThemeChange(value: DiscoverThemeFilter) {
-    setTheme(value);
+  function handleTagChange(value: DiscoverTagFilter) {
+    setTag(value);
     setPage(1);
     setMobileVisible(DISCOVER_PAGE_SIZE);
   }
@@ -135,7 +135,7 @@ export function DiscoverPage() {
       ) : (
         <>
           <DiscoverHeader />
-          <DiscoverFilters theme={theme} themes={themes} onThemeChange={handleThemeChange} />
+          <DiscoverFilters tag={tag} tags={tags} onTagChange={handleTagChange} />
 
           {items.length === 0 ? (
             <DiscoverEmptyState onResetFilters={resetFilters} />

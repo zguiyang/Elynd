@@ -1,12 +1,5 @@
-import type { ArticleLevel } from '@gloaming/shared/api/articles';
+/** Shared content UI helpers (covers, paragraph split). */
 
-export const LEVEL_LABEL: Record<ArticleLevel, string> = {
-  easy: '简单',
-  mid: '中等',
-  stretch: '稍难',
-};
-
-/** Semantic cover washes — deterministic pick from theme/title seed. */
 export const VOLUME_COVER_TINTS = ['bg-paper', 'bg-muted', 'bg-secondary', 'bg-accent/50'] as const;
 
 export type VolumeCoverTint = (typeof VOLUME_COVER_TINTS)[number];
@@ -19,8 +12,8 @@ export function hashSeed(seed: string): number {
   return hash;
 }
 
-export function coverTintForVolume(themes: string[], title: string): VolumeCoverTint {
-  const seed = themes[0]?.trim() || title.trim() || 'volume';
+export function coverTintForVolume(tags: string[], title: string): VolumeCoverTint {
+  const seed = tags[0]?.trim() || title.trim() || 'volume';
   return VOLUME_COVER_TINTS[hashSeed(seed) % VOLUME_COVER_TINTS.length]!;
 }
 

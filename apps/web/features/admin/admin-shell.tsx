@@ -62,7 +62,7 @@ export function AdminShell({ children }: AdminShellProps) {
     );
   }
 
-  const isArticlesActive = pathname.startsWith(ADMIN_ROUTES.articles);
+  const isWorksActive = pathname.startsWith(ADMIN_ROUTES.works);
   const isAiActive = pathname === ADMIN_ROUTES.ai || pathname.startsWith(`${ADMIN_ROUTES.ai}/`);
   const isAiLogsActive = pathname === ADMIN_ROUTES.aiLogs || pathname.startsWith(`${ADMIN_ROUTES.aiLogs}/`);
   const isTtsActive = pathname === ADMIN_ROUTES.tts || pathname.startsWith(`${ADMIN_ROUTES.tts}/`);
@@ -71,7 +71,7 @@ export function AdminShell({ children }: AdminShellProps) {
   return (
     <div className="flex h-dvh flex-col overflow-hidden md:flex-row">
       <header className="flex shrink-0 items-center justify-between border-b border-sidebar-border bg-sidebar px-5 py-4 md:hidden">
-        <BrandMark href={ADMIN_ROUTES.articles} subtitle="内容管理" />
+        <BrandMark href={ADMIN_ROUTES.works} subtitle="内容管理" />
         <Button
           variant="ghost"
           size="sm"
@@ -86,7 +86,7 @@ export function AdminShell({ children }: AdminShellProps) {
 
       <aside className="hidden h-full w-72 shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar px-7 pt-7 pb-3 md:flex">
         <div className="min-h-0 flex-1">
-          <BrandMark href={ADMIN_ROUTES.articles} size="md" subtitle="内容管理" className="mb-12" />
+          <BrandMark href={ADMIN_ROUTES.works} size="md" subtitle="内容管理" className="mb-12" />
 
           <nav className="flex flex-col gap-2">
             <Button
@@ -94,14 +94,14 @@ export function AdminShell({ children }: AdminShellProps) {
               nativeButton={false}
               className={cn(
                 'h-auto justify-start gap-3 rounded-xl px-4 py-3 text-base font-normal transition-colors duration-300 ease-out-soft',
-                isArticlesActive
+                isWorksActive
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground',
               )}
-              render={<Link href={ADMIN_ROUTES.articles} />}
+              render={<Link href={ADMIN_ROUTES.works} />}
             >
               <FileText data-icon="inline-start" />
-              文章
+              作品
             </Button>
             <Button
               variant="ghost"

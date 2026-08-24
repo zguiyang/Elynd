@@ -26,11 +26,7 @@ export function BookDetailHero({ book, onShelf, onAddToShelf, isAddingToShelf }:
   return (
     <section className="grid grid-cols-1 items-center gap-8 md:grid-cols-12 md:gap-12 lg:gap-16">
       <div className="flex justify-center md:col-span-4 md:justify-start lg:col-span-3">
-        <BookDetailCover
-          title={book.title}
-          themes={book.themes}
-          className="aspect-[2/3] w-48 md:w-full md:max-w-[280px]"
-        />
+        <BookDetailCover title={book.title} tags={book.tags} className="aspect-[2/3] w-48 md:w-full md:max-w-[280px]" />
       </div>
 
       <div className="space-y-5 text-center md:col-span-8 md:space-y-6 md:text-left lg:col-span-9">
@@ -46,7 +42,7 @@ export function BookDetailHero({ book, onShelf, onAddToShelf, isAddingToShelf }:
         </div>
 
         <div className="flex flex-wrap justify-center gap-2 md:justify-start">
-          {book.themes.slice(0, 3).map((chip) => (
+          {book.tags.slice(0, 3).map((chip) => (
             <span
               key={chip}
               className="rounded-full border border-border/40 bg-surface-container-highest/80 px-3.5 py-1.5 text-sm text-muted-foreground"
@@ -108,10 +104,6 @@ export function BookDetailHero({ book, onShelf, onAddToShelf, isAddingToShelf }:
             </div>
           ) : null}
         </div>
-
-        <p className="text-sm text-muted-foreground md:hidden">
-          {book.estimatedMinutes != null ? `${book.estimatedMinutes} 分钟` : null}
-        </p>
       </div>
     </section>
   );

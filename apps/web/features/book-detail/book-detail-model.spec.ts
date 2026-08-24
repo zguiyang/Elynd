@@ -1,14 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  formatMinutes,
   formatRelativeReadTime,
-  formatWordCount,
-  levelMeta,
-  levelStarCount,
   primaryReadLabel,
+  readingStatusFromProgress,
+  teaserFromDescription,
 } from '@/features/book-detail/book-detail-model';
-import { LEVEL_LABEL } from '@/features/content/content-model';
 
 describe('book-detail-model', () => {
   it('maps reading status to primary CTA labels', () => {
@@ -24,21 +21,15 @@ describe('book-detail-model', () => {
     expect(formatRelativeReadTime(null, now)).toBeNull();
   });
 
-  it('formats minutes and word counts for stats', () => {
-    expect(formatMinutes(15)).toBe('15 分钟');
-    expect(formatMinutes(90)).toBe('1 小时 30 分');
-    expect(formatWordCount(3200)).toBe('3.2k');
-    expect(formatWordCount(85000)).toBe('85k');
+  it('derives reading status from state', () => {
+    expect(readingStatusFromProgress('completed', 100)).toBe('completed');
+    expect(readingStatusFromProgress('in_progress', 40)).toBe('in_progress');
+    expect(readingStatusFromProgress('in_progress', 0)).toBe('unread');
+    expect(readingStatusFromProgress(null, null)).toBe('unread');
   });
 
-  it('reuses shared content level labels', () => {
-    expect(levelMeta('easy')).toBe(LEVEL_LABEL.easy);
-    expect(levelMeta('mid')).toBe(LEVEL_LABEL.mid);
-  });
-
-  it('maps levels to star counts for the difficulty meter', () => {
-    expect(levelStarCount('easy')).toBe(2);
-    expect(levelStarCount('mid')).toBe(3);
-    expect(levelStarCount('stretch')).toBe(4);
+  it('builds teaser from description or source note', () => {
+    expect(teaserFromDescription('Short desc', '')).toBe('Short desc');
+    expect(teaserFromDescription('', 'From demo seed')).toBe('From demo seed');
   });
 });

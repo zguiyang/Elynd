@@ -17,9 +17,9 @@ export function HistoryCompletions({ completions }: { completions: HistoryViewMo
       <h2 className="font-heading text-xl font-semibold text-foreground md:text-2xl">读完的文章</h2>
       <ul className="divide-y divide-border/50 rounded-2xl border border-border/40 bg-paper">
         {sorted.map((item) => (
-          <li key={`${item.articleId}-${item.date}`}>
+          <li key={`${item.workId}-${item.date}`}>
             <Link
-              href={AUTH_ROUTES.readBook(item.articleId)}
+              href={AUTH_ROUTES.readBook(item.workId)}
               className="flex flex-col gap-1 px-5 py-4 transition-colors hover:bg-surface-container-low md:flex-row md:items-center md:justify-between"
             >
               <span className="font-heading text-base font-medium text-foreground">{item.title}</span>

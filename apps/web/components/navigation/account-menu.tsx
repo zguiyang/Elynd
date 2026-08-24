@@ -134,7 +134,7 @@ export function AccountMenu({
                   'data-highlighted:bg-muted',
                 )}
                 onClick={() => {
-                  window.location.assign(ADMIN_ROUTES.articles);
+                  window.location.assign(ADMIN_ROUTES.works);
                 }}
               >
                 <Settings2 className="size-4 text-muted-foreground" strokeWidth={1.5} aria-hidden />

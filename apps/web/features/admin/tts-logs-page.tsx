@@ -45,7 +45,8 @@ const TABLE_REFRESH_MIN_MS = 300;
 const TABLE_SKELETON_ROW_COUNT = 6;
 
 const SOURCE_LABELS: Record<string, string> = {
-  'admin.article_audio': '文章音频',
+  'admin.part_audio': '章节音频',
+  'admin.article_audio': '章节音频',
   'admin.tts_test': '连通测试',
 };
 
@@ -253,7 +254,7 @@ export function TtsLogsPage() {
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
                       <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">时间</TableHead>
-                      <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">文章</TableHead>
+                      <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">片段</TableHead>
                       <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">Voice</TableHead>
                       <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">来源</TableHead>
                       <TableHead className="h-12 bg-muted/30 px-5 text-muted-foreground">状态</TableHead>
@@ -271,7 +272,7 @@ export function TtsLogsPage() {
                           {formatDateTime(log.createdAt)}
                         </TableCell>
                         <TableCell className="px-5 py-4 text-foreground">
-                          {log.articleTitle ?? (log.articleId ? log.articleId.slice(0, 8) : '—')}
+                          {log.partTitle ?? (log.partId ? log.partId.slice(0, 8) : '—')}
                         </TableCell>
                         <TableCell className="px-5 py-4 text-muted-foreground">
                           <span className="block">{log.voice ?? '—'}</span>

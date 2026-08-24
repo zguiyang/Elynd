@@ -1,35 +1,35 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import {
-  type Article,
-  DEFAULT_DISCOVER_SORT_BY,
-  discoverListDataSchema,
-  type DiscoverListQuery,
-} from '@gloaming/shared/api/articles';
 import { DEFAULT_PAGE, DEFAULT_SORT_ORDER } from '@gloaming/shared/api/pagination';
 import type { ShelfData, ShelfItem } from '@gloaming/shared/api/shelf';
+import {
+  catalogListDataSchema,
+  type CatalogListQuery,
+  DEFAULT_CATALOG_SORT_BY,
+  type Work,
+} from '@gloaming/shared/api/works';
 
 import {
   DISCOVER_PAGE_SIZE,
   type DiscoverItem,
   type DiscoverShelfStatus,
-  type DiscoverThemeFilter,
+  type DiscoverTagFilter,
 } from '@/features/discover/discover-model';
-import { addArticleToShelf } from '@/features/reader/reader-api';
+import { addWorkToShelf } from '@/features/reader/reader-api';
 import { getShelf, shelfQueryKey } from '@/features/shelf/shelf-api';
 import { apiRequest, ApiRequestError, formatApiError } from '@/lib/api-request';
 
-export type DiscoverListParams = Partial<Pick<DiscoverListQuery, 'page' | 'pageSize' | 'theme' | 'q'>>;
+export type DiscoverListParams = Partial<Pick<CatalogListQuery, 'page' | 'pageSize' | 'tag' | 'q'>>;
 
 export type DiscoverCatalogResult = {
   items: DiscoverItem[];
-  themes: string[];
-  pagination: DiscoverListData['pagination'];
+  tags: string[];
+  pagination: CatalogListData['pagination'];
 };
 
-type DiscoverListData = {
-  items: Article[];
-  themes: string[];
+type CatalogListData = {
+  items: Work[];
+  tags: string[];
   pagination: { page: number; pageSize: number; total: number; totalPages: number };
 };
 
@@ -49,10 +49,10 @@ function buildListQuery(params: DiscoverListParams): string {
   const search = new URLSearchParams();
   search.set('page', String(params.page ?? DEFAULT_PAGE));
   search.set('pageSize', String(params.pageSize ?? DISCOVER_PAGE_SIZE));
-  search.set('sortBy', DEFAULT_DISCOVER_SORT_BY);
+  search.set('sortBy', DEFAULT_CATALOG_SORT_BY);
   search.set('sortOrder', DEFAULT_SORT_ORDER);
-  if (params.theme) {
-    search.set('theme', params.theme);
+  if (params.tag) {
+    search.set('tag', params.tag);
   }
   if (params.q) {
     search.set('q', params.q);
@@ -60,13 +60,13 @@ function buildListQuery(params: DiscoverListParams): string {
   return search.toString();
 }
 
-export async function listDiscoverArticles(
+export async function listCatalogWorks(
   params: DiscoverListParams = {},
   init?: { signal?: AbortSignal },
-): Promise<DiscoverListData> {
+): Promise<CatalogListData> {
   const qs = buildListQuery(params);
-  return apiRequest(`/api/articles?${qs}`, {
-    schema: discoverListDataSchema,
+  return apiRequest(`/api/catalog/works?${qs}`, {
+    schema: catalogListDataSchema,
     signal: init?.signal,
   });
 }
@@ -74,10 +74,10 @@ export async function listDiscoverArticles(
 export function buildShelfItemMap(data: ShelfData): Map<string, ShelfItem> {
   const map = new Map<string, ShelfItem>();
   if (data.current) {
-    map.set(data.current.article.id, data.current);
+    map.set(data.current.work.id, data.current);
   }
   for (const item of data.items) {
-    map.set(item.article.id, item);
+    map.set(item.work.id, item);
   }
   return map;
 }
@@ -86,24 +86,21 @@ export function resolveShelfStatus(item?: ShelfItem): DiscoverShelfStatus {
   if (!item) {
     return 'available';
   }
-  if (item.progress.status === 'in_progress' && item.progress.progressRatio > 0) {
+  if (item.state.status === 'in_progress' && item.state.progressRatio > 0) {
     return 'in_progress';
   }
   return 'on_shelf';
 }
 
-/** Map API article row to DiscoverItem — never reads `body`. */
-export function toDiscoverItem(article: Article, shelfItem?: ShelfItem): DiscoverItem {
+export function toDiscoverItem(work: Work, shelfItem?: ShelfItem): DiscoverItem {
   const shelfStatus = resolveShelfStatus(shelfItem);
   return {
-    id: article.id,
-    title: article.title,
-    level: article.level,
-    themes: article.themes,
-    estimatedMinutes: article.estimatedMinutes,
-    publishedAt: toIsoString(article.publishedAt) || toIsoString(article.createdAt),
+    id: work.id,
+    title: work.title,
+    tags: work.tags,
+    publishedAt: toIsoString(work.publishedAt) || toIsoString(work.createdAt),
     shelfStatus,
-    progressRatio: shelfItem?.progress.progressRatio ?? null,
+    progressRatio: shelfItem?.state.progressRatio ?? null,
     sourceLabel: '官方',
   };
 }
@@ -113,7 +110,7 @@ export async function fetchDiscoverCatalog(
   init?: { signal?: AbortSignal },
 ): Promise<DiscoverCatalogResult> {
   const [listData, shelfData] = await Promise.all([
-    listDiscoverArticles(params, init),
+    listCatalogWorks(params, init),
     getShelf(init).catch((error: unknown) => {
       if (error instanceof ApiRequestError && error.status === 401) {
         return null;
@@ -123,8 +120,8 @@ export async function fetchDiscoverCatalog(
   ]);
   const shelfMap = shelfData ? buildShelfItemMap(shelfData) : new Map<string, ShelfItem>();
   return {
-    items: listData.items.map((article) => toDiscoverItem(article, shelfMap.get(article.id))),
-    themes: listData.themes,
+    items: listData.items.map((work) => toDiscoverItem(work, shelfMap.get(work.id))),
+    tags: listData.tags,
     pagination: listData.pagination,
   };
 }
@@ -140,7 +137,7 @@ export function useDiscoverCatalogQuery(params: DiscoverListParams, options?: { 
 export function useAddToShelfMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (articleId: string) => addArticleToShelf(articleId),
+    mutationFn: (workId: string) => addWorkToShelf(workId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: shelfQueryKey.all });
       await queryClient.invalidateQueries({ queryKey: discoverQueryKey.all });
@@ -148,8 +145,8 @@ export function useAddToShelfMutation() {
   });
 }
 
-export function themeFilterParam(theme: DiscoverThemeFilter): string | undefined {
-  return theme === '全部' ? undefined : theme;
+export function tagFilterParam(tag: DiscoverTagFilter): string | undefined {
+  return tag === '全部' ? undefined : tag;
 }
 
 export const formatDiscoverApiError = formatApiError;

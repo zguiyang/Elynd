@@ -5,8 +5,8 @@ import {
   readerAudioTrackSchema,
   type ReaderSessionData,
   readerSessionDataSchema,
-  readingProgressSchema,
-  type UpdateReadingProgressBody,
+  readingStateSchema,
+  type UpdateReadingStateBody,
 } from '@gloaming/shared/api/reader';
 
 import { paragraphsFromBody } from '@/features/content/content-model';
@@ -15,52 +15,52 @@ import { apiRequest, formatApiError } from '@/lib/api-request';
 
 export const readerQueryKey = {
   all: ['reader'] as const,
-  session: (articleId: string) => [...readerQueryKey.all, 'session', articleId] as const,
+  session: (workId: string) => [...readerQueryKey.all, 'session', workId] as const,
 };
 
 export async function getReaderSessionData(
-  articleId: string,
+  workId: string,
   init?: { signal?: AbortSignal },
 ): Promise<ReaderSessionData> {
-  return apiRequest(`/api/reader/articles/${encodeURIComponent(articleId)}`, {
+  return apiRequest(`/api/reader/works/${encodeURIComponent(workId)}`, {
     schema: readerSessionDataSchema,
     signal: init?.signal,
   });
 }
 
-export async function updateReadingProgress(
-  articleId: string,
-  body: UpdateReadingProgressBody,
+export async function updateReadingState(
+  workId: string,
+  body: UpdateReadingStateBody,
   init?: { signal?: AbortSignal },
 ) {
-  return apiRequest(`/api/reader/articles/${encodeURIComponent(articleId)}/progress`, {
+  return apiRequest(`/api/reader/works/${encodeURIComponent(workId)}/state`, {
     method: 'PATCH',
-    schema: readingProgressSchema,
+    schema: readingStateSchema,
     json: body,
     signal: init?.signal,
   });
 }
 
-/** Silent shelf add — creates 0% progress without opening reader. */
-export async function addArticleToShelf(articleId: string): Promise<void> {
-  await updateReadingProgress(articleId, { progressRatio: 0 });
+/** Silent shelf add — creates 0% state without opening reader. */
+export async function addWorkToShelf(workId: string): Promise<void> {
+  await updateReadingState(workId, { progressRatio: 0 });
 }
 
 export async function getReaderAudioTrack(
-  articleId: string,
+  partId: string,
   role: 'us' | 'uk',
   init?: { signal?: AbortSignal },
 ): Promise<ReaderAudioTrack> {
   const qs = new URLSearchParams({ role });
-  return apiRequest(`/api/reader/articles/${encodeURIComponent(articleId)}/audio?${qs}`, {
+  return apiRequest(`/api/reader/parts/${encodeURIComponent(partId)}/audio?${qs}`, {
     schema: readerAudioTrackSchema,
     signal: init?.signal,
   });
 }
 
-export function toReaderParagraphs(articleId: string, body: string): ReaderParagraph[] {
+export function toReaderParagraphs(partId: string, body: string): ReaderParagraph[] {
   return paragraphsFromBody(body).map((text, index) => ({
-    id: `${articleId}-p${index + 1}`,
+    id: `${partId}-p${index + 1}`,
     index: index + 1,
     text,
   }));
@@ -68,43 +68,40 @@ export function toReaderParagraphs(articleId: string, body: string): ReaderParag
 
 export function toReaderSession(data: ReaderSessionData): ReaderSession {
   return {
-    id: data.id,
-    title: data.title,
-    level: data.level,
-    themes: data.themes,
-    estimatedMinutes: data.estimatedMinutes,
-    paragraphs: toReaderParagraphs(data.id, data.body),
-    progress: {
-      status: data.progress.status,
-      progressRatio: data.progress.progressRatio,
+    workId: data.work.id,
+    partId: data.currentPart.id,
+    title: data.work.title,
+    tags: data.work.tags,
+    paragraphs: toReaderParagraphs(data.currentPart.id, data.currentPart.body),
+    state: {
+      status: data.state.status,
+      progressRatio: data.state.progressRatio,
       lastReadAt:
-        typeof data.progress.lastReadAt === 'string'
-          ? data.progress.lastReadAt
-          : data.progress.lastReadAt.toISOString(),
-      completedAt: data.progress.completedAt
-        ? typeof data.progress.completedAt === 'string'
-          ? data.progress.completedAt
-          : data.progress.completedAt.toISOString()
+        typeof data.state.lastReadAt === 'string' ? data.state.lastReadAt : data.state.lastReadAt.toISOString(),
+      completedAt: data.state.completedAt
+        ? typeof data.state.completedAt === 'string'
+          ? data.state.completedAt
+          : data.state.completedAt.toISOString()
         : null,
     },
     audioAvailable: data.audioAvailable,
   };
 }
 
-export function useReaderSessionQuery(articleId: string, options?: { enabled?: boolean }) {
+export function useReaderSessionQuery(workId: string, options?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: readerQueryKey.session(articleId),
-    queryFn: ({ signal }) => getReaderSessionData(articleId, { signal }).then(toReaderSession),
-    enabled: options?.enabled ?? Boolean(articleId),
+    queryKey: readerQueryKey.session(workId),
+    queryFn: ({ signal }) => getReaderSessionData(workId, { signal }).then(toReaderSession),
+    enabled: options?.enabled ?? Boolean(workId),
   });
 }
 
-export function useUpdateReadingProgressMutation(articleId: string) {
+export function useUpdateReadingStateMutation(workId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: UpdateReadingProgressBody) => updateReadingProgress(articleId, body),
+    mutationFn: (body: UpdateReadingStateBody) => updateReadingState(workId, body),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: readerQueryKey.session(articleId) });
+      void queryClient.invalidateQueries({ queryKey: readerQueryKey.session(workId) });
       void queryClient.invalidateQueries({ queryKey: ['shelf'] });
     },
   });

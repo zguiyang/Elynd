@@ -1,7 +1,6 @@
 /** Reader UI types — aligned with ReaderSessionData after API adapter. */
 
-import type { ArticleLevel } from '@gloaming/shared/api/articles';
-import type { ReaderAudioAvailability, ReadingProgressStatus } from '@gloaming/shared/api/reader';
+import type { ReaderAudioAvailability, ReadingStateStatus } from '@gloaming/shared/api/reader';
 
 export type ReaderFontSize = 'sm' | 'md' | 'lg';
 
@@ -26,14 +25,13 @@ export type ReaderAiMessage = {
 };
 
 export type ReaderSession = {
-  id: string;
+  workId: string;
+  partId: string;
   title: string;
-  level: ArticleLevel;
-  themes: string[];
-  estimatedMinutes: number | null;
+  tags: string[];
   paragraphs: ReaderParagraph[];
-  progress: {
-    status: ReadingProgressStatus;
+  state: {
+    status: ReadingStateStatus;
     progressRatio: number;
     lastReadAt: string;
     completedAt: string | null;
@@ -44,7 +42,6 @@ export type ReaderSession = {
 export type ReaderSelection = {
   quote: string;
   paragraphId: string;
-  /** Viewport-relative top for floating UI (px). */
   top: number;
   left: number;
 };

@@ -11,7 +11,7 @@ const FONT_CLASS: Record<ReaderFontSize, string> = {
   lg: 'text-[22px] leading-9 md:text-2xl md:leading-10',
 };
 
-type ReaderArticleProps = {
+type ReaderPartProps = {
   title: string;
   paragraphs: ReaderParagraph[];
   fontSize: ReaderFontSize;
@@ -22,7 +22,7 @@ type ReaderArticleProps = {
   onFinish: () => void;
 };
 
-export function ReaderArticle({
+export function ReaderPart({
   title,
   paragraphs,
   fontSize,
@@ -31,7 +31,7 @@ export function ReaderArticle({
   onCenterTap,
   onScroll,
   onFinish,
-}: ReaderArticleProps) {
+}: ReaderPartProps) {
   function handleMouseUp(event: MouseEvent<HTMLElement>) {
     const selection = window.getSelection();
     const quote = selection?.toString().trim() ?? '';
@@ -53,7 +53,7 @@ export function ReaderArticle({
     });
   }
 
-  function handleArticleClick(event: MouseEvent<HTMLElement>) {
+  function handleContentClick(event: MouseEvent<HTMLElement>) {
     const target = event.target as HTMLElement;
     if (target.closest('button, a, [data-reader-ui]')) return;
 
@@ -73,7 +73,7 @@ export function ReaderArticle({
         aiDrawerOpen && 'md:pr-96',
       )}
       onScroll={onScroll}
-      onClick={handleArticleClick}
+      onClick={handleContentClick}
     >
       <article
         className={cn(
@@ -119,7 +119,7 @@ export function ReaderArticle({
   );
 }
 
-export function ReaderArticleSkeleton() {
+export function ReaderPartSkeleton() {
   return (
     <div className="mx-auto flex w-full max-w-reading-column flex-col gap-8 px-6 py-24 md:px-8">
       <div className="mx-auto h-10 w-3/4 max-w-md animate-pulse rounded-lg bg-surface-container-high" />

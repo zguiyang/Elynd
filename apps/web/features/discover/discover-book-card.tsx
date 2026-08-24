@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { AUTH_ROUTES } from '@/constants';
-import { coverTintForVolume, LEVEL_LABEL } from '@/features/content/content-model';
+import { coverTintForVolume } from '@/features/content/content-model';
 import type { DiscoverItem, DiscoverShelfStatus } from '@/features/discover/discover-model';
 import { cn } from '@/lib/utils';
 
@@ -16,10 +16,7 @@ type DiscoverBookCardProps = {
 };
 
 function metaLine(item: DiscoverItem): string {
-  const themes = item.themes.slice(0, 2).join(' · ');
-  const level = LEVEL_LABEL[item.level] ?? item.level;
-  const minutes = item.estimatedMinutes != null ? `约 ${item.estimatedMinutes} 分钟` : null;
-  return [themes, level, minutes].filter(Boolean).join(' · ');
+  return item.tags.slice(0, 2).join(' · ');
 }
 
 function Cover({
@@ -31,7 +28,7 @@ function Cover({
   shelfStatus: DiscoverShelfStatus;
   className?: string;
 }) {
-  const tint = coverTintForVolume(item.themes, item.title);
+  const tint = coverTintForVolume(item.tags, item.title);
   const progress =
     shelfStatus === 'in_progress' && item.progressRatio != null && item.progressRatio > 0 ? item.progressRatio : null;
 

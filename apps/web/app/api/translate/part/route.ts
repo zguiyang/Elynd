@@ -1,12 +1,8 @@
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-/**
- * Streaming BFF for article bilingual translation.
- * Generic `/api/*` rewrites can buffer SSE; this handler pipes the Hono body through.
- */
 export async function POST(request: Request) {
-  const upstreamUrl = `${process.env.API_INTERNAL_URL}/api/translate/article`;
+  const upstreamUrl = `${process.env.API_INTERNAL_URL}/api/translate/part`;
   const headers = new Headers();
   headers.set('Accept', 'text/event-stream');
   headers.set('Content-Type', request.headers.get('Content-Type') ?? 'application/json');

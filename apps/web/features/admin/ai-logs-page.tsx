@@ -49,6 +49,7 @@ const TABLE_SKELETON_ROW_COUNT = 6;
 const SOURCE_LABELS: Record<string, string> = {
   'assist.ask': '阅读提问',
   'assist.ask.followups': '追问建议',
+  'translate.part': '双语翻译',
   'translate.article': '双语翻译',
   'admin.provider_test': '连通测试',
 };

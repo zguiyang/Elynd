@@ -3,5 +3,5 @@ import { redirect } from 'next/navigation';
 import { ADMIN_ROUTES } from '@/constants';
 
 export default function AdminIndexPage() {
-  redirect(ADMIN_ROUTES.articles);
+  redirect(ADMIN_ROUTES.works);
 }

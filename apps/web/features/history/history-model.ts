@@ -5,7 +5,7 @@ export type HistoryViewModel = {
   portrait: {
     consecutiveDays: number;
     readingDays: number;
-    completedArticles: number;
+    completedWorks: number;
     lookedUpWords: number;
   };
   activity: Array<{ date: string; level: 1 }>;

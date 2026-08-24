@@ -1,5 +1,7 @@
 'use client';
 
+import { useSyncExternalStore } from 'react';
+
 import { type User, userSchema } from '@/lib/validations/auth';
 
 import { logout as apiLogout } from './api';
@@ -13,6 +15,18 @@ type SessionState = {
   refresh: () => void;
 };
 
+function subscribeToHydration() {
+  return () => {};
+}
+
+function getClientHydrationSnapshot() {
+  return true;
+}
+
+function getServerHydrationSnapshot() {
+  return false;
+}
+
 function mapUser(raw: unknown): User | null {
   const parsed = userSchema.safeParse(raw);
   return parsed.success ? parsed.data : null;
@@ -21,24 +35,29 @@ function mapUser(raw: unknown): User | null {
 /** Soft session UX via BA `useSession` → backend get-session. */
 export function useSession(): SessionState {
   const session = baClient.useSession();
-  const user = session.data?.user ? mapUser(session.data.user) : null;
+  const isMounted = useSyncExternalStore(subscribeToHydration, getClientHydrationSnapshot, getServerHydrationSnapshot);
+
+  // Better Auth can resolve its client cache before hydration, while SSR has no
+  // session snapshot. Keep the server and first client render on the pending UI.
+  const user = isMounted && session.data?.user ? mapUser(session.data.user) : null;
+  const isPending = !isMounted || session.isPending;
 
   let error: AuthError | null = null;
-  if (session.error) {
+  if (isMounted && session.error) {
     const err = session.error as { message?: string; code?: string; status?: number };
     error = {
       message: err.message || 'Session refresh failed',
       code: typeof err.code === 'string' ? err.code : undefined,
       status: err.status,
     };
-  } else if (!session.isPending && !user) {
+  } else if (!isPending && !user) {
     error = { message: 'Unauthorized', status: 401 };
   }
 
   return {
     data: user ? { user } : null,
     error,
-    isPending: session.isPending,
+    isPending,
     refresh: () => {
       void session.refetch();
     },

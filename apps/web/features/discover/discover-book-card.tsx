@@ -1,24 +1,25 @@
 'use client';
 
-import { BookOpenIcon, CheckIcon } from 'lucide-react';
+import { BookOpenIcon, CheckIcon, Loader2Icon } from 'lucide-react';
 import Link from 'next/link';
-import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { AUTH_ROUTES } from '@/constants';
 import { coverTintForVolume, LEVEL_LABEL } from '@/features/content/content-model';
-import type { DiscoverItem, DiscoverShelfStatus } from '@/features/discover/discover-mock';
+import type { DiscoverItem, DiscoverShelfStatus } from '@/features/discover/discover-model';
 import { cn } from '@/lib/utils';
 
 type DiscoverBookCardProps = {
   item: DiscoverItem;
-  shelfStatus: DiscoverShelfStatus;
   onAddToShelf: (id: string) => void;
+  addingId?: string;
 };
 
 function metaLine(item: DiscoverItem): string {
   const themes = item.themes.slice(0, 2).join(' · ');
-  return themes ? `${themes} · ${item.category}` : item.category;
+  const level = LEVEL_LABEL[item.level] ?? item.level;
+  const minutes = item.estimatedMinutes != null ? `约 ${item.estimatedMinutes} 分钟` : null;
+  return [themes, level, minutes].filter(Boolean).join(' · ');
 }
 
 function Cover({
@@ -38,7 +39,7 @@ function Cover({
     <div className={cn('relative overflow-hidden', tint, className)}>
       <div className="absolute inset-0 flex flex-col justify-between p-3 md:p-6">
         <span className="self-end rounded-sm border border-border/30 bg-background/95 px-1.5 py-0.5 text-[10px] font-semibold tracking-wider text-foreground shadow-sm">
-          官方
+          {item.sourceLabel}
         </span>
         <p className="font-heading line-clamp-4 text-sm font-bold leading-snug text-foreground/85 md:text-lg">
           {item.title}
@@ -62,12 +63,14 @@ function ShelfAction({
   readHref,
   onAdd,
   compact,
+  isAdding,
 }: {
   status: DiscoverShelfStatus;
   progressRatio: number | null;
   readHref: string;
   onAdd: () => void;
   compact?: boolean;
+  isAdding?: boolean;
 }) {
   if (status === 'in_progress') {
     return (
@@ -111,25 +114,23 @@ function ShelfAction({
   return (
     <Button
       type="button"
+      disabled={isAdding}
       className={cn(
         'hover:bg-brand-deep active:scale-[0.98]',
         compact ? 'h-8 rounded-lg px-3 text-[13px]' : 'h-9 rounded-full px-4 text-sm shadow-sm',
       )}
-      onClick={() => {
-        onAdd();
-        toast.success('已加入书架（原型预览）');
-      }}
+      onClick={onAdd}
     >
+      {isAdding ? <Loader2Icon className="size-3.5 animate-spin" aria-hidden /> : null}
       加入书架
     </Button>
   );
 }
 
-export function DiscoverBookCard({ item, shelfStatus, onAddToShelf }: DiscoverBookCardProps) {
-  const levelLabel = LEVEL_LABEL[item.level] ?? item.level;
-  const minutes = item.estimatedMinutes != null ? `约 ${item.estimatedMinutes} 分钟` : null;
+export function DiscoverBookCard({ item, onAddToShelf, addingId }: DiscoverBookCardProps) {
   const detailHref = AUTH_ROUTES.bookDetail(item.id);
   const readHref = AUTH_ROUTES.readBook(item.id);
+  const isAdding = addingId === item.id;
 
   return (
     <article
@@ -146,7 +147,7 @@ export function DiscoverBookCard({ item, shelfStatus, onAddToShelf }: DiscoverBo
       >
         <Cover
           item={item}
-          shelfStatus={shelfStatus}
+          shelfStatus={item.shelfStatus}
           className="aspect-[2/3] w-24 rounded-lg md:aspect-[3/4] md:w-full md:rounded-none"
         />
       </Link>
@@ -154,31 +155,21 @@ export function DiscoverBookCard({ item, shelfStatus, onAddToShelf }: DiscoverBo
       <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5 md:flex-grow md:bg-paper md:p-6">
         <Link href={detailHref} className="outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
           <span className="mb-1 block text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase md:mb-2 md:text-xs md:tracking-[0.12em]">
-            <span className="md:hidden">{item.category}</span>
-            <span className="hidden md:inline">{metaLine(item)}</span>
+            {metaLine(item)}
           </span>
           <h2 className="font-heading text-lg leading-tight font-semibold text-foreground transition-colors duration-200 ease-out-soft group-hover:text-primary md:text-2xl md:leading-8">
             {item.title}
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground md:mt-1.5 md:italic">
-            <span className="md:hidden">By {item.author}</span>
-            <span className="hidden md:inline">by {item.author}</span>
-          </p>
-          <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-muted-foreground md:mt-4 md:line-clamp-3 md:text-base md:leading-6 md:text-foreground/90">
-            {item.description}
-          </p>
-          <p className="mt-2 hidden text-xs text-muted-foreground md:mt-3 md:block">
-            {[levelLabel, minutes].filter(Boolean).join(' · ')}
-          </p>
         </Link>
 
         <div className="mt-3 flex items-center md:hidden">
           <ShelfAction
-            status={shelfStatus}
+            status={item.shelfStatus}
             progressRatio={item.progressRatio}
             readHref={readHref}
             onAdd={() => onAddToShelf(item.id)}
             compact
+            isAdding={isAdding}
           />
         </div>
 
@@ -190,10 +181,11 @@ export function DiscoverBookCard({ item, shelfStatus, onAddToShelf }: DiscoverBo
             查看详情
           </Link>
           <ShelfAction
-            status={shelfStatus}
+            status={item.shelfStatus}
             progressRatio={item.progressRatio}
             readHref={readHref}
             onAdd={() => onAddToShelf(item.id)}
+            isAdding={isAdding}
           />
         </div>
       </div>

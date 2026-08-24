@@ -2,7 +2,7 @@ import type { ArticleLevel } from '@gloaming/shared/api/articles';
 
 /**
  * Discover UI prototype fixtures only — not wired to catalog/shelf APIs.
- * Shape mirrors LearnArticleSummary + discover presentation fields so a future
+ * Shape mirrors ReaderItemSummary + discover presentation fields so a future
  * adapter can map API rows without rewriting cards.
  */
 

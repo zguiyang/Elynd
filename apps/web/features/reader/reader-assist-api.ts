@@ -6,6 +6,8 @@ import {
   assistSseErrorSchema,
 } from '@gloaming/shared/api/assist';
 
+import { ApiRequestError } from '@/lib/api-request';
+
 export type AssistStreamHandlers = {
   onDelta?: (text: string) => void;
   signal?: AbortSignal;
@@ -57,6 +59,9 @@ export async function streamAssistAsk(body: AssistAskBody, handlers: AssistStrea
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      throw new ApiRequestError({ message: '未登录或登录已过期，请重新登录', status: 401 });
+    }
     let message = '请求失败';
     try {
       const json = (await response.json()) as { error?: string };

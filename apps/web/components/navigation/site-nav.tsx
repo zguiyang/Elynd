@@ -1,7 +1,6 @@
 'use client';
 
 import { SearchIcon } from 'lucide-react';
-import Link from 'next/link';
 import { useState } from 'react';
 
 import { BrandMark } from '@/components/brand-mark';
@@ -10,7 +9,7 @@ import { DesktopNav } from '@/components/navigation/desktop-nav';
 import { NAV_COPY } from '@/components/navigation/nav-config';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AUTH_ROUTES } from '@/constants';
+import { useAuthDialog } from '@/features/auth';
 import { cn } from '@/lib/utils';
 
 function SearchPlaceholder({ className }: { className?: string }) {
@@ -40,6 +39,7 @@ function SearchPlaceholder({ className }: { className?: string }) {
  */
 export function SiteNav() {
   const { user, isPending, username, email, initial, image, isAdmin, signOut } = useNavAccount();
+  const { openLogin } = useAuthDialog();
   const [isAccountOpen, setIsAccountOpen] = useState(false);
 
   return (
@@ -70,12 +70,13 @@ export function SiteNav() {
               />
             </>
           ) : (
-            <Link
-              href={AUTH_ROUTES.signIn}
+            <button
+              type="button"
               className="text-base font-medium text-primary transition-opacity duration-200 ease-out-soft hover:opacity-80"
+              onClick={() => openLogin()}
             >
               {NAV_COPY.signIn}
-            </Link>
+            </button>
           )}
         </div>
       </nav>

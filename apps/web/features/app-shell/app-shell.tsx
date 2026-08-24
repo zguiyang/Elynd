@@ -1,11 +1,10 @@
 'use client';
 
-import { createContext, type ReactNode, useContext, useEffect } from 'react';
+import { createContext, type ReactNode, useContext } from 'react';
 
 import { GlobalLoading } from '@/components/global-loading';
 import { MobileBottomNav } from '@/components/navigation/mobile-bottom-nav';
 import { SiteNav } from '@/components/navigation/site-nav';
-import { AUTH_ROUTES } from '@/constants';
 import { authClient, type User } from '@/lib/auth';
 
 /**
@@ -22,28 +21,11 @@ type AppShellProps = {
 };
 
 export function AppShell({ children }: AppShellProps) {
-  const { data, error, isPending } = authClient.useSession();
+  const { data, isPending } = authClient.useSession();
   const user = data?.user ?? null;
-
-  useEffect(() => {
-    if (isPending) {
-      return;
-    }
-    if (error || !user) {
-      window.location.replace(AUTH_ROUTES.signIn);
-    }
-  }, [error, isPending, user]);
 
   if (isPending) {
     return <GlobalLoading />;
-  }
-
-  if (error || !user) {
-    return (
-      <div className="flex h-dvh flex-1 items-center justify-center px-6">
-        <p className="text-sm text-muted-foreground">正在跳转登录…</p>
-      </div>
-    );
   }
 
   return (

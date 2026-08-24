@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
-import { AuthRouteShell } from '@/features/auth/auth-route-shell';
+import { AuthLayout } from '@/features/auth/auth-layout';
 
 export default function AuthGroupLayout({ children }: { children: ReactNode }) {
-  return <AuthRouteShell>{children}</AuthRouteShell>;
+  return <AuthLayout>{children}</AuthLayout>;
 }

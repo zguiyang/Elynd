@@ -6,23 +6,14 @@ import { cn } from '@/lib/utils';
 
 type AuthLayoutProps = {
   children: ReactNode;
-  headerAction?: { href: string; label: string };
 };
 
-export function AuthLayout({ children, headerAction }: AuthLayoutProps) {
+export function AuthLayout({ children }: AuthLayoutProps) {
   return (
     <div className="relative z-10 flex min-h-full flex-1 flex-col">
       <header className="px-6 pt-7 md:px-10">
         <div className="mx-auto flex max-w-5xl items-center justify-between">
           <BrandMark />
-          {headerAction ? (
-            <Link
-              href={headerAction.href}
-              className="text-sm text-muted-foreground transition-colors duration-300 ease-out-soft hover:text-foreground"
-            >
-              {headerAction.label}
-            </Link>
-          ) : null}
         </div>
       </header>
 
@@ -57,11 +48,18 @@ export function AuthIntro({ eyebrow, title, description, className }: AuthIntroP
 type AuthPanelProps = {
   children: ReactNode;
   className?: string;
+  /** `plain` for dialog embedding — no nested card chrome. */
+  variant?: 'card' | 'plain';
 };
 
-export function AuthPanel({ children, className }: AuthPanelProps) {
+export function AuthPanel({ children, className, variant = 'card' }: AuthPanelProps) {
   return (
-    <div className={cn('rounded-3xl bg-card p-7 shadow-card ring-1 ring-foreground/5 md:p-8', className)}>
+    <div
+      className={cn(
+        variant === 'card' && 'rounded-3xl bg-card p-7 shadow-card ring-1 ring-foreground/5 md:p-8',
+        className,
+      )}
+    >
       {children}
     </div>
   );
@@ -83,6 +81,28 @@ export function AuthFooterLink({ prompt, href, label }: AuthFooterLinkProps) {
       >
         {label}
       </Link>
+    </p>
+  );
+}
+
+type AuthFooterActionProps = {
+  prompt?: string;
+  label: string;
+  onClick: () => void;
+  className?: string;
+};
+
+export function AuthFooterAction({ prompt, label, onClick, className }: AuthFooterActionProps) {
+  return (
+    <p className={cn('mt-8 text-center text-sm text-muted-foreground', className)}>
+      {prompt ? `${prompt} ` : null}
+      <button
+        type="button"
+        className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+        onClick={onClick}
+      >
+        {label}
+      </button>
     </p>
   );
 }

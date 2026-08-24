@@ -6,7 +6,6 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
-import { AUTH_ROUTES } from '@/constants';
 import { authInputClassName, authPrimaryButtonClassName, Field } from '@/features/auth/auth-field';
 import { AuthFooterLink, AuthIntro, AuthPanel } from '@/features/auth/auth-layout';
 import { authClient } from '@/lib/auth';
@@ -22,7 +21,7 @@ export function ResetPasswordForm() {
   useEffect(() => {
     if (!token || tokenError === 'INVALID_TOKEN') {
       toast.error('重置链接无效或已过期，请重新申请');
-      router.replace(AUTH_ROUTES.forgotPassword);
+      router.replace('/');
     }
   }, [token, tokenError, router]);
 
@@ -33,7 +32,7 @@ export function ResetPasswordForm() {
     },
     onSubmit: async ({ value }) => {
       if (!token) {
-        router.replace(AUTH_ROUTES.forgotPassword);
+        router.replace('/');
         return;
       }
 
@@ -57,8 +56,7 @@ export function ResetPasswordForm() {
       }
 
       toast.success('密码已更新，请登录');
-      router.replace(AUTH_ROUTES.signIn);
-      router.refresh();
+      router.replace('/');
     },
   });
 
@@ -126,7 +124,7 @@ export function ResetPasswordForm() {
         </form>
       </AuthPanel>
 
-      <AuthFooterLink href={AUTH_ROUTES.forgotPassword} label="重新申请链接" />
+      <AuthFooterLink href="/" label="返回产品" />
     </>
   );
 }

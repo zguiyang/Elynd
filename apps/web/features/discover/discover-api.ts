@@ -17,7 +17,7 @@ import {
 } from '@/features/discover/discover-model';
 import { addArticleToShelf } from '@/features/reader/reader-api';
 import { getShelf, shelfQueryKey } from '@/features/shelf/shelf-api';
-import { apiRequest, formatApiError } from '@/lib/api-request';
+import { apiRequest, ApiRequestError, formatApiError } from '@/lib/api-request';
 
 export type DiscoverListParams = Partial<Pick<DiscoverListQuery, 'page' | 'pageSize' | 'theme' | 'q'>>;
 
@@ -112,8 +112,16 @@ export async function fetchDiscoverCatalog(
   params: DiscoverListParams,
   init?: { signal?: AbortSignal },
 ): Promise<DiscoverCatalogResult> {
-  const [listData, shelfData] = await Promise.all([listDiscoverArticles(params, init), getShelf(init)]);
-  const shelfMap = buildShelfItemMap(shelfData);
+  const [listData, shelfData] = await Promise.all([
+    listDiscoverArticles(params, init),
+    getShelf(init).catch((error: unknown) => {
+      if (error instanceof ApiRequestError && error.status === 401) {
+        return null;
+      }
+      throw error;
+    }),
+  ]);
+  const shelfMap = shelfData ? buildShelfItemMap(shelfData) : new Map<string, ShelfItem>();
   return {
     items: listData.items.map((article) => toDiscoverItem(article, shelfMap.get(article.id))),
     themes: listData.themes,

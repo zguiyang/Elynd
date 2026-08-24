@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
+import { useRequireAuth } from '@/features/auth';
 import {
   formatDiscoverApiError,
   themeFilterParam,
@@ -48,6 +49,7 @@ export function DiscoverPage() {
 
   const catalogQuery = useDiscoverCatalogQuery(listParams, { enabled: !isEmptyPreview });
   const addToShelf = useAddToShelfMutation();
+  const requireAuth = useRequireAuth();
 
   if (isEmptyPreview) {
     return (
@@ -108,6 +110,9 @@ export function DiscoverPage() {
   }
 
   function handleAddToShelf(id: string) {
+    if (!requireAuth({ reason: 'bookmark' })) {
+      return;
+    }
     addToShelf.mutate(id, {
       onSuccess: () => toast.success('已加入书架'),
       onError: (error) => toast.error(formatDiscoverApiError(error)),

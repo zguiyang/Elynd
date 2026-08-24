@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { type UIEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+import { useAuthDialog } from '@/features/auth';
 import { ReaderAiDrawer } from '@/features/reader/reader-ai-drawer';
 import { ReaderAiInline } from '@/features/reader/reader-ai-inline';
 import {
@@ -27,6 +28,8 @@ import { pendingProgressFlushRatio, scrollProgressRatio } from '@/features/reade
 import { ReaderSelectionToolbar } from '@/features/reader/reader-selection-toolbar';
 import { ReaderTts } from '@/features/reader/reader-tts';
 import { ReaderUnavailable } from '@/features/reader/reader-unavailable';
+import { ApiRequestError } from '@/lib/api-request';
+import { authClient } from '@/lib/auth';
 
 type ReaderPageProps = {
   articleId: string;
@@ -51,6 +54,9 @@ function inlineUserPrompt(kind: InlineAssistKind, selectedText: string): string 
 
 export function ReaderPage({ articleId }: ReaderPageProps) {
   const router = useRouter();
+  const { openLogin } = useAuthDialog();
+  const { data: authData } = authClient.useSession();
+  const isAuthenticated = Boolean(authData?.user);
   const sessionQuery = useReaderSessionQuery(articleId);
   const progressMutation = useUpdateReadingProgressMutation(articleId);
 
@@ -90,14 +96,17 @@ export function ReaderPage({ articleId }: ReaderPageProps) {
         window.clearTimeout(progressTimerRef.current);
       }
       const pending = pendingProgressFlushRatio(pendingRatioRef.current, lastSentRatioRef.current);
-      if (pending != null) {
+      if (isAuthenticated && pending != null) {
         void updateReadingProgress(articleId, { progressRatio: pending });
       }
     };
-  }, [articleId]);
+  }, [articleId, isAuthenticated]);
 
   const flushProgress = useCallback(
     (ratio: number) => {
+      if (!isAuthenticated) {
+        return;
+      }
       if (ratio === lastSentRatioRef.current) {
         pendingRatioRef.current = null;
         return;
@@ -106,7 +115,7 @@ export function ReaderPage({ articleId }: ReaderPageProps) {
       pendingRatioRef.current = null;
       progressMutation.mutate({ progressRatio: ratio });
     },
-    [progressMutation],
+    [isAuthenticated, progressMutation],
   );
 
   const handleScroll = useCallback(
@@ -204,6 +213,10 @@ export function ReaderPage({ articleId }: ReaderPageProps) {
         return;
       }
       setIsInlineStreaming(false);
+      if (error instanceof ApiRequestError && error.status === 401) {
+        openLogin({ reason: 'ai' });
+        return;
+      }
       toast.error(formatReaderApiError(error));
     }
   }
@@ -259,6 +272,10 @@ export function ReaderPage({ articleId }: ReaderPageProps) {
   }
 
   function handleFinish() {
+    if (!isAuthenticated) {
+      openLogin({ reason: 'sync' });
+      return;
+    }
     if (progressTimerRef.current != null) {
       window.clearTimeout(progressTimerRef.current);
     }

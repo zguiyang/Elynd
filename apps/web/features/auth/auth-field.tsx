@@ -9,9 +9,23 @@ type FieldProps = {
   children: ReactNode;
   className?: string;
   labelAside?: ReactNode;
+  /** Placeholder-only layout; keeps an sr-only label for accessibility. */
+  hideLabel?: boolean;
 };
 
-export function Field({ label, htmlFor, error, children, className, labelAside }: FieldProps) {
+export function Field({ label, htmlFor, error, children, className, labelAside, hideLabel }: FieldProps) {
+  if (hideLabel) {
+    return (
+      <div className={className}>
+        <label htmlFor={htmlFor} className="sr-only">
+          {label}
+        </label>
+        {children}
+        {error ? <p className="mt-1.5 text-xs text-destructive">{error}</p> : null}
+      </div>
+    );
+  }
+
   return (
     <div className={cn('space-y-2', className)}>
       <div className="flex items-center justify-between gap-3">
@@ -27,7 +41,13 @@ export function Field({ label, htmlFor, error, children, className, labelAside }
 }
 
 export const authInputClassName =
-  'flex h-11 w-full rounded-lg border border-input bg-card px-3.5 text-[0.95rem] text-foreground outline-none transition-[border-color,box-shadow] duration-300 ease-out-soft placeholder:text-muted-foreground/70 focus-visible:border-primary/45 focus-visible:ring-[3px] focus-visible:ring-primary/12 disabled:opacity-50';
+  'flex h-11 w-full rounded-md border border-border/70 bg-background px-3.5 text-sm text-foreground outline-none transition-[border-color,box-shadow] duration-200 ease-out-soft placeholder:text-muted-foreground focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/15 disabled:opacity-50';
 
 export const authPrimaryButtonClassName =
-  'h-12 w-full rounded-full text-base duration-500 ease-out-soft hover:bg-brand-deep active:scale-[0.98]';
+  'h-11 w-full rounded-md text-sm font-medium duration-200 ease-out-soft hover:bg-brand-deep active:scale-[0.99]';
+
+/** Dialog auth: field stack + action block rhythm (8px grid). */
+export const authDialogFieldStackClassName = 'flex flex-col gap-3.5';
+export const authDialogFormClassName = 'flex flex-col gap-5';
+export const authDialogActionStackClassName = 'flex flex-col items-center gap-3.5 pt-0.5';
+export const authDialogSectionClassName = 'flex flex-col gap-5';

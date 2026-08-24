@@ -5,13 +5,22 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
-import { AUTH_ROUTES } from '@/constants';
-import { authInputClassName, authPrimaryButtonClassName, Field } from '@/features/auth/auth-field';
-import { AuthFooterLink, AuthIntro, AuthPanel } from '@/features/auth/auth-layout';
+import {
+  authDialogFormClassName,
+  authInputClassName,
+  authPrimaryButtonClassName,
+  Field,
+} from '@/features/auth/auth-field';
+import { AuthFooterAction, AuthIntro, AuthPanel } from '@/features/auth/auth-layout';
 import { authClient, resolveMailCooldownErrorMessage } from '@/lib/auth';
 import { forgotPasswordSchema } from '@/lib/validations';
 
-export function ForgotPasswordForm() {
+type ForgotPasswordFormProps = {
+  embedded?: boolean;
+  onSwitchMode?: (mode: 'login') => void;
+};
+
+export function ForgotPasswordForm({ embedded = false, onSwitchMode }: ForgotPasswordFormProps) {
   const [isSent, setIsSent] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -44,9 +53,9 @@ export function ForgotPasswordForm() {
   if (isSent) {
     return (
       <>
-        <AuthIntro title="去邮箱点开链接" description="去邮箱打开链接设置新密码。" />
+        {!embedded ? <AuthIntro title="去邮箱点开链接" description="去邮箱打开链接设置新密码。" /> : null}
 
-        <AuthPanel>
+        <AuthPanel variant={embedded ? 'plain' : 'card'}>
           <Button
             type="button"
             className={authPrimaryButtonClassName}
@@ -59,18 +68,22 @@ export function ForgotPasswordForm() {
           </Button>
         </AuthPanel>
 
-        <AuthFooterLink href={AUTH_ROUTES.signIn} label="返回登录" />
+        <AuthFooterAction
+          className={embedded ? 'mt-5' : undefined}
+          label="返回登录"
+          onClick={() => onSwitchMode?.('login')}
+        />
       </>
     );
   }
 
   return (
     <>
-      <AuthIntro title="找回密码" description="输入注册邮箱，发送重置链接。" />
+      {!embedded ? <AuthIntro title="找回密码" description="输入注册邮箱，发送重置链接。" /> : null}
 
-      <AuthPanel>
+      <AuthPanel variant={embedded ? 'plain' : 'card'}>
         <form
-          className="space-y-5"
+          className={embedded ? authDialogFormClassName : 'space-y-4'}
           onSubmit={(event) => {
             event.preventDefault();
             void form.handleSubmit();
@@ -78,13 +91,13 @@ export function ForgotPasswordForm() {
         >
           <form.Field name="email">
             {(field) => (
-              <Field label="邮箱" htmlFor="forgot-email">
+              <Field hideLabel={embedded} label="邮箱" htmlFor="forgot-email">
                 <input
                   id="forgot-email"
                   type="email"
                   autoComplete="email"
                   required
-                  placeholder="注册时用的邮箱"
+                  placeholder={embedded ? '注册邮箱' : '注册时用的邮箱'}
                   className={authInputClassName}
                   value={field.state.value}
                   onBlur={field.handleBlur}
@@ -106,7 +119,11 @@ export function ForgotPasswordForm() {
         </form>
       </AuthPanel>
 
-      <AuthFooterLink href={AUTH_ROUTES.signIn} label="返回登录" />
+      <AuthFooterAction
+        className={embedded ? 'mt-5' : undefined}
+        label="返回登录"
+        onClick={() => onSwitchMode?.('login')}
+      />
     </>
   );
 }

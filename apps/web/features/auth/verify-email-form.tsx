@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
-import { AUTH_ROUTES } from '@/constants';
 import { authPrimaryButtonClassName } from '@/features/auth/auth-field';
 import { AuthIntro, AuthPanel } from '@/features/auth/auth-layout';
 import { authClient } from '@/lib/auth';
@@ -58,7 +57,7 @@ export function VerifyEmailForm() {
               type="button"
               className={authPrimaryButtonClassName}
               onClick={() => {
-                router.replace(AUTH_ROUTES.signIn);
+                router.replace('/');
               }}
             >
               去登录
@@ -70,7 +69,7 @@ export function VerifyEmailForm() {
                 type="button"
                 className={authPrimaryButtonClassName}
                 onClick={() => {
-                  router.replace(AUTH_ROUTES.signIn);
+                  router.replace('/');
                 }}
               >
                 返回登录
@@ -79,10 +78,10 @@ export function VerifyEmailForm() {
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  router.replace(AUTH_ROUTES.signUp);
+                  router.replace('/');
                 }}
               >
-                重新注册或重发邮件
+                返回产品
               </Button>
             </div>
           ) : null}

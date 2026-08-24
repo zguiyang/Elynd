@@ -5,13 +5,18 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
-import { AUTH_ROUTES } from '@/constants';
-import { authInputClassName, authPrimaryButtonClassName, Field } from '@/features/auth/auth-field';
-import { AuthFooterLink, AuthIntro, AuthPanel } from '@/features/auth/auth-layout';
+import {
+  authDialogFieldStackClassName,
+  authDialogFormClassName,
+  authInputClassName,
+  authPrimaryButtonClassName,
+  Field,
+} from '@/features/auth/auth-field';
+import { AuthIntro, AuthPanel } from '@/features/auth/auth-layout';
 import { authClient, resolveMailCooldownErrorMessage } from '@/lib/auth';
 import { signUpSchema } from '@/lib/validations';
 
-export function SignUpForm() {
+export function SignUpForm({ embedded = false }: { embedded?: boolean }) {
   const [isSent, setIsSent] = useState(false);
   const [submittedEmail, setSubmittedEmail] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
@@ -75,9 +80,11 @@ export function SignUpForm() {
   if (isSent) {
     return (
       <>
-        <AuthIntro title="去邮箱点开链接" description={`已发送至 ${submittedEmail}，约 1 小时有效。`} />
+        {!embedded ? (
+          <AuthIntro title="去邮箱点开链接" description={`已发送至 ${submittedEmail}，约 1 小时有效。`} />
+        ) : null}
 
-        <AuthPanel>
+        <AuthPanel variant={embedded ? 'plain' : 'card'}>
           {formError ? <p className="mb-4 text-sm text-destructive">{formError}</p> : null}
           <Button
             type="button"
@@ -90,105 +97,103 @@ export function SignUpForm() {
             {isResending ? '发送中…' : '再发一次'}
           </Button>
         </AuthPanel>
-
-        <AuthFooterLink href={AUTH_ROUTES.signIn} label="去登录" />
       </>
     );
   }
 
   return (
     <>
-      <AuthIntro title="注册" />
+      {!embedded ? <AuthIntro title="注册" /> : null}
 
-      <AuthPanel>
+      <AuthPanel variant={embedded ? 'plain' : 'card'}>
         <form
-          className="space-y-4"
+          className={embedded ? authDialogFormClassName : 'space-y-4'}
           onSubmit={(event) => {
             event.preventDefault();
             void form.handleSubmit();
           }}
         >
-          <form.Field name="name">
-            {(field) => (
-              <Field label="显示名" htmlFor="sign-up-name">
-                <input
-                  id="sign-up-name"
-                  type="text"
-                  autoComplete="name"
-                  placeholder="怎么称呼你"
-                  className={authInputClassName}
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(event) => field.handleChange(event.target.value)}
-                />
-              </Field>
-            )}
-          </form.Field>
+          <div className={embedded ? authDialogFieldStackClassName : 'contents'}>
+            <form.Field name="name">
+              {(field) => (
+                <Field hideLabel={embedded} label="显示名" htmlFor="sign-up-name">
+                  <input
+                    id="sign-up-name"
+                    type="text"
+                    autoComplete="name"
+                    placeholder={embedded ? '显示名' : '怎么称呼你'}
+                    className={authInputClassName}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                  />
+                </Field>
+              )}
+            </form.Field>
 
-          <form.Field name="username">
-            {(field) => (
-              <Field label="用户名" htmlFor="sign-up-username">
-                <input
-                  id="sign-up-username"
-                  type="text"
-                  autoComplete="username"
-                  placeholder="英文或数字，用于登录标识"
-                  className={authInputClassName}
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(event) => field.handleChange(event.target.value)}
-                />
-              </Field>
-            )}
-          </form.Field>
+            <form.Field name="username">
+              {(field) => (
+                <Field hideLabel={embedded} label="用户名" htmlFor="sign-up-username">
+                  <input
+                    id="sign-up-username"
+                    type="text"
+                    autoComplete="username"
+                    placeholder={embedded ? '用户名' : '英文或数字，用于登录标识'}
+                    className={authInputClassName}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                  />
+                </Field>
+              )}
+            </form.Field>
 
-          <form.Field name="email">
-            {(field) => (
-              <Field label="邮箱" htmlFor="sign-up-email">
-                <input
-                  id="sign-up-email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  className={authInputClassName}
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(event) => field.handleChange(event.target.value)}
-                />
-              </Field>
-            )}
-          </form.Field>
+            <form.Field name="email">
+              {(field) => (
+                <Field hideLabel={embedded} label="邮箱" htmlFor="sign-up-email">
+                  <input
+                    id="sign-up-email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder={embedded ? '邮箱' : 'you@example.com'}
+                    className={authInputClassName}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                  />
+                </Field>
+              )}
+            </form.Field>
 
-          <form.Field name="password">
-            {(field) => (
-              <Field label="密码" htmlFor="sign-up-password">
-                <input
-                  id="sign-up-password"
-                  type="password"
-                  autoComplete="new-password"
-                  placeholder="至少 8 位"
-                  className={authInputClassName}
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(event) => field.handleChange(event.target.value)}
-                />
-              </Field>
-            )}
-          </form.Field>
+            <form.Field name="password">
+              {(field) => (
+                <Field hideLabel={embedded} label="密码" htmlFor="sign-up-password">
+                  <input
+                    id="sign-up-password"
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder={embedded ? '密码（至少 8 位）' : '至少 8 位'}
+                    className={authInputClassName}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                  />
+                </Field>
+              )}
+            </form.Field>
+          </div>
 
           {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
 
           <form.Subscribe selector={(state) => state.isSubmitting}>
             {(isSubmitting) => (
-              <Button type="submit" className={`mt-2 ${authPrimaryButtonClassName}`} disabled={isSubmitting}>
+              <Button type="submit" className={authPrimaryButtonClassName} disabled={isSubmitting}>
                 {isSubmitting ? '创建中…' : '创建账号'}
               </Button>
             )}
           </form.Subscribe>
         </form>
       </AuthPanel>
-
-      <AuthFooterLink prompt="已有账号？" href={AUTH_ROUTES.signIn} label="登录" />
     </>
   );
 }

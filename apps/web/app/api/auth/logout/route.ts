@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { expiredSessionCookieOptions, SESSION_COOKIE, SESSION_COOKIE_SECURE } from '@/lib/auth/session-gate';
+import { expiredSessionCookieOptions, SESSION_COOKIE, SESSION_COOKIE_SECURE } from '@/lib/auth/session-cookies';
 
 /** Clear HttpOnly BA session cookie on the web origin, then notify Hono BA. */
 export async function DELETE(request: Request) {

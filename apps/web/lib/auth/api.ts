@@ -43,7 +43,7 @@ export async function register(input: RegisterBody): Promise<AuthResult<User>> {
     password: input.password,
     name: input.name,
     username: input.username,
-    callbackURL: AUTH_ROUTES.signIn,
+    callbackURL: AUTH_ROUTES.verifyEmail,
   });
 
   if (error) {
@@ -94,7 +94,7 @@ export async function resendVerificationEmail(
 ): Promise<AuthResult<{ ok: boolean }>> {
   const { error } = await baClient.sendVerificationEmail({
     email,
-    callbackURL: AUTH_ROUTES.signIn,
+    callbackURL: AUTH_ROUTES.verifyEmail,
   });
   if (error) {
     return { data: null, error: toAuthError(error) };

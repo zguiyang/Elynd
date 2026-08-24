@@ -1,18 +1,23 @@
 'use client';
 
 import { useForm } from '@tanstack/react-form';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
-import { AUTH_ROUTES } from '@/constants';
-import { authInputClassName, authPrimaryButtonClassName, Field } from '@/features/auth/auth-field';
-import { AuthFooterLink, AuthIntro, AuthPanel } from '@/features/auth/auth-layout';
+import {
+  authDialogActionStackClassName,
+  authDialogFieldStackClassName,
+  authDialogFormClassName,
+  authInputClassName,
+  authPrimaryButtonClassName,
+  Field,
+} from '@/features/auth/auth-field';
+import { AuthIntro, AuthPanel } from '@/features/auth/auth-layout';
 import { authClient, resolveMailCooldownErrorMessage } from '@/lib/auth';
 import { looksLikeEmail } from '@/lib/auth/api';
 import { isEmailNotVerifiedError } from '@/lib/auth/auth-errors';
+import { cn } from '@/lib/utils';
 import { signInSchema } from '@/lib/validations';
 
 function isEmailVerificationRequired(error: { status?: number; code?: string | number } | null): boolean {
@@ -22,8 +27,13 @@ function isEmailVerificationRequired(error: { status?: number; code?: string | n
   return isEmailNotVerifiedError(error.code);
 }
 
-export function SignInForm() {
-  const router = useRouter();
+type SignInFormProps = {
+  embedded?: boolean;
+  onSuccess?: () => void | Promise<void>;
+  onSwitchMode?: (mode: 'register' | 'forgot-password') => void;
+};
+
+export function SignInForm({ embedded = false, onSuccess, onSwitchMode }: SignInFormProps) {
   const [formError, setFormError] = useState<string | null>(null);
   const [isVerificationRequired, setIsVerificationRequired] = useState(false);
   const [isResending, setIsResending] = useState(false);
@@ -57,8 +67,7 @@ export function SignInForm() {
       }
 
       toast.success('登录成功');
-      router.replace(AUTH_ROUTES.shelf);
-      router.refresh();
+      await onSuccess?.();
     },
   });
 
@@ -90,62 +99,68 @@ export function SignInForm() {
     toast.success('验证邮件已发送');
   }
 
+  const forgotPasswordLink = (
+    <button
+      type="button"
+      className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+      onClick={() => onSwitchMode?.('forgot-password')}
+    >
+      忘记密码？
+    </button>
+  );
+
   return (
     <>
-      <AuthIntro title="登录" />
+      {!embedded ? <AuthIntro title="登录" /> : null}
 
-      <AuthPanel>
+      <AuthPanel variant={embedded ? 'plain' : 'card'}>
         <form
-          className="space-y-5"
+          className={cn(embedded ? authDialogFormClassName : 'space-y-4')}
           onSubmit={(event) => {
             event.preventDefault();
             void form.handleSubmit();
           }}
         >
-          <form.Field name="login">
-            {(field) => (
-              <Field label="邮箱或用户名" htmlFor="sign-in-login">
-                <input
-                  id="sign-in-login"
-                  type="text"
-                  autoComplete="username"
-                  placeholder="you@example.com"
-                  className={authInputClassName}
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(event) => field.handleChange(event.target.value)}
-                />
-              </Field>
-            )}
-          </form.Field>
+          <div className={embedded ? authDialogFieldStackClassName : 'contents'}>
+            <form.Field name="login">
+              {(field) => (
+                <Field hideLabel={embedded} label="邮箱或用户名" htmlFor="sign-in-login">
+                  <input
+                    id="sign-in-login"
+                    type="text"
+                    autoComplete="username"
+                    placeholder={embedded ? '邮箱或用户名' : 'you@example.com'}
+                    className={authInputClassName}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                  />
+                </Field>
+              )}
+            </form.Field>
 
-          <form.Field name="password">
-            {(field) => (
-              <Field
-                label="密码"
-                htmlFor="sign-in-password"
-                labelAside={
-                  <Link
-                    href={AUTH_ROUTES.forgotPassword}
-                    className="text-sm text-muted-foreground transition-colors duration-300 ease-out-soft hover:text-primary"
-                  >
-                    忘记密码？
-                  </Link>
-                }
-              >
-                <input
-                  id="sign-in-password"
-                  type="password"
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  className={authInputClassName}
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(event) => field.handleChange(event.target.value)}
-                />
-              </Field>
-            )}
-          </form.Field>
+            <form.Field name="password">
+              {(field) => (
+                <Field
+                  hideLabel={embedded}
+                  label="密码"
+                  htmlFor="sign-in-password"
+                  labelAside={embedded ? undefined : forgotPasswordLink}
+                >
+                  <input
+                    id="sign-in-password"
+                    type="password"
+                    autoComplete="current-password"
+                    placeholder={embedded ? '密码' : '••••••••'}
+                    className={authInputClassName}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                  />
+                </Field>
+              )}
+            </form.Field>
+          </div>
 
           {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
 
@@ -153,7 +168,7 @@ export function SignInForm() {
             <Button
               type="button"
               variant="outline"
-              className="w-full"
+              className="h-11 w-full rounded-md"
               disabled={isResending}
               onClick={() => {
                 void handleResendVerification();
@@ -163,17 +178,19 @@ export function SignInForm() {
             </Button>
           ) : null}
 
-          <form.Subscribe selector={(state) => state.isSubmitting}>
-            {(isSubmitting) => (
-              <Button type="submit" className={authPrimaryButtonClassName} disabled={isSubmitting}>
-                {isSubmitting ? '登录中…' : '登录'}
-              </Button>
-            )}
-          </form.Subscribe>
+          <div className={embedded ? authDialogActionStackClassName : 'contents'}>
+            <form.Subscribe selector={(state) => state.isSubmitting}>
+              {(isSubmitting) => (
+                <Button type="submit" className={authPrimaryButtonClassName} disabled={isSubmitting}>
+                  {isSubmitting ? '登录中…' : '登录'}
+                </Button>
+              )}
+            </form.Subscribe>
+
+            {embedded ? forgotPasswordLink : null}
+          </div>
         </form>
       </AuthPanel>
-
-      <AuthFooterLink prompt="还没有账号？" href={AUTH_ROUTES.signUp} label="注册" />
     </>
   );
 }

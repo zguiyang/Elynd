@@ -3,7 +3,7 @@
 import { ArrowLeft, AudioLines, FileText, ScrollText, Sparkles, Volume2 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { type ReactNode, useEffect } from 'react';
+import { type ReactNode } from 'react';
 
 import { isAdminRole } from '@gloaming/shared/auth/policy';
 
@@ -11,6 +11,7 @@ import { BrandMark } from '@/components/brand-mark';
 import { GlobalLoading } from '@/components/global-loading';
 import { Button } from '@/components/ui/button';
 import { ADMIN_ROUTES, AUTH_ROUTES } from '@/constants';
+import { useAuthDialog } from '@/features/auth';
 import { authClient } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 
@@ -20,26 +21,23 @@ type AdminShellProps = {
 
 export function AdminShell({ children }: AdminShellProps) {
   const pathname = usePathname();
-  const { data, error, isPending } = authClient.useSession();
+  const { data, isPending } = authClient.useSession();
+  const { openLogin } = useAuthDialog();
   const user = data?.user ?? null;
-
-  useEffect(() => {
-    if (isPending) {
-      return;
-    }
-    if (error || !user) {
-      window.location.replace(AUTH_ROUTES.signIn);
-    }
-  }, [error, isPending, user]);
 
   if (isPending) {
     return <GlobalLoading />;
   }
 
-  if (error || !user) {
+  if (!user) {
     return (
       <div className="flex h-dvh flex-1 items-center justify-center px-6">
-        <p className="text-sm text-muted-foreground">正在跳转登录…</p>
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground">请先登录后再进入管理后台。</p>
+          <Button type="button" className="mt-5 rounded-full px-6" onClick={() => openLogin()}>
+            登录
+          </Button>
+        </div>
       </div>
     );
   }

@@ -4,9 +4,9 @@ Frontend only does **soft UX** + Better Auth **client**. Real auth is Hono Bette
 
 | Layer                     | Behavior                                                                           |
 | ------------------------- | ---------------------------------------------------------------------------------- |
-| `proxy.ts`                | Auth-page whitelist + cookie presence redirect; rewrite `/api/*` → Hono            |
+| `proxy.ts`                | Rewrite `/api/*` → Hono; public page access is not gated here                      |
 | `baClient` / façade       | `better-auth/react` → same-origin `/api/auth/*`                                    |
-| `useSession` / forms      | Session via BA get-session; **no session → sign-in**                               |
+| `useSession` / forms      | Session via BA get-session; login/register/forgot-password live in AuthDialog      |
 | `DELETE /api/auth/logout` | Next clears `better-auth.session_token`, then calls Hono `POST /api/auth/sign-out` |
 
 Do not treat proxy or client checks as security controls — API authz is `requireAuth` on Hono.

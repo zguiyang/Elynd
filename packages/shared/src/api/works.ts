@@ -8,7 +8,7 @@ import {
   paginationQuerySchema,
 } from '@gloaming/shared/api/pagination';
 
-export const WORK_STATUSES = ['draft', 'processing', 'published', 'failed', 'archived'] as const;
+export const WORK_STATUSES = ['draft', 'processing', 'published', 'failed'] as const;
 export type WorkStatus = (typeof WORK_STATUSES)[number];
 
 export const WORK_VISIBILITIES = ['catalog', 'private'] as const;
@@ -84,14 +84,39 @@ export const derivedFreshnessSchema = z.object({
 
 export type DerivedFreshness = z.infer<typeof derivedFreshnessSchema>;
 
+/** Origin file asset summary (EPUB upload) — surfaced in the admin workflow. */
+export const adminOriginAssetSchema = z.object({
+  fileName: z.string(),
+  size: z.number().int().nonnegative(),
+  mimeType: z.string(),
+  contentHash: z.string(),
+  reused: z.boolean(),
+});
+
+export type AdminOriginAsset = z.infer<typeof adminOriginAssetSchema>;
+
 /** Admin work JSON includes derived projection freshness for ops reminders. */
 export const adminWorkSchema = workSchema.extend({
   derivedFreshness: derivedFreshnessSchema,
   originMeta: z.record(z.string(), z.unknown()).default({}),
+  originAsset: adminOriginAssetSchema.nullable(),
   parts: z.array(partSchema),
 });
 
 export type AdminWork = z.infer<typeof adminWorkSchema>;
+
+/**
+ * Compact admin list row — no part bodies. `partCount` lets the list show
+ * chapter counts without shipping HTML for every part.
+ */
+export const adminWorkSummarySchema = workSchema.extend({
+  derivedFreshness: derivedFreshnessSchema,
+  originMeta: z.record(z.string(), z.unknown()).default({}),
+  originAsset: adminOriginAssetSchema.nullable(),
+  partCount: z.number().int().nonnegative(),
+});
+
+export type AdminWorkSummary = z.infer<typeof adminWorkSummarySchema>;
 
 /** Internal admin_text seed — title + body only. */
 export const createAdminTextWorkBodySchema = z.object({
@@ -156,7 +181,7 @@ export const adminWorkListQuerySchema = paginationQuerySchema.extend({
 export type AdminWorkListQuery = z.infer<typeof adminWorkListQuerySchema>;
 
 export const adminWorkListDataSchema = z.object({
-  items: z.array(adminWorkSchema),
+  items: z.array(adminWorkSummarySchema),
   pagination: paginationMetaSchema,
 });
 

@@ -400,6 +400,30 @@ export async function getPublishedAsset(assetId: string): Promise<{ body: Buffer
   }
 }
 
+/** Admin image proxy — any work status (draft preview before publish). */
+export async function getAdminAsset(assetId: string): Promise<{ body: Buffer; mimeType: string } | null> {
+  const [asset] = await db
+    .select({
+      storageKey: contentAssetTable.storageKey,
+      mimeType: contentAssetTable.mimeType,
+      kind: contentAssetTable.kind,
+    })
+    .from(contentAssetTable)
+    .where(eq(contentAssetTable.id, assetId))
+    .limit(1);
+  if (!asset || !(asset.kind === 'image' || asset.kind === 'cover')) {
+    return null;
+  }
+  try {
+    const object = await getObject(asset.storageKey);
+    if (!object) return null;
+    return { body: object.body, mimeType: object.contentType || asset.mimeType };
+  } catch (error) {
+    partAudioLogger.warn({ err: error, assetId, storageKey: asset.storageKey }, 'Asset object read failed');
+    return null;
+  }
+}
+
 /** Learner: published work only; refuses stale or missing objects. */
 export async function getPublishedPartAudioTrack(partId: string, role: TtsVoiceRole): Promise<ReaderAudioTrack> {
   const [part] = await db

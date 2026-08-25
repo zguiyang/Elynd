@@ -206,13 +206,21 @@ export async function processEpubWork(workId: string): Promise<void> {
       });
     }
 
-    const title = cleanBookTitle(book.title) || work.title;
+    // Metadata: first parse fills from the book; re-parse keeps hand-edited
+    // values (admin may have corrected title/author/description) and only
+    // fills empty fields.
+    const hasParsedBefore = Boolean(work.originMeta?.parsed);
+    const parsedTitle = cleanBookTitle(book.title);
+    const title = hasParsedBefore ? work.title || parsedTitle || work.title : parsedTitle || work.title;
+    const author = hasParsedBefore ? work.author || joinAuthors(book.authors) : joinAuthors(book.authors);
+    const description = hasParsedBefore ? work.description || book.description || '' : book.description || '';
+
     await db
       .update(readingWorkTable)
       .set({
         title,
-        author: joinAuthors(book.authors),
-        description: book.description || '',
+        author,
+        description,
         language: book.language,
         coverAssetId,
         status: 'draft',

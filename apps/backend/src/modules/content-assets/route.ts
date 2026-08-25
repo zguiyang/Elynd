@@ -25,6 +25,20 @@ contentAssetsRoutes.post(
   },
 );
 
+/** Admin image proxy — any work status (draft preview before publish). */
+contentAssetsRoutes.get('/api/admin/assets/:assetId', requireAdmin, async (c) => {
+  const asset = await contentAssetsService.getAdminAsset(c.req.param('assetId'));
+  if (!asset) {
+    return c.body(null, HTTP_STATUS.NOT_FOUND);
+  }
+  return new Response(asset.body as unknown as BodyInit, {
+    headers: {
+      'Content-Type': asset.mimeType,
+      'Cache-Control': 'public, max-age=31536000, immutable',
+    },
+  });
+});
+
 /** Learner-facing image proxy — published works only (images/cover). */
 contentAssetsRoutes.get('/api/reader/assets/:assetId', async (c) => {
   const asset = await contentAssetsService.getPublishedAsset(c.req.param('assetId'));

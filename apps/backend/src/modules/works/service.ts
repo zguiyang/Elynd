@@ -9,9 +9,11 @@ import {
   readingWork as readingWorkTable,
 } from '@gloaming/db';
 import {
+  type AdminOriginAsset,
   type AdminWork,
   type AdminWorkListData,
   type AdminWorkListQuery,
+  type AdminWorkSummary,
   buildPaginationMeta,
   type CatalogListData,
   type CatalogListQuery,
@@ -91,6 +93,45 @@ async function loadPartsForWork(workId: string): Promise<PartRow[]> {
     .orderBy(asc(readingPartTable.sortOrder), asc(readingPartTable.id));
 }
 
+async function loadPrimaryPartForWork(workId: string): Promise<PartRow | null> {
+  const [row] = await db
+    .select()
+    .from(readingPartTable)
+    .where(eq(readingPartTable.workId, workId))
+    .orderBy(asc(readingPartTable.sortOrder), asc(readingPartTable.id))
+    .limit(1);
+  return row ?? null;
+}
+
+async function countPartsForWork(workId: string): Promise<number> {
+  const [row] = await db.select({ value: count() }).from(readingPartTable).where(eq(readingPartTable.workId, workId));
+  return Number(row?.value ?? 0);
+}
+
+async function loadOriginFileAsset(workId: string): Promise<AdminOriginAsset | null> {
+  const [row] = await db
+    .select({
+      storageKey: contentAssetTable.storageKey,
+      mimeType: contentAssetTable.mimeType,
+      contentHash: contentAssetTable.contentHash,
+      meta: contentAssetTable.meta,
+    })
+    .from(contentAssetTable)
+    .where(and(eq(contentAssetTable.workId, workId), eq(contentAssetTable.kind, 'origin_file')))
+    .limit(1);
+  if (!row) {
+    return null;
+  }
+  const meta = row.meta ?? {};
+  return {
+    fileName: String(meta.originalFileName ?? ''),
+    size: Number(meta.size ?? 0),
+    mimeType: row.mimeType,
+    contentHash: row.contentHash,
+    reused: Boolean(meta.reused),
+  };
+}
+
 async function toAdminWork(row: WorkRow, parts?: PartRow[]): Promise<AdminWork> {
   const partRows = parts ?? (await loadPartsForWork(row.id));
   const primaryPart = partRows[0];
@@ -105,7 +146,28 @@ async function toAdminWork(row: WorkRow, parts?: PartRow[]): Promise<AdminWork> 
     ...toWork(row),
     derivedFreshness: freshness ?? { audio: 'missing' },
     originMeta: row.originMeta,
+    originAsset: await loadOriginFileAsset(row.id),
     parts: partRows.map(toPart),
+  };
+}
+
+/** List row projection — part bodies are too heavy for the admin table. */
+async function toAdminWorkSummary(row: WorkRow): Promise<AdminWorkSummary> {
+  const primaryPart = await loadPrimaryPartForWork(row.id);
+  const freshness = primaryPart
+    ? (
+        await getWorksDerivedFreshness([
+          { id: row.id, partId: primaryPart.id, title: primaryPart.title, body: primaryPart.body },
+        ])
+      ).get(row.id)
+    : { audio: 'missing' as const };
+  const partCount = await countPartsForWork(row.id);
+  return {
+    ...toWork(row),
+    derivedFreshness: freshness ?? { audio: 'missing' },
+    originMeta: row.originMeta,
+    originAsset: await loadOriginFileAsset(row.id),
+    partCount,
   };
 }
 
@@ -384,7 +446,7 @@ export async function listAdminWorks(query: AdminWorkListQuery): Promise<AdminWo
         .limit(query.pageSize)
         .offset(offset);
 
-  const items = await Promise.all(rows.map((row) => toAdminWork(row)));
+  const items = await Promise.all(rows.map((row) => toAdminWorkSummary(row)));
 
   return {
     items,
@@ -435,6 +497,9 @@ export async function publishWork(id: string): Promise<AdminWork> {
   if (!existing) {
     throw new NotFoundError('Work');
   }
+  if (existing.status !== 'draft') {
+    throw new AppError(HTTP_STATUS.CONFLICT, '仅草稿作品可以发布');
+  }
 
   const parts = await loadPartsForWork(id);
   const issues = getPublishWorkIssues({
@@ -447,10 +512,9 @@ export async function publishWork(id: string): Promise<AdminWork> {
     throw new ValidationFailedError(issues);
   }
 
-  const publishedAt = existing.status === 'published' && existing.publishedAt ? existing.publishedAt : new Date();
   const [row] = await db
     .update(readingWorkTable)
-    .set({ status: 'published', publishedAt })
+    .set({ status: 'published', publishedAt: new Date() })
     .where(eq(readingWorkTable.id, id))
     .returning();
 
@@ -465,6 +529,9 @@ export async function unpublishWork(id: string): Promise<AdminWork> {
   if (!existing) {
     throw new NotFoundError('Work');
   }
+  if (existing.status !== 'published') {
+    throw new AppError(HTTP_STATUS.CONFLICT, '仅已发布作品可以下架');
+  }
 
   const [row] = await db
     .update(readingWorkTable)
@@ -475,6 +542,36 @@ export async function unpublishWork(id: string): Promise<AdminWork> {
   if (!row) {
     throw new NotFoundError('Work');
   }
+  return toAdminWork(row);
+}
+
+export async function reparseWork(id: string): Promise<AdminWork> {
+  const [existing] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, id)).limit(1);
+  if (!existing) {
+    throw new NotFoundError('Work');
+  }
+  if (existing.status === 'published') {
+    throw new AppError(HTTP_STATUS.CONFLICT, '请先下架作品后再重新解析');
+  }
+  if (existing.status === 'processing') {
+    throw new AppError(HTTP_STATUS.CONFLICT, '作品正在解析中，请稍后再试');
+  }
+  if (existing.originKind !== 'admin_epub') {
+    throw new AppError(HTTP_STATUS.BAD_REQUEST, '仅 EPUB 作品支持重新解析');
+  }
+
+  const originMeta = { ...existing.originMeta };
+  delete originMeta.lastError;
+  const [row] = await db
+    .update(readingWorkTable)
+    .set({ status: 'processing', originMeta })
+    .where(eq(readingWorkTable.id, id))
+    .returning();
+  if (!row) {
+    throw new NotFoundError('Work');
+  }
+
+  await enqueue(JOB_EPUB_INGEST, { workId: id });
   return toAdminWork(row);
 }
 

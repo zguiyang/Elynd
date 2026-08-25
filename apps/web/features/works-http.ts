@@ -4,6 +4,7 @@ import type { AdminWork, Work } from '@gloaming/shared/api/works';
 export type WorkView = {
   id: string;
   title: string;
+  author: string;
   description: string;
   language: string;
   status: Work['status'];
@@ -18,6 +19,7 @@ export type WorkView = {
 
 export type AdminWorkView = WorkView & {
   derivedFreshness: AdminWork['derivedFreshness'];
+  originMeta: AdminWork['originMeta'];
   parts: AdminWork['parts'];
 };
 
@@ -29,6 +31,7 @@ export function normalizeWork(raw: Work): WorkView {
   return {
     id: raw.id,
     title: raw.title,
+    author: raw.author,
     description: raw.description,
     language: raw.language,
     status: raw.status,
@@ -46,6 +49,7 @@ export function normalizeAdminWork(raw: AdminWork): AdminWorkView {
   return {
     ...normalizeWork(raw),
     derivedFreshness: raw.derivedFreshness,
+    originMeta: raw.originMeta,
     parts: raw.parts,
   };
 }

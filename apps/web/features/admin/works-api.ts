@@ -14,7 +14,6 @@ import {
   type CreateAdminTextWorkBody,
   createEpubWorkResultSchema,
   epubReuseResultSchema,
-  type UpdatePartBody,
   type UpdateWorkBody,
 } from '@gloaming/shared/api/works';
 
@@ -86,21 +85,6 @@ export async function checkEpubWorkReuse(body: CheckEpubWorkReuseBody, init?: { 
 
 export async function updateAdminWork(id: string, body: UpdateWorkBody, init?: { signal?: AbortSignal }) {
   const raw = await apiRequest(`/api/admin/works/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    schema: adminWorkSchema,
-    json: body,
-    signal: init?.signal,
-  });
-  return normalizeAdminWork(raw);
-}
-
-export async function updateAdminPart(
-  workId: string,
-  partId: string,
-  body: UpdatePartBody,
-  init?: { signal?: AbortSignal },
-) {
-  const raw = await apiRequest(`/api/admin/works/${encodeURIComponent(workId)}/parts/${encodeURIComponent(partId)}`, {
     method: 'PATCH',
     schema: adminWorkSchema,
     json: body,

@@ -197,8 +197,20 @@ export function WorksListPage() {
                 >
                   <TableCell className="px-5 py-4 font-medium">{work.title}</TableCell>
                   <TableCell className="px-5 py-4">
-                    <Badge variant={work.status === 'published' ? 'secondary' : 'outline'}>
-                      {work.status === 'published' ? '已发布' : '草稿'}
+                    <Badge
+                      variant={
+                        work.status === 'published' ? 'secondary' : work.status === 'failed' ? 'destructive' : 'outline'
+                      }
+                    >
+                      {work.status === 'published'
+                        ? '已发布'
+                        : work.status === 'processing'
+                          ? '解析中'
+                          : work.status === 'failed'
+                            ? '解析失败'
+                            : work.status === 'archived'
+                              ? '已归档'
+                              : '草稿'}
                     </Badge>
                   </TableCell>
                   <TableCell className="px-5 py-4 text-muted-foreground">{work.tags.join(' · ') || '—'}</TableCell>

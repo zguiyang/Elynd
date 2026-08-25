@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,6 @@ import {
   createAdminTextWork,
   formatWorksApiError,
   publishAdminWork,
-  updateAdminPart,
   updateAdminWork,
   useAdminWorkQuery,
   useInvalidateAdminWorks,
@@ -29,23 +28,33 @@ type WorksFormPageProps = {
 
 type FormValues = {
   title: string;
+  author: string;
   body: string;
   sourceNote: string;
   tagsText: string;
 };
 
 function emptyFormValues(): FormValues {
-  return { title: '', body: '', sourceNote: '', tagsText: '' };
+  return { title: '', author: '', body: '', sourceNote: '', tagsText: '' };
 }
 
 function formValuesFromWork(work: AdminWorkView): FormValues {
   return {
     title: work.title,
+    author: work.author,
     body: work.parts[0]?.body ?? '',
     sourceNote: work.sourceNote,
     tagsText: work.tags.join(', '),
   };
 }
+
+const STATUS_LABEL: Record<AdminWorkView['status'], string> = {
+  draft: '草稿',
+  processing: '解析中…',
+  published: '已发布',
+  failed: '解析失败',
+  archived: '已归档',
+};
 
 type WorksFormEditorProps = {
   mode: 'new' | 'edit';
@@ -58,10 +67,22 @@ function WorksFormEditor({ mode, workId, work, initial }: WorksFormEditorProps) 
   const router = useRouter();
   const invalidate = useInvalidateAdminWorks();
   const [title, setTitle] = useState(initial.title);
+  const [author, setAuthor] = useState(initial.author);
   const [body, setBody] = useState(initial.body);
   const [sourceNote, setSourceNote] = useState(initial.sourceNote);
   const [tagsText, setTagsText] = useState(initial.tagsText);
   const isEpubWork = work?.originKind === 'admin_epub';
+
+  // Poll while the EPUB ingest job is running.
+  useEffect(() => {
+    if (!isEpubWork || !workId || work?.status !== 'processing') {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      void invalidate(workId);
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, [isEpubWork, workId, work?.status, invalidate]);
 
   async function handleSaveDraft() {
     try {
@@ -72,8 +93,12 @@ function WorksFormEditor({ mode, workId, work, initial }: WorksFormEditorProps) 
 
       if (mode === 'new') {
         const created = await createAdminTextWork({ title: title.trim(), body: body.trim() });
-        if (tags.length || sourceNote.trim()) {
-          await updateAdminWork(created.id, { tags, sourceNote: sourceNote.trim() });
+        if (author.trim() || tags.length || sourceNote.trim()) {
+          await updateAdminWork(created.id, {
+            author: author.trim(),
+            tags,
+            sourceNote: sourceNote.trim(),
+          });
         }
         await invalidate(created.id);
         toast.success('已创建');
@@ -82,11 +107,12 @@ function WorksFormEditor({ mode, workId, work, initial }: WorksFormEditorProps) 
       }
 
       if (!workId || !work) return;
-      const partId = work.parts[0]?.id;
-      await updateAdminWork(workId, { title: title.trim(), tags, sourceNote: sourceNote.trim() });
-      if (partId) {
-        await updateAdminPart(workId, partId, { title: title.trim(), body: body.trim() });
-      }
+      await updateAdminWork(workId, {
+        title: title.trim(),
+        author: author.trim(),
+        tags,
+        sourceNote: sourceNote.trim(),
+      });
       await invalidate(workId);
       toast.success('已保存');
     } catch (error) {
@@ -114,15 +140,44 @@ function WorksFormEditor({ mode, workId, work, initial }: WorksFormEditorProps) 
       </div>
 
       <div className="space-y-6 rounded-2xl border border-border bg-card px-6 py-6">
+        {work?.status === 'failed' ? (
+          <div className="rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            解析失败：{String(work.originMeta?.lastError ?? '未知错误')}
+          </div>
+        ) : null}
+
         <div className="space-y-2">
           <Label htmlFor="title">标题</Label>
           <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} />
         </div>
+        <div className="space-y-2">
+          <Label htmlFor="author">作者</Label>
+          <Input
+            id="author"
+            value={author}
+            onChange={(e) => setAuthor(e.target.value)}
+            placeholder="EPUB 解析自动填充，可手动修正"
+          />
+        </div>
         {isEpubWork ? (
           <div className="space-y-2">
-            <Label>正文</Label>
-            <div className="rounded-xl border border-dashed border-border bg-secondary/40 px-4 py-6 text-center text-sm text-muted-foreground">
-              作品等待解析，正文将由 EPUB 解析生成（流程即将上线）
+            <Label>正文（只读，由 EPUB 解析生成）</Label>
+            <div className="rounded-xl border border-border bg-secondary/40 px-4 py-4">
+              {work?.status === 'processing' ? (
+                <p className="text-center text-sm text-muted-foreground">作品解析中，正文即将生成…</p>
+              ) : work?.status === 'failed' ? (
+                <p className="text-center text-sm text-muted-foreground">解析失败，请重新上传或检查文件。</p>
+              ) : work?.parts.length ? (
+                <div className="max-h-96 overflow-y-auto">
+                  <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+                    {work.parts.map((part) => (
+                      <li key={part.id}>{part.title || `章节 ${part.sortOrder + 1}`}</li>
+                    ))}
+                  </ol>
+                </div>
+              ) : (
+                <p className="text-center text-sm text-muted-foreground">{STATUS_LABEL[work?.status ?? 'draft']}</p>
+              )}
             </div>
           </div>
         ) : (
@@ -150,6 +205,7 @@ function WorksFormEditor({ mode, workId, work, initial }: WorksFormEditorProps) 
             type="button"
             className="h-10 rounded-xl px-6 hover:bg-brand-deep"
             onClick={() => void handleSaveDraft()}
+            disabled={work?.status === 'processing'}
           >
             保存草稿
           </Button>
@@ -159,6 +215,7 @@ function WorksFormEditor({ mode, workId, work, initial }: WorksFormEditorProps) 
               variant="secondary"
               className="h-10 rounded-xl px-6"
               onClick={() => void handlePublish()}
+              disabled={work?.status === 'processing'}
             >
               发布
             </Button>

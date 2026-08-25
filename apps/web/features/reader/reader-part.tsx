@@ -1,16 +1,10 @@
 'use client';
 
-import DOMPurify from 'dompurify';
 import type { MouseEvent, UIEvent } from 'react';
 
+import { ReadingPartView } from '@/features/content/reading-part-view';
 import type { ReaderFontSize } from '@/features/reader/reader-model';
 import { cn } from '@/lib/utils';
-
-const FONT_CLASS: Record<ReaderFontSize, string> = {
-  sm: 'text-lg leading-8 md:text-[18px] md:leading-8',
-  md: 'text-[20px] leading-[1.8] md:leading-9',
-  lg: 'text-[22px] leading-9 md:text-2xl md:leading-10',
-};
 
 type ReaderPartProps = {
   title: string;
@@ -44,8 +38,6 @@ export function ReaderPart({
   onScroll,
   onFinish,
 }: ReaderPartProps) {
-  const sanitizedHtml = DOMPurify.sanitize(html);
-
   function handleMouseUp(event: MouseEvent<HTMLElement>) {
     const selection = window.getSelection();
     const quote = selection?.toString().trim() ?? '';
@@ -89,43 +81,31 @@ export function ReaderPart({
       onScroll={onScroll}
       onClick={handleContentClick}
     >
-      <article
-        className={cn(
-          'mx-auto flex w-full max-w-reading-column flex-col px-6 pb-32 pt-20 md:px-8 md:pt-28',
-          FONT_CLASS[fontSize],
-        )}
-        onMouseUp={handleMouseUp}
-      >
-        <header className="mb-12 flex flex-col items-center text-center md:mb-16">
-          <h1 className="font-heading text-3xl font-semibold tracking-tight text-foreground md:text-5xl md:leading-[1.15]">
-            {title}
-          </h1>
-          <div className="mt-8 h-px w-12 bg-outline/50" aria-hidden />
-        </header>
-
-        <div
-          className="reading-body font-reading flex flex-col gap-8 text-foreground/90 text-pretty selection:bg-accent selection:text-brand-deep"
-          dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
-        />
-
-        <section
-          data-reader-ui
-          className="mt-16 flex flex-col items-center justify-center border-t border-border/40 pt-16 pb-8 text-center md:mt-32"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <p className="mb-4 text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">读完了？</p>
-          <button
-            type="button"
-            className="group flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-brand-deep"
-            onClick={onFinish}
+      <ReadingPartView
+        title={title}
+        html={html}
+        fontSize={fontSize}
+        onArticleMouseUp={handleMouseUp}
+        footer={
+          <section
+            data-reader-ui
+            className="mt-16 flex flex-col items-center justify-center border-t border-border/40 pt-16 pb-8 text-center md:mt-32"
+            onClick={(e) => e.stopPropagation()}
           >
-            返回书架
-            <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
-              →
-            </span>
-          </button>
-        </section>
-      </article>
+            <p className="mb-4 text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">读完了？</p>
+            <button
+              type="button"
+              className="group flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-brand-deep"
+              onClick={onFinish}
+            >
+              返回书架
+              <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
+                →
+              </span>
+            </button>
+          </section>
+        }
+      />
     </div>
   );
 }

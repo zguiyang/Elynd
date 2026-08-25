@@ -229,7 +229,7 @@ export function ReaderPage({ workId }: ReaderPageProps) {
 
   function sendDrawerMessage(text: string) {
     const selectedText = selection?.quote ?? '';
-    const paragraphId = selection?.paragraphId ?? session?.paragraphs[0]?.id ?? '';
+    const paragraphId = selection?.paragraphId ?? '';
     void runAssist('ask', selectedText || text, paragraphId, text, 'drawer');
   }
 
@@ -327,7 +327,8 @@ export function ReaderPage({ workId }: ReaderPageProps) {
 
       <ReaderPart
         title={session.title}
-        paragraphs={session.paragraphs}
+        partId={session.partId}
+        html={session.html}
         fontSize={fontSize}
         aiDrawerOpen={isDrawerOpen}
         onSelectText={(payload) => {

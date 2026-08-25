@@ -9,8 +9,7 @@ import {
   type UpdateReadingStateBody,
 } from '@gloaming/shared/api/reader';
 
-import { paragraphsFromBody } from '@/features/content/content-model';
-import type { ReaderParagraph, ReaderSession } from '@/features/reader/reader-model';
+import type { ReaderSession } from '@/features/reader/reader-model';
 import { apiRequest, formatApiError } from '@/lib/api-request';
 
 export const readerQueryKey = {
@@ -58,21 +57,13 @@ export async function getReaderAudioTrack(
   });
 }
 
-export function toReaderParagraphs(partId: string, body: string): ReaderParagraph[] {
-  return paragraphsFromBody(body).map((text, index) => ({
-    id: `${partId}-p${index + 1}`,
-    index: index + 1,
-    text,
-  }));
-}
-
 export function toReaderSession(data: ReaderSessionData): ReaderSession {
   return {
     workId: data.work.id,
     partId: data.currentPart.id,
     title: data.work.title,
     tags: data.work.tags,
-    paragraphs: toReaderParagraphs(data.currentPart.id, data.currentPart.body),
+    html: data.currentPart.body,
     state: {
       status: data.state.status,
       progressRatio: data.state.progressRatio,

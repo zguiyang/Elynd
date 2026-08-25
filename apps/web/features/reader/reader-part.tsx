@@ -1,8 +1,9 @@
 'use client';
 
+import DOMPurify from 'dompurify';
 import type { MouseEvent, UIEvent } from 'react';
 
-import type { ReaderFontSize, ReaderParagraph } from '@/features/reader/reader-model';
+import type { ReaderFontSize } from '@/features/reader/reader-model';
 import { cn } from '@/lib/utils';
 
 const FONT_CLASS: Record<ReaderFontSize, string> = {
@@ -13,7 +14,8 @@ const FONT_CLASS: Record<ReaderFontSize, string> = {
 
 type ReaderPartProps = {
   title: string;
-  paragraphs: ReaderParagraph[];
+  partId: string;
+  html: string;
   fontSize: ReaderFontSize;
   aiDrawerOpen: boolean;
   onSelectText: (payload: { quote: string; paragraphId: string; top: number; left: number }) => void;
@@ -22,9 +24,19 @@ type ReaderPartProps = {
   onFinish: () => void;
 };
 
+/** Paragraph id from the server-injected data-p ordinal. */
+function paragraphIdFromElement(el: HTMLElement | null, partId: string, fallback: string): string {
+  const dataP = el?.getAttribute('data-p');
+  if (dataP) {
+    return `${partId}-p${Number(dataP) + 1}`;
+  }
+  return fallback;
+}
+
 export function ReaderPart({
   title,
-  paragraphs,
+  partId,
+  html,
   fontSize,
   aiDrawerOpen,
   onSelectText,
@@ -32,6 +44,8 @@ export function ReaderPart({
   onScroll,
   onFinish,
 }: ReaderPartProps) {
+  const sanitizedHtml = DOMPurify.sanitize(html);
+
   function handleMouseUp(event: MouseEvent<HTMLElement>) {
     const selection = window.getSelection();
     const quote = selection?.toString().trim() ?? '';
@@ -39,8 +53,8 @@ export function ReaderPart({
       return;
     }
 
-    const paragraphEl = (event.target as HTMLElement).closest('[data-paragraph-id]');
-    const paragraphId = paragraphEl?.getAttribute('data-paragraph-id') ?? paragraphs[0]?.id ?? '';
+    const paragraphEl = (event.target as HTMLElement).closest('[data-p]') as HTMLElement | null;
+    const paragraphId = paragraphIdFromElement(paragraphEl, partId, `${partId}-p1`);
     const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
     const rect = range?.getBoundingClientRect();
     if (!rect) return;
@@ -89,13 +103,10 @@ export function ReaderPart({
           <div className="mt-8 h-px w-12 bg-outline/50" aria-hidden />
         </header>
 
-        <div className="font-reading flex flex-col gap-8 text-foreground/90 text-pretty selection:bg-accent selection:text-brand-deep">
-          {paragraphs.map((p) => (
-            <p key={p.id} data-paragraph-id={p.id} className="text-justify">
-              {p.text}
-            </p>
-          ))}
-        </div>
+        <div
+          className="reading-body font-reading flex flex-col gap-8 text-foreground/90 text-pretty selection:bg-accent selection:text-brand-deep"
+          dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+        />
 
         <section
           data-reader-ui

@@ -8,12 +8,6 @@ export type ReaderAiMode = 'closed' | 'inline' | 'drawer';
 
 export type ReaderAudioStatus = 'idle' | 'loading' | 'ready' | 'playing' | 'paused' | 'failed';
 
-export type ReaderParagraph = {
-  id: string;
-  index: number;
-  text: string;
-};
-
 export type ReaderAiMessageSource = 'inline' | 'drawer';
 
 export type ReaderAiMessage = {
@@ -29,7 +23,8 @@ export type ReaderSession = {
   partId: string;
   title: string;
   tags: string[];
-  paragraphs: ReaderParagraph[];
+  /** Normalized reading HTML for the current part (sanitized on render). */
+  html: string;
   state: {
     status: ReadingStateStatus;
     progressRatio: number;

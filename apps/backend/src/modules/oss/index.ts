@@ -1,6 +1,7 @@
 export {
   deleteObject,
   getObject,
+  getObjectStream,
   objectExists,
   putObject,
   resetObjectStoreCache,

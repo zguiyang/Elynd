@@ -1,4 +1,4 @@
-import type { ObjectStore } from '@/lib/oss';
+import type { ObjectGetStreamResult, ObjectRange, ObjectStore } from '@/lib/oss';
 
 /** In-memory ObjectStore for functional tests. */
 export function createMemoryObjectStore(): ObjectStore & { store: Map<string, { body: Buffer; contentType: string }> } {
@@ -14,6 +14,24 @@ export function createMemoryObjectStore(): ObjectStore & { store: Map<string, { 
         return null;
       }
       return { body: Buffer.from(value.body), contentType: value.contentType };
+    },
+    async getStream(key, range?: ObjectRange): Promise<ObjectGetStreamResult | null> {
+      const value = store.get(key);
+      if (!value) {
+        return null;
+      }
+      const total = value.body.length;
+      const start = range?.start ?? 0;
+      const end = Math.min(range?.end ?? total - 1, total - 1);
+      const slice = value.body.subarray(start, end + 1);
+      const partial = start !== 0 || end !== total - 1;
+      return {
+        stream: new Blob([slice]).stream() as ReadableStream<Uint8Array>,
+        contentType: value.contentType,
+        contentLength: partial ? slice.length : total,
+        contentRange: partial ? `bytes ${start}-${end}/${total}` : null,
+        etag: null,
+      };
     },
     async exists(key) {
       return store.has(key);

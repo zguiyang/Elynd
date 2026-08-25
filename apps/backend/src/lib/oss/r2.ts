@@ -1,3 +1,5 @@
+import { Readable } from 'node:stream';
+
 import {
   DeleteObjectCommand,
   GetObjectCommand,
@@ -7,7 +9,7 @@ import {
   type S3ClientConfig,
 } from '@aws-sdk/client-s3';
 
-import type { ObjectGetResult, ObjectPutInput, ObjectStore } from '@/lib/oss/types';
+import type { ObjectGetResult, ObjectGetStreamResult, ObjectPutInput, ObjectRange, ObjectStore } from '@/lib/oss/types';
 
 export type R2ObjectStoreConfig = {
   accountId: string;
@@ -46,6 +48,26 @@ function isNotFoundError(error: unknown): boolean {
     return true;
   }
   return record.$metadata?.httpStatusCode === 404;
+}
+
+/** Normalize S3 response bodies (Node Readable / Blob / Buffer) to a Web ReadableStream. */
+function toWebStream(body: unknown): ReadableStream<Uint8Array> {
+  if (body == null) {
+    return new ReadableStream<Uint8Array>();
+  }
+  if (body instanceof Uint8Array) {
+    return new Blob([Buffer.from(body)]).stream() as ReadableStream<Uint8Array>;
+  }
+  if (typeof body === 'object' && body !== null) {
+    const candidate = body as { pipe?: unknown; stream?: () => unknown };
+    if (typeof candidate.pipe === 'function') {
+      return Readable.toWeb(body as Readable) as ReadableStream<Uint8Array>;
+    }
+    if (typeof candidate.stream === 'function') {
+      return (body as Blob).stream() as ReadableStream<Uint8Array>;
+    }
+  }
+  throw new Error('Unsupported R2 stream body type');
 }
 
 /**
@@ -89,6 +111,30 @@ export function createR2ObjectStore(config: R2ObjectStoreConfig): ObjectStore {
         return {
           body: await streamBodyToBuffer(response.Body),
           contentType: response.ContentType?.trim() || 'application/octet-stream',
+        };
+      } catch (error) {
+        if (isNotFoundError(error)) {
+          return null;
+        }
+        throw error;
+      }
+    },
+
+    async getStream(key: string, range?: ObjectRange): Promise<ObjectGetStreamResult | null> {
+      try {
+        const response = await client.send(
+          new GetObjectCommand({
+            Bucket: bucket,
+            Key: key,
+            Range: range ? `bytes=${range.start}-${range.end ?? ''}` : undefined,
+          }),
+        );
+        return {
+          stream: toWebStream(response.Body),
+          contentType: response.ContentType?.trim() || 'application/octet-stream',
+          contentLength: typeof response.ContentLength === 'number' ? response.ContentLength : null,
+          contentRange: response.ContentRange ?? null,
+          etag: response.ETag ?? null,
         };
       } catch (error) {
         if (isNotFoundError(error)) {

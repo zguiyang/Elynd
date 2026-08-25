@@ -2,7 +2,14 @@ import { HTTP_STATUS } from '@/constants';
 import { env } from '@/lib/env';
 import { AppError } from '@/lib/errors';
 import { rootLogger } from '@/lib/logger';
-import { createObjectStoreFromEnv, type ObjectGetResult, type ObjectPutInput, type ObjectStore } from '@/lib/oss';
+import {
+  createObjectStoreFromEnv,
+  type ObjectGetResult,
+  type ObjectGetStreamResult,
+  type ObjectPutInput,
+  type ObjectRange,
+  type ObjectStore,
+} from '@/lib/oss';
 
 const ossLogger = rootLogger.child({ module: 'Oss' });
 
@@ -48,6 +55,10 @@ export async function putObject(input: ObjectPutInput): Promise<void> {
 
 export async function getObject(key: string): Promise<ObjectGetResult | null> {
   return resolveStore().get(key);
+}
+
+export async function getObjectStream(key: string, range?: ObjectRange): Promise<ObjectGetStreamResult | null> {
+  return resolveStore().getStream(key, range);
 }
 
 export async function objectExists(key: string): Promise<boolean> {

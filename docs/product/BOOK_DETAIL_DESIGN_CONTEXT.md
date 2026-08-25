@@ -139,7 +139,7 @@ Do **not** use legacy **Article** fields as design authority.
 ```text
 ReadingWork {                     # reading_work — catalog / shelf / AI thread root
   id, title, description, language,
-  status:           draft | processing | published | failed | archived
+  status:           draft | processing | published | failed
   visibility:       catalog | private
   owner_user_id:    null = official catalog
   origin_kind:      admin_epub | admin_text | (future user_* …)

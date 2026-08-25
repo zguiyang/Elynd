@@ -36,7 +36,7 @@ There are **no production users** and **no historical data compatibility** requi
 **User concept:** A book / piece of reading content.  
 **Responsibility:** Metadata, source, publish status, visibility — **no body text**.
 
-**Lifecycle:** `draft` → `processing` → `published` | `failed`; `published` → `archived`.
+**Lifecycle:** `draft` → `processing` → `published` | `failed`.
 
 **Key fields:** `id`, `title`, `description`, `language`, `status`, `visibility`, `owner_user_id` (null = official catalog), `origin_kind`, `origin_meta`, `tags`, `source_note`, `cover_asset_id`, `published_at`, timestamps.
 

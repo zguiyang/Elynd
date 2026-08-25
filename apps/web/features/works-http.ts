@@ -12,6 +12,7 @@ export type WorkView = {
   originKind: Work['originKind'];
   tags: string[];
   sourceNote: string;
+  coverAssetId: string | null;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -47,6 +48,7 @@ export function normalizeWork(raw: Work): WorkView {
     originKind: raw.originKind,
     tags: raw.tags,
     sourceNote: raw.sourceNote,
+    coverAssetId: raw.coverAssetId,
     publishedAt: raw.publishedAt == null ? null : toIso(raw.publishedAt),
     createdAt: toIso(raw.createdAt),
     updatedAt: toIso(raw.updatedAt),

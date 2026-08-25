@@ -47,6 +47,7 @@ export const workSchema = z.object({
   originKind: z.enum(WORK_ORIGIN_KINDS),
   tags: z.array(z.string()),
   sourceNote: z.string(),
+  coverAssetId: z.string().nullable(),
   publishedAt: z.union([z.string(), z.date()]).nullable(),
   createdAt: z.union([z.string(), z.date()]),
   updatedAt: z.union([z.string(), z.date()]),

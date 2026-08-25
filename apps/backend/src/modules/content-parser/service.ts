@@ -89,7 +89,7 @@ function rewriteImageSrcs(html: string, images: ParsedContent['images'], hrefToA
   for (const image of images) {
     const assetId = hrefToAssetId.get(image.href);
     if (assetId) {
-      out = out.split(image.token).join(`/api/reader/assets/${assetId}`);
+      out = out.split(image.token).join(`/api/assets/${assetId}`);
     } else {
       out = out.split(image.token).join('');
     }

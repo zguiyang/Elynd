@@ -260,7 +260,7 @@ describe('EPUB cleaning & chaptering fixes (builder fixtures)', () => {
       .select({ body: readingPartTable.body })
       .from(readingPartTable)
       .where(eq(readingPartTable.workId, workId));
-    expect(part!.body).toContain(`/api/reader/assets/${bodyImages[0]!.id}`);
+    expect(part!.body).toContain(`/api/assets/${bodyImages[0]!.id}`);
     expect(part!.body).not.toContain('<img src="">');
   });
 

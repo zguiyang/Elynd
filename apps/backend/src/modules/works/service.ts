@@ -66,6 +66,7 @@ function toWork(row: WorkRow): Work {
     originKind: row.originKind as Work['originKind'],
     tags: row.tags,
     sourceNote: row.sourceNote,
+    coverAssetId: row.coverAssetId,
     publishedAt: row.publishedAt ? toIso(row.publishedAt) : null,
     createdAt: toIso(row.createdAt),
     updatedAt: toIso(row.updatedAt),

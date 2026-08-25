@@ -172,8 +172,8 @@ function parseNavTree(navItems: unknown, depth = 1): EpubNavItem[] {
   const out: EpubNavItem[] = [];
   const items = Array.isArray(navItems) ? navItems : navItems ? [navItems] : [];
   for (const item of items) {
-    const row = item as { label?: unknown; content?: unknown; navPoint?: unknown };
-    const label = row.label as { text?: unknown } | undefined;
+    const row = item as { navLabel?: unknown; content?: unknown; navPoint?: unknown };
+    const label = row.navLabel as { text?: unknown } | undefined;
     const text = label?.text;
     const title = typeof text === 'string' ? text : textOf(text);
     const content = row.content as { '@_src'?: string } | undefined;
@@ -291,7 +291,8 @@ export async function parseEpub(buffer: Buffer): Promise<EpubBook> {
       [...entries.entries()].find(([key]) => key.toLowerCase().endsWith('.ncx'))?.[1];
     if (ncxEntry) {
       const ncx = parseXml(ncxEntry.toString('utf8')) as { ncx?: { navMap?: unknown } };
-      nav = parseNavTree(ncx.ncx?.navMap);
+      // NCX hrefs are relative to the OPF directory — resolve like nav.xhtml.
+      nav = parseNavTree(ncx.ncx?.navMap).map((item) => ({ ...item, href: resolve(item.href) }));
     }
   }
 
@@ -363,4 +364,8 @@ function resolveCoverHref(
   return null;
 }
 
-export { findEntryCaseInsensitive as findEpubEntry, normalizeHref as normalizeEpubHref };
+export {
+  findEntryCaseInsensitive as findEpubEntry,
+  normalizeHref as normalizeEpubHref,
+  resolveHref as resolveEpubHref,
+};

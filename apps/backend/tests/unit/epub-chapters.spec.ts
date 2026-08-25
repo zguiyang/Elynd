@@ -24,7 +24,7 @@ function clean(href: string, rawHtml: string) {
 }
 
 describe('planChapters', () => {
-  it('uses nav titles and skips front/back matter (contents, copyright)', () => {
+  it('uses nav titles and keeps front/back matter titled by type (textstack)', () => {
     const b = book([
       ['contents.xhtml', '<html><body><h1>Contents</h1><p>list</p></body></html>'],
       ['copyright.xhtml', '<html><body><h1>Copyright</h1><p>2026</p></body></html>'],
@@ -41,7 +41,7 @@ describe('planChapters', () => {
     ];
 
     const chapters = planChapters(b, clean);
-    expect(chapters.map((c) => c.title)).toEqual(['Chapter 1', 'Appendix']);
+    expect(chapters.map((c) => c.title)).toEqual(['Contents', 'Copyright', 'Chapter 1', 'Acknowledgments', 'Appendix']);
   });
 
   it('keeps preface/foreword/introduction', () => {
@@ -96,7 +96,7 @@ describe('planChapters', () => {
 });
 
 describe('splitSingleFileByHeadings', () => {
-  it('splits one HTML file on h2 headings', () => {
+  it('splits one HTML file on h2 headings with Part prefixes', () => {
     const sections = splitSingleFileByHeadings(
       `<html><body>
         <h2>Chapter 1</h2><p>One.</p>
@@ -104,23 +104,32 @@ describe('splitSingleFileByHeadings', () => {
         <h2>Chapter 3</h2><p>Three.</p>
       </body></html>`,
     );
-    expect(sections.map((s) => s.title)).toEqual(['Chapter 1', 'Chapter 2', 'Chapter 3']);
+    expect(sections.map((s) => s.title)).toEqual(['Part Chapter 1', 'Part Chapter 2', 'Part Chapter 3']);
     expect(sections[0]!.html).toContain('One.');
     expect(sections[1]!.html).toContain('Two.');
     expect(sections[2]!.html).toContain('Three.');
   });
 
-  it('returns empty when headings do not look like chapters', () => {
-    const sections = splitSingleFileByHeadings(
-      `<html><body><h2>Introduction</h2><p>A.</p><h2>Background</h2><p>B.</p></body></html>`,
-    );
+  it('returns empty when fewer than two usable headings', () => {
+    const sections = splitSingleFileByHeadings(`<html><body><h2>Chapter 1</h2><p>A.</p></body></html>`);
     expect(sections).toEqual([]);
+  });
+
+  it('skips pattern headings and drops leading front-matter headings', () => {
+    const sections = splitSingleFileByHeadings(
+      `<html><body>
+        <h2>Table of Contents</h2><p>list</p>
+        <h2>Novel by Someone</h2><p>x</p>
+        <h2>Chapter 1</h2><p>A.</p><h2>Chapter 2</h2><p>B.</p>
+      </body></html>`,
+    );
+    expect(sections.map((s) => s.title)).toEqual(['Part Chapter 1', 'Part Chapter 2']);
   });
 
   it('handles roman numeral and numeric headings', () => {
     const sections = splitSingleFileByHeadings(
       `<html><body><h2>I</h2><p>A.</p><h2>II</h2><p>B.</p><h2>12</h2><p>C.</p></body></html>`,
     );
-    expect(sections.map((s) => s.title)).toEqual(['I', 'II', '12']);
+    expect(sections.map((s) => s.title)).toEqual(['Part I', 'Part II', 'Part 12']);
   });
 });

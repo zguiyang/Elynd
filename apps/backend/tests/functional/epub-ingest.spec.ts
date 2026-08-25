@@ -168,7 +168,7 @@ describe('EPUB ingest pipeline', () => {
       .from(readingPartTable)
       .where(eq(readingPartTable.workId, created.id))
       .orderBy(readingPartTable.sortOrder);
-    expect(parts.map((p) => p.title)).toEqual(['Chapter 1', 'Chapter 2', 'Chapter 3']);
+    expect(parts.map((p) => p.title)).toEqual(['Part Chapter 1', 'Part Chapter 2', 'Part Chapter 3']);
     expect(parts.map((p) => (p.body.join ? '' : p.body)).join('')).toContain('First.');
   });
 

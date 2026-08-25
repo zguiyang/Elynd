@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { cleanXhtml } from '@/modules/epub-ingest/clean';
 
 describe('cleanXhtml', () => {
-  it('keeps allowed tags and strips dangerous ones', () => {
+  it('keeps allowed tags and strips dangerous ones (blacklist)', () => {
     const { html } = cleanXhtml(
       `<html><head><title>T</title></head><body>
         <p>Safe <em>text</em>.</p>
@@ -19,7 +19,8 @@ describe('cleanXhtml', () => {
     expect(html).not.toContain('script');
     expect(html).not.toContain('style');
     expect(html).not.toContain('iframe');
-    expect(html).not.toContain('nav');
+    // Blacklist approach keeps nav (textstack behavior).
+    expect(html).toContain('<nav');
   });
 
   it('removes on* attributes and dangerous URL schemes', () => {
@@ -33,22 +34,22 @@ describe('cleanXhtml', () => {
     expect(html).toContain('href="/relative"');
   });
 
-  it('rewrites local image srcs and drops external/data images', () => {
+  it('rewrites local image srcs and keeps external/data images', () => {
     const { html, images } = cleanXhtml(
       `<p><img src="images/fig1.png"/><img src="https://cdn.example/x.jpg"/><img src="data:image/png;base64,AAAA"/></p>`,
       (src) => `/img/${src}`,
     );
     expect(html).toContain('src="/img/images/fig1.png"');
-    expect(html).not.toContain('cdn.example');
-    expect(html).not.toContain('data:image');
+    expect(html).toContain('cdn.example');
+    expect(html).toContain('data:image');
     expect(images).toEqual([{ href: 'images/fig1.png', mime: 'image/png' }]);
   });
 
-  it('unwraps non-whitelisted tags but keeps their children', () => {
+  it('keeps structure tags like span (blacklist)', () => {
     const { html } = cleanXhtml(`<p>Before <span class="x">inner</span> after</p>`, () => '');
     expect(html).toContain('inner');
-    expect(html).not.toContain('<span');
-    expect(html).not.toContain('class="x"');
+    expect(html).toContain('<span');
+    expect(html).toContain('class="x"');
   });
 
   it('injects data-p ordinals on block elements', () => {

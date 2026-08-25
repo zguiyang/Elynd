@@ -1,5 +1,5 @@
-import { WorksNewPage } from '@/features/admin/works-new-page';
+import { WorksWorkflowPage } from '@/features/admin/works-workflow-page';
 
 export default function AdminWorkNewPage() {
-  return <WorksNewPage />;
+  return <WorksWorkflowPage />;
 }

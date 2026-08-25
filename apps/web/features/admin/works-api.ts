@@ -2,22 +2,21 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 
 import {
-  type GeneratePartAudioBody,
-  generatePartAudioResultSchema,
-  partAudioViewSchema,
-} from '@gloaming/shared/api/content-assets';
-import {
   adminWorkListDataSchema,
   type AdminWorkListQuery,
   adminWorkSchema,
   type CheckEpubWorkReuseBody,
-  type CreateAdminTextWorkBody,
   createEpubWorkResultSchema,
   epubReuseResultSchema,
   type UpdateWorkBody,
 } from '@gloaming/shared/api/works';
 
-import { type AdminWorkView, normalizeAdminWork } from '@/features/works-http';
+import {
+  type AdminWorkSummaryView,
+  type AdminWorkView,
+  normalizeAdminWork,
+  normalizeAdminWorkSummary,
+} from '@/features/works-http';
 import { apiRequest, formatApiError } from '@/lib/api-request';
 
 export const adminWorksQueryKey = {
@@ -26,12 +25,10 @@ export const adminWorksQueryKey = {
   detail: (id: string) => [...adminWorksQueryKey.all, 'detail', id] as const,
 };
 
-export const adminPartAudioQueryKey = {
-  all: ['admin', 'part-audio'] as const,
-  detail: (partId: string) => [...adminPartAudioQueryKey.all, partId] as const,
-};
-
-export async function listAdminWorks(query: Partial<AdminWorkListQuery> = {}, init?: { signal?: AbortSignal }) {
+export async function listAdminWorks(
+  query: Partial<AdminWorkListQuery> = {},
+  init?: { signal?: AbortSignal },
+): Promise<{ items: AdminWorkSummaryView[]; pagination: { total: number; page: number; pageSize: number } }> {
   const search = new URLSearchParams();
   if (query.page) search.set('page', String(query.page));
   if (query.pageSize) search.set('pageSize', String(query.pageSize));
@@ -41,22 +38,12 @@ export async function listAdminWorks(query: Partial<AdminWorkListQuery> = {}, in
     schema: adminWorkListDataSchema,
     signal: init?.signal,
   });
-  return { ...data, items: data.items.map(normalizeAdminWork) };
+  return { ...data, items: data.items.map(normalizeAdminWorkSummary) };
 }
 
 export async function getAdminWork(id: string, init?: { signal?: AbortSignal }): Promise<AdminWorkView> {
   const raw = await apiRequest(`/api/admin/works/${encodeURIComponent(id)}`, {
     schema: adminWorkSchema,
-    signal: init?.signal,
-  });
-  return normalizeAdminWork(raw);
-}
-
-export async function createAdminTextWork(body: CreateAdminTextWorkBody, init?: { signal?: AbortSignal }) {
-  const raw = await apiRequest('/api/admin/works', {
-    method: 'POST',
-    schema: adminWorkSchema,
-    json: body,
     signal: init?.signal,
   });
   return normalizeAdminWork(raw);
@@ -111,30 +98,19 @@ export async function unpublishAdminWork(id: string, init?: { signal?: AbortSign
   return normalizeAdminWork(raw);
 }
 
+export async function reparseAdminWork(id: string, init?: { signal?: AbortSignal }) {
+  const raw = await apiRequest(`/api/admin/works/${encodeURIComponent(id)}/reparse`, {
+    method: 'POST',
+    schema: adminWorkSchema,
+    signal: init?.signal,
+  });
+  return normalizeAdminWork(raw);
+}
+
 export async function deleteAdminWork(id: string, init?: { signal?: AbortSignal }) {
   await apiRequest(`/api/admin/works/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     schema: z.void(),
-    signal: init?.signal,
-  });
-}
-
-export async function getAdminPartAudio(partId: string, init?: { signal?: AbortSignal }) {
-  return apiRequest(`/api/admin/parts/${encodeURIComponent(partId)}/audio`, {
-    schema: partAudioViewSchema,
-    signal: init?.signal,
-  });
-}
-
-export async function generateAdminPartAudio(
-  partId: string,
-  body: GeneratePartAudioBody = {},
-  init?: { signal?: AbortSignal },
-) {
-  return apiRequest(`/api/admin/parts/${encodeURIComponent(partId)}/audio/generate`, {
-    method: 'POST',
-    schema: generatePartAudioResultSchema,
-    json: body,
     signal: init?.signal,
   });
 }

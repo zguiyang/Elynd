@@ -1,4 +1,4 @@
-import type { AdminWork, Work } from '@gloaming/shared/api/works';
+import type { AdminOriginAsset, AdminWork, AdminWorkSummary, Work } from '@gloaming/shared/api/works';
 
 /** Work view model: dates as ISO strings. */
 export type WorkView = {
@@ -20,7 +20,15 @@ export type WorkView = {
 export type AdminWorkView = WorkView & {
   derivedFreshness: AdminWork['derivedFreshness'];
   originMeta: AdminWork['originMeta'];
+  originAsset: AdminOriginAsset | null;
   parts: AdminWork['parts'];
+};
+
+export type AdminWorkSummaryView = WorkView & {
+  derivedFreshness: AdminWorkSummary['derivedFreshness'];
+  originMeta: AdminWorkSummary['originMeta'];
+  originAsset: AdminOriginAsset | null;
+  partCount: number;
 };
 
 function toIso(value: string | Date): string {
@@ -50,6 +58,17 @@ export function normalizeAdminWork(raw: AdminWork): AdminWorkView {
     ...normalizeWork(raw),
     derivedFreshness: raw.derivedFreshness,
     originMeta: raw.originMeta,
+    originAsset: raw.originAsset,
     parts: raw.parts,
+  };
+}
+
+export function normalizeAdminWorkSummary(raw: AdminWorkSummary): AdminWorkSummaryView {
+  return {
+    ...normalizeWork(raw),
+    derivedFreshness: raw.derivedFreshness,
+    originMeta: raw.originMeta,
+    originAsset: raw.originAsset,
+    partCount: raw.partCount,
   };
 }

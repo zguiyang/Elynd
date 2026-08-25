@@ -6,5 +6,5 @@ type PageProps = {
 
 export default async function AdminWorkEditPage({ params }: PageProps) {
   const { id } = await params;
-  return <WorksFormPage key={id} mode="edit" workId={id} />;
+  return <WorksFormPage key={id} workId={id} />;
 }

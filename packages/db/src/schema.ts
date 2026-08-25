@@ -118,6 +118,7 @@ export const readingWork = pgTable(
   {
     id: text('id').primaryKey(),
     title: text('title').notNull(),
+    author: text('author').notNull().default(''),
     description: text('description').notNull().default(''),
     language: text('language').notNull().default('en'),
     status: text('status').notNull().default('draft'),
@@ -307,6 +308,8 @@ export type ContentAssetMeta = {
   /** Origin file uploads (kind = origin_file). */
   originalFileName?: string;
   size?: number;
+  /** Original path inside the source EPUB (image / cover assets). */
+  originalPath?: string;
   /** True when the upload reused an already-stored object (dedupe / instant upload). */
   reused?: boolean;
 };

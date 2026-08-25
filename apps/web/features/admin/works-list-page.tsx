@@ -106,7 +106,7 @@ function WorkRowActions({ work, onPublish, onUnpublish, onReparse, onDelete }: W
           {canPreview ? (
             <DropdownMenuItem onClick={() => router.push(ADMIN_ROUTES.workPreview(work.id))}>
               <Eye />
-              预览章节
+              预览
             </DropdownMenuItem>
           ) : null}
           <DropdownMenuItem onClick={() => router.push(ADMIN_ROUTES.workEdit(work.id))}>

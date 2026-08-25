@@ -129,7 +129,7 @@ function WorksFormEditor({ workId, work }: { workId: string; work: AdminWorkView
                   href={ADMIN_ROUTES.workPreview(work.id)}
                   className="ml-1 font-medium text-primary underline-offset-4 hover:underline"
                 >
-                  查看章节预览 →
+                  查看预览 →
                 </Link>
               </p>
             ) : (

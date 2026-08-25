@@ -394,7 +394,7 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
               nativeButton={false}
               render={<Link href={ADMIN_ROUTES.workPreview(work.id)} />}
             >
-              预览章节
+              预览作品
             </Button>
           ) : null}
           {work.status !== 'published' ? (
@@ -515,7 +515,7 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
                     render={<Link href={ADMIN_ROUTES.workPreview(work.id)} />}
                   >
                     <ListTree data-icon="inline-start" />
-                    预览章节
+                    预览作品
                   </Button>
                 </div>
               )}

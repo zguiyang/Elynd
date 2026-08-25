@@ -22,6 +22,7 @@ export const ADMIN_ROUTES = {
   workNew: '/admin/works/new',
   workDetail: (id: string) => `/admin/works/${id}` as const,
   workPreview: (id: string) => `/admin/works/${id}/preview` as const,
+  workPreviewPart: (id: string, partId: string) => `/admin/works/${id}/preview/part/${partId}` as const,
   workEdit: (id: string) => `/admin/works/${id}/edit` as const,
   ai: '/admin/ai',
   aiLogs: '/admin/ai-logs',

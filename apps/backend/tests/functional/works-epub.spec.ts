@@ -247,4 +247,127 @@ describe('POST /api/admin/works/epub (dedupe-aware)', () => {
     expect(deleteSecond.status).toBe(204);
     expect(memory.store.has(second.asset.storageKey)).toBe(false);
   });
+
+  it('lists works as compact summaries without part bodies', async () => {
+    const upload = await uploadEpub(adminCookie, {
+      fileName: 'List Summary.epub',
+      bytes: ZIP_BYTES,
+      type: 'application/epub+zip',
+    });
+    const created = (await upload.json()) as CreateEpubWorkResult;
+    createdWorkIds.push(created.id);
+
+    const response = await app.request('/api/admin/works', { headers: { Cookie: adminCookie } });
+    expect(response.status).toBe(200);
+    const data = (await response.json()) as {
+      items: Array<{ id: string; partCount?: number; parts?: unknown }>;
+    };
+    const row = data.items.find((item) => item.id === created.id);
+    expect(row).toBeDefined();
+    expect(row).not.toHaveProperty('parts');
+    expect(typeof row?.partCount).toBe('number');
+  });
+});
+
+describe('publish / unpublish status guards', () => {
+  const memory = createMemoryObjectStore();
+  const createdWorkIds: string[] = [];
+  let adminCookie = '';
+
+  beforeAll(async () => {
+    memory.store.clear();
+    setObjectStoreForTests(memory);
+    adminCookie = (await createSession('admin')).cookie;
+  });
+
+  afterAll(async () => {
+    for (const workId of createdWorkIds) {
+      await db.delete(readingWorkTable).where(eq(readingWorkTable.id, workId));
+    }
+    await db.delete(uploadedObjectTable).where(eq(uploadedObjectTable.contentHash, ZIP_HASH));
+    resetObjectStoreCache();
+  });
+
+  async function publishRequest(id: string) {
+    return app.request(`/api/admin/works/${id}/publish`, {
+      method: 'POST',
+      headers: { Cookie: adminCookie },
+    });
+  }
+
+  async function unpublishRequest(id: string) {
+    return app.request(`/api/admin/works/${id}/unpublish`, {
+      method: 'POST',
+      headers: { Cookie: adminCookie },
+    });
+  }
+
+  it('refuses to publish a processing work', async () => {
+    const upload = await uploadEpub(adminCookie, {
+      fileName: 'Processing.epub',
+      bytes: ZIP_BYTES,
+      type: 'application/epub+zip',
+    });
+    const created = (await upload.json()) as CreateEpubWorkResult;
+    createdWorkIds.push(created.id);
+
+    const publish = await publishRequest(created.id);
+    expect(publish.status).toBe(409);
+  });
+
+  it('refuses to publish a failed work', async () => {
+    const upload = await uploadEpub(adminCookie, {
+      fileName: 'Failed.epub',
+      bytes: ZIP_BYTES,
+      type: 'application/epub+zip',
+    });
+    const created = (await upload.json()) as CreateEpubWorkResult;
+    createdWorkIds.push(created.id);
+    await db
+      .update(readingWorkTable)
+      .set({ status: 'failed', originMeta: { lastError: 'boom' } })
+      .where(eq(readingWorkTable.id, created.id));
+
+    const publish = await publishRequest(created.id);
+    expect(publish.status).toBe(409);
+  });
+
+  it('refuses to unpublish a draft', async () => {
+    const response = await app.request('/api/admin/works', {
+      method: 'POST',
+      headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'Guard Draft', body: 'Some body text.' }),
+    });
+    expect(response.status).toBe(201);
+    const created = (await response.json()) as { id: string };
+    createdWorkIds.push(created.id);
+
+    const unpublish = await unpublishRequest(created.id);
+    expect(unpublish.status).toBe(409);
+  });
+
+  it('publishes a draft with required fields and unpublishes it back', async () => {
+    const response = await app.request('/api/admin/works', {
+      method: 'POST',
+      headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'Publishable Draft', body: 'Some body text.' }),
+    });
+    expect(response.status).toBe(201);
+    const created = (await response.json()) as { id: string };
+    createdWorkIds.push(created.id);
+
+    await app.request(`/api/admin/works/${created.id}`, {
+      method: 'PATCH',
+      headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sourceNote: 'guard-test-source', tags: ['story'] }),
+    });
+
+    const publish = await publishRequest(created.id);
+    expect(publish.status).toBe(200);
+    expect(((await publish.json()) as { status: string }).status).toBe('published');
+
+    const unpublish = await unpublishRequest(created.id);
+    expect(unpublish.status).toBe(200);
+    expect(((await unpublish.json()) as { status: string }).status).toBe('draft');
+  });
 });

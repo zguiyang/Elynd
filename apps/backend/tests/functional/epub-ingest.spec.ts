@@ -188,3 +188,113 @@ describe('EPUB ingest pipeline', () => {
     expect(String(work!.originMeta.lastError ?? '')).toContain('container.xml');
   });
 });
+
+describe('POST /api/admin/works/:id/reparse', () => {
+  const memory = createMemoryObjectStore();
+  const createdWorkIds: string[] = [];
+  let adminCookie = '';
+
+  beforeAll(async () => {
+    memory.store.clear();
+    setObjectStoreForTests(memory);
+    adminCookie = await createAdminSession();
+  });
+
+  afterAll(async () => {
+    for (const workId of createdWorkIds) {
+      await db.delete(readingWorkTable).where(eq(readingWorkTable.id, workId));
+    }
+    await db.delete(uploadedObjectTable);
+    resetObjectStoreCache();
+  });
+
+  async function reparseRequest(id: string) {
+    return app.request(`/api/admin/works/${id}/reparse`, {
+      method: 'POST',
+      headers: { Cookie: adminCookie },
+    });
+  }
+
+  async function patchRequest(id: string, body: Record<string, unknown>) {
+    return app.request(`/api/admin/works/${id}`, {
+      method: 'PATCH',
+      headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it('recovers a failed work: clears lastError, sets processing, re-parses to draft', async () => {
+    const response = await uploadEpub(adminCookie, await buildSampleEpubBytes());
+    expect(response.status).toBe(201);
+    const created = (await response.json()) as { id: string };
+    createdWorkIds.push(created.id);
+
+    await db
+      .update(readingWorkTable)
+      .set({ status: 'failed', originMeta: { lastError: 'simulated failure', failedAt: '2026-08-25T00:00:00.000Z' } })
+      .where(eq(readingWorkTable.id, created.id));
+
+    const reparse = await reparseRequest(created.id);
+    expect(reparse.status).toBe(200);
+    expect(((await reparse.json()) as { status: string }).status).toBe('processing');
+
+    const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
+    expect(work!.status).toBe('processing');
+    expect(work!.originMeta.lastError).toBeUndefined();
+
+    await processEpubWork(created.id);
+    const [after] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
+    expect(after!.status).toBe('draft');
+    expect(after!.title).toBe('The Great Book');
+  });
+
+  it('refuses to re-parse published works', async () => {
+    const response = await uploadEpub(adminCookie, await buildSampleEpubBytes());
+    const created = (await response.json()) as { id: string };
+    createdWorkIds.push(created.id);
+    await processEpubWork(created.id);
+
+    await patchRequest(created.id, { sourceNote: 'test-source', tags: ['story'] });
+    const publish = await app.request(`/api/admin/works/${created.id}/publish`, {
+      method: 'POST',
+      headers: { Cookie: adminCookie },
+    });
+    expect(publish.status).toBe(200);
+
+    const reparse = await reparseRequest(created.id);
+    expect(reparse.status).toBe(409);
+  });
+
+  it('refuses to re-parse while processing', async () => {
+    const response = await uploadEpub(adminCookie, await buildSampleEpubBytes());
+    expect(response.status).toBe(201);
+    const created = (await response.json()) as { id: string };
+    createdWorkIds.push(created.id);
+
+    const reparse = await reparseRequest(created.id);
+    expect(reparse.status).toBe(409);
+  });
+
+  it('keeps hand-edited metadata across re-parse (first parse fills, re-run preserves)', async () => {
+    const response = await uploadEpub(adminCookie, await buildSampleEpubBytes());
+    const created = (await response.json()) as { id: string };
+    createdWorkIds.push(created.id);
+    await processEpubWork(created.id);
+
+    await patchRequest(created.id, {
+      title: 'Edited Title',
+      author: 'Edited Author',
+      description: 'Edited description',
+    });
+
+    const reparse = await reparseRequest(created.id);
+    expect(reparse.status).toBe(200);
+    await processEpubWork(created.id);
+
+    const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
+    expect(work!.title).toBe('Edited Title');
+    expect(work!.author).toBe('Edited Author');
+    expect(work!.description).toBe('Edited description');
+    expect(work!.status).toBe('draft');
+  });
+});

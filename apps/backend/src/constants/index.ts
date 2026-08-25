@@ -1,4 +1,6 @@
 export const HTTP_STATUS = {
+  OK: 200,
+  PARTIAL_CONTENT: 206,
   CREATED: 201,
   ACCEPTED: 202,
   NO_CONTENT: 204,

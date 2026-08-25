@@ -39,7 +39,7 @@ app.use(
 app.use('*', secureHeaders());
 
 app.use('*', async (c, next) => {
-  if (c.req.path === '/' || c.req.path === '/api/health') {
+  if (c.req.path === '/' || c.req.path === '/api/health' || c.req.path.startsWith('/api/assets/')) {
     return next();
   }
   // hono-rate-limiter middleware is typed against default Env

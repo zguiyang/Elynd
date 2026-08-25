@@ -4,6 +4,7 @@ import { enqueuePing } from '@/lib/queue';
 import { redisPing } from '@/lib/redis';
 import { type AuthVariables, requireAdmin, requireAuth } from '@/middleware/auth';
 import { aiRoutes } from '@/modules/ai/route';
+import { assetsRoutes } from '@/modules/assets/route';
 import { assistRoutes } from '@/modules/assist/route';
 import { contentAssetsRoutes } from '@/modules/content-assets/route';
 import { conversationsRoutes } from '@/modules/conversations/route';
@@ -38,6 +39,7 @@ routes.post('/api/admin/jobs/ping', requireAdmin, async (c) => {
 
 routes.route('/', worksRoutes);
 routes.route('/', contentAssetsRoutes);
+routes.route('/', assetsRoutes);
 routes.route('/', shelfRoutes);
 routes.route('/', readerRoutes);
 routes.route('/', readingHistoryRoutes);

@@ -20,15 +20,16 @@ import {
   EPUB_UPLOAD_MAX_BYTES,
   getPublishWorkIssues,
   type Part,
-  type UpdatePartBody,
   type UpdateWorkBody,
   type Work,
 } from '@gloaming/shared/api/works';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';
+import { JOB_EPUB_INGEST } from '@/jobs/epub-ingest';
 import { AppError, NotFoundError, ValidationFailedError } from '@/lib/errors';
 import { rootLogger } from '@/lib/logger';
+import { enqueue } from '@/lib/queue';
 import { getWorksDerivedFreshness } from '@/modules/derived-freshness';
 import { deleteObject } from '@/modules/oss';
 import { deleteBilingualCacheForPart } from '@/modules/translate/service';
@@ -55,6 +56,7 @@ function toWork(row: WorkRow): Work {
   return {
     id: row.id,
     title: row.title,
+    author: row.author,
     description: row.description,
     language: row.language,
     status: row.status as Work['status'],
@@ -102,6 +104,7 @@ async function toAdminWork(row: WorkRow, parts?: PartRow[]): Promise<AdminWork> 
   return {
     ...toWork(row),
     derivedFreshness: freshness ?? { audio: 'missing' },
+    originMeta: row.originMeta,
     parts: partRows.map(toPart),
   };
 }
@@ -152,7 +155,23 @@ function aggregateTags(rows: { tags: string[] }[]): string[] {
   return ordered;
 }
 
-/** Internal admin_text seed — creates one work + one body part. */
+/** Escape text for HTML body storage. */
+function escapeHtmlText(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/** Convert a plain-text body (textarea input) into paragraph HTML. */
+export function textToParagraphHtml(body: string): string {
+  return body
+    .replace(/\r\n/g, '\n')
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((paragraph) => `<p>${escapeHtmlText(paragraph)}</p>`)
+    .join('\n');
+}
+
+/** Internal admin_text seed — creates one work + one body part (stored as HTML). */
 export async function createAdminTextWork(input: CreateAdminTextWorkBody): Promise<AdminWork> {
   const workId = randomUUID();
   const partId = randomUUID();
@@ -183,7 +202,7 @@ export async function createAdminTextWork(input: CreateAdminTextWorkBody): Promi
       sortOrder: 0,
       kind: 'body',
       title: input.title,
-      body: input.body,
+      body: textToParagraphHtml(input.body),
     })
     .returning();
 
@@ -226,7 +245,7 @@ async function insertEpubWorkAndAsset(input: {
       id: workId,
       title,
       description: '',
-      status: 'draft',
+      status: 'processing',
       originKind: 'admin_epub',
       originMeta: { originalFileName: input.fileName, reused: input.reused },
       tags: [],
@@ -256,7 +275,7 @@ async function insertEpubWorkAndAsset(input: {
   return {
     id: workId,
     title,
-    status: 'draft',
+    status: 'processing',
     originKind: 'admin_epub',
     originMeta: { originalFileName: input.fileName, reused: input.reused },
     asset: {
@@ -294,11 +313,13 @@ export async function createAdminEpubWork(input: {
     throw new AppError(500, 'Failed to upload EPUB');
   }
 
-  return insertEpubWorkAndAsset({
+  const created = await insertEpubWorkAndAsset({
     fileName,
     meta: result.meta,
     reused: result.duplicated,
   });
+  await enqueue(JOB_EPUB_INGEST, { workId: created.id });
+  return created;
 }
 
 /**
@@ -333,7 +354,9 @@ export async function reuseAdminEpubWork(input: {
     return null;
   }
 
-  return insertEpubWorkAndAsset({ fileName, meta: result.meta, reused: true });
+  const created = await insertEpubWorkAndAsset({ fileName, meta: result.meta, reused: true });
+  await enqueue(JOB_EPUB_INGEST, { workId: created.id });
+  return created;
 }
 
 export async function listAdminWorks(query: AdminWorkListQuery): Promise<AdminWorkListData> {
@@ -391,6 +414,7 @@ export async function updateWork(id: string, input: UpdateWorkBody): Promise<Adm
 
   const patch: Partial<typeof readingWorkTable.$inferInsert> = {};
   if (input.title !== undefined) patch.title = input.title;
+  if (input.author !== undefined) patch.author = input.author;
   if (input.description !== undefined) patch.description = input.description;
   if (input.tags !== undefined) patch.tags = input.tags;
   if (input.sourceNote !== undefined) patch.sourceNote = input.sourceNote;
@@ -404,27 +428,6 @@ export async function updateWork(id: string, input: UpdateWorkBody): Promise<Adm
     throw new NotFoundError('Work');
   }
   return toAdminWork(row);
-}
-
-export async function updatePart(workId: string, partId: string, input: UpdatePartBody): Promise<AdminWork> {
-  const [existing] = await db
-    .select()
-    .from(readingPartTable)
-    .where(and(eq(readingPartTable.id, partId), eq(readingPartTable.workId, workId)))
-    .limit(1);
-  if (!existing) {
-    throw new NotFoundError('Part');
-  }
-
-  const patch: Partial<typeof readingPartTable.$inferInsert> = {};
-  if (input.title !== undefined) patch.title = input.title;
-  if (input.body !== undefined) patch.body = input.body;
-
-  if (Object.keys(patch).length > 0) {
-    await db.update(readingPartTable).set(patch).where(eq(readingPartTable.id, partId));
-  }
-
-  return getAdminWork(workId);
 }
 
 export async function publishWork(id: string): Promise<AdminWork> {

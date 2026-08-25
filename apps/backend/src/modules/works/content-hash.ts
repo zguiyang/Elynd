@@ -1,15 +1,15 @@
 import { createHash } from 'node:crypto';
 
-/** Normalize title+body so source hash is stable across trivial whitespace churn. */
+import { htmlToPlainText, normalizePartText } from '@/lib/part-text';
+
+/**
+ * Normalize title + HTML body so the source hash is stable across trivial
+ * whitespace / markup churn. Hashing is based on the extracted plain text —
+ * re-parsing the same content into different HTML keeps caches valid.
+ */
 export function normalizePartContent(title: string, body: string): string {
   const normalizedTitle = title.replace(/\s+/g, ' ').trim();
-  const normalizedBody = body
-    .replace(/\r\n/g, '\n')
-    .split(/\n/)
-    .map((line) => line.replace(/[ \t]+/g, ' ').trimEnd())
-    .join('\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+  const normalizedBody = normalizePartText(htmlToPlainText(body));
   return `${normalizedTitle}\n\n${normalizedBody}`;
 }
 

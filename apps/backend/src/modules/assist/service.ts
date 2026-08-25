@@ -7,6 +7,7 @@ import { type AssistAskBody } from '@gloaming/shared/api/assist';
 import { db } from '@/db';
 import { NotFoundError } from '@/lib/errors';
 import { rootLogger } from '@/lib/logger';
+import { htmlToPlainText } from '@/lib/part-text';
 import { composePromptMessages, PROMPT_ROLE, PROMPT_SCENE, type PromptMessage, renderPrompt } from '@/lib/prompts';
 import { type AiStreamDeltaEvent, type AiStreamDoneEvent, invokeAi, streamAi } from '@/modules/ai';
 import { truncatePreview } from '@/modules/ai/log';
@@ -167,10 +168,11 @@ export async function* streamAssistAsk(
 
   const selection = body.selection?.trim() || undefined;
   const question = body.question?.trim() || undefined;
-  const neighbor = selection ? neighborWindow(part.body, selection) : '';
+  const partText = htmlToPlainText(part.body);
+  const neighbor = selection ? neighborWindow(partText, selection) : '';
   const tools = resolveAssistToolsForAction(body.actionId, {
     title: part.partTitle,
-    body: part.body,
+    body: partText,
   });
 
   const memory = await loadLearnerMemory({

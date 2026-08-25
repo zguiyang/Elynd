@@ -10,6 +10,7 @@ import {
 import { db } from '@/db';
 import { NotFoundError } from '@/lib/errors';
 import { rootLogger } from '@/lib/logger';
+import { htmlToPlainText } from '@/lib/part-text';
 import { composePromptMessages, PROMPT_ROLE, PROMPT_SCENE } from '@/lib/prompts';
 import { getRedis } from '@/lib/redis';
 import { streamAi } from '@/modules/ai';
@@ -146,7 +147,7 @@ export async function* streamTranslatePart(
 ): AsyncGenerator<TranslateStreamEvent> {
   const part = await loadPublishedPart(body.partId);
   const contentHash = hashPartContent(part.title, part.body);
-  const sentences = splitPartSentences(part.body);
+  const sentences = splitPartSentences(htmlToPlainText(part.body));
 
   const cached = await readCache(part.id, contentHash);
   if (cached) {

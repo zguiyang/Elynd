@@ -24,6 +24,7 @@ import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';
 import { AppError, NotFoundError } from '@/lib/errors';
 import { rootLogger } from '@/lib/logger';
+import { htmlToPlainText } from '@/lib/part-text';
 import { deleteObject, getObject, objectExists, putObject } from '@/modules/oss';
 import { recordTtsInvocation } from '@/modules/tts/log';
 import { synthesizeTts } from '@/modules/tts/service';
@@ -312,7 +313,7 @@ export async function generatePartAudio(
   options: { userId?: string },
 ): Promise<GeneratePartAudioResult> {
   const part = await loadPart(partId);
-  const text = buildPartAudioText(part.title, part.body);
+  const text = buildPartAudioText(part.title, htmlToPlainText(part.body));
   if (!text.trim()) {
     throw new AppError(HTTP_STATUS.BAD_REQUEST, 'Part has no text to synthesize');
   }
@@ -371,6 +372,32 @@ export async function getPartAudioAvailability(
   const part = title !== undefined && body !== undefined ? { title, body } : await loadPart(partId);
   const [us, uk] = await Promise.all([isTrackPlayable(part, partId, 'us'), isTrackPlayable(part, partId, 'uk')]);
   return { us, uk };
+}
+
+/** Learner image proxy: asset must belong to a published work (image/cover kinds). */
+export async function getPublishedAsset(assetId: string): Promise<{ body: Buffer; mimeType: string } | null> {
+  const [asset] = await db
+    .select({
+      storageKey: contentAssetTable.storageKey,
+      mimeType: contentAssetTable.mimeType,
+      kind: contentAssetTable.kind,
+      workId: contentAssetTable.workId,
+    })
+    .from(contentAssetTable)
+    .innerJoin(readingWorkTable, eq(contentAssetTable.workId, readingWorkTable.id))
+    .where(and(eq(contentAssetTable.id, assetId), eq(readingWorkTable.status, 'published')))
+    .limit(1);
+  if (!asset || !(asset.kind === 'image' || asset.kind === 'cover')) {
+    return null;
+  }
+  try {
+    const object = await getObject(asset.storageKey);
+    if (!object) return null;
+    return { body: object.body, mimeType: object.contentType || asset.mimeType };
+  } catch (error) {
+    partAudioLogger.warn({ err: error, assetId, storageKey: asset.storageKey }, 'Asset object read failed');
+    return null;
+  }
 }
 
 /** Learner: published work only; refuses stale or missing objects. */

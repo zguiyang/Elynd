@@ -136,7 +136,7 @@ describe('POST /api/admin/works/epub (dedupe-aware)', () => {
 
     const result = (await response.json()) as CreateEpubWorkResult;
     expect(result.title).toBe('The Great Book');
-    expect(result.status).toBe('draft');
+    expect(result.status).toBe('processing');
     expect(result.originKind).toBe('admin_epub');
     expect(result.asset.storageKey).toBe(`epub/${ZIP_HASH}.epub`);
     expect(result.asset.contentHash).toBe(ZIP_HASH);

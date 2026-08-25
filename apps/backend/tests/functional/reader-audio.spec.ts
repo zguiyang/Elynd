@@ -1,7 +1,12 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { readingWork as readingWorkTable, ttsConfig as ttsConfigTable, user as userTable } from '@gloaming/db';
+import {
+  readingPart as readingPartTable,
+  readingWork as readingWorkTable,
+  ttsConfig as ttsConfigTable,
+  user as userTable,
+} from '@gloaming/db';
 import { audioKindForRole } from '@gloaming/shared/api/content-assets';
 import type { ReaderAudioTrack, ReaderSessionData } from '@gloaming/shared/api/reader';
 import type { AdminWork } from '@gloaming/shared/api/works';
@@ -242,15 +247,9 @@ describe('learner part audio', () => {
     });
     expect(((await avail.json()) as ReaderSessionData).audioAvailable).toEqual({ us: true, uk: false });
 
-    expect(
-      (
-        await app.request(`/api/admin/works/${work.id}/parts/${partId}`, {
-          method: 'PATCH',
-          headers: { Cookie: admin.cookie, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ body: 'Listen body changed.' }),
-        })
-      ).status,
-    ).toBe(200);
+    // Parts are read-only now — simulate content change directly in the DB
+    // to verify audio invalidation (hash is based on extracted plain text).
+    await db.update(readingPartTable).set({ body: 'Listen body changed.' }).where(eq(readingPartTable.id, partId));
 
     const staleAvail = await app.request(`/api/reader/works/${work.id}`, {
       headers: { Cookie: learner.cookie },

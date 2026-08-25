@@ -1,7 +1,7 @@
 import type { Job } from 'bullmq';
 import { Worker } from 'bullmq';
 
-import { type EpubIngestJobData, JOB_EPUB_INGEST, processEpubIngest } from '@/jobs/epub-ingest';
+import { type ContentParseJobData, JOB_CONTENT_PARSE, processContentParse } from '@/jobs/content-parse';
 import type { PingJobData } from '@/jobs/ping';
 import { JOB_PING, processPing } from '@/jobs/ping';
 import { workerLogger } from '@/lib/logger';
@@ -11,8 +11,8 @@ async function processJob(job: Pick<Job, 'name' | 'data'>): Promise<unknown> {
   switch (job.name) {
     case JOB_PING:
       return processPing(job.data as PingJobData);
-    case JOB_EPUB_INGEST:
-      return processEpubIngest(job.data as EpubIngestJobData);
+    case JOB_CONTENT_PARSE:
+      return processContentParse(job.data as ContentParseJobData);
     default:
       throw new Error(`Unknown job name: ${job.name}`);
   }

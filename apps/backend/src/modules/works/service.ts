@@ -28,7 +28,7 @@ import {
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';
-import { JOB_EPUB_INGEST } from '@/jobs/epub-ingest';
+import { JOB_CONTENT_PARSE } from '@/jobs/content-parse';
 import { AppError, NotFoundError, ValidationFailedError } from '@/lib/errors';
 import { rootLogger } from '@/lib/logger';
 import { enqueue } from '@/lib/queue';
@@ -380,7 +380,7 @@ export async function createAdminEpubWork(input: {
     meta: result.meta,
     reused: result.duplicated,
   });
-  await enqueue(JOB_EPUB_INGEST, { workId: created.id });
+  await enqueue(JOB_CONTENT_PARSE, { workId: created.id });
   return created;
 }
 
@@ -417,7 +417,7 @@ export async function reuseAdminEpubWork(input: {
   }
 
   const created = await insertEpubWorkAndAsset({ fileName, meta: result.meta, reused: true });
-  await enqueue(JOB_EPUB_INGEST, { workId: created.id });
+  await enqueue(JOB_CONTENT_PARSE, { workId: created.id });
   return created;
 }
 
@@ -571,7 +571,7 @@ export async function reparseWork(id: string): Promise<AdminWork> {
     throw new NotFoundError('Work');
   }
 
-  await enqueue(JOB_EPUB_INGEST, { workId: id });
+  await enqueue(JOB_CONTENT_PARSE, { workId: id });
   return toAdminWork(row);
 }
 

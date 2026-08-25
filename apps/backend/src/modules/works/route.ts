@@ -79,7 +79,7 @@ worksRoutes.post('/api/admin/works/:id/unpublish', requireAdmin, async (c) => {
   return c.json(work);
 });
 
-/** Re-run the EPUB ingest job (failed drafts) — refused while processing/published. */
+/** Re-run the content parse job (failed drafts) — refused while processing/published. */
 worksRoutes.post('/api/admin/works/:id/reparse', requireAdmin, async (c) => {
   const work = await worksService.reparseWork(c.req.param('id'));
   return c.json(work);

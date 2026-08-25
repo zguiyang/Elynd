@@ -300,7 +300,7 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
   const isEpub = work.originKind === 'admin_epub';
   const states = stepStates(work);
 
-  // Poll while the EPUB ingest job is running.
+  // Poll while the content parse job is running.
   useEffect(() => {
     if (work.status !== 'processing') {
       return;

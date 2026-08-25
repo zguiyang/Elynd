@@ -21,12 +21,13 @@ export const PART_KINDS = ['chapter', 'body', 'section', 'segment'] as const;
 export type PartKind = (typeof PART_KINDS)[number];
 
 export const WORK_TITLE_MAX = 200 as const;
+export const WORK_AUTHOR_MAX = 200 as const;
 export const WORK_DESCRIPTION_MAX = 2000 as const;
 export const WORK_SOURCE_NOTE_MAX = 500 as const;
 export const WORK_TAG_MAX_ITEMS = 10 as const;
 export const WORK_TAG_MAX_LEN = 40 as const;
-export const PART_BODY_MAX_CHARS = 500_000 as const;
-export const PART_TITLE_MAX = 200 as const;
+/** Max HTML body chars per part — markup inflates plain text ~1.5-2x. */
+export const PART_BODY_MAX_CHARS = 1_500_000 as const;
 
 /** Max EPUB upload size (bytes) — enforced by frontend and backend. */
 export const EPUB_UPLOAD_MAX_BYTES = 50 * 1024 * 1024;
@@ -38,6 +39,7 @@ const tagsSchema = z.array(tagItemSchema).max(WORK_TAG_MAX_ITEMS);
 export const workSchema = z.object({
   id: z.string(),
   title: z.string(),
+  author: z.string(),
   description: z.string(),
   language: z.string(),
   status: z.enum(WORK_STATUSES),
@@ -85,6 +87,7 @@ export type DerivedFreshness = z.infer<typeof derivedFreshnessSchema>;
 /** Admin work JSON includes derived projection freshness for ops reminders. */
 export const adminWorkSchema = workSchema.extend({
   derivedFreshness: derivedFreshnessSchema,
+  originMeta: z.record(z.string(), z.unknown()).default({}),
   parts: z.array(partSchema),
 });
 
@@ -133,19 +136,13 @@ export type EpubReuseResult = z.infer<typeof epubReuseResultSchema>;
 
 export const updateWorkBodySchema = z.object({
   title: z.string().trim().min(1).max(WORK_TITLE_MAX).optional(),
+  author: z.string().max(WORK_AUTHOR_MAX).optional(),
   description: z.string().max(WORK_DESCRIPTION_MAX).optional(),
   tags: tagsSchema.optional(),
   sourceNote: z.string().max(WORK_SOURCE_NOTE_MAX).optional(),
 });
 
 export type UpdateWorkBody = z.infer<typeof updateWorkBodySchema>;
-
-export const updatePartBodySchema = z.object({
-  title: z.string().trim().min(1).max(PART_TITLE_MAX).optional(),
-  body: z.string().max(PART_BODY_MAX_CHARS).optional(),
-});
-
-export type UpdatePartBody = z.infer<typeof updatePartBodySchema>;
 
 export const ADMIN_WORK_SORT_FIELDS = ['updatedAt'] as const;
 export type AdminWorkSortField = (typeof ADMIN_WORK_SORT_FIELDS)[number];

@@ -1,4 +1,4 @@
-import { processEpubWork } from '@/modules/epub-ingest/service';
+import { processContentWork } from '@/modules/content-parser';
 
 export const JOB_EPUB_INGEST = 'epub-ingest';
 
@@ -7,6 +7,6 @@ export type EpubIngestJobData = {
 };
 
 export async function processEpubIngest(data: EpubIngestJobData): Promise<{ ok: true; workId: string }> {
-  await processEpubWork(data.workId);
+  await processContentWork(data.workId);
   return { ok: true, workId: data.workId };
 }

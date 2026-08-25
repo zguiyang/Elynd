@@ -12,7 +12,7 @@ import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 
 import app from '@/app';
 import { db } from '@/db';
-import { processEpubWork } from '@/modules/epub-ingest/service';
+import { processContentWork } from '@/modules/content-parser';
 import { resetObjectStoreCache, setObjectStoreForTests } from '@/modules/oss';
 
 import { buildEpubBytes, buildSampleEpubBytes } from '../helpers/epub-builder';
@@ -110,7 +110,7 @@ describe('EPUB ingest pipeline', () => {
     createdWorkIds.push(created.id);
 
     // Upload enqueues the job; run the ingest synchronously for the test.
-    await processEpubWork(created.id);
+    await processContentWork(created.id);
 
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
     expect(work).toBeDefined();
@@ -161,7 +161,7 @@ describe('EPUB ingest pipeline', () => {
     const created = (await response.json()) as { id: string };
     createdWorkIds.push(created.id);
 
-    await processEpubWork(created.id);
+    await processContentWork(created.id);
 
     const parts = await db
       .select()
@@ -181,7 +181,7 @@ describe('EPUB ingest pipeline', () => {
     const created = (await response.json()) as { id: string };
     createdWorkIds.push(created.id);
 
-    await expect(processEpubWork(created.id)).rejects.toThrow();
+    await expect(processContentWork(created.id)).rejects.toThrow();
 
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
     expect(work!.status).toBe('failed');
@@ -242,7 +242,7 @@ describe('POST /api/admin/works/:id/reparse', () => {
     expect(work!.status).toBe('processing');
     expect(work!.originMeta.lastError).toBeUndefined();
 
-    await processEpubWork(created.id);
+    await processContentWork(created.id);
     const [after] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
     expect(after!.status).toBe('draft');
     expect(after!.title).toBe('The Great Book');
@@ -252,7 +252,7 @@ describe('POST /api/admin/works/:id/reparse', () => {
     const response = await uploadEpub(adminCookie, await buildSampleEpubBytes());
     const created = (await response.json()) as { id: string };
     createdWorkIds.push(created.id);
-    await processEpubWork(created.id);
+    await processContentWork(created.id);
 
     await patchRequest(created.id, { sourceNote: 'test-source', tags: ['story'] });
     const publish = await app.request(`/api/admin/works/${created.id}/publish`, {
@@ -279,7 +279,7 @@ describe('POST /api/admin/works/:id/reparse', () => {
     const response = await uploadEpub(adminCookie, await buildSampleEpubBytes());
     const created = (await response.json()) as { id: string };
     createdWorkIds.push(created.id);
-    await processEpubWork(created.id);
+    await processContentWork(created.id);
 
     await patchRequest(created.id, {
       title: 'Edited Title',
@@ -289,7 +289,7 @@ describe('POST /api/admin/works/:id/reparse', () => {
 
     const reparse = await reparseRequest(created.id);
     expect(reparse.status).toBe(200);
-    await processEpubWork(created.id);
+    await processContentWork(created.id);
 
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
     expect(work!.title).toBe('Edited Title');

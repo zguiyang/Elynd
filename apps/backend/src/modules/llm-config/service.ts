@@ -44,6 +44,7 @@ function toProvider(row: ProviderRow): LlmProvider {
     name: row.name,
     baseUrl: row.baseUrl,
     proxyUrl: row.proxyUrl ?? null,
+    thinkingParam: row.thinkingParam ?? null,
     isEnabled: row.isEnabled,
     apiKeySet: true,
     apiKeyMasked,
@@ -95,6 +96,7 @@ export async function createProvider(body: CreateLlmProviderBody): Promise<LlmPr
       baseUrl: body.baseUrl,
       apiKeyCiphertext: encryptApiKey(body.apiKey),
       proxyUrl: body.proxyUrl ?? null,
+      thinkingParam: body.thinkingParam ?? null,
       isEnabled: body.isEnabled,
     })
     .returning();
@@ -116,6 +118,9 @@ export async function updateProvider(id: string, body: UpdateLlmProviderBody): P
   }
   if (body.proxyUrl !== undefined) {
     patch.proxyUrl = body.proxyUrl;
+  }
+  if (body.thinkingParam !== undefined) {
+    patch.thinkingParam = body.thinkingParam;
   }
   if (body.isEnabled !== undefined) {
     patch.isEnabled = body.isEnabled;

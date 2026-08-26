@@ -18,6 +18,8 @@ export type ResolvedLlm = {
   protocol: LlmModelProtocol;
   /** Optional outbound proxy URI (provider-level config). */
   proxyUrl: string | null;
+  /** Provider-specific thinking-toggle parameter name; null = pass nothing. */
+  thinkingParam: string | null;
   temperature: number | null;
   maxTokens: number | null;
 };
@@ -39,6 +41,7 @@ export async function resolveLlmByModelRowId(modelRowId: string): Promise<Resolv
       modelEnabled: llmModelTable.isEnabled,
       baseUrl: llmProviderTable.baseUrl,
       proxyUrl: llmProviderTable.proxyUrl,
+      thinkingParam: llmProviderTable.thinkingParam,
       apiKeyCiphertext: llmProviderTable.apiKeyCiphertext,
       providerEnabled: llmProviderTable.isEnabled,
     })
@@ -68,6 +71,7 @@ export async function resolveLlmByModelRowId(modelRowId: string): Promise<Resolv
     apiKey,
     protocol: row.protocol,
     proxyUrl: row.proxyUrl ?? null,
+    thinkingParam: row.thinkingParam ?? null,
     temperature: row.temperature,
     maxTokens: row.maxTokens,
   };

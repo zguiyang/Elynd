@@ -8,6 +8,8 @@ const DEFAULT_MAX_RETRIES = 1;
 
 export type CreateChatModelOptions = {
   timeoutMs?: number;
+  /** Thinking-mode toggle; the wire parameter name comes from `ResolvedLlm.thinkingParam`. */
+  enableThinking?: boolean;
 };
 
 /**
@@ -17,9 +19,18 @@ export type CreateChatModelOptions = {
  * always set explicitly so upstream routing changes cannot silently switch
  * endpoints for a provider that only speaks one protocol. Outbound proxy
  * follows `llm_provider.proxy_url` → env vars → direct (see proxy.ts).
+ *
+ * Thinking toggle is fully dynamic: `resolved.thinkingParam` supplies the
+ * provider-specific parameter name (e.g. `enable_thinking`), and the boolean
+ * value comes from `options.enableThinking`. When the parameter name is
+ * unset, nothing is passed and the platform default applies.
  */
 export function createChatModel(resolved: ResolvedLlm, options?: CreateChatModelOptions): ChatOpenAI {
   const proxiedFetch = buildProxiedFetch(resolved.proxyUrl);
+  const modelKwargs =
+    resolved.thinkingParam && options?.enableThinking !== undefined
+      ? { [resolved.thinkingParam]: options.enableThinking }
+      : undefined;
   return new ChatOpenAI({
     model: resolved.modelId,
     apiKey: resolved.apiKey,
@@ -31,6 +42,7 @@ export function createChatModel(resolved: ResolvedLlm, options?: CreateChatModel
       baseURL: resolved.baseUrl,
       ...(proxiedFetch ? { fetch: proxiedFetch } : {}),
     },
+    ...(modelKwargs ? { modelKwargs } : {}),
     useResponsesApi: resolved.protocol === 'responses',
   });
 }

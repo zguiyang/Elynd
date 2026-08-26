@@ -355,6 +355,8 @@ export const llmProvider = pgTable('llm_provider', {
   apiKeyCiphertext: text('api_key_ciphertext').notNull(),
   /** Optional outbound proxy (http/https/socks5 URI) for reachability-gated gateways. */
   proxyUrl: text('proxy_url'),
+  /** Provider-specific thinking-toggle parameter name (e.g. `enable_thinking`); empty = pass nothing. */
+  thinkingParam: text('thinking_param'),
   isEnabled: boolean('is_enabled').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')

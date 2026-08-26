@@ -7,6 +7,7 @@ export const llmProviderSchema = z.object({
   name: z.string(),
   baseUrl: z.string(),
   proxyUrl: z.string().nullable(),
+  thinkingParam: z.string().nullable(),
   isEnabled: z.boolean(),
   apiKeySet: z.boolean(),
   apiKeyMasked: z.string().nullable(),
@@ -28,6 +29,14 @@ export const createLlmProviderBodySchema = z.object({
     .refine((value) => /^(https?|socks5):\/\//i.test(value), { message: '代理地址需为 http/https/socks5' })
     .optional()
     .nullable(),
+  thinkingParam: z
+    .string()
+    .trim()
+    .min(1)
+    .max(100)
+    .regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/, { message: '思考参数名需为合法标识符' })
+    .optional()
+    .nullable(),
   isEnabled: z.boolean().optional().default(true),
 });
 
@@ -44,6 +53,14 @@ export const updateLlmProviderBodySchema = z
       .url()
       .max(500)
       .refine((value) => /^(https?|socks5):\/\//i.test(value), { message: '代理地址需为 http/https/socks5' })
+      .optional()
+      .nullable(),
+    thinkingParam: z
+      .string()
+      .trim()
+      .min(1)
+      .max(100)
+      .regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/, { message: '思考参数名需为合法标识符' })
       .optional()
       .nullable(),
     isEnabled: z.boolean().optional(),

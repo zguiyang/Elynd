@@ -39,6 +39,8 @@ export type AiInvokeOptions<TSchema extends ZodTypeAny | undefined = undefined> 
   outputSchema?: TSchema;
   maxToolRounds?: number;
   timeoutMs?: number;
+  /** Thinking mode toggle; off by default. Only forwarded when the provider declares a thinking param. */
+  enableThinking?: boolean;
   requestSummaryExtra?: Record<string, unknown>;
 };
 
@@ -58,6 +60,8 @@ export type AiStreamOptions = {
   tools?: StructuredToolInterface[];
   maxToolRounds?: number;
   timeoutMs?: number;
+  /** Thinking mode toggle; off by default. Only forwarded when the provider declares a thinking param. */
+  enableThinking?: boolean;
   requestSummaryExtra?: Record<string, unknown>;
   signal?: AbortSignal;
 };
@@ -194,7 +198,10 @@ export async function invokeAi<TSchema extends ZodTypeAny | undefined = undefine
   try {
     const modelRowId = await resolveModelRowId(options);
     resolved = await resolveLlmByModelRowId(modelRowId);
-    const chat = createChatModel(resolved, { timeoutMs: options.timeoutMs });
+    const chat = createChatModel(resolved, {
+      timeoutMs: options.timeoutMs,
+      enableThinking: options.enableThinking ?? false,
+    });
     const conversation = toBaseMessages(options.messages);
     const tools = options.tools ?? [];
     const maxRounds = options.maxToolRounds ?? DEFAULT_MAX_TOOL_ROUNDS;
@@ -337,7 +344,10 @@ export async function* streamAi(options: AiStreamOptions): AsyncGenerator<AiStre
 
     const modelRowId = await resolveModelRowId(options);
     resolved = await resolveLlmByModelRowId(modelRowId);
-    const chat = createChatModel(resolved, { timeoutMs: options.timeoutMs });
+    const chat = createChatModel(resolved, {
+      timeoutMs: options.timeoutMs,
+      enableThinking: options.enableThinking ?? false,
+    });
     const conversation = toBaseMessages(options.messages);
     const tools = options.tools ?? [];
     const maxRounds = options.maxToolRounds ?? DEFAULT_MAX_TOOL_ROUNDS;

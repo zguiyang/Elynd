@@ -3,7 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { createChatModel } from '@/lib/llm/create-chat';
 import type { ResolvedLlm } from '@/lib/llm/resolve';
 
-function resolved(modelId: string, protocol: ResolvedLlm['protocol'] = 'chat-completions'): ResolvedLlm {
+function resolved(
+  modelId: string,
+  protocol: ResolvedLlm['protocol'] = 'chat-completions',
+  thinkingParam: string | null = null,
+): ResolvedLlm {
   return {
     modelRowId: 'row',
     providerId: 'provider',
@@ -14,6 +18,8 @@ function resolved(modelId: string, protocol: ResolvedLlm['protocol'] = 'chat-com
     protocol,
     temperature: 0.2,
     maxTokens: 2048,
+    proxyUrl: null,
+    thinkingParam,
   };
 }
 
@@ -42,5 +48,29 @@ describe('createChatModel', () => {
     expect(chat.temperature).toBe(0.2);
     expect(chat.maxTokens).toBe(2048);
     expect(chat.clientConfig.baseURL).toBe('https://example.com/v1');
+  });
+
+  it('forwards thinking toggle with the provider-declared parameter name', () => {
+    const chat = createChatModel(resolved('qwen3.7-plus', 'chat-completions', 'enable_thinking'), {
+      enableThinking: false,
+    });
+    expect(chat.modelKwargs).toEqual({ enable_thinking: false });
+  });
+
+  it('forwards enableThinking=true under the same dynamic parameter name', () => {
+    const chat = createChatModel(resolved('qwen3.7-plus', 'chat-completions', 'enable_thinking'), {
+      enableThinking: true,
+    });
+    expect(chat.modelKwargs).toEqual({ enable_thinking: true });
+  });
+
+  it('omits modelKwargs when the provider declares no thinking parameter', () => {
+    const chat = createChatModel(resolved('qwen3.7-plus'), { enableThinking: false });
+    expect(chat.modelKwargs).toEqual({});
+  });
+
+  it('omits modelKwargs when enableThinking is not specified', () => {
+    const chat = createChatModel(resolved('qwen3.7-plus', 'chat-completions', 'enable_thinking'));
+    expect(chat.modelKwargs).toEqual({});
   });
 });

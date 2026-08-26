@@ -23,6 +23,11 @@ export type AdminWorkView = WorkView & {
   originMeta: AdminWork['originMeta'];
   originAsset: AdminOriginAsset | null;
   parts: AdminWork['parts'];
+  sources: AdminWork['sources'];
+  category: AdminWork['category'];
+  metadataEnrichmentStatus: AdminWork['metadataEnrichmentStatus'];
+  metadataEnrichmentAt: string | null;
+  metadataProvenance: AdminWork['metadataProvenance'];
 };
 
 export type AdminWorkSummaryView = WorkView & {
@@ -30,6 +35,10 @@ export type AdminWorkSummaryView = WorkView & {
   originMeta: AdminWorkSummary['originMeta'];
   originAsset: AdminOriginAsset | null;
   partCount: number;
+  category: AdminWorkSummary['category'];
+  metadataEnrichmentStatus: AdminWorkSummary['metadataEnrichmentStatus'];
+  metadataEnrichmentAt: string | null;
+  metadataProvenance: AdminWorkSummary['metadataProvenance'];
 };
 
 function toIso(value: string | Date): string {
@@ -62,6 +71,11 @@ export function normalizeAdminWork(raw: AdminWork): AdminWorkView {
     originMeta: raw.originMeta,
     originAsset: raw.originAsset,
     parts: raw.parts,
+    sources: raw.sources,
+    category: raw.category,
+    metadataEnrichmentStatus: raw.metadataEnrichmentStatus,
+    metadataEnrichmentAt: raw.metadataEnrichmentAt == null ? null : toIso(raw.metadataEnrichmentAt),
+    metadataProvenance: raw.metadataProvenance,
   };
 }
 
@@ -72,5 +86,9 @@ export function normalizeAdminWorkSummary(raw: AdminWorkSummary): AdminWorkSumma
     originMeta: raw.originMeta,
     originAsset: raw.originAsset,
     partCount: raw.partCount,
+    category: raw.category,
+    metadataEnrichmentStatus: raw.metadataEnrichmentStatus,
+    metadataEnrichmentAt: raw.metadataEnrichmentAt == null ? null : toIso(raw.metadataEnrichmentAt),
+    metadataProvenance: raw.metadataProvenance,
   };
 }

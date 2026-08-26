@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { ADMIN_ROUTES } from '@/constants';
+import { MetadataReviewPanel } from '@/features/admin/metadata-review-panel';
 import {
   checkEpubWorkReuse,
   deleteAdminWork,
@@ -29,6 +30,7 @@ import { cn } from '@/lib/utils';
 const WORKFLOW_STEPS = [
   { id: 'upload', label: '上传' },
   { id: 'parse', label: '内容解析' },
+  { id: 'metadata', label: '信息回填' },
   { id: 'audio', label: '音频' },
   { id: 'publish', label: '发布' },
 ] as const;
@@ -76,12 +78,13 @@ function validateEpubFile(file: File): string | null {
 
 function stepStates(work: AdminWorkView | null): Record<WorkflowStepId, StepState> {
   if (!work) {
-    return { upload: 'active', parse: 'todo', audio: 'todo', publish: 'todo' };
+    return { upload: 'active', parse: 'todo', metadata: 'todo', audio: 'todo', publish: 'todo' };
   }
   if (work.originKind === 'admin_text') {
     return {
       upload: 'na',
       parse: 'na',
+      metadata: 'na',
       audio: 'na',
       publish: work.status === 'published' ? 'done' : 'todo',
     };
@@ -94,10 +97,21 @@ function stepStates(work: AdminWorkView | null): Record<WorkflowStepId, StepStat
         : work.originMeta.parsed
           ? 'done'
           : 'todo';
+  // Metadata backfill follows the parse pipeline: pending until parse is done,
+  // active while the AI job claims the work, done when completed.
+  const metadataState =
+    work.status === 'processing' || work.status === 'failed'
+      ? 'todo'
+      : work.metadataEnrichmentStatus === 'running'
+        ? 'active'
+        : work.metadataEnrichmentStatus === 'completed'
+          ? 'done'
+          : 'todo';
   const audioState = work.derivedFreshness.audio === 'missing' ? 'todo' : 'done';
   return {
     upload: 'done',
     parse: parseState,
+    metadata: metadataState,
     audio: audioState,
     publish: work.status === 'published' ? 'done' : 'todo',
   };
@@ -300,16 +314,16 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
   const isEpub = work.originKind === 'admin_epub';
   const states = stepStates(work);
 
-  // Poll while the content parse job is running.
+  // Poll while the content parse job or the AI metadata backfill is running.
   useEffect(() => {
-    if (work.status !== 'processing') {
+    if (work.status !== 'processing' && work.metadataEnrichmentStatus !== 'running') {
       return;
     }
     const timer = window.setInterval(() => {
       void invalidate(workId);
     }, 3000);
     return () => window.clearInterval(timer);
-  }, [work.status, workId, invalidate]);
+  }, [work.status, work.metadataEnrichmentStatus, workId, invalidate]);
 
   async function handleReparse() {
     try {
@@ -525,7 +539,27 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
           )}
         </section>
 
-        {/* Step 3 — audio */}
+        {/* Step 3 — metadata backfill & review */}
+        <section className="rounded-2xl border border-border bg-card px-6 py-6">
+          <h2 className="flex items-center gap-2 font-heading text-base font-semibold">
+            <span className="flex size-6 items-center justify-center rounded-full bg-brand-soft/60 text-brand-deep">
+              <Sparkles className="size-3.5" />
+            </span>
+            信息回填
+            {states.metadata === 'done' ? <Check className="size-4 text-brand-deep" /> : null}
+          </h2>
+          {!isEpub ? (
+            <p className="mt-4 text-sm text-muted-foreground">文本作品不参与信息回填流程。</p>
+          ) : work.status === 'processing' ? (
+            <p className="mt-4 text-sm text-muted-foreground">等待内容解析完成后自动回填…</p>
+          ) : work.status === 'failed' ? (
+            <p className="mt-4 text-sm text-muted-foreground">解析失败，无法回填；可在上方重新解析。</p>
+          ) : (
+            <MetadataReviewPanel workId={work.id} work={work} />
+          )}
+        </section>
+
+        {/* Step 4 — audio */}
         <section className="rounded-2xl border border-border bg-card px-6 py-6">
           <h2 className="flex items-center gap-2 font-heading text-base font-semibold">
             <span className="flex size-6 items-center justify-center rounded-full bg-brand-soft/60 text-brand-deep">
@@ -545,7 +579,7 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
           )}
         </section>
 
-        {/* Step 4 — publish */}
+        {/* Step 5 — publish */}
         <section className="rounded-2xl border border-border bg-card px-6 py-6">
           <h2 className="flex items-center gap-2 font-heading text-base font-semibold">
             <span className="flex size-6 items-center justify-center rounded-full bg-brand-soft/60 text-brand-deep">

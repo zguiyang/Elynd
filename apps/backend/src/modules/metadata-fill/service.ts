@@ -91,7 +91,17 @@ export async function fillWorkMetadata(workId: string): Promise<void> {
 
   const provenance: WorkMetadataProvenanceMap = { ...work.metadataProvenance };
   if (cleanDesc) {
-    provenance.description = work.description && work.description !== cleanDesc ? 'manual' : 'extracted';
+    const keepsExisting = Boolean(work.description && work.description !== cleanDesc);
+    if (keepsExisting) {
+      // A kept value is never "extracted". Preserve existing ai/manual
+      // semantics (AI-filled descriptions survive re-parse untouched) and
+      // only fall back to manual when nothing is recorded yet.
+      if (!provenance.description || provenance.description === 'extracted') {
+        provenance.description = 'manual';
+      }
+    } else {
+      provenance.description = 'extracted';
+    }
   }
   const subjects = parsed.subjects ?? [];
 
@@ -125,12 +135,15 @@ export async function fillWorkMetadata(workId: string): Promise<void> {
       .where(eq(readingWorkTagTable.workId, workId));
     patch.tags = tagRows.map((row) => row.name);
     if (subjects.length > 0) {
-      const [manualRow] = await tx
-        .select({ tagId: readingWorkTagTable.tagId })
+      const provenanceRows = await tx
+        .select({ provenance: readingWorkTagTable.provenance })
         .from(readingWorkTagTable)
-        .where(and(eq(readingWorkTagTable.workId, workId), eq(readingWorkTagTable.provenance, 'manual')))
-        .limit(1);
-      provenance.tags = manualRow ? 'manual' : 'extracted';
+        .where(eq(readingWorkTagTable.workId, workId));
+      const hasManual = provenanceRows.some((row) => row.provenance === 'manual');
+      const hasAi = provenanceRows.some((row) => row.provenance === 'ai');
+      // Priority manual > ai > extracted — re-parse must not degrade surviving
+      // AI associations to "extracted" just because no manual row exists.
+      provenance.tags = hasManual ? 'manual' : hasAi ? 'ai' : 'extracted';
     }
 
     // Source: dc:source → match_rule association (extracted), else left empty.

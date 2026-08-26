@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   readingWork as readingWorkTable,
+  readingWorkCategory as readingWorkCategoryTable,
   readingWorkSource as readingWorkSourceTable,
   readingWorkTag as readingWorkTagTable,
   source as sourceTable,
@@ -162,7 +163,11 @@ describe('metadata-fill rule layer (extracted) + updateWork (manual)', () => {
       }),
     );
 
-    const patched = await patchWork(workId, { tags: ['Science', 'Manual Tag'], sources: ['Test Publisher'] });
+    const patched = await patchWork(workId, {
+      tags: ['Science', 'Manual Tag'],
+      sources: ['Test Publisher'],
+      description: 'A hand-written description that is long enough to count.',
+    });
     expect(patched.status).toBe(200);
     const body = (await patched.json()) as {
       tags: string[];
@@ -176,6 +181,10 @@ describe('metadata-fill rule layer (extracted) + updateWork (manual)', () => {
 
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
     expect([...(work!.tags ?? [])].sort()).toEqual(['Manual Tag', 'Science'].sort());
+    expect(work!.description).toBe('A hand-written description that is long enough to count.');
+    // Manual provenance survives re-fill — never downgraded to "extracted".
+    expect(work!.metadataProvenance.description).toBe('manual');
+    expect(work!.metadataProvenance.tags).toBe('manual');
 
     const manualRows = await db.select().from(readingWorkTagTable).where(eq(readingWorkTagTable.workId, workId));
     expect(manualRows).toHaveLength(2);
@@ -186,6 +195,70 @@ describe('metadata-fill rule layer (extracted) + updateWork (manual)', () => {
       .where(eq(readingWorkSourceTable.workId, workId))
       .orderBy(readingWorkSourceTable.sourceId);
     expect(sourceRows.map((r) => r.provenance).sort()).toEqual(['extracted', 'manual']);
+  });
+
+  it('re-fill preserves ai provenance for AI-filled description/tags (P1 regression)', async () => {
+    const workId = await uploadAndFill(
+      await buildEpubBytes({
+        title: 'AI Book',
+        subjects: ['Science'],
+        chapters: [{ href: 'chapter-1.xhtml', content: '<html><body><p>Body.</p></body></html>' }],
+      }),
+    );
+
+    // Simulate a completed AI backfill: AI description + AI tag association
+    // (distinct tag name — a same-name association would be deduped away).
+    await db
+      .update(readingWorkTable)
+      .set({
+        description: 'An AI written description that is long enough and clearly differs from extraction.',
+        metadataProvenance: { description: 'ai', tags: 'ai' },
+      })
+      .where(eq(readingWorkTable.id, workId));
+    await db
+      .insert(tagTable)
+      .values({ id: 'tag-ai-provenance', name: 'AI Tag', normalized: 'aitag' })
+      .onConflictDoNothing();
+    const [aiRow] = await db.select({ id: tagTable.id }).from(tagTable).where(eq(tagTable.name, 'AI Tag'));
+    await db.insert(readingWorkTagTable).values({ workId, tagId: aiRow!.id, provenance: 'ai' }).onConflictDoNothing();
+
+    await fillWorkMetadata(workId);
+
+    const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
+    expect(work!.description).toBe(
+      'An AI written description that is long enough and clearly differs from extraction.',
+    );
+    expect(work!.metadataProvenance).toMatchObject({ description: 'ai', tags: 'ai' });
+  });
+
+  it('updateWork sets/clears category with manual provenance', async () => {
+    const workId = await uploadAndFill(
+      await buildEpubBytes({
+        title: 'Category Book',
+        chapters: [{ href: 'chapter-1.xhtml', content: '<html><body><p>Body.</p></body></html>' }],
+      }),
+    );
+
+    const setResponse = await patchWork(workId, { category: 'Science Fiction' });
+    expect(setResponse.status).toBe(200);
+    const setBody = (await setResponse.json()) as {
+      category: string | null;
+      metadataProvenance: Record<string, string | undefined>;
+    };
+    expect(setBody.category).toBe('Science Fiction');
+    expect(setBody.metadataProvenance.category).toBe('manual');
+
+    const clearResponse = await patchWork(workId, { category: '' });
+    expect(clearResponse.status).toBe(200);
+    const clearBody = (await clearResponse.json()) as {
+      category: string | null;
+      metadataProvenance: Record<string, string | undefined>;
+    };
+    expect(clearBody.category).toBeNull();
+    expect(clearBody.metadataProvenance.category).toBeUndefined();
+
+    const rows = await db.select().from(readingWorkCategoryTable).where(eq(readingWorkCategoryTable.workId, workId));
+    expect(rows).toHaveLength(0);
   });
 
   it('clears manual associations when the patch omits them (manual-only scope)', async () => {

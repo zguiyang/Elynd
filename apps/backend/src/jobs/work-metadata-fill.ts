@@ -3,7 +3,9 @@ import { eq } from 'drizzle-orm';
 import { readingWork as readingWorkTable } from '@gloaming/db';
 
 import { db } from '@/db';
+import { JOB_METADATA_ENRICH } from '@/jobs/metadata-enrich';
 import { rootLogger } from '@/lib/logger';
+import { enqueue } from '@/lib/queue';
 import { fillWorkMetadata } from '@/modules/metadata-fill/service';
 
 export const JOB_METADATA_FILL = 'metadata-fill';
@@ -39,5 +41,8 @@ export async function processWorkMetadataFill(data: WorkMetadataFillJobData): Pr
         .where(eq(readingWorkTable.id, data.workId));
     }
   }
+  // Enrichment runs regardless of fill outcome — it short-circuits itself
+  // when no field needs AI (bounded retry, attempts: 2).
+  await enqueue(JOB_METADATA_ENRICH, { workId: data.workId }, { attempts: 2 });
   return { ok: true, workId: data.workId };
 }

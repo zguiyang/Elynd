@@ -11,6 +11,7 @@ import {
   readingWorkTag as readingWorkTagTable,
   source as sourceTable,
   tag as tagTable,
+  type WorkMetadataProvenanceMap,
 } from '@gloaming/db';
 import {
   type AdminOriginAsset,
@@ -501,6 +502,9 @@ export async function updateWork(id: string, input: UpdateWorkBody): Promise<Adm
   if (input.author !== undefined) patch.author = input.author;
   if (input.description !== undefined) patch.description = input.description;
   if (input.sourceNote !== undefined) patch.sourceNote = input.sourceNote;
+  const provenance: WorkMetadataProvenanceMap = { ...existing.metadataProvenance };
+  if (input.description !== undefined) provenance.description = 'manual';
+  if (input.tags !== undefined) provenance.tags = 'manual';
 
   if (input.tags === undefined && input.sources === undefined && Object.keys(patch).length === 0) {
     return toAdminWork(existing);
@@ -556,6 +560,9 @@ export async function updateWork(id: string, input: UpdateWorkBody): Promise<Adm
     }
 
     if (Object.keys(patch).length > 0) {
+      if (input.description !== undefined || input.tags !== undefined) {
+        patch.metadataProvenance = provenance;
+      }
       await tx.update(readingWorkTable).set(patch).where(eq(readingWorkTable.id, id));
     }
   });

@@ -143,7 +143,14 @@ async function resolveModelRowId(options: { modelRowId?: string; purpose?: AiPur
   const rows = await db.select().from(llmAppSettingTable).where(eq(llmAppSettingTable.key, key)).limit(1);
   const value = rows[0]?.value;
   if (!value) {
-    const label = purpose === 'translate' ? 'Translate' : 'Assist';
+    const label =
+      purpose === 'assist'
+        ? 'Assist'
+        : purpose === 'translate'
+          ? 'Translate'
+          : purpose === 'metadata-enrich'
+            ? 'Metadata enrich'
+            : 'AI';
     throw new AppError(HTTP_STATUS.SERVICE_UNAVAILABLE, `${label} model not configured`);
   }
   return value;

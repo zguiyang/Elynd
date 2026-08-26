@@ -125,7 +125,12 @@ export async function fillWorkMetadata(workId: string): Promise<void> {
       .where(eq(readingWorkTagTable.workId, workId));
     patch.tags = tagRows.map((row) => row.name);
     if (subjects.length > 0) {
-      provenance.tags = 'extracted';
+      const [manualRow] = await tx
+        .select({ tagId: readingWorkTagTable.tagId })
+        .from(readingWorkTagTable)
+        .where(and(eq(readingWorkTagTable.workId, workId), eq(readingWorkTagTable.provenance, 'manual')))
+        .limit(1);
+      provenance.tags = manualRow ? 'manual' : 'extracted';
     }
 
     // Source: dc:source → match_rule association (extracted), else left empty.

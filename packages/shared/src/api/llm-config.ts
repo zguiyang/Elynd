@@ -6,6 +6,7 @@ export const llmProviderSchema = z.object({
   id: z.string(),
   name: z.string(),
   baseUrl: z.string(),
+  proxyUrl: z.string().nullable(),
   isEnabled: z.boolean(),
   apiKeySet: z.boolean(),
   apiKeyMasked: z.string().nullable(),
@@ -19,6 +20,14 @@ export const createLlmProviderBodySchema = z.object({
   name: z.string().trim().min(1).max(120),
   baseUrl: z.string().trim().url().max(500),
   apiKey: z.string().min(1).max(2000),
+  proxyUrl: z
+    .string()
+    .trim()
+    .url()
+    .max(500)
+    .refine((value) => /^(https?|socks5):\/\//i.test(value), { message: '代理地址需为 http/https/socks5' })
+    .optional()
+    .nullable(),
   isEnabled: z.boolean().optional().default(true),
 });
 
@@ -29,6 +38,14 @@ export const updateLlmProviderBodySchema = z
     name: z.string().trim().min(1).max(120).optional(),
     baseUrl: z.string().trim().url().max(500).optional(),
     apiKey: z.string().min(1).max(2000).optional(),
+    proxyUrl: z
+      .string()
+      .trim()
+      .url()
+      .max(500)
+      .refine((value) => /^(https?|socks5):\/\//i.test(value), { message: '代理地址需为 http/https/socks5' })
+      .optional()
+      .nullable(),
     isEnabled: z.boolean().optional(),
   })
   .refine((body) => Object.keys(body).length > 0, { message: 'At least one field is required' });

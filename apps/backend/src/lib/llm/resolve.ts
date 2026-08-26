@@ -16,6 +16,8 @@ export type ResolvedLlm = {
   baseUrl: string;
   apiKey: string;
   protocol: LlmModelProtocol;
+  /** Optional outbound proxy URI (provider-level config). */
+  proxyUrl: string | null;
   temperature: number | null;
   maxTokens: number | null;
 };
@@ -36,6 +38,7 @@ export async function resolveLlmByModelRowId(modelRowId: string): Promise<Resolv
       maxTokens: llmModelTable.maxTokens,
       modelEnabled: llmModelTable.isEnabled,
       baseUrl: llmProviderTable.baseUrl,
+      proxyUrl: llmProviderTable.proxyUrl,
       apiKeyCiphertext: llmProviderTable.apiKeyCiphertext,
       providerEnabled: llmProviderTable.isEnabled,
     })
@@ -64,6 +67,7 @@ export async function resolveLlmByModelRowId(modelRowId: string): Promise<Resolv
     baseUrl: row.baseUrl,
     apiKey,
     protocol: row.protocol,
+    proxyUrl: row.proxyUrl ?? null,
     temperature: row.temperature,
     maxTokens: row.maxTokens,
   };

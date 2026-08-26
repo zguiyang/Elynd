@@ -98,6 +98,8 @@ export function AiConfigPage() {
         return updateLlmProvider(editingProvider.id, {
           name: values.name.trim(),
           baseUrl: values.baseUrl.trim(),
+          proxyUrl: values.proxyUrl.trim() || null,
+          thinkingParam: values.thinkingParam.trim() || null,
           isEnabled: values.isEnabled,
           ...(apiKey ? { apiKey } : {}),
         });
@@ -106,6 +108,8 @@ export function AiConfigPage() {
         name: values.name.trim(),
         baseUrl: values.baseUrl.trim(),
         apiKey: values.apiKey.trim(),
+        proxyUrl: values.proxyUrl.trim() || null,
+        thinkingParam: values.thinkingParam.trim() || null,
         isEnabled: values.isEnabled,
       });
     },

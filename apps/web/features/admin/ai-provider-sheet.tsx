@@ -14,6 +14,8 @@ export type ProviderFormValues = {
   name: string;
   baseUrl: string;
   apiKey: string;
+  proxyUrl: string;
+  thinkingParam: string;
   isEnabled: boolean;
 };
 
@@ -29,6 +31,8 @@ function emptyValues(): ProviderFormValues {
     name: '',
     baseUrl: 'https://',
     apiKey: '',
+    proxyUrl: '',
+    thinkingParam: '',
     isEnabled: true,
   };
 }
@@ -38,6 +42,8 @@ function fromProvider(provider: LlmProvider): ProviderFormValues {
     name: provider.name,
     baseUrl: provider.baseUrl,
     apiKey: '',
+    proxyUrl: provider.proxyUrl ?? '',
+    thinkingParam: provider.thinkingParam ?? '',
     isEnabled: provider.isEnabled,
   };
 }
@@ -68,6 +74,19 @@ function AiProviderSheetForm({
       } catch {
         next.baseUrl = 'Base URL 格式不正确';
       }
+    }
+    if (values.proxyUrl.trim()) {
+      try {
+        const proxy = new URL(values.proxyUrl.trim());
+        if (!/^(https?|socks5):$/.test(proxy.protocol)) {
+          next.proxyUrl = '代理地址需为 http/https/socks5';
+        }
+      } catch {
+        next.proxyUrl = '代理地址格式不正确';
+      }
+    }
+    if (values.thinkingParam.trim() && !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(values.thinkingParam.trim())) {
+      next.thinkingParam = '思考参数名需为合法标识符';
     }
     if (!isEdit && !values.apiKey.trim()) {
       next.apiKey = '新建时需要填写 API Key';
@@ -119,6 +138,43 @@ function AiProviderSheetForm({
               <FieldError>{errors.baseUrl}</FieldError>
             ) : (
               <FieldDescription>需包含协议，通常以 /v1 结尾。</FieldDescription>
+            )}
+          </Field>
+
+          <Field data-invalid={Boolean(errors.proxyUrl) || undefined}>
+            <FieldLabel htmlFor="provider-proxy-url">代理地址（可选）</FieldLabel>
+            <Input
+              id="provider-proxy-url"
+              value={values.proxyUrl}
+              aria-invalid={Boolean(errors.proxyUrl) || undefined}
+              placeholder="http://127.0.0.1:7890"
+              onChange={(event) => setValues((prev) => ({ ...prev, proxyUrl: event.target.value }))}
+            />
+            {errors.proxyUrl ? (
+              <FieldError>{errors.proxyUrl}</FieldError>
+            ) : (
+              <FieldDescription>
+                填写后该服务商下所有模型请求均走此代理；留空则使用服务器环境变量或直连。清空输入框可移除已有代理。
+              </FieldDescription>
+            )}
+          </Field>
+
+          <Field data-invalid={Boolean(errors.thinkingParam) || undefined}>
+            <FieldLabel htmlFor="provider-thinking-param">思考参数名（可选）</FieldLabel>
+            <Input
+              id="provider-thinking-param"
+              value={values.thinkingParam}
+              aria-invalid={Boolean(errors.thinkingParam) || undefined}
+              placeholder="enable_thinking"
+              onChange={(event) => setValues((prev) => ({ ...prev, thinkingParam: event.target.value }))}
+            />
+            {errors.thinkingParam ? (
+              <FieldError>{errors.thinkingParam}</FieldError>
+            ) : (
+              <FieldDescription>
+                该服务商下模型开启/关闭思考时透传的参数名（如
+                enable_thinking）；留空则不传，跟随平台默认（测试与调用可能较慢）。
+              </FieldDescription>
             )}
           </Field>
 

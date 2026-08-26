@@ -17,6 +17,14 @@ export type ProviderTestResult = {
   message: string;
 };
 
+function formatProxyHost(proxyUrl: string): string {
+  try {
+    return new URL(proxyUrl).host;
+  } catch {
+    return proxyUrl;
+  }
+}
+
 type AiProviderListProps = {
   providers: LlmProvider[];
   models: LlmModel[];
@@ -99,9 +107,16 @@ export function AiProviderList({
                       <Badge variant="outline">{providerModels.length} 个模型</Badge>
                     </div>
                     <p className="mt-1 truncate font-mono text-xs text-muted-foreground">{provider.baseUrl}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {provider.apiKeySet ? `API Key ${provider.apiKeyMasked ?? '已设置'}` : '尚未设置 API Key'}
-                    </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        {provider.apiKeySet ? `API Key ${provider.apiKeyMasked ?? '已设置'}` : '尚未设置 API Key'}
+                      </p>
+                      {provider.proxyUrl ? (
+                        <Badge variant="outline" className="text-xs">
+                          经代理出站 · {formatProxyHost(provider.proxyUrl)}
+                        </Badge>
+                      ) : null}
+                    </div>
                   </div>
                 </button>
 

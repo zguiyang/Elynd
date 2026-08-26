@@ -112,6 +112,19 @@ export const accountRelations = relations(account, ({ one }) => ({
   }),
 }));
 
+/** Provenance of a work-dimension association (rules / AI / manual). */
+export type WorkMetadataProvenance = 'extracted' | 'ai' | 'manual';
+
+/** Enrichment state machine of the metadata-enrich job. */
+export type MetadataEnrichmentStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
+
+/** Per-field provenance snapshot for admin display (jsonb mirror of association rows). */
+export type WorkMetadataProvenanceMap = {
+  description?: WorkMetadataProvenance;
+  tags?: WorkMetadataProvenance;
+  category?: WorkMetadataProvenance;
+};
+
 /** Reading catalog root — metadata only, no body (ADR-001). */
 export const readingWork = pgTable(
   'reading_work',
@@ -128,6 +141,12 @@ export const readingWork = pgTable(
     originMeta: jsonb('origin_meta').$type<Record<string, unknown>>().notNull().default({}),
     tags: jsonb('tags').$type<string[]>().notNull().default([]),
     sourceNote: text('source_note').notNull().default(''),
+    metadataEnrichmentStatus: text('metadata_enrichment_status')
+      .$type<MetadataEnrichmentStatus>()
+      .notNull()
+      .default('pending'),
+    metadataEnrichmentAt: timestamp('metadata_enrichment_at'),
+    metadataProvenance: jsonb('metadata_provenance').$type<WorkMetadataProvenanceMap>().notNull().default({}),
     coverAssetId: text('cover_asset_id'),
     publishedAt: timestamp('published_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -139,6 +158,109 @@ export const readingWork = pgTable(
   (table) => [
     index('reading_work_status_idx').on(table.status),
     index('reading_work_published_at_idx').on(table.publishedAt),
+    index('reading_work_enrichment_status_idx').on(table.metadataEnrichmentStatus),
+  ],
+);
+
+/** Shared dimension: tag (unique by normalized form — reuse-first). */
+export const tag = pgTable(
+  'tag',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull().unique(),
+    normalized: text('normalized').notNull().unique(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [index('tag_normalized_idx').on(table.normalized)],
+);
+
+/** Shared dimension: category (predefined enumeration, admin-extendable). */
+export const category = pgTable(
+  'category',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull().unique(),
+    normalized: text('normalized').notNull().unique(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [index('category_normalized_idx').on(table.normalized)],
+);
+
+/** Shared dimension: source (match_rule = domain / keyword used against dc:source). */
+export const source = pgTable(
+  'source',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull().unique(),
+    matchRule: text('match_rule').notNull().default(''),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [index('source_match_rule_idx').on(table.matchRule)],
+);
+
+export const readingWorkTag = pgTable(
+  'reading_work_tag',
+  {
+    workId: text('work_id')
+      .notNull()
+      .references(() => readingWork.id, { onDelete: 'cascade' }),
+    tagId: text('tag_id')
+      .notNull()
+      .references(() => tag.id, { onDelete: 'cascade' }),
+    provenance: text('provenance').$type<WorkMetadataProvenance>().notNull().default('extracted'),
+  },
+  (table) => [
+    unique('reading_work_tag_work_tag_uidx').on(table.workId, table.tagId),
+    index('reading_work_tag_work_idx').on(table.workId),
+    index('reading_work_tag_tag_idx').on(table.tagId),
+  ],
+);
+
+export const readingWorkCategory = pgTable(
+  'reading_work_category',
+  {
+    workId: text('work_id')
+      .notNull()
+      .references(() => readingWork.id, { onDelete: 'cascade' }),
+    categoryId: text('category_id')
+      .notNull()
+      .references(() => category.id, { onDelete: 'cascade' }),
+    provenance: text('provenance').$type<WorkMetadataProvenance>().notNull().default('extracted'),
+  },
+  (table) => [
+    unique('reading_work_category_work_category_uidx').on(table.workId, table.categoryId),
+    index('reading_work_category_work_idx').on(table.workId),
+    index('reading_work_category_category_idx').on(table.categoryId),
+  ],
+);
+
+export const readingWorkSource = pgTable(
+  'reading_work_source',
+  {
+    workId: text('work_id')
+      .notNull()
+      .references(() => readingWork.id, { onDelete: 'cascade' }),
+    sourceId: text('source_id')
+      .notNull()
+      .references(() => source.id, { onDelete: 'cascade' }),
+    provenance: text('provenance').$type<WorkMetadataProvenance>().notNull().default('extracted'),
+  },
+  (table) => [
+    unique('reading_work_source_work_source_uidx').on(table.workId, table.sourceId),
+    index('reading_work_source_work_idx').on(table.workId),
+    index('reading_work_source_source_idx').on(table.sourceId),
   ],
 );
 

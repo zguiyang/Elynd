@@ -26,14 +26,24 @@ export const WORK_DESCRIPTION_MAX = 2000 as const;
 export const WORK_SOURCE_NOTE_MAX = 500 as const;
 export const WORK_TAG_MAX_ITEMS = 10 as const;
 export const WORK_TAG_MAX_LEN = 40 as const;
+/** Max structured source names on a work (manual fill). */
+export const WORK_SOURCE_MAX_ITEMS = 10 as const;
 /** Max HTML body chars per part — markup inflates plain text ~1.5-2x. */
 export const PART_BODY_MAX_CHARS = 1_500_000 as const;
 
 /** Max EPUB upload size (bytes) — enforced by frontend and backend. */
 export const EPUB_UPLOAD_MAX_BYTES = 50 * 1024 * 1024;
 
+export const WORK_METADATA_PROVENANCES = ['extracted', 'ai', 'manual'] as const;
+export type WorkMetadataProvenance = (typeof WORK_METADATA_PROVENANCES)[number];
+
+export const METADATA_ENRICHMENT_STATUSES = ['pending', 'running', 'completed', 'failed', 'skipped'] as const;
+export type MetadataEnrichmentStatus = (typeof METADATA_ENRICHMENT_STATUSES)[number];
+
 const tagItemSchema = z.string().trim().min(1).max(WORK_TAG_MAX_LEN);
 const tagsSchema = z.array(tagItemSchema).max(WORK_TAG_MAX_ITEMS);
+const sourceItemSchema = z.string().trim().min(1).max(200);
+const sourcesSchema = z.array(sourceItemSchema).max(WORK_SOURCE_MAX_ITEMS);
 
 /** Public work JSON (catalog / discover — no parts body). */
 export const workSchema = z.object({
@@ -102,6 +112,10 @@ export const adminWorkSchema = workSchema.extend({
   originMeta: z.record(z.string(), z.unknown()).default({}),
   originAsset: adminOriginAssetSchema.nullable(),
   parts: z.array(partSchema),
+  sources: z.array(z.string()),
+  metadataEnrichmentStatus: z.enum(METADATA_ENRICHMENT_STATUSES),
+  metadataEnrichmentAt: z.union([z.string(), z.date()]).nullable(),
+  metadataProvenance: z.record(z.string(), z.enum(WORK_METADATA_PROVENANCES)).default({}),
 });
 
 export type AdminWork = z.infer<typeof adminWorkSchema>;
@@ -115,6 +129,9 @@ export const adminWorkSummarySchema = workSchema.extend({
   originMeta: z.record(z.string(), z.unknown()).default({}),
   originAsset: adminOriginAssetSchema.nullable(),
   partCount: z.number().int().nonnegative(),
+  metadataEnrichmentStatus: z.enum(METADATA_ENRICHMENT_STATUSES),
+  metadataEnrichmentAt: z.union([z.string(), z.date()]).nullable(),
+  metadataProvenance: z.record(z.string(), z.enum(WORK_METADATA_PROVENANCES)).default({}),
 });
 
 export type AdminWorkSummary = z.infer<typeof adminWorkSummarySchema>;
@@ -165,6 +182,7 @@ export const updateWorkBodySchema = z.object({
   author: z.string().max(WORK_AUTHOR_MAX).optional(),
   description: z.string().max(WORK_DESCRIPTION_MAX).optional(),
   tags: tagsSchema.optional(),
+  sources: sourcesSchema.optional(),
   sourceNote: z.string().max(WORK_SOURCE_NOTE_MAX).optional(),
 });
 

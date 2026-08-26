@@ -28,6 +28,8 @@ export const WORK_TAG_MAX_ITEMS = 10 as const;
 export const WORK_TAG_MAX_LEN = 40 as const;
 /** Max structured source names on a work (manual fill). */
 export const WORK_SOURCE_MAX_ITEMS = 10 as const;
+/** Max category name on a work (AI / manual fill). */
+export const WORK_CATEGORY_MAX = 100 as const;
 /** Max HTML body chars per part — markup inflates plain text ~1.5-2x. */
 export const PART_BODY_MAX_CHARS = 1_500_000 as const;
 
@@ -113,6 +115,7 @@ export const adminWorkSchema = workSchema.extend({
   originAsset: adminOriginAssetSchema.nullable(),
   parts: z.array(partSchema),
   sources: z.array(z.string()),
+  category: z.string().nullable(),
   metadataEnrichmentStatus: z.enum(METADATA_ENRICHMENT_STATUSES),
   metadataEnrichmentAt: z.union([z.string(), z.date()]).nullable(),
   metadataProvenance: z.record(z.string(), z.enum(WORK_METADATA_PROVENANCES)).default({}),
@@ -129,6 +132,7 @@ export const adminWorkSummarySchema = workSchema.extend({
   originMeta: z.record(z.string(), z.unknown()).default({}),
   originAsset: adminOriginAssetSchema.nullable(),
   partCount: z.number().int().nonnegative(),
+  category: z.string().nullable(),
   metadataEnrichmentStatus: z.enum(METADATA_ENRICHMENT_STATUSES),
   metadataEnrichmentAt: z.union([z.string(), z.date()]).nullable(),
   metadataProvenance: z.record(z.string(), z.enum(WORK_METADATA_PROVENANCES)).default({}),
@@ -184,6 +188,7 @@ export const updateWorkBodySchema = z.object({
   tags: tagsSchema.optional(),
   sources: sourcesSchema.optional(),
   sourceNote: z.string().max(WORK_SOURCE_NOTE_MAX).optional(),
+  category: z.string().max(WORK_CATEGORY_MAX).optional(),
 });
 
 export type UpdateWorkBody = z.infer<typeof updateWorkBodySchema>;

@@ -303,4 +303,24 @@ describe('POST /api/admin/works/:id/reparse', () => {
     expect(work!.description).toBe('Edited description');
     expect(work!.status).toBe('draft');
   });
+
+  it('resets the AI backfill claim on re-parse so enrichment can re-run', async () => {
+    const response = await uploadEpub(adminCookie, await buildSampleEpubBytes());
+    const created = (await response.json()) as { id: string };
+    createdWorkIds.push(created.id);
+    await processContentWork(created.id);
+    await fillWorkMetadata(created.id);
+
+    await db
+      .update(readingWorkTable)
+      .set({ metadataEnrichmentStatus: 'completed', metadataEnrichmentAt: new Date() })
+      .where(eq(readingWorkTable.id, created.id));
+
+    const reparse = await reparseRequest(created.id);
+    expect(reparse.status).toBe(200);
+
+    const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
+    expect(work!.metadataEnrichmentStatus).toBe('pending');
+    expect(work!.metadataEnrichmentAt).toBeNull();
+  });
 });

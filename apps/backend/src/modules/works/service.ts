@@ -3,10 +3,12 @@ import { randomUUID } from 'node:crypto';
 import { and, asc, count, desc, eq, ilike, or, type SQL, sql } from 'drizzle-orm';
 
 import {
+  category as categoryTable,
   contentAsset as contentAssetTable,
   conversation as conversationTable,
   readingPart as readingPartTable,
   readingWork as readingWorkTable,
+  readingWorkCategory as readingWorkCategoryTable,
   readingWorkSource as readingWorkSourceTable,
   readingWorkTag as readingWorkTagTable,
   source as sourceTable,
@@ -148,6 +150,17 @@ async function loadSourcesForWork(workId: string): Promise<string[]> {
   return rows.map((row) => row.name);
 }
 
+/** Current category name (single-select) or null when unset. */
+async function loadCategoryForWork(workId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ name: categoryTable.name })
+    .from(readingWorkCategoryTable)
+    .innerJoin(categoryTable, eq(readingWorkCategoryTable.categoryId, categoryTable.id))
+    .where(eq(readingWorkCategoryTable.workId, workId))
+    .limit(1);
+  return row?.name ?? null;
+}
+
 async function toAdminWork(row: WorkRow, parts?: PartRow[]): Promise<AdminWork> {
   const partRows = parts ?? (await loadPartsForWork(row.id));
   const primaryPart = partRows[0];
@@ -165,6 +178,7 @@ async function toAdminWork(row: WorkRow, parts?: PartRow[]): Promise<AdminWork> 
     originAsset: await loadOriginFileAsset(row.id),
     parts: partRows.map(toPart),
     sources: await loadSourcesForWork(row.id),
+    category: await loadCategoryForWork(row.id),
     metadataEnrichmentStatus: row.metadataEnrichmentStatus,
     metadataEnrichmentAt: row.metadataEnrichmentAt ? toIso(row.metadataEnrichmentAt) : null,
     metadataProvenance: row.metadataProvenance,
@@ -188,6 +202,7 @@ async function toAdminWorkSummary(row: WorkRow): Promise<AdminWorkSummary> {
     originMeta: row.originMeta,
     originAsset: await loadOriginFileAsset(row.id),
     partCount,
+    category: await loadCategoryForWork(row.id),
     metadataEnrichmentStatus: row.metadataEnrichmentStatus,
     metadataEnrichmentAt: row.metadataEnrichmentAt ? toIso(row.metadataEnrichmentAt) : null,
     metadataProvenance: row.metadataProvenance,
@@ -506,7 +521,12 @@ export async function updateWork(id: string, input: UpdateWorkBody): Promise<Adm
   if (input.description !== undefined) provenance.description = 'manual';
   if (input.tags !== undefined) provenance.tags = 'manual';
 
-  if (input.tags === undefined && input.sources === undefined && Object.keys(patch).length === 0) {
+  if (
+    input.tags === undefined &&
+    input.sources === undefined &&
+    input.category === undefined &&
+    Object.keys(patch).length === 0
+  ) {
     return toAdminWork(existing);
   }
 
@@ -559,10 +579,31 @@ export async function updateWork(id: string, input: UpdateWorkBody): Promise<Adm
       }
     }
 
-    if (Object.keys(patch).length > 0) {
-      if (input.description !== undefined || input.tags !== undefined) {
-        patch.metadataProvenance = provenance;
+    // Category: single-select — setting replaces every association (manual),
+    // empty string clears it entirely.
+    if (input.category !== undefined) {
+      await tx.delete(readingWorkCategoryTable).where(eq(readingWorkCategoryTable.workId, id));
+      const categoryName = input.category.trim();
+      if (categoryName) {
+        const [row] = await tx
+          .insert(categoryTable)
+          .values({ id: randomUUID(), name: categoryName, normalized: normalizeTag(categoryName) })
+          .onConflictDoUpdate({ target: categoryTable.normalized, set: { name: categoryName } })
+          .returning();
+        await tx
+          .insert(readingWorkCategoryTable)
+          .values({ workId: id, categoryId: row!.id, provenance: 'manual' })
+          .onConflictDoNothing();
+        provenance.category = 'manual';
+      } else {
+        delete provenance.category;
       }
+    }
+
+    if (input.description !== undefined || input.tags !== undefined || input.category !== undefined) {
+      patch.metadataProvenance = provenance;
+    }
+    if (Object.keys(patch).length > 0) {
       await tx.update(readingWorkTable).set(patch).where(eq(readingWorkTable.id, id));
     }
   });
@@ -642,7 +683,14 @@ export async function reparseWork(id: string): Promise<AdminWork> {
   delete originMeta.lastError;
   const [row] = await db
     .update(readingWorkTable)
-    .set({ status: 'processing', originMeta })
+    .set({
+      status: 'processing',
+      originMeta,
+      // Re-parse re-runs the whole pipeline (content-parse → metadata-fill →
+      // metadata-enrich), so reset the AI backfill so it can re-claim.
+      metadataEnrichmentStatus: 'pending',
+      metadataEnrichmentAt: null,
+    })
     .where(eq(readingWorkTable.id, id))
     .returning();
   if (!row) {

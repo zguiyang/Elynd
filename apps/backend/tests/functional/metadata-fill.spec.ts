@@ -1,0 +1,210 @@
+import { eq } from 'drizzle-orm';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import {
+  readingWork as readingWorkTable,
+  readingWorkSource as readingWorkSourceTable,
+  readingWorkTag as readingWorkTagTable,
+  source as sourceTable,
+  tag as tagTable,
+  uploadedObject as uploadedObjectTable,
+  user as userTable,
+} from '@gloaming/db';
+import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
+
+import app from '@/app';
+import { db } from '@/db';
+import { processContentWork } from '@/modules/content-parser';
+import { fillWorkMetadata } from '@/modules/metadata-fill/service';
+import { resetObjectStoreCache, setObjectStoreForTests } from '@/modules/oss';
+
+import { buildEpubBytes } from '../helpers/epub-builder';
+import { createMemoryObjectStore } from '../helpers/memory-oss';
+
+const password = 'password123';
+
+function uniqueEmail(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
+}
+
+function cookieHeader(response: Response): string {
+  const getSetCookie = (response.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie?.();
+  if (getSetCookie?.length) {
+    return getSetCookie.map((entry) => entry.split(';')[0]).join('; ');
+  }
+  const single = response.headers.get('set-cookie');
+  return single ? single.split(';')[0]! : '';
+}
+
+describe('metadata-fill rule layer (extracted) + updateWork (manual)', () => {
+  const memory = createMemoryObjectStore();
+  const createdWorkIds: string[] = [];
+  let adminCookie = '';
+  const testSourceId = 'src-standard-ebooks';
+
+  beforeAll(async () => {
+    memory.store.clear();
+    setObjectStoreForTests(memory);
+    const email = uniqueEmail('admin');
+    const username = `admin_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    await app.request('/api/auth/sign-up/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:3000' },
+      body: JSON.stringify({ email, password, name: 'admin', username }),
+    });
+    await db.update(userTable).set({ emailVerified: true }).where(eq(userTable.email, email));
+    await db.update(userTable).set({ role: AUTH_ADMIN_ROLE }).where(eq(userTable.email, email));
+    const login = await app.request('/api/auth/sign-in/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:3000' },
+      body: JSON.stringify({ email, password }),
+    });
+    adminCookie = cookieHeader(login);
+
+    await db.insert(sourceTable).values({
+      id: testSourceId,
+      name: 'Standard Ebooks',
+      matchRule: 'standardebooks.org',
+    });
+  });
+
+  afterAll(async () => {
+    for (const workId of createdWorkIds) {
+      await db.delete(readingWorkTable).where(eq(readingWorkTable.id, workId));
+    }
+    await db.delete(sourceTable).where(eq(sourceTable.id, testSourceId));
+    await db.delete(uploadedObjectTable);
+    resetObjectStoreCache();
+  });
+
+  async function uploadAndFill(bytes: Buffer): Promise<string> {
+    const form = new FormData();
+    form.append('file', new File([new Blob([bytes])], 'book.epub', { type: 'application/epub+zip' }));
+    const response = await app.request('/api/admin/works/epub', {
+      method: 'POST',
+      headers: { Cookie: adminCookie },
+      body: form,
+    });
+    expect(response.status).toBe(201);
+    const created = (await response.json()) as { id: string };
+    createdWorkIds.push(created.id);
+    await processContentWork(created.id);
+    await fillWorkMetadata(created.id);
+    return created.id;
+  }
+
+  async function patchWork(id: string, body: Record<string, unknown>): Promise<Response> {
+    return app.request(`/api/admin/works/${id}`, {
+      method: 'PATCH',
+      headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it('writes extracted tag/source associations and the jsonb merge view', async () => {
+    const workId = await uploadAndFill(
+      await buildEpubBytes({
+        title: 'Subject Book',
+        subjects: ['Science Fiction', 'Adventure'],
+        sourceRaw: 'https://standardebooks.org/ebooks/some-book',
+        chapters: [
+          { href: 'chapter-1.xhtml', tocLabel: 'Chapter 1', content: '<html><body><p>Body.</p></body></html>' },
+        ],
+      }),
+    );
+
+    const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
+    expect(work!.title).toBe('Subject Book');
+    expect(work!.tags).toEqual(['Science Fiction', 'Adventure']);
+    expect(work!.metadataProvenance).toEqual({ description: undefined, tags: 'extracted' });
+
+    const tagRows = await db
+      .select({ name: tagTable.name, provenance: readingWorkTagTable.provenance })
+      .from(readingWorkTagTable)
+      .innerJoin(tagTable, eq(readingWorkTagTable.tagId, tagTable.id))
+      .where(eq(readingWorkTagTable.workId, workId))
+      .orderBy(tagTable.name);
+    expect(tagRows).toEqual([
+      { name: 'Adventure', provenance: 'extracted' },
+      { name: 'Science Fiction', provenance: 'extracted' },
+    ]);
+
+    const sourceRows = await db.select().from(readingWorkSourceTable).where(eq(readingWorkSourceTable.workId, workId));
+    expect(sourceRows).toHaveLength(1);
+    expect(sourceRows[0]!.sourceId).toBe(testSourceId);
+    expect(sourceRows[0]!.provenance).toBe('extracted');
+  });
+
+  it('is idempotent: re-running fill keeps exactly one extracted association', async () => {
+    const workId = await uploadAndFill(
+      await buildEpubBytes({
+        title: 'Idempotent Book',
+        subjects: ['Science'],
+        chapters: [{ href: 'chapter-1.xhtml', content: '<html><body><p>Body.</p></body></html>' }],
+      }),
+    );
+
+    await fillWorkMetadata(workId);
+    await fillWorkMetadata(workId);
+
+    const tagRows = await db.select().from(readingWorkTagTable).where(eq(readingWorkTagTable.workId, workId));
+    expect(tagRows).toHaveLength(1);
+    expect(tagRows[0]!.provenance).toBe('extracted');
+  });
+
+  it('manual tags/sources from updateWork survive re-fill and merge into jsonb', async () => {
+    const workId = await uploadAndFill(
+      await buildEpubBytes({
+        title: 'Manual Book',
+        subjects: ['Science'],
+        sourceRaw: 'https://standardebooks.org/ebooks/manual-book',
+        chapters: [{ href: 'chapter-1.xhtml', content: '<html><body><p>Body.</p></body></html>' }],
+      }),
+    );
+
+    const patched = await patchWork(workId, { tags: ['Science', 'Manual Tag'], sources: ['Test Publisher'] });
+    expect(patched.status).toBe(200);
+    const body = (await patched.json()) as {
+      tags: string[];
+      sources: string[];
+      metadataProvenance: Record<string, string | undefined>;
+    };
+    expect(body.tags).toEqual(['Science', 'Manual Tag']);
+    expect([...(body.sources ?? [])].sort()).toEqual(['Standard Ebooks', 'Test Publisher'].sort());
+
+    await fillWorkMetadata(workId);
+
+    const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
+    expect([...(work!.tags ?? [])].sort()).toEqual(['Manual Tag', 'Science'].sort());
+
+    const manualRows = await db.select().from(readingWorkTagTable).where(eq(readingWorkTagTable.workId, workId));
+    expect(manualRows).toHaveLength(2);
+
+    const sourceRows = await db
+      .select({ provenance: readingWorkSourceTable.provenance })
+      .from(readingWorkSourceTable)
+      .where(eq(readingWorkSourceTable.workId, workId))
+      .orderBy(readingWorkSourceTable.sourceId);
+    expect(sourceRows.map((r) => r.provenance).sort()).toEqual(['extracted', 'manual']);
+  });
+
+  it('clears manual associations when the patch omits them (manual-only scope)', async () => {
+    const workId = await uploadAndFill(
+      await buildEpubBytes({
+        title: 'Clear Book',
+        subjects: ['Science'],
+        chapters: [{ href: 'chapter-1.xhtml', content: '<html><body><p>Body.</p></body></html>' }],
+      }),
+    );
+    await patchWork(workId, { tags: ['Temporary'], sources: ['Temp Source'] });
+
+    const cleared = await patchWork(workId, { tags: [], sources: [] });
+    expect(cleared.status).toBe(200);
+    const body = (await cleared.json()) as { tags: string[]; sources: string[] };
+    expect(body.tags).toEqual(['Science']);
+    expect(body.sources).toEqual([]);
+
+    const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
+    expect(work!.tags).toEqual(['Science']);
+  });
+});

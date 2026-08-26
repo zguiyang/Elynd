@@ -13,6 +13,7 @@ import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 import app from '@/app';
 import { db } from '@/db';
 import { processContentWork } from '@/modules/content-parser';
+import { fillWorkMetadata } from '@/modules/metadata-fill/service';
 import { resetObjectStoreCache, setObjectStoreForTests } from '@/modules/oss';
 
 import { buildEpubBytes, buildSampleEpubBytes } from '../helpers/epub-builder';
@@ -109,8 +110,9 @@ describe('EPUB ingest pipeline', () => {
     const created = (await response.json()) as { id: string };
     createdWorkIds.push(created.id);
 
-    // Upload enqueues the job; run the ingest synchronously for the test.
+    // Upload enqueues the job; run the ingest + metadata-fill synchronously.
     await processContentWork(created.id);
+    await fillWorkMetadata(created.id);
 
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
     expect(work).toBeDefined();
@@ -243,6 +245,7 @@ describe('POST /api/admin/works/:id/reparse', () => {
     expect(work!.originMeta.lastError).toBeUndefined();
 
     await processContentWork(created.id);
+    await fillWorkMetadata(created.id);
     const [after] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
     expect(after!.status).toBe('draft');
     expect(after!.title).toBe('The Great Book');
@@ -253,6 +256,7 @@ describe('POST /api/admin/works/:id/reparse', () => {
     const created = (await response.json()) as { id: string };
     createdWorkIds.push(created.id);
     await processContentWork(created.id);
+    await fillWorkMetadata(created.id);
 
     await patchRequest(created.id, { sourceNote: 'test-source', tags: ['story'] });
     const publish = await app.request(`/api/admin/works/${created.id}/publish`, {
@@ -280,6 +284,7 @@ describe('POST /api/admin/works/:id/reparse', () => {
     const created = (await response.json()) as { id: string };
     createdWorkIds.push(created.id);
     await processContentWork(created.id);
+    await fillWorkMetadata(created.id);
 
     await patchRequest(created.id, {
       title: 'Edited Title',
@@ -290,6 +295,7 @@ describe('POST /api/admin/works/:id/reparse', () => {
     const reparse = await reparseRequest(created.id);
     expect(reparse.status).toBe(200);
     await processContentWork(created.id);
+    await fillWorkMetadata(created.id);
 
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
     expect(work!.title).toBe('Edited Title');

@@ -12,7 +12,6 @@ import { db } from '@/db';
 import { rootLogger } from '@/lib/logger';
 import { parserFor } from '@/modules/content-parser/registry';
 import type { ParsedContent } from '@/modules/content-parser/types';
-import { cleanBookTitle, joinAuthors } from '@/modules/epub-ingest/metadata';
 import { deleteObject, getObject, putObject } from '@/modules/oss';
 
 const ingestLogger = rootLogger.child({ module: 'ContentParser' });
@@ -178,23 +177,19 @@ export async function processContentWork(workId: string): Promise<void> {
       });
     }
 
-    // Metadata: first parse fills from the source; re-parse keeps hand-edited
-    // values (admin may have corrected title/author/description) and only
-    // fills empty fields.
-    const metadata = content.metadata;
+    // Metadata: title/author/description/language land via the metadata-fill
+    // job (rule layer). content-parse only decides first-parse vs re-parse:
+    // on first parse the upload placeholder title (file name) is cleared so
+    // fill can take the parsed value; on re-parse hand-edited values stay.
     const hasParsedBefore = Boolean(work.originMeta?.parsed);
-    const parsedTitle = cleanBookTitle(metadata.title);
-    const title = hasParsedBefore ? work.title || parsedTitle || work.title : parsedTitle || work.title;
-    const author = hasParsedBefore ? work.author || joinAuthors(metadata.authors) : joinAuthors(metadata.authors);
-    const description = hasParsedBefore ? work.description || metadata.description || '' : metadata.description || '';
+    const metadata = content.metadata;
 
     await db
       .update(readingWorkTable)
       .set({
-        title,
-        author,
-        description,
-        language: metadata.language,
+        title: hasParsedBefore ? work.title : '',
+        author: hasParsedBefore ? work.author : '',
+        description: hasParsedBefore ? work.description : '',
         coverAssetId,
         status: 'draft',
         publishedAt: null,
@@ -218,10 +213,7 @@ export async function processContentWork(workId: string): Promise<void> {
       })
       .where(eq(readingWorkTable.id, workId));
 
-    ingestLogger.info(
-      { workId, title, chapters: content.chapters.length, images: storedImages },
-      'Content ingest complete',
-    );
+    ingestLogger.info({ workId, chapters: content.chapters.length, images: storedImages }, 'Content ingest complete');
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     ingestLogger.error({ err: error, workId }, 'Content ingest failed');

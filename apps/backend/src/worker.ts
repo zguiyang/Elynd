@@ -4,6 +4,7 @@ import { Worker } from 'bullmq';
 import { type ContentParseJobData, JOB_CONTENT_PARSE, processContentParse } from '@/jobs/content-parse';
 import type { PingJobData } from '@/jobs/ping';
 import { JOB_PING, processPing } from '@/jobs/ping';
+import { JOB_METADATA_FILL, processWorkMetadataFill, type WorkMetadataFillJobData } from '@/jobs/work-metadata-fill';
 import { workerLogger } from '@/lib/logger';
 import { closeQueue, getQueueConnection, QUEUE_NAME } from '@/lib/queue';
 
@@ -13,6 +14,8 @@ async function processJob(job: Pick<Job, 'name' | 'data'>): Promise<unknown> {
       return processPing(job.data as PingJobData);
     case JOB_CONTENT_PARSE:
       return processContentParse(job.data as ContentParseJobData);
+    case JOB_METADATA_FILL:
+      return processWorkMetadataFill(job.data as WorkMetadataFillJobData);
     default:
       throw new Error(`Unknown job name: ${job.name}`);
   }

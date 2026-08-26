@@ -38,8 +38,13 @@ export function getQueue(): Queue {
   return queue;
 }
 
-export async function enqueue(name: string, data: unknown): Promise<string> {
-  const job = await getQueue().add(name, data);
+export type EnqueueJobOptions = {
+  attempts?: number;
+  backoff?: { type: 'exponential'; delay: number };
+};
+
+export async function enqueue(name: string, data: unknown, jobOptions?: EnqueueJobOptions): Promise<string> {
+  const job = await getQueue().add(name, data, jobOptions);
   if (!job.id) {
     throw new Error(`Job ${name} was added without an id`);
   }

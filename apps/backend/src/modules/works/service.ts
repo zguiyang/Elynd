@@ -7,6 +7,10 @@ import {
   conversation as conversationTable,
   readingPart as readingPartTable,
   readingWork as readingWorkTable,
+  readingWorkSource as readingWorkSourceTable,
+  readingWorkTag as readingWorkTagTable,
+  source as sourceTable,
+  tag as tagTable,
 } from '@gloaming/db';
 import {
   type AdminOriginAsset,
@@ -32,6 +36,7 @@ import { JOB_CONTENT_PARSE } from '@/jobs/content-parse';
 import { AppError, NotFoundError, ValidationFailedError } from '@/lib/errors';
 import { rootLogger } from '@/lib/logger';
 import { enqueue } from '@/lib/queue';
+import { normalizeTag } from '@/lib/text';
 import { getWorksDerivedFreshness } from '@/modules/derived-freshness';
 import { deleteObject } from '@/modules/oss';
 import { deleteBilingualCacheForPart } from '@/modules/translate/service';
@@ -133,6 +138,15 @@ async function loadOriginFileAsset(workId: string): Promise<AdminOriginAsset | n
   };
 }
 
+async function loadSourcesForWork(workId: string): Promise<string[]> {
+  const rows = await db
+    .select({ name: sourceTable.name })
+    .from(readingWorkSourceTable)
+    .innerJoin(sourceTable, eq(readingWorkSourceTable.sourceId, sourceTable.id))
+    .where(eq(readingWorkSourceTable.workId, workId));
+  return rows.map((row) => row.name);
+}
+
 async function toAdminWork(row: WorkRow, parts?: PartRow[]): Promise<AdminWork> {
   const partRows = parts ?? (await loadPartsForWork(row.id));
   const primaryPart = partRows[0];
@@ -149,6 +163,10 @@ async function toAdminWork(row: WorkRow, parts?: PartRow[]): Promise<AdminWork> 
     originMeta: row.originMeta,
     originAsset: await loadOriginFileAsset(row.id),
     parts: partRows.map(toPart),
+    sources: await loadSourcesForWork(row.id),
+    metadataEnrichmentStatus: row.metadataEnrichmentStatus,
+    metadataEnrichmentAt: row.metadataEnrichmentAt ? toIso(row.metadataEnrichmentAt) : null,
+    metadataProvenance: row.metadataProvenance,
   };
 }
 
@@ -169,6 +187,9 @@ async function toAdminWorkSummary(row: WorkRow): Promise<AdminWorkSummary> {
     originMeta: row.originMeta,
     originAsset: await loadOriginFileAsset(row.id),
     partCount,
+    metadataEnrichmentStatus: row.metadataEnrichmentStatus,
+    metadataEnrichmentAt: row.metadataEnrichmentAt ? toIso(row.metadataEnrichmentAt) : null,
+    metadataProvenance: row.metadataProvenance,
   };
 }
 
@@ -479,18 +500,67 @@ export async function updateWork(id: string, input: UpdateWorkBody): Promise<Adm
   if (input.title !== undefined) patch.title = input.title;
   if (input.author !== undefined) patch.author = input.author;
   if (input.description !== undefined) patch.description = input.description;
-  if (input.tags !== undefined) patch.tags = input.tags;
   if (input.sourceNote !== undefined) patch.sourceNote = input.sourceNote;
 
-  if (Object.keys(patch).length === 0) {
+  if (input.tags === undefined && input.sources === undefined && Object.keys(patch).length === 0) {
     return toAdminWork(existing);
   }
 
-  const [row] = await db.update(readingWorkTable).set(patch).where(eq(readingWorkTable.id, id)).returning();
-  if (!row) {
-    throw new NotFoundError('Work');
-  }
-  return toAdminWork(row);
+  await db.transaction(async (tx) => {
+    if (input.tags !== undefined) {
+      const tagIds: string[] = [];
+      for (const name of input.tags) {
+        const [row] = await tx
+          .insert(tagTable)
+          .values({ id: randomUUID(), name, normalized: normalizeTag(name) })
+          .onConflictDoUpdate({ target: tagTable.normalized, set: { name } })
+          .returning();
+        tagIds.push(row!.id);
+      }
+      await tx
+        .delete(readingWorkTagTable)
+        .where(and(eq(readingWorkTagTable.workId, id), eq(readingWorkTagTable.provenance, 'manual')));
+      if (tagIds.length > 0) {
+        await tx
+          .insert(readingWorkTagTable)
+          .values(tagIds.map((tagId) => ({ workId: id, tagId, provenance: 'manual' as const })))
+          .onConflictDoNothing();
+      }
+      const rows = await tx
+        .select({ name: tagTable.name })
+        .from(readingWorkTagTable)
+        .innerJoin(tagTable, eq(readingWorkTagTable.tagId, tagTable.id))
+        .where(eq(readingWorkTagTable.workId, id));
+      patch.tags = rows.map((row) => row.name);
+    }
+
+    if (input.sources !== undefined) {
+      const sourceIds: string[] = [];
+      for (const name of input.sources) {
+        const [row] = await tx
+          .insert(sourceTable)
+          .values({ id: randomUUID(), name })
+          .onConflictDoUpdate({ target: sourceTable.name, set: { name } })
+          .returning();
+        sourceIds.push(row!.id);
+      }
+      await tx
+        .delete(readingWorkSourceTable)
+        .where(and(eq(readingWorkSourceTable.workId, id), eq(readingWorkSourceTable.provenance, 'manual')));
+      if (sourceIds.length > 0) {
+        await tx
+          .insert(readingWorkSourceTable)
+          .values(sourceIds.map((sourceId) => ({ workId: id, sourceId, provenance: 'manual' as const })))
+          .onConflictDoNothing();
+      }
+    }
+
+    if (Object.keys(patch).length > 0) {
+      await tx.update(readingWorkTable).set(patch).where(eq(readingWorkTable.id, id));
+    }
+  });
+
+  return getAdminWork(id);
 }
 
 export async function publishWork(id: string): Promise<AdminWork> {

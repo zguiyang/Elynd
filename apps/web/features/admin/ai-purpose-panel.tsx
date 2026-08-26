@@ -17,6 +17,10 @@ const AI_PURPOSE_LABELS: Record<AiSettingKey, { title: string; description: stri
     title: '双语翻译',
     description: '阅读页双语模式下英译中使用的默认模型。',
   },
+  'metadata-enrich.default_model_id': {
+    title: '元数据回填',
+    description: '上传 EPUB 后自动填充简介、标签与分类使用的默认模型。',
+  },
 };
 
 type AiPurposePanelProps = {

@@ -146,6 +146,7 @@ export function AiConfigPage() {
         providerId: modelSheetProvider.id,
         modelId: values.modelId.trim(),
         label: values.label.trim(),
+        protocol: 'chat-completions',
         temperature,
         maxTokens,
         isEnabled: values.isEnabled,

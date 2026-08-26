@@ -7,21 +7,15 @@ const DEFAULT_MAX_RETRIES = 1;
 
 export type CreateChatModelOptions = {
   timeoutMs?: number;
-  /** DeepSeek V4 thinks by default; reasoning tokens consume max_tokens and can truncate JSON. */
-  thinking?: 'disabled';
 };
 
-function modelKwargsFor(resolved: ResolvedLlm, options?: CreateChatModelOptions): Record<string, unknown> {
-  if (options?.thinking !== 'disabled') {
-    return {};
-  }
-  if (!resolved.modelId.toLowerCase().includes('deepseek')) {
-    return {};
-  }
-  return { thinking: { type: 'disabled' } };
-}
-
-/** Build a per-call ChatOpenAI instance from resolved DB config (no caching). */
+/**
+ * Build a per-call ChatOpenAI instance from resolved DB config (no caching).
+ * The wire protocol (Chat Completions / Responses) comes from `llm_model.protocol`
+ * — a config dimension, never a model-name special case. `useResponsesApi` is
+ * always set explicitly so upstream routing changes cannot silently switch
+ * endpoints for a provider that only speaks one protocol.
+ */
 export function createChatModel(resolved: ResolvedLlm, options?: CreateChatModelOptions): ChatOpenAI {
   return new ChatOpenAI({
     model: resolved.modelId,
@@ -33,6 +27,6 @@ export function createChatModel(resolved: ResolvedLlm, options?: CreateChatModel
     configuration: {
       baseURL: resolved.baseUrl,
     },
-    modelKwargs: modelKwargsFor(resolved, options),
+    useResponsesApi: resolved.protocol === 'responses',
   });
 }

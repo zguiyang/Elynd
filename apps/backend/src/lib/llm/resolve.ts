@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 
 import { llmModel as llmModelTable, llmProvider as llmProviderTable } from '@gloaming/db';
+import type { LlmModelProtocol } from '@gloaming/shared/api/llm-config';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';
@@ -14,6 +15,7 @@ export type ResolvedLlm = {
   modelId: string;
   baseUrl: string;
   apiKey: string;
+  protocol: LlmModelProtocol;
   temperature: number | null;
   maxTokens: number | null;
 };
@@ -29,6 +31,7 @@ export async function resolveLlmByModelRowId(modelRowId: string): Promise<Resolv
       providerId: llmModelTable.providerId,
       label: llmModelTable.label,
       modelId: llmModelTable.modelId,
+      protocol: llmModelTable.protocol,
       temperature: llmModelTable.temperature,
       maxTokens: llmModelTable.maxTokens,
       modelEnabled: llmModelTable.isEnabled,
@@ -60,6 +63,7 @@ export async function resolveLlmByModelRowId(modelRowId: string): Promise<Resolv
     modelId: row.modelId,
     baseUrl: row.baseUrl,
     apiKey,
+    protocol: row.protocol,
     temperature: row.temperature,
     maxTokens: row.maxTokens,
   };

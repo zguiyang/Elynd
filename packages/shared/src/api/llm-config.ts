@@ -35,11 +35,16 @@ export const updateLlmProviderBodySchema = z
 
 export type UpdateLlmProviderBody = z.infer<typeof updateLlmProviderBodySchema>;
 
+export const LLM_MODEL_PROTOCOLS = ['chat-completions', 'responses'] as const;
+
+export type LlmModelProtocol = (typeof LLM_MODEL_PROTOCOLS)[number];
+
 export const llmModelSchema = z.object({
   id: z.string(),
   providerId: z.string(),
   modelId: z.string(),
   label: z.string(),
+  protocol: z.enum(LLM_MODEL_PROTOCOLS),
   temperature: z.number().nullable(),
   maxTokens: z.number().int().nullable(),
   isEnabled: z.boolean(),
@@ -54,6 +59,7 @@ export const createLlmModelBodySchema = z.object({
   providerId: z.string().min(1),
   modelId: z.string().trim().min(1).max(200),
   label: z.string().trim().min(1).max(120),
+  protocol: z.enum(LLM_MODEL_PROTOCOLS).optional().default('chat-completions'),
   temperature: z.number().min(0).max(2).nullable().optional(),
   maxTokens: z.number().int().positive().max(1_000_000).nullable().optional(),
   isEnabled: z.boolean().optional().default(true),
@@ -66,6 +72,7 @@ export const updateLlmModelBodySchema = z
   .object({
     modelId: z.string().trim().min(1).max(200).optional(),
     label: z.string().trim().min(1).max(120).optional(),
+    protocol: z.enum(LLM_MODEL_PROTOCOLS).optional(),
     temperature: z.number().min(0).max(2).nullable().optional(),
     maxTokens: z.number().int().positive().max(1_000_000).nullable().optional(),
     isEnabled: z.boolean().optional(),

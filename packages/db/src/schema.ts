@@ -239,6 +239,9 @@ export const llmProvider = pgTable('llm_provider', {
     .notNull(),
 });
 
+/** Wire protocol for a callable model: OpenAI Chat Completions or Responses API. */
+export type LlmModelProtocol = 'chat-completions' | 'responses';
+
 /** Callable model under a provider (upstream model id + tuning). */
 export const llmModel = pgTable(
   'llm_model',
@@ -249,6 +252,8 @@ export const llmModel = pgTable(
       .references(() => llmProvider.id, { onDelete: 'cascade' }),
     modelId: text('model_id').notNull(),
     label: text('label').notNull(),
+    /** Wire protocol for this model: OpenAI Chat Completions or Responses API. */
+    protocol: text('protocol').$type<LlmModelProtocol>().notNull().default('chat-completions'),
     temperature: doublePrecision('temperature'),
     maxTokens: integer('max_tokens'),
     isEnabled: boolean('is_enabled').default(true).notNull(),

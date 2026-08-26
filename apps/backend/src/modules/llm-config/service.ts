@@ -57,6 +57,7 @@ function toModel(row: ModelRow): LlmModel {
     providerId: row.providerId,
     modelId: row.modelId,
     label: row.label,
+    protocol: row.protocol,
     temperature: row.temperature,
     maxTokens: row.maxTokens,
     isEnabled: row.isEnabled,
@@ -162,6 +163,7 @@ export async function createModel(body: CreateLlmModelBody): Promise<LlmModel> {
         providerId: body.providerId,
         modelId: body.modelId,
         label: body.label,
+        protocol: body.protocol,
         temperature: body.temperature ?? null,
         maxTokens: body.maxTokens ?? null,
         isEnabled: body.isEnabled,
@@ -186,6 +188,9 @@ export async function updateModel(id: string, body: UpdateLlmModelBody): Promise
   }
   if (body.label !== undefined) {
     patch.label = body.label;
+  }
+  if (body.protocol !== undefined) {
+    patch.protocol = body.protocol;
   }
   if (body.temperature !== undefined) {
     patch.temperature = body.temperature;

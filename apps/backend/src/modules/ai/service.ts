@@ -39,7 +39,6 @@ export type AiInvokeOptions<TSchema extends ZodTypeAny | undefined = undefined> 
   outputSchema?: TSchema;
   maxToolRounds?: number;
   timeoutMs?: number;
-  thinking?: 'disabled';
   requestSummaryExtra?: Record<string, unknown>;
 };
 
@@ -188,7 +187,7 @@ export async function invokeAi<TSchema extends ZodTypeAny | undefined = undefine
   try {
     const modelRowId = await resolveModelRowId(options);
     resolved = await resolveLlmByModelRowId(modelRowId);
-    const chat = createChatModel(resolved, { timeoutMs: options.timeoutMs, thinking: options.thinking });
+    const chat = createChatModel(resolved, { timeoutMs: options.timeoutMs });
     const conversation = toBaseMessages(options.messages);
     const tools = options.tools ?? [];
     const maxRounds = options.maxToolRounds ?? DEFAULT_MAX_TOOL_ROUNDS;

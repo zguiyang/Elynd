@@ -27,6 +27,10 @@ export type EpubBook = {
   authors: string[];
   description: string;
   language: string;
+  /** `dc:subject` values (local-name tolerant, array expanded). */
+  subjects: string[];
+  /** Raw `dc:source` value (unmatched — matching happens in metadata-fill). */
+  sourceRaw: string;
   spine: EpubSpineItem[];
   /** Navigation tree flattened in reading order (nav.xhtml preferred, NCX fallback). */
   nav: EpubNavItem[];

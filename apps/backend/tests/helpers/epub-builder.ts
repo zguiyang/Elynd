@@ -5,6 +5,14 @@ export type EpubBuildInput = {
   title?: string;
   authors?: string[];
   description?: string;
+  /** Description with child elements (e.g. `<p>…</p>`), inserted verbatim. */
+  descriptionHtml?: string;
+  /** Multiple `<dc:description>` entries (first one wins on read). */
+  descriptions?: string[];
+  /** Use the `dcterms:` prefix for Dublin Core metadata instead of `dc:`. */
+  useDctermsPrefix?: boolean;
+  subjects?: string[];
+  sourceRaw?: string;
   language?: string;
   /** spine entries: { href, content (XHTML), tocLabel? } */
   chapters: Array<{ href: string; content: string; tocLabel?: string }>;
@@ -44,14 +52,26 @@ export async function buildEpubBytes(input: EpubBuildInput): Promise<Buffer> {
 
   const spineRefs = input.chapters.map((_, i) => `<itemref idref="ch${i}"/>`).join('\n    ');
 
+  const prefix = input.useDctermsPrefix ? 'dcterms' : 'dc';
+
+  const descriptionEntries = input.descriptions
+    ? input.descriptions.map((d) => `<${prefix}:description>${d}</${prefix}:description>`).join('\n    ')
+    : input.descriptionHtml
+      ? `<${prefix}:description>${input.descriptionHtml}</${prefix}:description>`
+      : input.description
+        ? `<${prefix}:description>${input.description}</${prefix}:description>`
+        : '';
+
   const opf = `<?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid">
-  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/">
     <dc:identifier id="bookid">urn:uuid:test-${Date.now()}</dc:identifier>
-    <dc:title>${input.title ?? 'Test Book'}</dc:title>
+    <${prefix}:title>${input.title ?? 'Test Book'}</${prefix}:title>
     ${(input.authors ?? []).map((a) => `<dc:creator>${a}</dc:creator>`).join('\n    ')}
-    ${input.description ? `<dc:description>${input.description}</dc:description>` : ''}
+    ${descriptionEntries}
     <dc:language>${input.language ?? 'en-US'}</dc:language>
+    ${(input.subjects ?? []).map((s) => `<dc:subject>${s}</dc:subject>`).join('\n    ')}
+    ${input.sourceRaw ? `<dc:source>${input.sourceRaw}</dc:source>` : ''}
   </metadata>
   <manifest>
     ${manifestItems}

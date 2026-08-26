@@ -112,6 +112,54 @@ function textOf(value: unknown): string {
   return '';
 }
 
+/**
+ * Recursively concatenate text from a fast-xml-parser value tree —
+ * strings, `#text` nodes, nested objects and arrays (VersOne.Epub semantics:
+ * `XElement.Value` joins all descendant text). Attribute keys (`@_*`) are
+ * skipped. Handles `<dc:description><p>…</p></dc:description>` and deeper
+ * nesting that `textOf` cannot see.
+ *
+ * Known parser boundary: fast-xml-parser object mode cannot preserve the
+ * interleaving of `#text` and child elements inside mixed content (e.g.
+ * `<p>First <em>sentence</em>.</p>`), so text order may be imperfect there.
+ * Descendant text is still fully captured — strictly better than empty.
+ */
+function textOfDeep(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) {
+    let out = '';
+    for (const item of value) out += textOfDeep(item);
+    return out;
+  }
+  if (value && typeof value === 'object') {
+    let out = '';
+    for (const [key, child] of Object.entries(value)) {
+      if (key.startsWith('@_')) continue;
+      out += textOfDeep(child);
+    }
+    return out;
+  }
+  return '';
+}
+
+/** All metadata values whose local name (namespace prefix stripped) matches, case-insensitive. */
+function metadataValuesByLocalName(metadata: Record<string, unknown>, name: string): unknown[] {
+  const target = name.toLowerCase();
+  const out: unknown[] = [];
+  for (const [key, value] of Object.entries(metadata)) {
+    const local = key.includes(':') ? key.slice(key.indexOf(':') + 1) : key;
+    if (local.toLowerCase() !== target) continue;
+    if (Array.isArray(value)) out.push(...value);
+    else out.push(value);
+  }
+  return out;
+}
+
+/** First value by local name (`dc:description` / `dcterms:description` / `description` / case variants). */
+function metadataByLocalName(metadata: Record<string, unknown>, name: string): unknown {
+  return metadataValuesByLocalName(metadata, name)[0];
+}
+
 function findEntry(entries: Map<string, Buffer>, name: string): Buffer | undefined {
   const direct = entries.get(name);
   if (direct) return direct;
@@ -237,23 +285,21 @@ export async function parseEpub(buffer: Buffer): Promise<EpubBook> {
   const pkg = (opf.package ?? opf) as Record<string, unknown>;
   const metadata = (pkg.metadata ?? {}) as Record<string, unknown>;
 
-  const title =
-    textOf((metadata['dc:title'] as unknown) ?? '') ||
-    textOf(Array.isArray(metadata['dc:title']) ? (metadata['dc:title'] as unknown[])[0] : metadata['dc:title']) ||
-    '';
+  const title = textOfDeep(metadataByLocalName(metadata, 'title')).trim();
 
-  const creators = metadata['dc:creator'];
-  const creatorList = Array.isArray(creators)
-    ? creators.map((c) => textOf(c as unknown))
-    : creators
-      ? [textOf(creators as unknown)]
-      : [];
-  const authors = creatorList.map((a) => a.trim()).filter(Boolean);
+  const creators = metadataValuesByLocalName(metadata, 'creator');
+  const authors = creators.map((c) => textOfDeep(c).trim()).filter(Boolean);
 
-  const languageRaw = textOf(metadata['dc:language'] as unknown);
+  const languageRaw = textOfDeep(metadataByLocalName(metadata, 'language'));
   const language = normalizeLanguage(languageRaw);
 
-  const description = textOf(metadata['dc:description'] as unknown);
+  const description = textOfDeep(metadataByLocalName(metadata, 'description')).trim();
+
+  const subjects = metadataValuesByLocalName(metadata, 'subject')
+    .map((s) => textOfDeep(s).trim())
+    .filter(Boolean);
+
+  const sourceRaw = textOfDeep(metadataByLocalName(metadata, 'source')).trim();
 
   // Manifest hrefs are relative to the OPF directory (e.g. "chapter-1.xhtml"
   // lives at "OEBPS/chapter-1.xhtml"); resolve before matching zip entries.
@@ -310,6 +356,8 @@ export async function parseEpub(buffer: Buffer): Promise<EpubBook> {
     authors,
     description,
     language,
+    subjects,
+    sourceRaw,
     spine,
     nav,
     coverHref,
@@ -366,6 +414,8 @@ function resolveCoverHref(
 
 export {
   findEntryCaseInsensitive as findEpubEntry,
+  metadataByLocalName,
   normalizeHref as normalizeEpubHref,
   resolveHref as resolveEpubHref,
+  textOfDeep,
 };

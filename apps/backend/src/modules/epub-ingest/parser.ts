@@ -69,6 +69,8 @@ export const epubContentParser: ContentParser = {
         authors: book.authors,
         description: book.description,
         language: book.language,
+        subjects: book.subjects,
+        sourceRaw: book.sourceRaw,
       },
       chapters: chapters.map((chapter) => ({ title: chapter.title, html: chapter.html })),
       images,

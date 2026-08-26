@@ -205,6 +205,8 @@ export async function processContentWork(workId: string): Promise<void> {
             authors: metadata.authors,
             description: metadata.description,
             language: metadata.language,
+            subjects: metadata.subjects,
+            sourceRaw: metadata.sourceRaw,
             coverHref: content.cover?.originalPath ?? null,
             spineCount: content.stats.spineCount,
             navCount: content.stats.navCount,

@@ -1,7 +1,7 @@
 'use client';
 
 import { Pencil } from 'lucide-react';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 
 import type { MetadataEnrichmentStatus, UpdateWorkBody, WorkMetadataProvenance } from '@gloaming/shared/api/works';
@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
+import { TaxonomyMultiPicker, TaxonomySelect } from '@/features/admin/taxonomy-picker';
 import { formatWorksApiError, updateAdminWork, useInvalidateAdminWorks } from '@/features/admin/works-api';
 import type { AdminWorkView } from '@/features/works-http';
 import { cn } from '@/lib/utils';
@@ -174,11 +175,86 @@ function MetadataFieldRow({
   );
 }
 
-function splitList(text: string): string[] {
-  return text
-    .split(/[,，]/)
-    .map((item) => item.trim())
-    .filter(Boolean);
+type ReviewPickerRowProps = {
+  label: string;
+  /** Display value (fallback text when empty). */
+  displayValue: string;
+  provenance?: WorkMetadataProvenance;
+  disabled?: boolean;
+  /** Editor rendered while editing — value flows through onChange into parent state. */
+  picker: ReactNode;
+  onSave: () => Promise<void>;
+};
+
+/**
+ * Metadata row backed by a taxonomy picker (tags multi-select, category
+ * single-select, sources multi-select). Display state mirrors MetadataFieldRow;
+ * edit state renders the picker and saves through the normal work PATCH.
+ */
+function ReviewPickerRow({ label, displayValue, provenance, disabled, picker, onSave }: ReviewPickerRowProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSave() {
+    setIsSaving(true);
+    setError(null);
+    try {
+      await onSave();
+      setIsEditing(false);
+    } catch (saveError) {
+      setError(formatWorksApiError(saveError));
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  if (isEditing) {
+    return (
+      <div className="py-3.5">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <Label>
+              {label}
+              <ProvenanceBadge provenance={provenance} />
+            </Label>
+          </div>
+          {picker}
+          {error ? (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          ) : null}
+          <div className="flex gap-2">
+            <Button type="button" size="sm" onClick={() => void handleSave()} disabled={isSaving}>
+              {isSaving ? '保存中…' : '保存'}
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setIsEditing(false)} disabled={isSaving}>
+              取消
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-start justify-between gap-4 py-3.5">
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground">{label}</span>
+          <ProvenanceBadge provenance={provenance} />
+        </div>
+        <p className={cn('mt-1 truncate text-sm', !displayValue && 'text-muted-foreground')}>
+          {displayValue || '未填写'}
+        </p>
+      </div>
+      <Button type="button" variant="ghost" size="sm" onClick={() => setIsEditing(true)} disabled={disabled}>
+        <Pencil data-icon="inline-start" />
+        编辑
+      </Button>
+    </div>
+  );
 }
 
 type MetadataReviewPanelProps = {
@@ -195,6 +271,10 @@ export function MetadataReviewPanel({ workId, work }: MetadataReviewPanelProps) 
   const invalidate = useInvalidateAdminWorks();
   const status = work.metadataEnrichmentStatus;
   const isBusy = status === 'running' || work.status === 'processing';
+
+  const [tagsDraft, setTagsDraft] = useState<string[]>(work.tags);
+  const [sourcesDraft, setSourcesDraft] = useState<string[]>(work.sources);
+  const [categoryDraft, setCategoryDraft] = useState<string | null>(work.category);
 
   async function saveField(patch: UpdateWorkBody) {
     await updateAdminWork(workId, patch);
@@ -260,31 +340,52 @@ export function MetadataReviewPanel({ workId, work }: MetadataReviewPanelProps) 
             disabled={isBusy}
             onSave={(value) => saveField({ description: value })}
           />
-          <MetadataFieldRow
+          <ReviewPickerRow
             label="标签"
-            value={work.tags.length > 0 ? work.tags.join(' · ') : ''}
-            editValue={work.tags.join(', ')}
-            placeholder="用逗号分隔，发布至少一个"
+            displayValue={work.tags.length > 0 ? work.tags.join(' · ') : ''}
             provenance={work.metadataProvenance.tags}
             disabled={isBusy}
-            onSave={(value) => saveField({ tags: splitList(value) })}
+            picker={
+              <TaxonomyMultiPicker
+                kind="tag"
+                value={tagsDraft}
+                onChange={setTagsDraft}
+                placeholder="搜索选择标签…"
+                disabled={isBusy}
+              />
+            }
+            onSave={async () => saveField({ tags: tagsDraft })}
           />
-          <MetadataFieldRow
+          <ReviewPickerRow
             label="分类"
-            value={work.category ?? ''}
-            maxLength={100}
-            placeholder="留空则不分类"
+            displayValue={work.category ?? ''}
             provenance={work.metadataProvenance.category}
             disabled={isBusy}
-            onSave={(value) => saveField({ category: value })}
+            picker={
+              <TaxonomySelect
+                value={categoryDraft}
+                onChange={setCategoryDraft}
+                placeholder="选择分类…"
+                allowClear
+                disabled={isBusy}
+              />
+            }
+            onSave={async () => saveField({ category: categoryDraft ?? '' })}
           />
-          <MetadataFieldRow
+          <ReviewPickerRow
             label="来源"
-            value={work.sources.length > 0 ? work.sources.join(' · ') : ''}
-            editValue={work.sources.join(', ')}
-            placeholder="用逗号分隔，如 Project Gutenberg"
+            displayValue={work.sources.length > 0 ? work.sources.join(' · ') : ''}
             disabled={isBusy}
-            onSave={(value) => saveField({ sources: splitList(value) })}
+            picker={
+              <TaxonomyMultiPicker
+                kind="source"
+                value={sourcesDraft}
+                onChange={setSourcesDraft}
+                placeholder="搜索选择来源…（留空表示未知）"
+                disabled={isBusy}
+              />
+            }
+            onSave={async () => saveField({ sources: sourcesDraft })}
           />
         </div>
       )}

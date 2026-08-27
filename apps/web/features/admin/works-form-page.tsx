@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ADMIN_ROUTES } from '@/constants';
+import { TaxonomyMultiPicker, TaxonomySelect } from '@/features/admin/taxonomy-picker';
 import {
   formatWorksApiError,
   updateAdminWork,
@@ -31,19 +32,19 @@ function WorksFormEditor({ workId, work }: { workId: string; work: AdminWorkView
   const [author, setAuthor] = useState(work.author);
   const [description, setDescription] = useState(work.description);
   const [sourceNote, setSourceNote] = useState(work.sourceNote);
-  const [tagsText, setTagsText] = useState(work.tags.join(', '));
+  const [tags, setTags] = useState<string[]>(work.tags);
+  const [sources, setSources] = useState<string[]>(work.sources);
+  const [category, setCategory] = useState<string | null>(work.category);
 
   async function handleSave() {
     try {
-      const tags = tagsText
-        .split(/[,，]/)
-        .map((t) => t.trim())
-        .filter(Boolean);
       await updateAdminWork(workId, {
         title: title.trim(),
         author: author.trim(),
         description: description.trim(),
         tags,
+        sources,
+        category: category ?? '',
         sourceNote: sourceNote.trim(),
       });
       await invalidate(workId);
@@ -104,13 +105,16 @@ function WorksFormEditor({ workId, work }: { workId: string; work: AdminWorkView
           <Input id="sourceNote" value={sourceNote} onChange={(e) => setSourceNote(e.target.value)} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="tags">标签（逗号分隔，发布至少一个）</Label>
-          <Input
-            id="tags"
-            value={tagsText}
-            onChange={(e) => setTagsText(e.target.value)}
-            placeholder="story, daily-life"
-          />
+          <Label htmlFor="tags">标签（发布至少一个）</Label>
+          <TaxonomyMultiPicker kind="tag" value={tags} onChange={setTags} placeholder="搜索选择标签…" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="category">分类（可选）</Label>
+          <TaxonomySelect value={category} onChange={setCategory} placeholder="选择分类…（留空则不分类）" allowClear />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="sources">来源（可选，留空表示未知）</Label>
+          <TaxonomyMultiPicker kind="source" value={sources} onChange={setSources} placeholder="搜索选择来源…" />
         </div>
 
         <div className="space-y-2">

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { and, asc, count, desc, eq, ilike, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ilike, inArray, or, type SQL, sql } from 'drizzle-orm';
 
 import {
   category as categoryTable,
@@ -29,8 +29,11 @@ import {
   EPUB_UPLOAD_MAX_BYTES,
   getPublishWorkIssues,
   type Part,
+  type RetryWorkflowBody,
   type UpdateWorkBody,
   type Work,
+  WORKFLOW_STEPS,
+  type WorkflowStep,
 } from '@gloaming/shared/api/works';
 
 import { HTTP_STATUS } from '@/constants';
@@ -41,6 +44,8 @@ import { AppError, NotFoundError, ValidationFailedError } from '@/lib/errors';
 import { rootLogger } from '@/lib/logger';
 import { enqueue } from '@/lib/queue';
 import { normalizeTag } from '@/lib/text';
+import { stepRunningStatus } from '@/lib/workflow';
+import { clearDerivedAssets } from '@/modules/content-parser/service';
 import { getWorksDerivedFreshness } from '@/modules/derived-freshness';
 import { deleteObject } from '@/modules/oss';
 import { deleteBilingualCacheForPart } from '@/modules/translate/service';
@@ -180,8 +185,7 @@ async function toAdminWork(row: WorkRow, parts?: PartRow[]): Promise<AdminWork> 
     parts: partRows.map(toPart),
     sources: await loadSourcesForWork(row.id),
     category: await loadCategoryForWork(row.id),
-    metadataEnrichmentStatus: row.metadataEnrichmentStatus,
-    metadataEnrichmentAt: row.metadataEnrichmentAt ? toIso(row.metadataEnrichmentAt) : null,
+    failedStep: failedStepOf(row),
     metadataProvenance: row.metadataProvenance,
   };
 }
@@ -204,10 +208,17 @@ async function toAdminWorkSummary(row: WorkRow): Promise<AdminWorkSummary> {
     originAsset: await loadOriginFileAsset(row.id),
     partCount,
     category: await loadCategoryForWork(row.id),
-    metadataEnrichmentStatus: row.metadataEnrichmentStatus,
-    metadataEnrichmentAt: row.metadataEnrichmentAt ? toIso(row.metadataEnrichmentAt) : null,
+    failedStep: failedStepOf(row),
     metadataProvenance: row.metadataProvenance,
   };
+}
+
+/** The step that failed (originMeta.failedStep), validated against the enum. */
+function failedStepOf(row: WorkRow): WorkflowStep | null {
+  const value = row.originMeta?.failedStep;
+  return typeof value === 'string' && (WORKFLOW_STEPS as readonly string[]).includes(value)
+    ? (value as WorkflowStep)
+    : null;
 }
 
 function escapeIlikePattern(value: string): string {
@@ -283,7 +294,7 @@ export async function createAdminTextWork(input: CreateAdminTextWorkBody): Promi
       id: workId,
       title: input.title,
       description: '',
-      status: 'draft',
+      status: 'ready',
       originKind: 'admin_text',
       tags: [],
       sourceNote: '',
@@ -461,7 +472,8 @@ export async function reuseAdminEpubWork(input: {
 }
 
 export async function listAdminWorks(query: AdminWorkListQuery): Promise<AdminWorkListData> {
-  const where = query.status ? eq(readingWorkTable.status, query.status) : undefined;
+  const statuses = query.status ? query.status.split(',') : undefined;
+  const where = statuses ? inArray(readingWorkTable.status, statuses) : undefined;
   const primary = query.sortOrder === 'asc' ? asc(readingWorkTable.updatedAt) : desc(readingWorkTable.updatedAt);
   const offset = (query.page - 1) * query.pageSize;
 
@@ -617,8 +629,8 @@ export async function publishWork(id: string): Promise<AdminWork> {
   if (!existing) {
     throw new NotFoundError('Work');
   }
-  if (existing.status !== 'draft') {
-    throw new AppError(HTTP_STATUS.CONFLICT, '仅草稿作品可以发布');
+  if (existing.status !== 'ready') {
+    throw new AppError(HTTP_STATUS.CONFLICT, '仅全部步骤完成的作品可以发布');
   }
 
   const parts = await loadPartsForWork(id);
@@ -655,7 +667,7 @@ export async function unpublishWork(id: string): Promise<AdminWork> {
 
   const [row] = await db
     .update(readingWorkTable)
-    .set({ status: 'draft', publishedAt: null })
+    .set({ status: 'ready', publishedAt: null })
     .where(eq(readingWorkTable.id, id))
     .returning();
 
@@ -665,74 +677,108 @@ export async function unpublishWork(id: string): Promise<AdminWork> {
   return toAdminWork(row);
 }
 
-export async function reparseWork(id: string): Promise<AdminWork> {
-  const [existing] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, id)).limit(1);
-  if (!existing) {
-    throw new NotFoundError('Work');
-  }
-  if (existing.status === 'published') {
-    throw new AppError(HTTP_STATUS.CONFLICT, '请先下架作品后再重新解析');
-  }
-  if (existing.status === 'processing') {
-    throw new AppError(HTTP_STATUS.CONFLICT, '作品正在解析中，请稍后再试');
-  }
-  if (existing.originKind !== 'admin_epub') {
-    throw new AppError(HTTP_STATUS.BAD_REQUEST, '仅 EPUB 作品支持重新解析');
-  }
-
-  const originMeta = { ...existing.originMeta };
-  delete originMeta.lastError;
-  const [row] = await db
-    .update(readingWorkTable)
-    .set({
-      status: 'processing',
-      originMeta,
-      // Re-parse re-runs the whole pipeline (content-parse → metadata-fill →
-      // metadata-enrich), so reset the AI backfill so it can re-claim.
-      metadataEnrichmentStatus: 'pending',
-      metadataEnrichmentAt: null,
-    })
-    .where(eq(readingWorkTable.id, id))
-    .returning();
-  if (!row) {
-    throw new NotFoundError('Work');
-  }
-
-  await enqueue(JOB_CONTENT_PARSE, { workId: id });
-  return toAdminWork(row);
-}
+const STEP_JOB: Record<Exclude<WorkflowStep, 'tts'>, string> = {
+  parse: JOB_CONTENT_PARSE,
+  metadata: JOB_METADATA_FILL,
+};
 
 /**
- * Retry the metadata backfill step independently of parsing: resets the
- * enrichment claim to pending and re-enqueues the fill job, which chains into
- * AI enrichment (fill is idempotent; enrich short-circuits when nothing needs
- * AI). Refused while processing/published.
+ * Workflow retry / re-run. Without `step` it resumes from the failed step
+ * (originMeta.failedStep) and walks the remaining pipeline; with `step` it
+ * re-runs that step and everything after it. Outputs of the step and later
+ * steps are cleared synchronously — no intermediate state is served. Refused
+ * while processing or published.
  */
-export async function refillWorkMetadata(id: string): Promise<AdminWork> {
+export async function retryWorkflow(id: string, input: RetryWorkflowBody = {}): Promise<AdminWork> {
   const [existing] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, id)).limit(1);
   if (!existing) {
     throw new NotFoundError('Work');
   }
   if (existing.originKind !== 'admin_epub') {
-    throw new AppError(HTTP_STATUS.BAD_REQUEST, '仅 EPUB 作品支持重新回填');
+    throw new AppError(HTTP_STATUS.BAD_REQUEST, '仅 EPUB 作品支持流程重试');
   }
-  if (existing.status !== 'draft') {
-    throw new AppError(HTTP_STATUS.CONFLICT, '仅草稿状态可重新回填');
+  if (existing.status === 'published') {
+    throw new AppError(HTTP_STATUS.CONFLICT, '请先下架作品后再重试');
+  }
+  if (existing.status === 'processing' || existing.status === 'metadata' || existing.status === 'tts') {
+    throw new AppError(HTTP_STATUS.CONFLICT, '作品正在处理中，请稍后再试');
   }
 
-  const originMeta = { ...existing.originMeta };
-  delete originMeta.lastError;
+  const step = input.step ?? failedStepOf(existing);
+  if (!step) {
+    throw new AppError(HTTP_STATUS.BAD_REQUEST, '没有可重试的步骤');
+  }
+  if (step === 'tts') {
+    throw new AppError(HTTP_STATUS.BAD_REQUEST, '音频步骤尚未开放');
+  }
+
+  // Overwrite semantics: clear this step's and later steps' outputs now.
+  if (step === 'parse') {
+    await clearParseOutputs(existing);
+  }
+  if (step === 'metadata') {
+    await clearAiOutputs(existing);
+  }
+
   await db
     .update(readingWorkTable)
     .set({
-      metadataEnrichmentStatus: 'pending',
-      metadataEnrichmentAt: null,
-      originMeta,
+      status: stepRunningStatus(step),
+      originMeta: {
+        ...existing.originMeta,
+        failedStep: undefined,
+        lastError: undefined,
+        failedAt: undefined,
+      },
     })
     .where(eq(readingWorkTable.id, id));
 
-  await enqueue(JOB_METADATA_FILL, { workId: id });
+  await enqueue(STEP_JOB[step], { workId: id }, { attempts: 2 });
   return getAdminWork(id);
+}
+
+/** Re-parse reset: parts, derived assets, AI outputs, and filled metadata fields. */
+async function clearParseOutputs(work: WorkRow): Promise<void> {
+  await clearDerivedAssets(work.id);
+  await db.delete(readingPartTable).where(eq(readingPartTable.workId, work.id));
+  await clearAiOutputs(work);
+  await db
+    .update(readingWorkTable)
+    .set({
+      title: '',
+      author: '',
+      description: '',
+      coverAssetId: null,
+      tags: [],
+      metadataProvenance: {},
+    })
+    .where(eq(readingWorkTable.id, work.id));
+}
+
+/** AI-output reset: ai-provenance tag/category associations and ai-filled fields. */
+async function clearAiOutputs(work: WorkRow): Promise<void> {
+  await db
+    .delete(readingWorkTagTable)
+    .where(and(eq(readingWorkTagTable.workId, work.id), eq(readingWorkTagTable.provenance, 'ai')));
+  await db
+    .delete(readingWorkCategoryTable)
+    .where(and(eq(readingWorkCategoryTable.workId, work.id), eq(readingWorkCategoryTable.provenance, 'ai')));
+  const provenance: WorkMetadataProvenanceMap = { ...work.metadataProvenance };
+  const patch: Partial<typeof readingWorkTable.$inferInsert> = {};
+  if (provenance.description === 'ai') {
+    patch.description = '';
+    delete provenance.description;
+  }
+  if (provenance.tags === 'ai') {
+    delete provenance.tags;
+  }
+  if (provenance.category === 'ai') {
+    delete provenance.category;
+  }
+  if (Object.keys(patch).length > 0 || Object.keys(provenance).length !== Object.keys(work.metadataProvenance).length) {
+    patch.metadataProvenance = provenance;
+    await db.update(readingWorkTable).set(patch).where(eq(readingWorkTable.id, work.id));
+  }
 }
 
 export async function deleteWork(id: string): Promise<void> {

@@ -7,6 +7,7 @@ import {
   catalogListQuerySchema,
   checkEpubWorkReuseBodySchema,
   createAdminTextWorkBodySchema,
+  retryWorkflowBodySchema,
   updateWorkBodySchema,
 } from '@gloaming/shared/api/works';
 
@@ -29,5 +30,6 @@ function validated<T extends ZodType, Target extends keyof ValidationTargets>(ta
 export const validateCreateAdminTextWork = validated('json', createAdminTextWorkBodySchema);
 export const validateCheckEpubWorkReuse = validated('json', checkEpubWorkReuseBodySchema);
 export const validateUpdateWork = validated('json', updateWorkBodySchema);
+export const validateRetryWorkflow = validated('json', retryWorkflowBodySchema);
 export const validateAdminWorkListQuery = validated('query', adminWorkListQuerySchema);
 export const validateCatalogListQuery = validated('query', catalogListQuerySchema);

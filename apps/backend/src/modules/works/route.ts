@@ -10,6 +10,7 @@ import {
   validateCatalogListQuery,
   validateCheckEpubWorkReuse,
   validateCreateAdminTextWork,
+  validateRetryWorkflow,
   validateUpdateWork,
 } from '@/modules/works/validator';
 
@@ -79,15 +80,9 @@ worksRoutes.post('/api/admin/works/:id/unpublish', requireAdmin, async (c) => {
   return c.json(work);
 });
 
-/** Re-run the content parse job (failed drafts) — refused while processing/published. */
-worksRoutes.post('/api/admin/works/:id/reparse', requireAdmin, async (c) => {
-  const work = await worksService.reparseWork(c.req.param('id'));
-  return c.json(work);
-});
-
-/** Re-run the metadata backfill (fill → AI enrich) without re-parsing. */
-worksRoutes.post('/api/admin/works/:id/refill', requireAdmin, async (c) => {
-  const work = await worksService.refillWorkMetadata(c.req.param('id'));
+/** Retry / re-run the generation workflow — resume from the failed step, or re-run one step. */
+worksRoutes.post('/api/admin/works/:id/workflow/retry', requireAdmin, validateRetryWorkflow, async (c) => {
+  const work = await worksService.retryWorkflow(c.req.param('id'), c.req.valid('json'));
   return c.json(work);
 });
 

@@ -61,7 +61,7 @@ export async function resolveAsset(assetId: string): Promise<ResolvedAsset | nul
     kind: row.kind,
     storageKey: row.storageKey,
     mimeType: row.mimeType,
-    workStatus: row.workStatus ?? 'draft',
+    workStatus: row.workStatus ?? 'processing',
   };
 }
 

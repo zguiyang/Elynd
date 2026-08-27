@@ -27,19 +27,51 @@ export type MetadataFieldDef = {
   normalize(value: unknown): unknown;
 };
 
-function cleanTags(value: unknown): string[] | undefined {
+/**
+ * Taxonomy decision output — the model declares reuse (with the id from the
+ * tools) or creation. The server treats this as intent only: existing ids are
+ * validated, and names always fall back to normalized reuse-first upserts.
+ */
+export const taxonomyRefSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('existing'),
+    id: z.string().min(1).describe('id returned by list_existing_tags / list_categories'),
+    name: z.string().min(1).max(100),
+  }),
+  z.object({ kind: z.literal('new'), name: z.string().min(1).max(100) }),
+]);
+
+export type TaxonomyRef = z.infer<typeof taxonomyRefSchema>;
+
+/** Clean, dedupe and cap an array of taxonomy refs; returns name + existingId. */
+export function cleanTagRefs(value: unknown): Array<{ name: string; existingId?: string }> | undefined {
   if (!Array.isArray(value)) return undefined;
   const seen = new Set<string>();
-  const out: string[] = [];
+  const out: Array<{ name: string; existingId?: string }> = [];
   for (const raw of value) {
-    if (typeof raw !== 'string') continue;
-    const tag = raw.trim().slice(0, 40);
-    if (!tag || seen.has(tag.toLowerCase()) || isStopwordTag(tag)) continue;
-    seen.add(tag.toLowerCase());
-    out.push(tag);
+    if (!raw || typeof raw !== 'object') continue;
+    const ref = raw as Partial<TaxonomyRef>;
+    const name = typeof ref.name === 'string' ? ref.name.trim().slice(0, 100) : '';
+    if (!name || seen.has(name.toLowerCase()) || isStopwordTag(name)) continue;
+    seen.add(name.toLowerCase());
+    out.push({
+      name: name.slice(0, 40),
+      ...(ref.kind === 'existing' && typeof ref.id === 'string' && ref.id ? { existingId: ref.id } : {}),
+    });
     if (out.length >= AI_TAG_MAX_ITEMS) break;
   }
   return out.length > 0 ? out : undefined;
+}
+
+export function cleanCategoryRef(value: unknown): { name: string; existingId?: string } | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const ref = value as Partial<TaxonomyRef>;
+  const name = typeof ref.name === 'string' ? ref.name.trim().slice(0, 100) : '';
+  if (!name) return undefined;
+  return {
+    name,
+    ...(ref.kind === 'existing' && typeof ref.id === 'string' && ref.id ? { existingId: ref.id } : {}),
+  };
 }
 
 export const metadataFieldRegistry: Record<MetadataFieldId, MetadataFieldDef> = {
@@ -61,26 +93,22 @@ export const metadataFieldRegistry: Record<MetadataFieldId, MetadataFieldDef> = 
     aiFillable: true,
     promptSection: 'tags: noun phrases, prefer existing tags from list_existing_tags',
     outputKey: 'tags',
-    schema: z.array(z.string().min(1).max(40)).max(AI_TAG_MAX_ITEMS).optional(),
+    schema: z.array(taxonomyRefSchema).max(AI_TAG_MAX_ITEMS).optional(),
     isWeak(value) {
       return !value || !value.trim();
     },
-    normalize: cleanTags,
+    normalize: cleanTagRefs,
   },
   category: {
     id: 'category',
     aiFillable: true,
     promptSection: 'category: one category, prefer existing from list_categories',
     outputKey: 'category',
-    schema: z.string().max(100).optional(),
+    schema: z.union([taxonomyRefSchema, z.null()]).optional(),
     isWeak(value) {
       return !value || !value.trim();
     },
-    normalize(value: unknown): string | undefined {
-      if (typeof value !== 'string') return undefined;
-      const text = value.trim();
-      return text ? text.slice(0, 100) : undefined;
-    },
+    normalize: cleanCategoryRef,
   },
   source: {
     id: 'source',
@@ -99,12 +127,18 @@ export const metadataFieldRegistry: Record<MetadataFieldId, MetadataFieldDef> = 
 
 export const aiFillableFields = METADATA_FIELD_IDS.filter((id) => metadataFieldRegistry[id].aiFillable);
 
-/** Zod object for withStructuredOutput — only aiFillable fields. */
-export function buildMetadataOutputSchema() {
+/**
+ * Zod object for withStructuredOutput — built from the fields this run must
+ * fill. Fields already complete are absent entirely, and required fields are
+ * mandatory: the model cannot skip them, which is the fix for silent omission.
+ */
+export function buildMetadataOutputSchema(requiredFields: MetadataFieldId[]) {
   const shape: Record<string, ZodType> = {};
-  for (const id of aiFillableFields) {
+  for (const id of requiredFields) {
     const def = metadataFieldRegistry[id];
-    shape[id] = def.schema;
+    if (!def.aiFillable) continue;
+    const base = def.schema;
+    shape[id] = (base instanceof z.ZodOptional ? base.unwrap() : base) as ZodType;
   }
   return z.object(shape);
 }

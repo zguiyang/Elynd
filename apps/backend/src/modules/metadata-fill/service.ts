@@ -120,7 +120,7 @@ export async function fillWorkMetadata(workId: string): Promise<void> {
     for (const subject of subjects) {
       const [row] = await tx
         .insert(tagTable)
-        .values({ id: randomUUID(), name: subject, normalized: normalizeTag(subject) })
+        .values({ id: randomUUID(), name: subject, normalized: normalizeTag(subject), origin: 'extracted' })
         .onConflictDoUpdate({ target: tagTable.normalized, set: { name: subject } })
         .returning();
       await tx

@@ -43,6 +43,7 @@ type DimensionAdapter = {
   searchColumn: AnyPgColumn;
   idColumn: AnyPgColumn;
   nameColumn: AnyPgColumn;
+  originColumn: AnyPgColumn;
   createdAtColumn: AnyPgColumn;
   updatedAtColumn: AnyPgColumn;
 };
@@ -57,6 +58,7 @@ function adapter(kind: TaxonomyKind): DimensionAdapter {
         searchColumn: tagTable.normalized,
         idColumn: tagTable.id,
         nameColumn: tagTable.name,
+        originColumn: tagTable.origin,
         createdAtColumn: tagTable.createdAt,
         updatedAtColumn: tagTable.updatedAt,
       };
@@ -68,6 +70,7 @@ function adapter(kind: TaxonomyKind): DimensionAdapter {
         searchColumn: categoryTable.normalized,
         idColumn: categoryTable.id,
         nameColumn: categoryTable.name,
+        originColumn: categoryTable.origin,
         createdAtColumn: categoryTable.createdAt,
         updatedAtColumn: categoryTable.updatedAt,
       };
@@ -79,6 +82,7 @@ function adapter(kind: TaxonomyKind): DimensionAdapter {
         searchColumn: sourceTable.name,
         idColumn: sourceTable.id,
         nameColumn: sourceTable.name,
+        originColumn: sourceTable.origin,
         createdAtColumn: sourceTable.createdAt,
         updatedAtColumn: sourceTable.updatedAt,
       };
@@ -92,13 +96,21 @@ function isUniqueViolation(error: unknown): boolean {
 
 function toItem(
   kind: TaxonomyKind,
-  row: { id: string; name: string; createdAt: Date; updatedAt: Date; matchRule?: string | null },
+  row: {
+    id: string;
+    name: string;
+    origin: 'extracted' | 'ai' | 'manual';
+    createdAt: Date;
+    updatedAt: Date;
+    matchRule?: string | null;
+  },
   usage = 0,
 ): TaxonomyItem {
   return {
     id: row.id,
     name: row.name,
     usage,
+    origin: row.origin,
     matchRule: kind === 'source' ? (row.matchRule ?? null) : null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -115,6 +127,7 @@ export async function listTaxonomy(kind: TaxonomyKind, query: TaxonomyListQuery)
   const base = {
     id: a.idColumn,
     name: a.nameColumn,
+    origin: a.originColumn,
     usage: sql<number>`count(${a.linkKey})::int`,
     createdAt: a.createdAtColumn,
     updatedAt: a.updatedAtColumn,
@@ -139,14 +152,14 @@ export async function createTaxonomyItem(kind: TaxonomyKind, body: CreateTaxonom
     if (kind === 'source') {
       const [row] = await db
         .insert(sourceTable)
-        .values({ id: randomUUID(), name, matchRule: body.matchRule ?? '' })
+        .values({ id: randomUUID(), name, matchRule: body.matchRule ?? '', origin: 'manual' })
         .returning();
       return toItem(kind, row);
     }
     const table = kind === 'tag' ? tagTable : categoryTable;
     const [row] = await db
       .insert(table as typeof tagTable)
-      .values({ id: randomUUID(), name, normalized: normalizeTag(name) })
+      .values({ id: randomUUID(), name, normalized: normalizeTag(name), origin: 'manual' })
       .returning();
     return toItem(kind, row);
   } catch (error) {

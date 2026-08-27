@@ -536,7 +536,7 @@ export async function updateWork(id: string, input: UpdateWorkBody): Promise<Adm
       for (const name of input.tags) {
         const [row] = await tx
           .insert(tagTable)
-          .values({ id: randomUUID(), name, normalized: normalizeTag(name) })
+          .values({ id: randomUUID(), name, normalized: normalizeTag(name), origin: 'manual' })
           .onConflictDoUpdate({ target: tagTable.normalized, set: { name } })
           .returning();
         tagIds.push(row!.id);
@@ -563,7 +563,7 @@ export async function updateWork(id: string, input: UpdateWorkBody): Promise<Adm
       for (const name of input.sources) {
         const [row] = await tx
           .insert(sourceTable)
-          .values({ id: randomUUID(), name })
+          .values({ id: randomUUID(), name, origin: 'manual' })
           .onConflictDoUpdate({ target: sourceTable.name, set: { name } })
           .returning();
         sourceIds.push(row!.id);
@@ -587,7 +587,7 @@ export async function updateWork(id: string, input: UpdateWorkBody): Promise<Adm
       if (categoryName) {
         const [row] = await tx
           .insert(categoryTable)
-          .values({ id: randomUUID(), name: categoryName, normalized: normalizeTag(categoryName) })
+          .values({ id: randomUUID(), name: categoryName, normalized: normalizeTag(categoryName), origin: 'manual' })
           .onConflictDoUpdate({ target: categoryTable.normalized, set: { name: categoryName } })
           .returning();
         await tx

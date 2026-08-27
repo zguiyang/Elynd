@@ -173,7 +173,7 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
       for (const name of aiTags) {
         const [row] = await tx
           .insert(tagTable)
-          .values({ id: randomUUID(), name, normalized: normalizeTag(name) })
+          .values({ id: randomUUID(), name, normalized: normalizeTag(name), origin: 'ai' })
           .onConflictDoUpdate({ target: tagTable.normalized, set: { name } })
           .returning();
         tagIds.push(row!.id);

@@ -8,8 +8,15 @@ import {
   paginationQuerySchema,
 } from '@gloaming/shared/api/pagination';
 
-export const WORK_STATUSES = ['draft', 'processing', 'published', 'failed'] as const;
+export const WORK_STATUSES = ['processing', 'metadata', 'tts', 'ready', 'failed', 'published'] as const;
 export type WorkStatus = (typeof WORK_STATUSES)[number];
+
+/** Linear generation steps of the EPUB work pipeline (retry/re-run target). */
+export const WORKFLOW_STEPS = ['parse', 'metadata', 'tts'] as const;
+export type WorkflowStep = (typeof WORKFLOW_STEPS)[number];
+
+/** TTS step flag — status/schema reserved, real job not wired yet. */
+export const TTS_STEP_ENABLED = false;
 
 export const WORK_VISIBILITIES = ['catalog', 'private'] as const;
 export type WorkVisibility = (typeof WORK_VISIBILITIES)[number];
@@ -38,9 +45,6 @@ export const EPUB_UPLOAD_MAX_BYTES = 50 * 1024 * 1024;
 
 export const WORK_METADATA_PROVENANCES = ['extracted', 'ai', 'manual'] as const;
 export type WorkMetadataProvenance = (typeof WORK_METADATA_PROVENANCES)[number];
-
-export const METADATA_ENRICHMENT_STATUSES = ['pending', 'running', 'completed', 'failed', 'skipped'] as const;
-export type MetadataEnrichmentStatus = (typeof METADATA_ENRICHMENT_STATUSES)[number];
 
 const tagItemSchema = z.string().trim().min(1).max(WORK_TAG_MAX_LEN);
 const tagsSchema = z.array(tagItemSchema).max(WORK_TAG_MAX_ITEMS);
@@ -116,8 +120,8 @@ export const adminWorkSchema = workSchema.extend({
   parts: z.array(partSchema),
   sources: z.array(z.string()),
   category: z.string().nullable(),
-  metadataEnrichmentStatus: z.enum(METADATA_ENRICHMENT_STATUSES),
-  metadataEnrichmentAt: z.union([z.string(), z.date()]).nullable(),
+  /** Step that failed when status is `failed` (from originMeta.failedStep). */
+  failedStep: z.enum(WORKFLOW_STEPS).nullable(),
   metadataProvenance: z.record(z.string(), z.enum(WORK_METADATA_PROVENANCES)).default({}),
 });
 
@@ -133,8 +137,7 @@ export const adminWorkSummarySchema = workSchema.extend({
   originAsset: adminOriginAssetSchema.nullable(),
   partCount: z.number().int().nonnegative(),
   category: z.string().nullable(),
-  metadataEnrichmentStatus: z.enum(METADATA_ENRICHMENT_STATUSES),
-  metadataEnrichmentAt: z.union([z.string(), z.date()]).nullable(),
+  failedStep: z.enum(WORKFLOW_STEPS).nullable(),
   metadataProvenance: z.record(z.string(), z.enum(WORK_METADATA_PROVENANCES)).default({}),
 });
 
@@ -197,12 +200,31 @@ export const ADMIN_WORK_SORT_FIELDS = ['updatedAt'] as const;
 export type AdminWorkSortField = (typeof ADMIN_WORK_SORT_FIELDS)[number];
 export const DEFAULT_ADMIN_WORK_SORT_BY = 'updatedAt' as const satisfies AdminWorkSortField;
 
+/** Comma-separated status filter (e.g. `processing,metadata,tts` for "processing"). */
+const workStatusFilterSchema = z.preprocess(
+  emptyToUndefined,
+  z
+    .string()
+    .optional()
+    .refine(
+      (value) => !value || value.split(',').every((item) => (WORK_STATUSES as readonly string[]).includes(item)),
+      { message: '无效的状态筛选' },
+    ),
+);
+
 export const adminWorkListQuerySchema = paginationQuerySchema.extend({
   sortBy: createSortByQuerySchema(ADMIN_WORK_SORT_FIELDS, DEFAULT_ADMIN_WORK_SORT_BY),
-  status: z.preprocess(emptyToUndefined, z.enum(WORK_STATUSES).optional()),
+  status: workStatusFilterSchema,
 });
 
 export type AdminWorkListQuery = z.infer<typeof adminWorkListQuerySchema>;
+
+/** Body of `POST /api/admin/works/:id/workflow/retry` — resume the failed step or re-run one step. */
+export const retryWorkflowBodySchema = z.object({
+  step: z.enum(WORKFLOW_STEPS).optional(),
+});
+
+export type RetryWorkflowBody = z.infer<typeof retryWorkflowBodySchema>;
 
 export const adminWorkListDataSchema = z.object({
   items: z.array(adminWorkSummarySchema),

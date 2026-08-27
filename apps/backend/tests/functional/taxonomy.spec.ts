@@ -108,9 +108,10 @@ describe('taxonomy dimensions management', () => {
   it('creates and lists dimensions with usage counts', async () => {
     const create = await taxRequest(adminCookie, 'POST', taxUrl('tag'), { name: 'Fantasy' });
     expect(create.status).toBe(201);
-    const tag = (await create.json()) as { id: string; name: string; usage: number };
+    const tag = (await create.json()) as { id: string; name: string; usage: number; origin: string };
     expect(tag.name).toBe('Fantasy');
     expect(tag.usage).toBe(0);
+    expect(tag.origin).toBe('manual');
     tagIds.push(tag.id);
 
     const source = await taxRequest(adminCookie, 'POST', taxUrl('source'), {
@@ -118,8 +119,9 @@ describe('taxonomy dimensions management', () => {
       matchRule: 'testpress.example',
     });
     expect(source.status).toBe(201);
-    const sourceRow = (await source.json()) as { id: string; matchRule: string };
+    const sourceRow = (await source.json()) as { id: string; matchRule: string; origin: string };
     expect(sourceRow.matchRule).toBe('testpress.example');
+    expect(sourceRow.origin).toBe('manual');
     sourceIds.push(sourceRow.id);
 
     const list = await taxRequest(adminCookie, 'GET', taxUrl('tag'));

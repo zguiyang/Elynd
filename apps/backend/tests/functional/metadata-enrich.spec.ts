@@ -6,6 +6,7 @@ import {
   readingWork as readingWorkTable,
   readingWorkCategory as readingWorkCategoryTable,
   readingWorkTag as readingWorkTagTable,
+  tag as tagTable,
   uploadedObject as uploadedObjectTable,
   user as userTable,
 } from '@gloaming/db';
@@ -190,6 +191,14 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
       .where(eq(readingWorkTagTable.workId, workId));
     expect(tagRows.map((r) => r.provenance)).toEqual(['ai', 'ai']);
     expect(work!.tags).toEqual(['Space', 'Adventure']);
+
+    // AI-created tags are recorded as origin='ai' on the dimension row.
+    const [spaceTag] = await db
+      .select({ origin: tagTable.origin })
+      .from(tagTable)
+      .where(eq(tagTable.name, 'Space'))
+      .limit(1);
+    expect(spaceTag?.origin).toBe('ai');
 
     const categoryRows = await db
       .select({ provenance: readingWorkCategoryTable.provenance })

@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -106,7 +106,7 @@ describe('metadata-fill rule layer (extracted) + updateWork (manual)', () => {
     const workId = await uploadAndFill(
       await buildEpubBytes({
         title: 'Subject Book',
-        subjects: ['Science Fiction', 'Adventure'],
+        subjects: ['Zeta Alpha', 'Zeta Beta'],
         sourceRaw: 'https://standardebooks.org/ebooks/some-book',
         chapters: [
           { href: 'chapter-1.xhtml', tocLabel: 'Chapter 1', content: '<html><body><p>Body.</p></body></html>' },
@@ -116,7 +116,7 @@ describe('metadata-fill rule layer (extracted) + updateWork (manual)', () => {
 
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
     expect(work!.title).toBe('Subject Book');
-    expect(work!.tags).toEqual(['Science Fiction', 'Adventure']);
+    expect(work!.tags).toEqual(['Zeta Alpha', 'Zeta Beta']);
     expect(work!.metadataProvenance).toEqual({ description: undefined, tags: 'extracted' });
 
     const tagRows = await db
@@ -126,9 +126,16 @@ describe('metadata-fill rule layer (extracted) + updateWork (manual)', () => {
       .where(eq(readingWorkTagTable.workId, workId))
       .orderBy(tagTable.name);
     expect(tagRows).toEqual([
-      { name: 'Adventure', provenance: 'extracted' },
-      { name: 'Science Fiction', provenance: 'extracted' },
+      { name: 'Zeta Alpha', provenance: 'extracted' },
+      { name: 'Zeta Beta', provenance: 'extracted' },
     ]);
+
+    // Extracted tags are recorded with origin='extracted' on the dimension row.
+    const extractedOrigins = await db
+      .select({ origin: tagTable.origin })
+      .from(tagTable)
+      .where(inArray(tagTable.name, ['Zeta Alpha', 'Zeta Beta']));
+    expect(extractedOrigins.map((row) => row.origin)).toEqual(['extracted', 'extracted']);
 
     const sourceRows = await db.select().from(readingWorkSourceTable).where(eq(readingWorkSourceTable.workId, workId));
     expect(sourceRows).toHaveLength(1);

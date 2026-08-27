@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import type { TaxonomyItem, TaxonomyKind } from '@gloaming/shared/api/taxonomy';
+import type { WorkMetadataProvenance } from '@gloaming/shared/api/works';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,27 @@ const KIND_TABS: { value: TaxonomyKind; label: string; description: string }[] =
   { value: 'category', label: '分类', description: '作品分类（单选），AI 只能从列表中选择；可清理未使用项。' },
   { value: 'source', label: '来源', description: '内容来源，由 dc:source 匹配规则自动关联；系统保留，不可删除。' },
 ];
+
+const ORIGIN_LABEL: Record<WorkMetadataProvenance, string> = {
+  extracted: '提取',
+  ai: 'AI 生成',
+  manual: '人工',
+};
+
+/** Dimension origin badge — secondary styling, ember stays reserved for busy states. */
+function OriginBadge({ origin }: { origin: WorkMetadataProvenance }) {
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        origin === 'ai' && 'border-transparent bg-brand-soft text-brand-deep',
+        origin === 'extracted' && 'text-muted-foreground',
+      )}
+    >
+      {ORIGIN_LABEL[origin]}
+    </Badge>
+  );
+}
 
 type TaxonomySheetProps = {
   kind: TaxonomyKind;
@@ -181,7 +203,7 @@ function TaxonomyPanel({ kind }: TaxonomyPanelProps) {
   const deleteMutation = useDeleteTaxonomy(kind);
   const cleanupMutation = useCleanupTaxonomy();
   const isSource = kind === 'source';
-  const columns = isSource ? 3 : 2;
+  const columns = isSource ? 4 : 3;
 
   async function handleDelete(item: TaxonomyItem) {
     if (!window.confirm(`确定删除「${item.name}」？`)) return;
@@ -258,6 +280,7 @@ function TaxonomyPanel({ kind }: TaxonomyPanelProps) {
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">名称</TableHead>
+                <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">来源</TableHead>
                 <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">关联作品</TableHead>
                 {isSource ? (
                   <TableHead className="h-12 bg-surface-container-low px-5 text-muted-foreground">匹配规则</TableHead>
@@ -273,6 +296,9 @@ function TaxonomyPanel({ kind }: TaxonomyPanelProps) {
                 return (
                   <TableRow key={item.id} className="border-border">
                     <TableCell className="px-5 py-3.5 font-medium">{item.name}</TableCell>
+                    <TableCell className="px-5 py-3.5">
+                      <OriginBadge origin={item.origin} />
+                    </TableCell>
                     <TableCell className="px-5 py-3.5">
                       {item.usage > 0 ? (
                         <Badge variant="secondary">{item.usage} 部</Badge>

@@ -148,6 +148,13 @@
       "when": 1787840000000,
       "tag": "0020_dry_taxonomy",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1787845000000,
+      "tag": "0021_thick_ego",
+      "breakpoints": true
     }
   ]
 }

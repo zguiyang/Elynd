@@ -10,10 +10,12 @@ import {
 import {
   type CreateLlmModelBody,
   type CreateLlmProviderBody,
+  type FetchProviderModelsResult,
   type LlmAppSettingView,
   type LlmModel,
   type LlmModelListQuery,
   type LlmProvider,
+  type ProviderBalanceResult,
   type PutLlmAppSettingBody,
   type TestLlmProviderBody,
   type TestLlmProviderResult,
@@ -25,7 +27,13 @@ import { AI_SETTING_KEY_VALUES, type AiSettingKey } from '@gloaming/shared/api/l
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';
 import { AppError, NotFoundError } from '@/lib/errors';
-import { decryptApiKey, encryptApiKey, maskApiKey } from '@/lib/llm';
+import {
+  decryptApiKey,
+  encryptApiKey,
+  fetchProviderModelCandidates,
+  maskApiKey,
+  queryProviderBalance as queryProviderBalanceUpstream,
+} from '@/lib/llm';
 import { invokeAi } from '@/modules/ai';
 import { isAiSettingKey } from '@/modules/ai/purposes';
 
@@ -45,6 +53,9 @@ function toProvider(row: ProviderRow): LlmProvider {
     baseUrl: row.baseUrl,
     proxyUrl: row.proxyUrl ?? null,
     thinkingParam: row.thinkingParam ?? null,
+    balanceEndpoint: row.balanceEndpoint ?? null,
+    balanceAmountPath: row.balanceAmountPath ?? null,
+    balanceCurrencyPath: row.balanceCurrencyPath ?? null,
     isEnabled: row.isEnabled,
     apiKeySet: true,
     apiKeyMasked,
@@ -60,6 +71,7 @@ function toModel(row: ModelRow): LlmModel {
     modelId: row.modelId,
     label: row.label,
     protocol: row.protocol,
+    contextLength: row.contextLength,
     temperature: row.temperature,
     maxTokens: row.maxTokens,
     isEnabled: row.isEnabled,
@@ -97,6 +109,9 @@ export async function createProvider(body: CreateLlmProviderBody): Promise<LlmPr
       apiKeyCiphertext: encryptApiKey(body.apiKey),
       proxyUrl: body.proxyUrl ?? null,
       thinkingParam: body.thinkingParam ?? null,
+      balanceEndpoint: body.balanceEndpoint ?? null,
+      balanceAmountPath: body.balanceAmountPath ?? null,
+      balanceCurrencyPath: body.balanceCurrencyPath ?? null,
       isEnabled: body.isEnabled,
     })
     .returning();
@@ -121,6 +136,15 @@ export async function updateProvider(id: string, body: UpdateLlmProviderBody): P
   }
   if (body.thinkingParam !== undefined) {
     patch.thinkingParam = body.thinkingParam;
+  }
+  if (body.balanceEndpoint !== undefined) {
+    patch.balanceEndpoint = body.balanceEndpoint;
+  }
+  if (body.balanceAmountPath !== undefined) {
+    patch.balanceAmountPath = body.balanceAmountPath;
+  }
+  if (body.balanceCurrencyPath !== undefined) {
+    patch.balanceCurrencyPath = body.balanceCurrencyPath;
   }
   if (body.isEnabled !== undefined) {
     patch.isEnabled = body.isEnabled;
@@ -174,6 +198,7 @@ export async function createModel(body: CreateLlmModelBody): Promise<LlmModel> {
         modelId: body.modelId,
         label: body.label,
         protocol: body.protocol,
+        contextLength: body.contextLength ?? null,
         temperature: body.temperature ?? null,
         maxTokens: body.maxTokens ?? null,
         isEnabled: body.isEnabled,
@@ -201,6 +226,9 @@ export async function updateModel(id: string, body: UpdateLlmModelBody): Promise
   }
   if (body.protocol !== undefined) {
     patch.protocol = body.protocol;
+  }
+  if (body.contextLength !== undefined) {
+    patch.contextLength = body.contextLength;
   }
   if (body.temperature !== undefined) {
     patch.temperature = body.temperature;
@@ -355,4 +383,35 @@ export async function testProvider(providerId: string, body: TestLlmProviderBody
     latencyMs: Date.now() - started,
     modelLabel: result.model.label,
   };
+}
+
+async function loadProviderWithKey(providerId: string): Promise<{ row: ProviderRow; apiKey: string }> {
+  const rows = await db.select().from(llmProviderTable).where(eq(llmProviderTable.id, providerId)).limit(1);
+  const row = rows[0];
+  if (!row) {
+    throw new NotFoundError('LLM provider');
+  }
+  let apiKey: string;
+  try {
+    apiKey = decryptApiKey(row.apiKeyCiphertext);
+  } catch {
+    throw new AppError(HTTP_STATUS.BAD_REQUEST, 'API Key 解密失败，请重新保存服务商');
+  }
+  return { row, apiKey };
+}
+
+export async function fetchProviderModels(providerId: string): Promise<FetchProviderModelsResult> {
+  const { row, apiKey } = await loadProviderWithKey(providerId);
+  try {
+    const models = await fetchProviderModelCandidates(row, apiKey);
+    return { models };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '未知错误';
+    throw new AppError(HTTP_STATUS.BAD_REQUEST, `无法拉取模型列表（${message}）。该平台可能不支持，请手动添加模型。`);
+  }
+}
+
+export async function queryProviderBalance(providerId: string): Promise<ProviderBalanceResult> {
+  const { row, apiKey } = await loadProviderWithKey(providerId);
+  return queryProviderBalanceUpstream(row, apiKey);
 }

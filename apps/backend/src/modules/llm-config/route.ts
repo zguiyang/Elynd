@@ -39,6 +39,14 @@ llmConfigRoutes.post('/api/admin/llm/providers/:id/test', requireAdmin, validate
   return c.json(result);
 });
 
+llmConfigRoutes.post('/api/admin/llm/providers/:id/fetch-models', requireAdmin, async (c) => {
+  return c.json(await llmConfigService.fetchProviderModels(c.req.param('id')));
+});
+
+llmConfigRoutes.post('/api/admin/llm/providers/:id/balance', requireAdmin, async (c) => {
+  return c.json(await llmConfigService.queryProviderBalance(c.req.param('id')));
+});
+
 llmConfigRoutes.get('/api/admin/llm/models', requireAdmin, validateModelListQuery, async (c) => {
   return c.json(await llmConfigService.listModels(c.req.valid('query')));
 });

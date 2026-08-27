@@ -85,6 +85,12 @@ worksRoutes.post('/api/admin/works/:id/reparse', requireAdmin, async (c) => {
   return c.json(work);
 });
 
+/** Re-run the metadata backfill (fill → AI enrich) without re-parsing. */
+worksRoutes.post('/api/admin/works/:id/refill', requireAdmin, async (c) => {
+  const work = await worksService.refillWorkMetadata(c.req.param('id'));
+  return c.json(work);
+});
+
 worksRoutes.delete('/api/admin/works/:id', requireAdmin, async (c) => {
   await worksService.deleteWork(c.req.param('id'));
   return c.body(null, HTTP_STATUS.NO_CONTENT);

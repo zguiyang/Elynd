@@ -36,6 +36,7 @@ import {
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';
 import { JOB_CONTENT_PARSE } from '@/jobs/content-parse';
+import { JOB_METADATA_FILL } from '@/jobs/work-metadata-fill';
 import { AppError, NotFoundError, ValidationFailedError } from '@/lib/errors';
 import { rootLogger } from '@/lib/logger';
 import { enqueue } from '@/lib/queue';
@@ -699,6 +700,39 @@ export async function reparseWork(id: string): Promise<AdminWork> {
 
   await enqueue(JOB_CONTENT_PARSE, { workId: id });
   return toAdminWork(row);
+}
+
+/**
+ * Retry the metadata backfill step independently of parsing: resets the
+ * enrichment claim to pending and re-enqueues the fill job, which chains into
+ * AI enrichment (fill is idempotent; enrich short-circuits when nothing needs
+ * AI). Refused while processing/published.
+ */
+export async function refillWorkMetadata(id: string): Promise<AdminWork> {
+  const [existing] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, id)).limit(1);
+  if (!existing) {
+    throw new NotFoundError('Work');
+  }
+  if (existing.originKind !== 'admin_epub') {
+    throw new AppError(HTTP_STATUS.BAD_REQUEST, '仅 EPUB 作品支持重新回填');
+  }
+  if (existing.status !== 'draft') {
+    throw new AppError(HTTP_STATUS.CONFLICT, '仅草稿状态可重新回填');
+  }
+
+  const originMeta = { ...existing.originMeta };
+  delete originMeta.lastError;
+  await db
+    .update(readingWorkTable)
+    .set({
+      metadataEnrichmentStatus: 'pending',
+      metadataEnrichmentAt: null,
+      originMeta,
+    })
+    .where(eq(readingWorkTable.id, id));
+
+  await enqueue(JOB_METADATA_FILL, { workId: id });
+  return getAdminWork(id);
 }
 
 export async function deleteWork(id: string): Promise<void> {

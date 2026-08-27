@@ -332,7 +332,7 @@ describe('publish / unpublish status guards', () => {
     expect(publish.status).toBe(409);
   });
 
-  it('refuses to unpublish a draft', async () => {
+  it('refuses to unpublish a non-published work', async () => {
     const response = await app.request('/api/admin/works', {
       method: 'POST',
       headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
@@ -368,6 +368,6 @@ describe('publish / unpublish status guards', () => {
 
     const unpublish = await unpublishRequest(created.id);
     expect(unpublish.status).toBe(200);
-    expect(((await unpublish.json()) as { status: string }).status).toBe('draft');
+    expect(((await unpublish.json()) as { status: string }).status).toBe('ready');
   });
 });

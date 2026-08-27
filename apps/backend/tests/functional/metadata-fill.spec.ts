@@ -288,42 +288,43 @@ describe('metadata-fill rule layer (extracted) + updateWork (manual)', () => {
     expect(work!.tags).toEqual(['Science']);
   });
 
-  it('refill resets a failed enrichment claim so the backfill can re-run', async () => {
+  it('retry resumes a failed metadata step (no body → failedStep)', async () => {
     const workId = await uploadAndFill(
       await buildEpubBytes({
-        title: 'Refill Book',
+        title: 'Retry Fill Book',
         chapters: [{ href: 'chapter-1.xhtml', content: '<html><body><p>Body.</p></body></html>' }],
       }),
     );
     await db
       .update(readingWorkTable)
-      .set({ metadataEnrichmentStatus: 'failed' })
+      .set({ status: 'failed', originMeta: { failedStep: 'metadata', lastError: 'boom' } })
       .where(eq(readingWorkTable.id, workId));
 
-    const response = await app.request(`/api/admin/works/${workId}/refill`, {
+    const response = await app.request(`/api/admin/works/${workId}/workflow/retry`, {
       method: 'POST',
       headers: { Cookie: adminCookie },
     });
     expect(response.status).toBe(200);
-    const body = (await response.json()) as { metadataEnrichmentStatus: string; metadataEnrichmentAt: string | null };
-    expect(body.metadataEnrichmentStatus).toBe('pending');
-    expect(body.metadataEnrichmentAt).toBeNull();
+    const body = (await response.json()) as { status: string; failedStep: string | null };
+    expect(body.status).toBe('metadata');
+    expect(body.failedStep).toBeNull();
 
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
-    expect(work!.metadataEnrichmentStatus).toBe('pending');
+    expect(work!.status).toBe('metadata');
+    expect(work!.originMeta.lastError).toBeUndefined();
   });
 
-  it('refuses refill for non-EPUB works', async () => {
+  it('refuses workflow retry for non-EPUB works', async () => {
     const created = await app.request('/api/admin/works', {
       method: 'POST',
       headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: 'Text Refill Book', body: '<p>Body.</p>' }),
+      body: JSON.stringify({ title: 'Text Retry Book', body: '<p>Body.</p>' }),
     });
     expect(created.status).toBe(201);
     const work = (await created.json()) as { id: string };
     createdWorkIds.push(work.id);
 
-    const response = await app.request(`/api/admin/works/${work.id}/refill`, {
+    const response = await app.request(`/api/admin/works/${work.id}/workflow/retry`, {
       method: 'POST',
       headers: { Cookie: adminCookie },
     });

@@ -116,7 +116,7 @@ describe('EPUB ingest pipeline', () => {
 
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
     expect(work).toBeDefined();
-    expect(work!.status).toBe('draft');
+    expect(work!.status).toBe('metadata');
     expect(work!.title).toBe('The Great Book');
     expect(work!.author).toBe('Jane Author');
     expect(work!.description).toBe('A sample story.');
@@ -191,7 +191,7 @@ describe('EPUB ingest pipeline', () => {
   });
 });
 
-describe('POST /api/admin/works/:id/reparse', () => {
+describe('POST /api/admin/works/:id/workflow/retry', () => {
   const memory = createMemoryObjectStore();
   const createdWorkIds: string[] = [];
   let adminCookie = '';
@@ -210,117 +210,128 @@ describe('POST /api/admin/works/:id/reparse', () => {
     resetObjectStoreCache();
   });
 
-  async function reparseRequest(id: string) {
-    return app.request(`/api/admin/works/${id}/reparse`, {
+  async function retryRequest(id: string, body?: Record<string, unknown>) {
+    return app.request(`/api/admin/works/${id}/workflow/retry`, {
       method: 'POST',
-      headers: { Cookie: adminCookie },
+      headers: { Cookie: adminCookie, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+      ...(body ? { body: JSON.stringify(body) } : {}),
     });
   }
 
-  async function patchRequest(id: string, body: Record<string, unknown>) {
-    return app.request(`/api/admin/works/${id}`, {
+  async function uploadAndRun(): Promise<string> {
+    const response = await uploadEpub(adminCookie, await buildSampleEpubBytes());
+    expect(response.status).toBe(201);
+    const created = (await response.json()) as { id: string };
+    createdWorkIds.push(created.id);
+    await processContentWork(created.id);
+    await fillWorkMetadata(created.id);
+    return created.id;
+  }
+
+  it('resumes a failed work from its failed step (no body)', async () => {
+    const workId = await uploadAndRun();
+
+    await db
+      .update(readingWorkTable)
+      .set({ status: 'failed', originMeta: { failedStep: 'metadata', lastError: 'simulated failure' } })
+      .where(eq(readingWorkTable.id, workId));
+
+    const retry = await retryRequest(workId);
+    expect(retry.status).toBe(200);
+    const body = (await retry.json()) as { status: string; failedStep: string | null };
+    expect(body.status).toBe('metadata');
+    expect(body.failedStep).toBeNull();
+
+    const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
+    expect(work!.status).toBe('metadata');
+    expect(work!.originMeta.lastError).toBeUndefined();
+  });
+
+  it('refuses to retry published works', async () => {
+    const workId = await uploadAndRun();
+    await db.update(readingWorkTable).set({ status: 'ready' }).where(eq(readingWorkTable.id, workId));
+    await app.request(`/api/admin/works/${workId}`, {
       method: 'PATCH',
       headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ sourceNote: 'test-source', tags: ['story'] }),
     });
-  }
+    await app.request(`/api/admin/works/${workId}/publish`, { method: 'POST', headers: { Cookie: adminCookie } });
 
-  it('recovers a failed work: clears lastError, sets processing, re-parses to draft', async () => {
+    const retry = await retryRequest(workId, { step: 'parse' });
+    expect(retry.status).toBe(409);
+  });
+
+  it('refuses to retry while processing', async () => {
     const response = await uploadEpub(adminCookie, await buildSampleEpubBytes());
     expect(response.status).toBe(201);
     const created = (await response.json()) as { id: string };
     createdWorkIds.push(created.id);
 
-    await db
-      .update(readingWorkTable)
-      .set({ status: 'failed', originMeta: { lastError: 'simulated failure', failedAt: '2026-08-25T00:00:00.000Z' } })
-      .where(eq(readingWorkTable.id, created.id));
+    const retry = await retryRequest(created.id, { step: 'parse' });
+    expect(retry.status).toBe(409);
+  });
 
-    const reparse = await reparseRequest(created.id);
-    expect(reparse.status).toBe(200);
-    expect(((await reparse.json()) as { status: string }).status).toBe('processing');
+  it('re-running parse overwrites hand-edited fields with parsed values', async () => {
+    const workId = await uploadAndRun();
+    await db.update(readingWorkTable).set({ status: 'ready' }).where(eq(readingWorkTable.id, workId));
+    await app.request(`/api/admin/works/${workId}`, {
+      method: 'PATCH',
+      headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'Edited Title', author: 'Edited Author', description: 'Edited description' }),
+    });
 
-    const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
-    expect(work!.status).toBe('processing');
-    expect(work!.originMeta.lastError).toBeUndefined();
+    const retry = await retryRequest(workId, { step: 'parse' });
+    expect(retry.status).toBe(200);
+    expect(((await retry.json()) as { status: string }).status).toBe('processing');
 
-    await processContentWork(created.id);
-    await fillWorkMetadata(created.id);
-    const [after] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
-    expect(after!.status).toBe('draft');
+    const [mid] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
+    expect(mid!.title).toBe('');
+    expect(mid!.status).toBe('processing');
+
+    await processContentWork(workId);
+    await fillWorkMetadata(workId);
+
+    const [after] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
+    expect(after!.status).toBe('metadata');
     expect(after!.title).toBe('The Great Book');
+    expect(after!.author).toBe('Jane Author');
+    expect(after!.description).toBe('A sample story.');
   });
 
-  it('refuses to re-parse published works', async () => {
-    const response = await uploadEpub(adminCookie, await buildSampleEpubBytes());
-    const created = (await response.json()) as { id: string };
-    createdWorkIds.push(created.id);
-    await processContentWork(created.id);
-    await fillWorkMetadata(created.id);
-
-    await patchRequest(created.id, { sourceNote: 'test-source', tags: ['story'] });
-    const publish = await app.request(`/api/admin/works/${created.id}/publish`, {
-      method: 'POST',
-      headers: { Cookie: adminCookie },
-    });
-    expect(publish.status).toBe(200);
-
-    const reparse = await reparseRequest(created.id);
-    expect(reparse.status).toBe(409);
-  });
-
-  it('refuses to re-parse while processing', async () => {
-    const response = await uploadEpub(adminCookie, await buildSampleEpubBytes());
-    expect(response.status).toBe(201);
-    const created = (await response.json()) as { id: string };
-    createdWorkIds.push(created.id);
-
-    const reparse = await reparseRequest(created.id);
-    expect(reparse.status).toBe(409);
-  });
-
-  it('keeps hand-edited metadata across re-parse (first parse fills, re-run preserves)', async () => {
-    const response = await uploadEpub(adminCookie, await buildSampleEpubBytes());
-    const created = (await response.json()) as { id: string };
-    createdWorkIds.push(created.id);
-    await processContentWork(created.id);
-    await fillWorkMetadata(created.id);
-
-    await patchRequest(created.id, {
-      title: 'Edited Title',
-      author: 'Edited Author',
-      description: 'Edited description',
-    });
-
-    const reparse = await reparseRequest(created.id);
-    expect(reparse.status).toBe(200);
-    await processContentWork(created.id);
-    await fillWorkMetadata(created.id);
-
-    const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
-    expect(work!.title).toBe('Edited Title');
-    expect(work!.author).toBe('Edited Author');
-    expect(work!.description).toBe('Edited description');
-    expect(work!.status).toBe('draft');
-  });
-
-  it('resets the AI backfill claim on re-parse so enrichment can re-run', async () => {
-    const response = await uploadEpub(adminCookie, await buildSampleEpubBytes());
-    const created = (await response.json()) as { id: string };
-    createdWorkIds.push(created.id);
-    await processContentWork(created.id);
-    await fillWorkMetadata(created.id);
-
+  it('re-running the metadata step clears AI outputs before the next run', async () => {
+    const workId = await uploadAndRun();
     await db
       .update(readingWorkTable)
-      .set({ metadataEnrichmentStatus: 'completed', metadataEnrichmentAt: new Date() })
-      .where(eq(readingWorkTable.id, created.id));
+      .set({ status: 'ready', description: 'AI filled summary', metadataProvenance: { description: 'ai' } })
+      .where(eq(readingWorkTable.id, workId));
 
-    const reparse = await reparseRequest(created.id);
-    expect(reparse.status).toBe(200);
+    const retry = await retryRequest(workId, { step: 'metadata' });
+    expect(retry.status).toBe(200);
+    expect(((await retry.json()) as { status: string }).status).toBe('metadata');
 
-    const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
-    expect(work!.metadataEnrichmentStatus).toBe('pending');
-    expect(work!.metadataEnrichmentAt).toBeNull();
+    const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
+    expect(work!.description).toBe('');
+    expect(work!.metadataProvenance.description).toBeUndefined();
+  });
+
+  it('requires a failure or an explicit step, and refuses the tts step for now', async () => {
+    const workId = await uploadAndRun();
+    await db.update(readingWorkTable).set({ status: 'ready' }).where(eq(readingWorkTable.id, workId));
+
+    const noStep = await retryRequest(workId);
+    expect(noStep.status).toBe(400);
+
+    const tts = await retryRequest(workId, { step: 'tts' });
+    expect(tts.status).toBe(400);
+
+    const text = await app.request('/api/admin/works', {
+      method: 'POST',
+      headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'Text Guard', body: '<p>Body.</p>' }),
+    });
+    const textWork = (await text.json()) as { id: string };
+    createdWorkIds.push(textWork.id);
+    const nonEpub = await retryRequest(textWork.id, { step: 'parse' });
+    expect(nonEpub.status).toBe(400);
   });
 });

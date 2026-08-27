@@ -160,7 +160,7 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
 
     expect(invokeAiMock).not.toHaveBeenCalled();
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
-    expect(work!.metadataEnrichmentStatus).toBe('completed');
+    expect(work!.status).toBe('ready');
   });
 
   it('fills empty/weak fields with ai provenance and merges the jsonb view', async () => {
@@ -183,7 +183,7 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
 
     expect(invokeAiMock).toHaveBeenCalledTimes(1);
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
-    expect(work!.metadataEnrichmentStatus).toBe('completed');
+    expect(work!.status).toBe('ready');
     expect(work!.description).toBe('An AI written summary of the book.');
     expect(work!.metadataProvenance).toMatchObject({ description: 'ai', tags: 'ai', category: 'ai' });
 
@@ -238,7 +238,7 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
     await enrichWorkMetadata(workId);
 
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
-    expect(work!.metadataEnrichmentStatus).toBe('completed');
+    expect(work!.status).toBe('ready');
     expect(work!.tags).toEqual(['Reuse Tag']);
     expect(work!.metadataProvenance.tags).toBe('ai');
 
@@ -313,7 +313,7 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
     expect(work!.metadataProvenance.category).toBe('ai');
   });
 
-  it('does not override manual values and skips non-pending works', async () => {
+  it('does not override manual values and skips works outside the metadata step', async () => {
     const workId = await createParsedWork({ title: 'Manual Fill Book', subjects: ['Science'] });
 
     await app.request(`/api/admin/works/${workId}`, {
@@ -348,10 +348,10 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
     await enrichWorkMetadata(workId);
 
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
-    expect(work!.metadataEnrichmentStatus).toBe('skipped');
+    expect(work!.status).toBe('ready');
   });
 
-  it('restores pending on failure so the bounded retry can re-claim (at-least-once)', async () => {
+  it('restores the failed step so the bounded retry can re-claim (at-least-once)', async () => {
     const workId = await createParsedWork({ title: 'Retry Book' });
 
     invokeAiMock.mockRejectedValueOnce(new Error('upstream boom'));
@@ -359,7 +359,8 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
     await expect(processMetadataEnrich({ workId })).rejects.toThrow('upstream boom');
 
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
-    expect(work!.metadataEnrichmentStatus).toBe('pending');
+    expect(work!.status).toBe('failed');
+    expect(work!.originMeta.failedStep).toBe('metadata');
 
     invokeAiMock.mockResolvedValueOnce({
       content: { description: 'Recovered on retry.' },
@@ -369,7 +370,7 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
     await processMetadataEnrich({ workId });
 
     const [after] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
-    expect(after!.metadataEnrichmentStatus).toBe('completed');
+    expect(after!.status).toBe('ready');
     expect(after!.description).toBe('Recovered on retry.');
   });
 

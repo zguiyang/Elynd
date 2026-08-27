@@ -8,6 +8,9 @@ export const llmProviderSchema = z.object({
   baseUrl: z.string(),
   proxyUrl: z.string().nullable(),
   thinkingParam: z.string().nullable(),
+  balanceEndpoint: z.string().nullable(),
+  balanceAmountPath: z.string().nullable(),
+  balanceCurrencyPath: z.string().nullable(),
   isEnabled: z.boolean(),
   apiKeySet: z.boolean(),
   apiKeyMasked: z.string().nullable(),
@@ -37,6 +40,17 @@ export const createLlmProviderBodySchema = z.object({
     .regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/, { message: '思考参数名需为合法标识符' })
     .optional()
     .nullable(),
+  balanceEndpoint: z
+    .string()
+    .trim()
+    .max(500)
+    .refine((value) => /^(https?):\/\//i.test(value) || value.startsWith('/'), {
+      message: '余额端点需为 http(s) 地址或以 / 开头的路径',
+    })
+    .optional()
+    .nullable(),
+  balanceAmountPath: z.string().trim().min(1).max(200).optional().nullable(),
+  balanceCurrencyPath: z.string().trim().min(1).max(50).optional().nullable(),
   isEnabled: z.boolean().optional().default(true),
 });
 
@@ -63,6 +77,17 @@ export const updateLlmProviderBodySchema = z
       .regex(/^[a-zA-Z_][a-zA-Z0-9_]*$/, { message: '思考参数名需为合法标识符' })
       .optional()
       .nullable(),
+    balanceEndpoint: z
+      .string()
+      .trim()
+      .max(500)
+      .refine((value) => /^(https?):\/\//i.test(value) || value.startsWith('/'), {
+        message: '余额端点需为 http(s) 地址或以 / 开头的路径',
+      })
+      .optional()
+      .nullable(),
+    balanceAmountPath: z.string().trim().min(1).max(200).optional().nullable(),
+    balanceCurrencyPath: z.string().trim().min(1).max(50).optional().nullable(),
     isEnabled: z.boolean().optional(),
   })
   .refine((body) => Object.keys(body).length > 0, { message: 'At least one field is required' });
@@ -79,6 +104,7 @@ export const llmModelSchema = z.object({
   modelId: z.string(),
   label: z.string(),
   protocol: z.enum(LLM_MODEL_PROTOCOLS),
+  contextLength: z.number().int().nullable(),
   temperature: z.number().nullable(),
   maxTokens: z.number().int().nullable(),
   isEnabled: z.boolean(),
@@ -94,6 +120,7 @@ export const createLlmModelBodySchema = z.object({
   modelId: z.string().trim().min(1).max(200),
   label: z.string().trim().min(1).max(120),
   protocol: z.enum(LLM_MODEL_PROTOCOLS).optional().default('chat-completions'),
+  contextLength: z.number().int().positive().max(100_000_000).nullable().optional(),
   temperature: z.number().min(0).max(2).nullable().optional(),
   maxTokens: z.number().int().positive().max(1_000_000).nullable().optional(),
   isEnabled: z.boolean().optional().default(true),
@@ -107,6 +134,7 @@ export const updateLlmModelBodySchema = z
     modelId: z.string().trim().min(1).max(200).optional(),
     label: z.string().trim().min(1).max(120).optional(),
     protocol: z.enum(LLM_MODEL_PROTOCOLS).optional(),
+    contextLength: z.number().int().positive().max(100_000_000).nullable().optional(),
     temperature: z.number().min(0).max(2).nullable().optional(),
     maxTokens: z.number().int().positive().max(1_000_000).nullable().optional(),
     isEnabled: z.boolean().optional(),
@@ -150,3 +178,102 @@ export const testLlmProviderResultSchema = z.object({
 });
 
 export type TestLlmProviderResult = z.infer<typeof testLlmProviderResultSchema>;
+
+/**
+ * Balance-query presets. The amount path may be a JSON path (e.g. `data.balance`)
+ * or a subtraction of two paths (e.g. `data.total_credits - data.total_usage`).
+ */
+export const llmBalancePresetsSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  endpoint: z.string(),
+  amountPath: z.string(),
+  currencyPath: z.string().nullable(),
+  hint: z.string().nullable(),
+});
+
+export type LlmBalancePreset = z.infer<typeof llmBalancePresetsSchema>;
+
+export const LLM_BALANCE_PRESETS: LlmBalancePreset[] = [
+  {
+    id: 'deepseek',
+    label: 'DeepSeek',
+    endpoint: 'https://api.deepseek.com/user/balance',
+    amountPath: 'balance_infos[0].total_balance',
+    currencyPath: 'balance_infos[0].currency',
+    hint: null,
+  },
+  {
+    id: 'moonshot',
+    label: 'Kimi / Moonshot',
+    endpoint: 'https://api.moonshot.cn/v1/users/me/balance',
+    amountPath: 'data.available_balance',
+    currencyPath: null,
+    hint: null,
+  },
+  {
+    id: 'openrouter',
+    label: 'OpenRouter',
+    endpoint: 'https://openrouter.ai/api/v1/credits',
+    amountPath: 'data.total_credits - data.total_usage',
+    currencyPath: null,
+    hint: null,
+  },
+  {
+    id: 'siliconflow',
+    label: 'SiliconFlow',
+    endpoint: 'https://api.siliconflow.cn/v1/user/info',
+    amountPath: 'data.balance',
+    currencyPath: null,
+    hint: '非官方接口，余额字段语义可能与控制台存在出入',
+  },
+];
+
+/** A model candidate fetched live from a provider's `GET /models`. */
+export const providerModelCandidateSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  ownedBy: z.string().nullable(),
+  contextLength: z.number().int().nullable(),
+  maxOutputTokens: z.number().int().nullable(),
+  pricing: z
+    .object({
+      prompt: z.string(),
+      completion: z.string(),
+    })
+    .nullable(),
+  description: z.string().nullable(),
+});
+
+export type ProviderModelCandidate = z.infer<typeof providerModelCandidateSchema>;
+
+export const fetchProviderModelsResultSchema = z.object({
+  models: z.array(providerModelCandidateSchema),
+});
+
+export type FetchProviderModelsResult = z.infer<typeof fetchProviderModelsResultSchema>;
+
+export const providerBalanceOkSchema = z.object({
+  supported: z.literal(true),
+  balance: z.number(),
+  currency: z.string(),
+  used: z.number().nullable(),
+  isAvailable: z.boolean().nullable(),
+});
+
+export type ProviderBalanceOk = z.infer<typeof providerBalanceOkSchema>;
+
+export const providerBalanceUnsupportedSchema = z.object({
+  supported: z.literal(false),
+  reason: z.enum(['not-configured', 'invalid-config', 'auth-failed', 'request-failed', 'parse-failed']),
+  message: z.string(),
+});
+
+export type ProviderBalanceUnsupported = z.infer<typeof providerBalanceUnsupportedSchema>;
+
+export const providerBalanceResultSchema = z.discriminatedUnion('supported', [
+  providerBalanceOkSchema,
+  providerBalanceUnsupportedSchema,
+]);
+
+export type ProviderBalanceResult = z.infer<typeof providerBalanceResultSchema>;

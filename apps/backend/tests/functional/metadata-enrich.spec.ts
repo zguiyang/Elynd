@@ -169,8 +169,11 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
     invokeAiMock.mockResolvedValueOnce({
       content: {
         description: 'An AI written summary of the book.',
-        tags: ['Space', 'Adventure'],
-        category: 'Zeta Fiction',
+        tags: [
+          { kind: 'new', name: 'Space' },
+          { kind: 'new', name: 'Adventure' },
+        ],
+        category: { kind: 'new', name: 'Zeta Fiction' },
       },
       model: { rowId: 'row', label: 'mock', modelId: 'mock-model' },
       usage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
@@ -213,6 +216,101 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
       .where(eq(categoryTable.name, 'Zeta Fiction'))
       .limit(1);
     expect(createdCategory?.origin).toBe('ai');
+  });
+
+  it('reuses existing dimensions when the model returns existing ids', async () => {
+    const workId = await createParsedWork({ title: 'Reuse Book' });
+    await db
+      .insert(tagTable)
+      .values({ id: 'tag-reuse-fixture', name: 'Reuse Tag', normalized: 'reusetag', origin: 'manual' })
+      .onConflictDoNothing();
+    const categoryId = await ensureCategory('Reuse Category');
+
+    invokeAiMock.mockResolvedValueOnce({
+      content: {
+        tags: [{ kind: 'existing', id: 'tag-reuse-fixture', name: 'Reuse Tag' }],
+        category: { kind: 'existing', id: categoryId, name: 'Reuse Category' },
+      },
+      model: { rowId: 'row', label: 'mock', modelId: 'mock-model' },
+      usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+    });
+
+    await enrichWorkMetadata(workId);
+
+    const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
+    expect(work!.metadataEnrichmentStatus).toBe('completed');
+    expect(work!.tags).toEqual(['Reuse Tag']);
+    expect(work!.metadataProvenance.tags).toBe('ai');
+
+    // Reused rows keep their original creator — no origin rewrite, no dupes.
+    const [tag] = await db
+      .select({ origin: tagTable.origin })
+      .from(tagTable)
+      .where(eq(tagTable.id, 'tag-reuse-fixture'));
+    expect(tag?.origin).toBe('manual');
+    const [category] = await db
+      .select({ origin: categoryTable.origin })
+      .from(categoryTable)
+      .where(eq(categoryTable.id, categoryId));
+    expect(category?.origin).toBe('manual');
+
+    const rows = await db.select().from(readingWorkTagTable).where(eq(readingWorkTagTable.workId, workId));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.tagId).toBe('tag-reuse-fixture');
+  });
+
+  it('falls back to creating when an existing id is invalid', async () => {
+    const workId = await createParsedWork({ title: 'Ghost Id Book' });
+
+    invokeAiMock.mockResolvedValueOnce({
+      content: {
+        tags: [{ kind: 'existing', id: 'no-such-tag', name: 'Ghost Tag' }],
+        category: { kind: 'existing', id: 'no-such-cat', name: 'Ghost Category' },
+      },
+      model: { rowId: 'row', label: 'mock', modelId: 'mock-model' },
+      usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+    });
+
+    await enrichWorkMetadata(workId);
+
+    const [tag] = await db
+      .select({ origin: tagTable.origin })
+      .from(tagTable)
+      .where(eq(tagTable.name, 'Ghost Tag'))
+      .limit(1);
+    expect(tag?.origin).toBe('ai');
+    const [category] = await db
+      .select({ origin: categoryTable.origin })
+      .from(categoryTable)
+      .where(eq(categoryTable.name, 'Ghost Category'))
+      .limit(1);
+    expect(category?.origin).toBe('ai');
+  });
+
+  it('sends an output schema containing only the required fields', async () => {
+    const workId = await createParsedWork({ title: 'Schema Book' });
+
+    await app.request(`/api/admin/works/${workId}`, {
+      method: 'PATCH',
+      headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        description: 'A solid hand-written description that is long enough for the manual requirement.',
+        tags: ['Manual Tag'],
+      }),
+    });
+
+    invokeAiMock.mockResolvedValueOnce({
+      content: { category: { kind: 'new', name: 'Schema Category' } },
+      model: { rowId: 'row', label: 'mock', modelId: 'mock-model' },
+      usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+    });
+
+    await enrichWorkMetadata(workId);
+
+    const invokeArgs = invokeAiMock.mock.calls[0]![0] as { outputSchema: { shape: Record<string, unknown> } };
+    expect(Object.keys(invokeArgs.outputSchema.shape)).toEqual(['category']);
+    const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
+    expect(work!.metadataProvenance.category).toBe('ai');
   });
 
   it('does not override manual values and skips non-pending works', async () => {
@@ -288,10 +386,11 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
     expect(parsedSearch.tags.map((t) => t.name)).toContain('Adventure');
   });
 
-  it('list_categories returns the admin-managed enumeration', async () => {
+  it('list_categories returns the admin-managed enumeration with ids', async () => {
     await ensureCategory('Mystery');
     const raw = await listCategoriesTool().invoke({});
-    const parsed = JSON.parse(raw) as { categories: string[] };
-    expect(parsed.categories).toContain('Mystery');
+    const parsed = JSON.parse(raw) as { categories: Array<{ id: string; name: string }> };
+    expect(parsed.categories.some((c) => c.name === 'Mystery')).toBe(true);
+    expect(parsed.categories.every((c) => Boolean(c.id))).toBe(true);
   });
 });

@@ -5,7 +5,7 @@ import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-import type { LlmModel, LlmProvider } from '@gloaming/shared/api/llm-config';
+import type { LlmModel, LlmProvider, ProviderBalanceResult } from '@gloaming/shared/api/llm-config';
 import type { AiSettingKey } from '@gloaming/shared/api/llm-config-keys';
 
 import {
@@ -31,6 +31,7 @@ import {
   listLlmProviders,
   listLlmSettings,
   putLlmSetting,
+  queryLlmProviderBalance,
   testLlmProvider,
   updateLlmModel,
   updateLlmProvider,
@@ -86,6 +87,8 @@ export function AiConfigPage() {
 
   const [testingProviderId, setTestingProviderId] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<ProviderTestResult | null>(null);
+  const [balanceByProvider, setBalanceByProvider] = useState<Record<string, ProviderBalanceResult>>({});
+  const [queryingBalanceId, setQueryingBalanceId] = useState<string | null>(null);
 
   async function invalidateLlmQueries() {
     await queryClient.invalidateQueries({ queryKey: adminLlmQueryKey.all });
@@ -100,6 +103,9 @@ export function AiConfigPage() {
           baseUrl: values.baseUrl.trim(),
           proxyUrl: values.proxyUrl.trim() || null,
           thinkingParam: values.thinkingParam.trim() || null,
+          balanceEndpoint: values.balanceEndpoint.trim() || null,
+          balanceAmountPath: values.balanceAmountPath.trim() || null,
+          balanceCurrencyPath: values.balanceCurrencyPath.trim() || null,
           isEnabled: values.isEnabled,
           ...(apiKey ? { apiKey } : {}),
         });
@@ -110,6 +116,9 @@ export function AiConfigPage() {
         apiKey: values.apiKey.trim(),
         proxyUrl: values.proxyUrl.trim() || null,
         thinkingParam: values.thinkingParam.trim() || null,
+        balanceEndpoint: values.balanceEndpoint.trim() || null,
+        balanceAmountPath: values.balanceAmountPath.trim() || null,
+        balanceCurrencyPath: values.balanceCurrencyPath.trim() || null,
         isEnabled: values.isEnabled,
       });
     },
@@ -134,6 +143,7 @@ export function AiConfigPage() {
       const temperature = parseOptionalNumber(values.temperature);
       const maxTokensRaw = parseOptionalNumber(values.maxTokens);
       const maxTokens = maxTokensRaw != null ? Math.trunc(maxTokensRaw) : null;
+      const contextLength = parseOptionalNumber(values.contextLength);
       const sortOrder = Math.trunc(parseOptionalNumber(values.sortOrder) ?? 0);
 
       if (editingModel) {
@@ -142,6 +152,7 @@ export function AiConfigPage() {
           label: values.label.trim(),
           temperature,
           maxTokens,
+          contextLength,
           isEnabled: values.isEnabled,
           sortOrder,
         });
@@ -153,6 +164,7 @@ export function AiConfigPage() {
         protocol: 'chat-completions',
         temperature,
         maxTokens,
+        contextLength,
         isEnabled: values.isEnabled,
         sortOrder,
       });
@@ -235,6 +247,32 @@ export function AiConfigPage() {
     },
   });
 
+  const balanceMutation = useMutation({
+    mutationFn: async (provider: LlmProvider) => {
+      setQueryingBalanceId(provider.id);
+      return queryLlmProviderBalance(provider.id);
+    },
+    onSuccess: (result, provider) => {
+      setBalanceByProvider((prev) => ({ ...prev, [provider.id]: result }));
+      if (result.supported) {
+        toast.message('余额已更新');
+      }
+    },
+    onError: (error, provider) => {
+      setBalanceByProvider((prev) => ({
+        ...prev,
+        [provider.id]: {
+          supported: false,
+          reason: 'request-failed',
+          message: formatAdminLlmApiError(error),
+        },
+      }));
+    },
+    onSettled: () => {
+      setQueryingBalanceId(null);
+    },
+  });
+
   function openCreateProvider() {
     setEditingProvider(null);
     setIsProviderSheetOpen(true);
@@ -308,6 +346,8 @@ export function AiConfigPage() {
                 expandedIds={expandedIds}
                 testingProviderId={testingProviderId}
                 testResult={testResult}
+                balanceByProvider={balanceByProvider}
+                queryingBalanceId={queryingBalanceId}
                 onToggleExpand={(providerId) => {
                   setExpandedIds((prev) => {
                     const next = new Set(prev);
@@ -323,6 +363,7 @@ export function AiConfigPage() {
                 onEditProvider={openEditProvider}
                 onDeleteProvider={(provider) => setDeleteTarget({ kind: 'provider', provider })}
                 onTestProvider={(provider) => testMutation.mutate(provider)}
+                onQueryBalance={(provider) => balanceMutation.mutate(provider)}
                 onAddModel={openCreateModel}
                 onEditModel={openEditModel}
                 onDeleteModel={(model) => setDeleteTarget({ kind: 'model', model })}
@@ -341,7 +382,7 @@ export function AiConfigPage() {
 
       <AiModelSheet
         open={isModelSheetOpen}
-        providerName={modelSheetProvider?.name ?? ''}
+        provider={modelSheetProvider}
         model={editingModel}
         onOpenChange={setIsModelSheetOpen}
         onSubmit={(values) => modelMutation.mutate(values)}

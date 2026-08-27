@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/pagination';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { adminLlmQueryKey, listLlmProviders } from '@/features/admin/ai-config-api';
 import { AiLogDetailSheet } from '@/features/admin/ai-log-detail-sheet';
 import {
   adminAiLogsQueryKey,
@@ -40,6 +41,7 @@ import {
   type AiLogsRangeTab,
   type AiLogsStatusFilter,
 } from '@/features/admin/ai-logs-filters';
+import { AiProviderBalanceCards } from '@/features/admin/ai-provider-balance-cards';
 import { usePaginatedQuery } from '@/lib/query';
 import { cn } from '@/lib/utils';
 
@@ -199,6 +201,11 @@ export function AiLogsPage() {
     queryFn: ({ signal }) => getAdminInvocationStats(statsParams, { signal }),
   });
 
+  const providersQuery = useQuery({
+    queryKey: adminLlmQueryKey.providers(),
+    queryFn: ({ signal }) => listLlmProviders({ signal }),
+  });
+
   return (
     <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700 mx-auto max-w-6xl">
       <div className="min-w-0">
@@ -215,6 +222,10 @@ export function AiLogsPage() {
           </p>
         ) : statsQuery.data ? (
           <StatsRow stats={statsQuery.data} />
+        ) : null}
+
+        {providersQuery.data && providersQuery.data.length > 0 ? (
+          <AiProviderBalanceCards providers={providersQuery.data} />
         ) : null}
 
         <div className="flex flex-col gap-5">

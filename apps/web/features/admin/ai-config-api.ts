@@ -3,12 +3,16 @@ import { z } from 'zod';
 import {
   type CreateLlmModelBody,
   type CreateLlmProviderBody,
+  type FetchProviderModelsResult,
+  fetchProviderModelsResultSchema,
   llmAppSettingSchema,
   type LlmAppSettingView,
   type LlmModel,
   llmModelSchema,
   type LlmProvider,
   llmProviderSchema,
+  type ProviderBalanceResult,
+  providerBalanceResultSchema,
   type PutLlmAppSettingBody,
   type TestLlmProviderBody,
   type TestLlmProviderResult,
@@ -66,6 +70,20 @@ export async function testLlmProvider(id: string, input: TestLlmProviderBody = {
     method: 'POST',
     schema: testLlmProviderResultSchema,
     json: input,
+  });
+}
+
+export async function fetchLlmProviderModels(id: string): Promise<FetchProviderModelsResult> {
+  return apiRequest(`/api/admin/llm/providers/${encodeURIComponent(id)}/fetch-models`, {
+    method: 'POST',
+    schema: fetchProviderModelsResultSchema,
+  });
+}
+
+export async function queryLlmProviderBalance(id: string): Promise<ProviderBalanceResult> {
+  return apiRequest(`/api/admin/llm/providers/${encodeURIComponent(id)}/balance`, {
+    method: 'POST',
+    schema: providerBalanceResultSchema,
   });
 }
 

@@ -1,8 +1,8 @@
 'use client';
 
-import { ChevronDown, Plus } from 'lucide-react';
+import { ChevronDown, Plus, Wallet } from 'lucide-react';
 
-import type { LlmModel, LlmProvider } from '@gloaming/shared/api/llm-config';
+import type { LlmModel, LlmProvider, ProviderBalanceResult } from '@gloaming/shared/api/llm-config';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -25,17 +25,31 @@ function formatProxyHost(proxyUrl: string): string {
   }
 }
 
+function formatBalance(result: ProviderBalanceResult): string {
+  if (!result.supported) {
+    return '';
+  }
+  const amount = new Intl.NumberFormat('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  }).format(result.balance);
+  return `${result.currency} ${amount}`;
+}
+
 type AiProviderListProps = {
   providers: LlmProvider[];
   models: LlmModel[];
   expandedIds: Set<string>;
   testingProviderId: string | null;
   testResult: ProviderTestResult | null;
+  balanceByProvider: Record<string, ProviderBalanceResult>;
+  queryingBalanceId: string | null;
   onToggleExpand: (providerId: string) => void;
   onAddProvider: () => void;
   onEditProvider: (provider: LlmProvider) => void;
   onDeleteProvider: (provider: LlmProvider) => void;
   onTestProvider: (provider: LlmProvider) => void;
+  onQueryBalance: (provider: LlmProvider) => void;
   onAddModel: (provider: LlmProvider) => void;
   onEditModel: (model: LlmModel) => void;
   onDeleteModel: (model: LlmModel) => void;
@@ -47,11 +61,14 @@ export function AiProviderList({
   expandedIds,
   testingProviderId,
   testResult,
+  balanceByProvider,
+  queryingBalanceId,
   onToggleExpand,
   onAddProvider,
   onEditProvider,
   onDeleteProvider,
   onTestProvider,
+  onQueryBalance,
   onAddModel,
   onEditModel,
   onDeleteModel,
@@ -82,6 +99,8 @@ export function AiProviderList({
             .filter((model) => model.providerId === provider.id)
             .sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label));
           const resultForRow = testResult?.providerId === provider.id ? testResult : null;
+          const balanceResult = balanceByProvider[provider.id];
+          const isQueryingBalance = queryingBalanceId === provider.id;
 
           return (
             <li key={provider.id}>
@@ -116,6 +135,48 @@ export function AiProviderList({
                           经代理出站 · {formatProxyHost(provider.proxyUrl)}
                         </Badge>
                       ) : null}
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      {balanceResult && balanceResult.supported ? (
+                        <>
+                          <Badge variant="secondary" className="gap-1 text-xs tabular-nums">
+                            <Wallet data-icon="inline-start" />
+                            余额 {formatBalance(balanceResult)}
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 rounded-lg px-2 text-xs"
+                            disabled={isQueryingBalance}
+                            onClick={() => onQueryBalance(provider)}
+                          >
+                            {isQueryingBalance ? <Spinner data-icon="inline-start" /> : null}
+                            刷新
+                          </Button>
+                        </>
+                      ) : balanceResult && !balanceResult.supported ? (
+                        <p className="text-xs text-muted-foreground">{balanceResult.message}</p>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 rounded-lg px-2 text-xs"
+                          disabled={isQueryingBalance}
+                          onClick={() => onQueryBalance(provider)}
+                        >
+                          {isQueryingBalance ? (
+                            <>
+                              <Spinner data-icon="inline-start" />
+                              查询中
+                            </>
+                          ) : (
+                            <>
+                              <Wallet data-icon="inline-start" />
+                              查询余额
+                            </>
+                          )}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </button>

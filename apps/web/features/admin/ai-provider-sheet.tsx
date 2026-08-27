@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 
-import type { LlmProvider } from '@gloaming/shared/api/llm-config';
+import { LLM_BALANCE_PRESETS, type LlmProvider } from '@gloaming/shared/api/llm-config';
 
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 
@@ -16,6 +17,9 @@ export type ProviderFormValues = {
   apiKey: string;
   proxyUrl: string;
   thinkingParam: string;
+  balanceEndpoint: string;
+  balanceAmountPath: string;
+  balanceCurrencyPath: string;
   isEnabled: boolean;
 };
 
@@ -33,6 +37,9 @@ function emptyValues(): ProviderFormValues {
     apiKey: '',
     proxyUrl: '',
     thinkingParam: '',
+    balanceEndpoint: '',
+    balanceAmountPath: '',
+    balanceCurrencyPath: '',
     isEnabled: true,
   };
 }
@@ -44,6 +51,9 @@ function fromProvider(provider: LlmProvider): ProviderFormValues {
     apiKey: '',
     proxyUrl: provider.proxyUrl ?? '',
     thinkingParam: provider.thinkingParam ?? '',
+    balanceEndpoint: provider.balanceEndpoint ?? '',
+    balanceAmountPath: provider.balanceAmountPath ?? '',
+    balanceCurrencyPath: provider.balanceCurrencyPath ?? '',
     isEnabled: provider.isEnabled,
   };
 }
@@ -59,7 +69,22 @@ function AiProviderSheetForm({
 }) {
   const isEdit = provider != null;
   const [values, setValues] = useState<ProviderFormValues>(() => (provider ? fromProvider(provider) : emptyValues()));
+  const [presetId, setPresetId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Partial<Record<keyof ProviderFormValues, string>>>({});
+
+  function applyPreset(presetId: string) {
+    const preset = LLM_BALANCE_PRESETS.find((item) => item.id === presetId);
+    if (!preset) {
+      return;
+    }
+    setPresetId(preset.id);
+    setValues((prev) => ({
+      ...prev,
+      balanceEndpoint: preset.endpoint,
+      balanceAmountPath: preset.amountPath,
+      balanceCurrencyPath: preset.currencyPath ?? '',
+    }));
+  }
 
   function validate(): boolean {
     const next: Partial<Record<keyof ProviderFormValues, string>> = {};
@@ -87,6 +112,16 @@ function AiProviderSheetForm({
     }
     if (values.thinkingParam.trim() && !/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(values.thinkingParam.trim())) {
       next.thinkingParam = '思考参数名需为合法标识符';
+    }
+    if (
+      values.balanceEndpoint.trim() &&
+      !/^(https?):\/\//i.test(values.balanceEndpoint.trim()) &&
+      !values.balanceEndpoint.trim().startsWith('/')
+    ) {
+      next.balanceEndpoint = '余额端点需为 http(s) 地址或以 / 开头的路径';
+    }
+    if (values.balanceEndpoint.trim() && !values.balanceAmountPath.trim()) {
+      next.balanceAmountPath = '填写端点后需指定余额字段路径';
     }
     if (!isEdit && !values.apiKey.trim()) {
       next.apiKey = '新建时需要填写 API Key';
@@ -195,6 +230,75 @@ function AiProviderSheetForm({
               <FieldDescription>当前：{provider.apiKeyMasked}</FieldDescription>
             ) : (
               <FieldDescription>密钥不会在界面明文回显。</FieldDescription>
+            )}
+          </Field>
+
+          <Field data-invalid={Boolean(errors.balanceEndpoint) || undefined}>
+            <FieldLabel htmlFor="provider-balance-endpoint">余额查询（可选）</FieldLabel>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <Select
+                  items={LLM_BALANCE_PRESETS.map((preset) => ({ value: preset.id, label: preset.label }))}
+                  value={presetId}
+                  onValueChange={(value) => {
+                    if (value != null) {
+                      applyPreset(value);
+                    }
+                  }}
+                >
+                  <SelectTrigger id="provider-balance-preset" className="h-9 rounded-xl">
+                    <SelectValue placeholder="选择平台预设（可再修改）" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {LLM_BALANCE_PRESETS.map((preset) => (
+                        <SelectItem key={preset.id} value={preset.id} title={preset.hint ?? undefined}>
+                          {preset.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Input
+                id="provider-balance-endpoint"
+                value={values.balanceEndpoint}
+                aria-invalid={Boolean(errors.balanceEndpoint) || undefined}
+                placeholder="https://api.example.com/user/balance"
+                className="font-mono"
+                onChange={(event) => setValues((prev) => ({ ...prev, balanceEndpoint: event.target.value }))}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <Field data-invalid={Boolean(errors.balanceAmountPath) || undefined}>
+                  <Input
+                    id="provider-balance-amount-path"
+                    value={values.balanceAmountPath}
+                    aria-invalid={Boolean(errors.balanceAmountPath) || undefined}
+                    placeholder="data.balance"
+                    className="font-mono"
+                    onChange={(event) => setValues((prev) => ({ ...prev, balanceAmountPath: event.target.value }))}
+                  />
+                  <FieldError>{errors.balanceAmountPath}</FieldError>
+                </Field>
+                <Field>
+                  <Input
+                    id="provider-balance-currency-path"
+                    value={values.balanceCurrencyPath}
+                    placeholder="data.currency（缺省 USD）"
+                    className="font-mono"
+                    onChange={(event) => setValues((prev) => ({ ...prev, balanceCurrencyPath: event.target.value }))}
+                  />
+                </Field>
+              </div>
+            </div>
+            {errors.balanceEndpoint ? (
+              <FieldError>{errors.balanceEndpoint}</FieldError>
+            ) : (
+              <FieldDescription>
+                留空端点即关闭余额查询。端点可为完整 URL 或以 / 开头的相对路径（拼 Base URL 域名）；金额路径支持
+                a.b[0].c 或两值相减（如 data.total_credits - data.total_usage）。
+              </FieldDescription>
             )}
           </Field>
 

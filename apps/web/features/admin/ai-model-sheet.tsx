@@ -1,27 +1,32 @@
 'use client';
 
+import { RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 
-import type { LlmModel } from '@gloaming/shared/api/llm-config';
+import type { LlmModel, LlmProvider, ProviderModelCandidate } from '@gloaming/shared/api/llm-config';
 
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
+import { fetchLlmProviderModels, formatAdminLlmApiError } from '@/features/admin/ai-config-api';
 
 export type ModelFormValues = {
   modelId: string;
   label: string;
   temperature: string;
   maxTokens: string;
+  contextLength: string;
   isEnabled: boolean;
   sortOrder: string;
 };
 
 type AiModelSheetProps = {
   open: boolean;
-  providerName: string;
+  provider: LlmProvider | null;
   model: LlmModel | null;
   onOpenChange: (open: boolean) => void;
   onSubmit: (values: ModelFormValues) => void;
@@ -33,6 +38,7 @@ function emptyValues(): ModelFormValues {
     label: '',
     temperature: '0.3',
     maxTokens: '2048',
+    contextLength: '',
     isEnabled: true,
     sortOrder: '0',
   };
@@ -44,18 +50,19 @@ function fromModel(model: LlmModel): ModelFormValues {
     label: model.label,
     temperature: model.temperature != null ? String(model.temperature) : '',
     maxTokens: model.maxTokens != null ? String(model.maxTokens) : '',
+    contextLength: model.contextLength != null ? String(model.contextLength) : '',
     isEnabled: model.isEnabled,
     sortOrder: String(model.sortOrder),
   };
 }
 
 function AiModelSheetForm({
-  providerName,
+  provider,
   model,
   onSubmit,
   onCancel,
 }: {
-  providerName: string;
+  provider: LlmProvider;
   model: LlmModel | null;
   onSubmit: (values: ModelFormValues) => void;
   onCancel: () => void;
@@ -63,6 +70,37 @@ function AiModelSheetForm({
   const isEdit = model != null;
   const [values, setValues] = useState<ModelFormValues>(() => (model ? fromModel(model) : emptyValues()));
   const [errors, setErrors] = useState<Partial<Record<keyof ModelFormValues, string>>>({});
+
+  const [candidates, setCandidates] = useState<ProviderModelCandidate[] | null>(null);
+  const [pickedModelId, setPickedModelId] = useState<string | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  function applyCandidate(candidate: ProviderModelCandidate) {
+    setPickedModelId(candidate.id);
+    setValues((prev) => ({
+      ...prev,
+      modelId: candidate.id,
+      label: candidate.label,
+      contextLength: candidate.contextLength != null ? String(candidate.contextLength) : prev.contextLength,
+      maxTokens: candidate.maxOutputTokens != null ? String(candidate.maxOutputTokens) : prev.maxTokens,
+    }));
+  }
+
+  async function loadPlatformModels() {
+    setIsFetching(true);
+    setFetchError(null);
+    try {
+      const result = await fetchLlmProviderModels(provider.id);
+      setCandidates(result.models);
+      setPickedModelId(null);
+    } catch (error) {
+      setFetchError(formatAdminLlmApiError(error));
+      setCandidates(null);
+    } finally {
+      setIsFetching(false);
+    }
+  }
 
   function validate(): boolean {
     const next: Partial<Record<keyof ModelFormValues, string>> = {};
@@ -84,6 +122,12 @@ function AiModelSheetForm({
         next.maxTokens = 'maxTokens 需为正整数';
       }
     }
+    if (values.contextLength.trim()) {
+      const contextLength = Number(values.contextLength);
+      if (!Number.isInteger(contextLength) || contextLength < 1) {
+        next.contextLength = '上下文窗口需为正整数';
+      }
+    }
     if (values.sortOrder.trim()) {
       const sortOrder = Number(values.sortOrder);
       if (!Number.isInteger(sortOrder) || sortOrder < 0) {
@@ -98,7 +142,7 @@ function AiModelSheetForm({
     <>
       <SheetHeader>
         <SheetTitle>{isEdit ? '编辑模型' : '添加模型'}</SheetTitle>
-        <SheetDescription>归属服务商：{providerName}。原型仅保存在本页内存中。</SheetDescription>
+        <SheetDescription>归属服务商：{provider.name}。原型仅保存在本页内存中。</SheetDescription>
       </SheetHeader>
 
       <form
@@ -112,6 +156,82 @@ function AiModelSheetForm({
         }}
       >
         <FieldGroup>
+          {!isEdit ? (
+            <Field>
+              <FieldLabel>从平台拉取模型（可选）</FieldLabel>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl"
+                    disabled={isFetching}
+                    onClick={loadPlatformModels}
+                  >
+                    {isFetching ? (
+                      <>
+                        <Spinner data-icon="inline-start" />
+                        拉取中
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw data-icon="inline-start" />
+                        拉取模型列表
+                      </>
+                    )}
+                  </Button>
+                  {candidates ? (
+                    <span className="text-xs text-muted-foreground">{candidates.length} 个模型</span>
+                  ) : null}
+                </div>
+
+                {fetchError ? <p className="text-xs text-destructive">{fetchError}</p> : null}
+
+                {candidates && candidates.length > 0 ? (
+                  <Select
+                    items={candidates.map((candidate) => ({ value: candidate.id, label: candidate.label }))}
+                    value={pickedModelId}
+                    onValueChange={(value) => {
+                      if (value == null) {
+                        return;
+                      }
+                      const candidate = candidates.find((item) => item.id === value);
+                      if (candidate) {
+                        applyCandidate(candidate);
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="model-pick" className="h-10 w-full rounded-xl">
+                      <SelectValue placeholder="选择平台模型，自动填充下方字段" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {candidates.map((candidate) => (
+                          <SelectItem
+                            key={candidate.id}
+                            value={candidate.id}
+                            title={candidate.description ?? undefined}
+                          >
+                            {candidate.label}
+                            <span className="ml-2 font-mono text-xs text-muted-foreground">{candidate.id}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                ) : null}
+
+                {candidates && candidates.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">平台未返回任何模型，可手动填写。</p>
+                ) : null}
+              </div>
+              <FieldDescription>
+                选中后自动填充 Model ID、显示名称、上下文窗口与 Max tokens（平台未提供的留空），可继续修改。
+              </FieldDescription>
+            </Field>
+          ) : null}
+
           <Field data-invalid={Boolean(errors.label) || undefined}>
             <FieldLabel htmlFor="model-label">显示名称</FieldLabel>
             <Input
@@ -167,6 +287,22 @@ function AiModelSheetForm({
             </Field>
           </div>
 
+          <Field data-invalid={Boolean(errors.contextLength) || undefined}>
+            <FieldLabel htmlFor="model-context-length">上下文窗口（可选）</FieldLabel>
+            <Input
+              id="model-context-length"
+              value={values.contextLength}
+              aria-invalid={Boolean(errors.contextLength) || undefined}
+              placeholder="128000"
+              onChange={(event) => setValues((prev) => ({ ...prev, contextLength: event.target.value }))}
+            />
+            {errors.contextLength ? (
+              <FieldError>{errors.contextLength}</FieldError>
+            ) : (
+              <FieldDescription>模型上下文窗口（token），仅作记录，不影响调用。</FieldDescription>
+            )}
+          </Field>
+
           <Field data-invalid={Boolean(errors.sortOrder) || undefined}>
             <FieldLabel htmlFor="model-sort-order">排序</FieldLabel>
             <Input
@@ -212,14 +348,14 @@ function AiModelSheetForm({
   );
 }
 
-export function AiModelSheet({ open, providerName, model, onOpenChange, onSubmit }: AiModelSheetProps) {
+export function AiModelSheet({ open, provider, model, onOpenChange, onSubmit }: AiModelSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-md" side="right">
-        {open ? (
+        {open && provider ? (
           <AiModelSheetForm
-            key={model?.id ?? `create-${providerName}`}
-            providerName={providerName}
+            key={model?.id ?? `create-${provider.id}`}
+            provider={provider}
             model={model}
             onSubmit={onSubmit}
             onCancel={() => onOpenChange(false)}

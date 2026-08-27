@@ -12,6 +12,7 @@ const MAX_TOOL_RESULTS = 20;
 /**
  * Global tag catalog on demand — the full tag table never enters the prompt.
  * No query → top-N by association count; with query → fuzzy (normalized) match.
+ * Returns ids so the model can declare `kind:"existing"` reuse decisions.
  */
 export function listExistingTagsTool() {
   return tool(
@@ -21,6 +22,7 @@ export function listExistingTagsTool() {
         const needle = normalizeTag(query);
         const rows = await db
           .select({
+            id: tagTable.id,
             name: tagTable.name,
             usage: sql<number>`count(${readingWorkTagTable.tagId})`,
           })
@@ -30,10 +32,11 @@ export function listExistingTagsTool() {
           .groupBy(tagTable.id)
           .orderBy(desc(sql`count(${readingWorkTagTable.tagId})`))
           .limit(take);
-        return JSON.stringify({ tags: rows.map((r) => ({ name: r.name, usage: Number(r.usage) })) });
+        return JSON.stringify({ tags: rows.map((r) => ({ id: r.id, name: r.name, usage: Number(r.usage) })) });
       }
       const rows = await db
         .select({
+          id: tagTable.id,
           name: tagTable.name,
           usage: sql<number>`count(${readingWorkTagTable.tagId})`,
         })
@@ -42,12 +45,12 @@ export function listExistingTagsTool() {
         .groupBy(tagTable.id)
         .orderBy(desc(sql`count(${readingWorkTagTable.tagId})`), tagTable.name)
         .limit(take);
-      return JSON.stringify({ tags: rows.map((r) => ({ name: r.name, usage: Number(r.usage) })) });
+      return JSON.stringify({ tags: rows.map((r) => ({ id: r.id, name: r.name, usage: Number(r.usage) })) });
     },
     {
       name: 'list_existing_tags',
       description:
-        'List existing tags. Use without query to see the most used tags, or with query to search tags that already exist. Prefer reusing these tags.',
+        'List existing tags. Use without query to see the most used tags, or with query to search tags that already exist. Prefer reusing these tags — return kind:"existing" with the returned id.',
       schema: z.object({
         query: z.string().optional().describe('Optional search term for existing tags'),
         limit: z.number().int().min(1).max(MAX_TOOL_RESULTS).optional().describe('Max results'),
@@ -56,16 +59,20 @@ export function listExistingTagsTool() {
   );
 }
 
-/** Admin-controlled category enumeration — always complete, always fresh. */
+/** Admin-controlled category enumeration — always complete, always fresh, ids included. */
 export function listCategoriesTool() {
   return tool(
     async () => {
-      const rows = await db.select({ name: categoryTable.name }).from(categoryTable).orderBy(categoryTable.name);
-      return JSON.stringify({ categories: rows.map((r) => r.name) });
+      const rows = await db
+        .select({ id: categoryTable.id, name: categoryTable.name })
+        .from(categoryTable)
+        .orderBy(categoryTable.name);
+      return JSON.stringify({ categories: rows.map((r) => ({ id: r.id, name: r.name })) });
     },
     {
       name: 'list_categories',
-      description: 'List all available categories. The work category must come from this list.',
+      description:
+        'List all available categories. Prefer reusing one — return kind:"existing" with the returned id; only propose a new category if none fits.',
       schema: z.object({}),
     },
   );

@@ -354,6 +354,12 @@ export const llmProvider = pgTable('llm_provider', {
   proxyUrl: text('proxy_url'),
   /** Provider-specific thinking-toggle parameter name (e.g. `enable_thinking`); empty = pass nothing. */
   thinkingParam: text('thinking_param'),
+  /** Balance query endpoint (absolute URL or `/`-relative path). Empty = balance query disabled. */
+  balanceEndpoint: text('balance_endpoint'),
+  /** JSON path to the balance amount in the balance endpoint response (e.g. `data.available_balance`). */
+  balanceAmountPath: text('balance_amount_path'),
+  /** JSON path to the currency in the balance response; empty = `USD`. */
+  balanceCurrencyPath: text('balance_currency_path'),
   isEnabled: boolean('is_enabled').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at')
@@ -377,6 +383,8 @@ export const llmModel = pgTable(
     label: text('label').notNull(),
     /** Wire protocol for this model: OpenAI Chat Completions or Responses API. */
     protocol: text('protocol').$type<LlmModelProtocol>().notNull().default('chat-completions'),
+    /** Model context window in tokens (informational; from provider model list when available). */
+    contextLength: integer('context_length'),
     temperature: doublePrecision('temperature'),
     maxTokens: integer('max_tokens'),
     isEnabled: boolean('is_enabled').default(true).notNull(),

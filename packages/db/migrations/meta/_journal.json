@@ -169,6 +169,13 @@
       "when": 1787808652909,
       "tag": "0023_omniscient_the_twelve",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1787816218052,
+      "tag": "0024_gigantic_natasha_romanoff",
+      "breakpoints": true
     }
   ]
 }

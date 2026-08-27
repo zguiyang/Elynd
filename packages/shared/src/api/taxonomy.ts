@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { WORK_METADATA_PROVENANCES, type WorkMetadataProvenance } from '@gloaming/shared/api/works';
+
 /** Shared dimension kinds — system-level concepts usable beyond works. */
 export const TAXONOMY_KINDS = ['tag', 'category', 'source'] as const;
 export type TaxonomyKind = (typeof TAXONOMY_KINDS)[number];
@@ -11,11 +13,16 @@ export type TaxonomyCleanableKind = (typeof TAXONOMY_CLEANABLE_KINDS)[number];
 export const TAXONOMY_NAME_MAX = 100 as const;
 export const TAXONOMY_MATCH_RULE_MAX = 200 as const;
 
+export const TAXONOMY_ORIGINS = WORK_METADATA_PROVENANCES;
+export type TaxonomyOrigin = WorkMetadataProvenance;
+
 /** One dimension row — `usage` = number of works linked to it. */
 export const taxonomyItemSchema = z.object({
   id: z.string(),
   name: z.string(),
   usage: z.number().int().nonnegative(),
+  /** Who first created this row: extracted (parse) / ai / manual. */
+  origin: z.enum(TAXONOMY_ORIGINS),
   /** Only sources carry a match rule; tags/categories return null. */
   matchRule: z.string().nullable(),
   createdAt: z.union([z.string(), z.date()]),

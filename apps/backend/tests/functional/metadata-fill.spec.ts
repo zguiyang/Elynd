@@ -287,4 +287,46 @@ describe('metadata-fill rule layer (extracted) + updateWork (manual)', () => {
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
     expect(work!.tags).toEqual(['Science']);
   });
+
+  it('refill resets a failed enrichment claim so the backfill can re-run', async () => {
+    const workId = await uploadAndFill(
+      await buildEpubBytes({
+        title: 'Refill Book',
+        chapters: [{ href: 'chapter-1.xhtml', content: '<html><body><p>Body.</p></body></html>' }],
+      }),
+    );
+    await db
+      .update(readingWorkTable)
+      .set({ metadataEnrichmentStatus: 'failed' })
+      .where(eq(readingWorkTable.id, workId));
+
+    const response = await app.request(`/api/admin/works/${workId}/refill`, {
+      method: 'POST',
+      headers: { Cookie: adminCookie },
+    });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { metadataEnrichmentStatus: string; metadataEnrichmentAt: string | null };
+    expect(body.metadataEnrichmentStatus).toBe('pending');
+    expect(body.metadataEnrichmentAt).toBeNull();
+
+    const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
+    expect(work!.metadataEnrichmentStatus).toBe('pending');
+  });
+
+  it('refuses refill for non-EPUB works', async () => {
+    const created = await app.request('/api/admin/works', {
+      method: 'POST',
+      headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'Text Refill Book', body: '<p>Body.</p>' }),
+    });
+    expect(created.status).toBe(201);
+    const work = (await created.json()) as { id: string };
+    createdWorkIds.push(work.id);
+
+    const response = await app.request(`/api/admin/works/${work.id}/refill`, {
+      method: 'POST',
+      headers: { Cookie: adminCookie },
+    });
+    expect(response.status).toBe(400);
+  });
 });

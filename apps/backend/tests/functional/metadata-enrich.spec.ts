@@ -165,13 +165,12 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
 
   it('fills empty/weak fields with ai provenance and merges the jsonb view', async () => {
     const workId = await createParsedWork({ title: 'Fill Book' });
-    await ensureCategory('Science Fiction');
 
     invokeAiMock.mockResolvedValueOnce({
       content: {
         description: 'An AI written summary of the book.',
         tags: ['Space', 'Adventure'],
-        category: 'Science Fiction',
+        category: 'Zeta Fiction',
       },
       model: { rowId: 'row', label: 'mock', modelId: 'mock-model' },
       usage: { inputTokens: 10, outputTokens: 20, totalTokens: 30 },
@@ -206,6 +205,14 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
       .where(eq(readingWorkCategoryTable.workId, workId));
     expect(categoryRows).toHaveLength(1);
     expect(categoryRows[0]!.provenance).toBe('ai');
+
+    // No existing category matched — the AI-created one lands with origin='ai'.
+    const [createdCategory] = await db
+      .select({ origin: categoryTable.origin, name: categoryTable.name })
+      .from(categoryTable)
+      .where(eq(categoryTable.name, 'Zeta Fiction'))
+      .limit(1);
+    expect(createdCategory?.origin).toBe('ai');
   });
 
   it('does not override manual values and skips non-pending works', async () => {

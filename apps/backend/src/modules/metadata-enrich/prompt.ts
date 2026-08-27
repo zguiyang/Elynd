@@ -23,7 +23,7 @@ export function buildEnrichMessages(input: EnrichPromptInput): AiMessageInput[] 
     'Produce metadata ONLY from the provided book context. If the excerpt does not support a field, leave it empty — never invent.',
     'Do not include spoilers in the description.',
     'Prefer reusing existing tags from list_existing_tags; only propose a new tag if none accurately describes the work.',
-    'The category must come from list_categories.',
+    'Prefer a category from list_categories; only propose a new category if none accurately describes the work.',
     'description: 2-3 sentences in the book language.',
     'tags: noun phrases, up to 6, concise and specific.',
     'Output fields may be omitted when unsupported by the content.',

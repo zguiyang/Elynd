@@ -70,7 +70,7 @@ export const metadataFieldRegistry: Record<MetadataFieldId, MetadataFieldDef> = 
   category: {
     id: 'category',
     aiFillable: true,
-    promptSection: 'category: exactly one category from list_categories',
+    promptSection: 'category: one category, prefer existing from list_categories',
     outputKey: 'category',
     schema: z.string().max(100).optional(),
     isWeak(value) {

@@ -195,8 +195,21 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
 
     const aiCategory = metadataFieldRegistry.category.normalize(result.content.category);
     if (needed.has('category') && typeof aiCategory === 'string') {
+      const normalized = normalizeTag(aiCategory);
       const categories = await tx.select().from(categoryTable);
-      const matched = categories.find((c) => normalizeTag(c.name) === normalizeTag(aiCategory!));
+      let matched = categories.find((c) => normalizeTag(c.name) === normalized);
+      if (!matched) {
+        // No existing category fits — create one (origin='ai'), matching the
+        // tag behavior: reuse-first, create only when nothing exists.
+        const [created] = await tx
+          .insert(categoryTable)
+          .values({ id: randomUUID(), name: aiCategory, normalized, origin: 'ai' })
+          .onConflictDoNothing()
+          .returning();
+        matched =
+          created ??
+          (await tx.select().from(categoryTable).where(eq(categoryTable.normalized, normalized)).limit(1))[0];
+      }
       if (matched) {
         await tx
           .delete(readingWorkCategoryTable)

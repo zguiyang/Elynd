@@ -4,7 +4,6 @@ export type {
   ContentAssetMeta,
   ContentAssetWordTiming,
   ConversationMessageMetadata,
-  MetadataEnrichmentStatus,
   WorkMetadataProvenance,
   WorkMetadataProvenanceMap,
 } from './schema';

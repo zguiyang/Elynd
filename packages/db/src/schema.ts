@@ -115,9 +115,6 @@ export const accountRelations = relations(account, ({ one }) => ({
 /** Provenance of a work-dimension association (rules / AI / manual). */
 export type WorkMetadataProvenance = 'extracted' | 'ai' | 'manual';
 
-/** Enrichment state machine of the metadata-enrich job. */
-export type MetadataEnrichmentStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
-
 /** Per-field provenance snapshot for admin display (jsonb mirror of association rows). */
 export type WorkMetadataProvenanceMap = {
   description?: WorkMetadataProvenance;
@@ -134,18 +131,13 @@ export const readingWork = pgTable(
     author: text('author').notNull().default(''),
     description: text('description').notNull().default(''),
     language: text('language').notNull().default('en'),
-    status: text('status').notNull().default('draft'),
+    status: text('status').notNull().default('processing'),
     visibility: text('visibility').notNull().default('catalog'),
     ownerUserId: text('owner_user_id').references(() => user.id, { onDelete: 'set null' }),
     originKind: text('origin_kind').notNull().default('admin_text'),
     originMeta: jsonb('origin_meta').$type<Record<string, unknown>>().notNull().default({}),
     tags: jsonb('tags').$type<string[]>().notNull().default([]),
     sourceNote: text('source_note').notNull().default(''),
-    metadataEnrichmentStatus: text('metadata_enrichment_status')
-      .$type<MetadataEnrichmentStatus>()
-      .notNull()
-      .default('pending'),
-    metadataEnrichmentAt: timestamp('metadata_enrichment_at'),
     metadataProvenance: jsonb('metadata_provenance').$type<WorkMetadataProvenanceMap>().notNull().default({}),
     coverAssetId: text('cover_asset_id'),
     publishedAt: timestamp('published_at'),
@@ -158,7 +150,6 @@ export const readingWork = pgTable(
   (table) => [
     index('reading_work_status_idx').on(table.status),
     index('reading_work_published_at_idx').on(table.publishedAt),
-    index('reading_work_enrichment_status_idx').on(table.metadataEnrichmentStatus),
   ],
 );
 

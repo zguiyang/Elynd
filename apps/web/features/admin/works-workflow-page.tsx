@@ -6,7 +6,13 @@ import { useRouter } from 'next/navigation';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { type CreateEpubWorkResult, EPUB_UPLOAD_MAX_BYTES, getPublishWorkIssues } from '@gloaming/shared/api/works';
+import {
+  type CreateEpubWorkResult,
+  EPUB_UPLOAD_MAX_BYTES,
+  getPublishWorkIssues,
+  TTS_STEP_ENABLED,
+  type WorkflowStep,
+} from '@gloaming/shared/api/works';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,7 +24,7 @@ import {
   deleteAdminWork,
   formatWorksApiError,
   publishAdminWork,
-  reparseAdminWork,
+  retryAdminWorkflow,
   unpublishAdminWork,
   uploadAdminEpub,
   useAdminWorkQuery,
@@ -30,7 +36,7 @@ import { cn } from '@/lib/utils';
 const WORKFLOW_STEPS = [
   { id: 'upload', label: '上传' },
   { id: 'parse', label: '内容解析' },
-  { id: 'metadata', label: '信息回填' },
+  { id: 'metadata', label: '原数据完善' },
   { id: 'audio', label: '音频' },
   { id: 'publish', label: '发布' },
 ] as const;
@@ -40,10 +46,18 @@ type WorkflowStepId = (typeof WORKFLOW_STEPS)[number]['id'];
 type StepState = 'done' | 'active' | 'todo' | 'failed' | 'na';
 
 const STATUS_LABEL: Record<AdminWorkView['status'], string> = {
-  draft: '草稿',
   processing: '解析中…',
+  metadata: '原数据完善中…',
+  tts: '音频生成中…',
+  ready: '已完成',
+  failed: '处理失败',
   published: '已发布',
-  failed: '解析失败',
+};
+
+const STEP_LABEL: Record<'parse' | 'metadata' | 'tts', string> = {
+  parse: '内容解析',
+  metadata: '原数据完善',
+  tts: '音频生成',
 };
 
 const AUDIO_STATE_LABEL: Record<'missing' | 'fresh' | 'stale', string> = {
@@ -86,34 +100,37 @@ function stepStates(work: AdminWorkView | null): Record<WorkflowStepId, StepStat
       parse: 'na',
       metadata: 'na',
       audio: 'na',
-      publish: work.status === 'published' ? 'done' : 'todo',
+      publish: work.status === 'published' ? 'done' : 'active',
     };
   }
+  // Parse — the first pipeline step.
   const parseState =
     work.status === 'processing'
       ? 'active'
-      : work.status === 'failed'
+      : work.status === 'failed' && work.failedStep === 'parse'
         ? 'failed'
         : work.originMeta.parsed
           ? 'done'
           : 'todo';
-  // Metadata backfill follows the parse pipeline: pending until parse is done,
-  // active while the AI job claims the work, done when completed.
+  // Metadata — active from parse completion through AI backfill.
   const metadataState =
-    work.status === 'processing' || work.status === 'failed'
-      ? 'todo'
-      : work.metadataEnrichmentStatus === 'running'
-        ? 'active'
-        : work.metadataEnrichmentStatus === 'completed'
+    work.status === 'metadata' || work.status === 'tts'
+      ? 'active'
+      : work.status === 'failed' && work.failedStep === 'metadata'
+        ? 'failed'
+        : work.status === 'ready' || work.status === 'published'
           ? 'done'
           : 'todo';
-  const audioState = work.derivedFreshness.audio === 'missing' ? 'todo' : 'done';
+  // Audio — reserved; skipped while the TTS step is not enabled.
+  const audioState = work.status === 'tts' ? 'active' : TTS_STEP_ENABLED ? 'todo' : 'na';
+  // Publish — the human step; highlighted while the work is ready.
+  const publishState = work.status === 'published' ? 'done' : work.status === 'ready' ? 'active' : 'todo';
   return {
     upload: 'done',
     parse: parseState,
     metadata: metadataState,
     audio: audioState,
-    publish: work.status === 'published' ? 'done' : 'todo',
+    publish: publishState,
   };
 }
 
@@ -314,22 +331,23 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
   const isEpub = work.originKind === 'admin_epub';
   const states = stepStates(work);
 
-  // Poll while the content parse job or the AI metadata backfill is running.
+  // Poll while any pipeline step is running.
   useEffect(() => {
-    if (work.status !== 'processing' && work.metadataEnrichmentStatus !== 'running') {
+    if (work.status !== 'processing' && work.status !== 'metadata' && work.status !== 'tts') {
       return;
     }
     const timer = window.setInterval(() => {
       void invalidate(workId);
     }, 3000);
     return () => window.clearInterval(timer);
-  }, [work.status, work.metadataEnrichmentStatus, workId, invalidate]);
+  }, [work.status, workId, invalidate]);
 
-  async function handleReparse() {
+  async function handleRetry(step?: WorkflowStep, confirmText?: string) {
+    if (confirmText && !window.confirm(confirmText)) return;
     try {
-      await reparseAdminWork(workId);
+      await retryAdminWorkflow(workId, step);
       await invalidate(workId);
-      toast.success('已重新开始解析');
+      toast.success(step ? `已重新开始「${STEP_LABEL[step]}」` : '已重试');
     } catch (error) {
       toast.error(formatWorksApiError(error));
     }
@@ -373,7 +391,8 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
     tags: work.tags,
     parts: work.parts.map((part) => ({ body: part.body })),
   });
-  const canReparse = isEpub && work.status !== 'published' && work.status !== 'processing';
+  const isRunning = work.status === 'processing' || work.status === 'metadata' || work.status === 'tts';
+  const canRerun = isEpub && work.status !== 'published' && !isRunning;
   const hasParts = work.parts.length > 0;
 
   return (
@@ -476,17 +495,42 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
           ) : work.status === 'processing' ? (
             <div className="mt-4 flex items-center gap-3 text-sm text-muted-foreground">
               <Spinner className="size-4 text-brand" />
-              作品解析中，章节内容即将生成…
+              正在解析章节内容…
             </div>
           ) : work.status === 'failed' ? (
             <div className="mt-4 space-y-4">
               <div className="flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
                 <TriangleAlert className="mt-0.5 size-4 shrink-0" />
-                <p>{String(work.originMeta.lastError ?? '解析失败，未知错误')}</p>
+                <p>
+                  {work.failedStep && work.failedStep !== 'parse' ? `「${STEP_LABEL[work.failedStep]}」步骤失败：` : ''}
+                  {String(work.originMeta.lastError ?? '处理失败，未知错误')}
+                </p>
               </div>
-              <Button type="button" size="sm" onClick={() => void handleReparse()}>
-                重新解析
-              </Button>
+              {work.failedStep === 'parse' || !parsed ? (
+                <Button type="button" size="sm" onClick={() => void handleRetry()}>
+                  重试
+                </Button>
+              ) : null}
+              {parsed ? (
+                <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
+                  <div>
+                    <dt className="text-muted-foreground">章节数</dt>
+                    <dd className="mt-0.5 font-medium">{String(parsed.chapterCount ?? work.parts.length)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">图片数</dt>
+                    <dd className="mt-0.5 font-medium">{String(parsed.imageCount ?? 0)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">原始条目（spine）</dt>
+                    <dd className="mt-0.5 font-medium">{String(parsed.spineCount ?? '—')}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">目录条目（nav）</dt>
+                    <dd className="mt-0.5 font-medium">{String(parsed.navCount ?? '—')}</dd>
+                  </div>
+                </dl>
+              ) : null}
             </div>
           ) : parsed ? (
             <div className="mt-4">
@@ -516,8 +560,13 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
                     type="button"
                     variant="secondary"
                     size="sm"
-                    onClick={() => void handleReparse()}
-                    disabled={!canReparse}
+                    onClick={() =>
+                      void handleRetry(
+                        'parse',
+                        '将重新解析章节，并覆盖现有正文、图片与信息字段（含手工编辑），确定继续？',
+                      )
+                    }
+                    disabled={!canRerun}
                   >
                     重新解析
                   </Button>
@@ -545,15 +594,13 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
             <span className="flex size-6 items-center justify-center rounded-full bg-brand-soft/60 text-brand-deep">
               <Sparkles className="size-3.5" />
             </span>
-            信息回填
+            原数据完善
             {states.metadata === 'done' ? <Check className="size-4 text-brand-deep" /> : null}
           </h2>
           {!isEpub ? (
-            <p className="mt-4 text-sm text-muted-foreground">文本作品不参与信息回填流程。</p>
-          ) : work.status === 'processing' ? (
-            <p className="mt-4 text-sm text-muted-foreground">等待内容解析完成后自动回填…</p>
-          ) : work.status === 'failed' ? (
-            <p className="mt-4 text-sm text-muted-foreground">解析失败，无法回填；可在上方重新解析。</p>
+            <p className="mt-4 text-sm text-muted-foreground">文本作品不参与原数据完善流程。</p>
+          ) : work.status === 'processing' || (work.status === 'failed' && work.failedStep === 'parse') ? (
+            <p className="mt-4 text-sm text-muted-foreground">等待内容解析完成后自动完善…</p>
           ) : (
             <MetadataReviewPanel workId={work.id} work={work} />
           )}
@@ -570,6 +617,11 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
           </h2>
           {!isEpub ? (
             <p className="mt-4 text-sm text-muted-foreground">文本作品不参与音频流程。</p>
+          ) : work.status === 'tts' ? (
+            <div className="mt-4 flex items-center gap-3 text-sm text-muted-foreground">
+              <Spinner className="size-4 text-brand" />
+              正在生成章节音频…
+            </div>
           ) : (
             <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
               <span>{AUDIO_STATE_LABEL[work.derivedFreshness.audio]}</span>
@@ -611,17 +663,21 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
                 <Button type="button" variant="secondary" size="sm" onClick={() => void handleUnpublish()}>
                   下架
                 </Button>
-              ) : (
+              ) : work.status === 'ready' ? (
                 <Button
                   type="button"
                   size="sm"
                   onClick={() => void handlePublish()}
-                  disabled={work.status === 'processing' || publishIssues.length > 0}
+                  disabled={publishIssues.length > 0}
                 >
                   发布
                 </Button>
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  {work.status === 'failed' ? '处理失败，修复后可发布。' : '全部步骤完成后即可发布。'}
+                </span>
               )}
-              {publishIssues.length > 0 && work.status !== 'published' ? (
+              {publishIssues.length > 0 && work.status === 'ready' ? (
                 <span className="text-xs text-muted-foreground">完善左侧要求后即可发布</span>
               ) : null}
             </div>

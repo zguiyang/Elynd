@@ -8,7 +8,9 @@ import {
   type CheckEpubWorkReuseBody,
   createEpubWorkResultSchema,
   epubReuseResultSchema,
+  type RetryWorkflowBody,
   type UpdateWorkBody,
+  type WorkflowStep,
 } from '@gloaming/shared/api/works';
 
 import {
@@ -98,20 +100,15 @@ export async function unpublishAdminWork(id: string, init?: { signal?: AbortSign
   return normalizeAdminWork(raw);
 }
 
-export async function reparseAdminWork(id: string, init?: { signal?: AbortSignal }) {
-  const raw = await apiRequest(`/api/admin/works/${encodeURIComponent(id)}/reparse`, {
+/**
+ * Workflow retry / re-run — without `step` it resumes from the failed step;
+ * with `step` it re-runs that step and everything after it.
+ */
+export async function retryAdminWorkflow(id: string, step?: WorkflowStep, init?: { signal?: AbortSignal }) {
+  const raw = await apiRequest(`/api/admin/works/${encodeURIComponent(id)}/workflow/retry`, {
     method: 'POST',
     schema: adminWorkSchema,
-    signal: init?.signal,
-  });
-  return normalizeAdminWork(raw);
-}
-
-/** Retry metadata backfill (fill → AI enrich) without re-parsing content. */
-export async function refillAdminWork(id: string, init?: { signal?: AbortSignal }) {
-  const raw = await apiRequest(`/api/admin/works/${encodeURIComponent(id)}/refill`, {
-    method: 'POST',
-    schema: adminWorkSchema,
+    ...(step ? { json: { step } satisfies RetryWorkflowBody } : {}),
     signal: init?.signal,
   });
   return normalizeAdminWork(raw);

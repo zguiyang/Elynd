@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ADMIN_ROUTES } from '@/constants';
-import { MetadataRefillStatus } from '@/features/admin/metadata-review-panel';
+import { MetadataStatusCard } from '@/features/admin/metadata-review-panel';
 import { TaxonomyMultiPicker, TaxonomySelect } from '@/features/admin/taxonomy-picker';
 import {
   formatWorksApiError,
@@ -21,10 +21,12 @@ import {
 import type { AdminWorkView } from '@/features/works-http';
 
 const STATUS_LABEL: Record<AdminWorkView['status'], string> = {
-  draft: '草稿',
   processing: '解析中…',
+  metadata: '解析完成',
+  tts: '原数据完善完成',
+  ready: '已完成',
+  failed: '处理失败',
   published: '已发布',
-  failed: '解析失败',
 };
 
 function WorksFormEditor({ workId, work }: { workId: string; work: AdminWorkView }) {
@@ -120,14 +122,9 @@ function WorksFormEditor({ workId, work }: { workId: string; work: AdminWorkView
 
         {work.originKind === 'admin_epub' ? (
           <div className="space-y-2">
-            <Label>信息回填</Label>
+            <Label>原数据完善</Label>
             <div className="rounded-xl border border-border bg-secondary/40 px-4 py-3.5">
-              <MetadataRefillStatus
-                workId={work.id}
-                status={work.metadataEnrichmentStatus}
-                workStatus={work.status}
-                enrichmentAt={work.metadataEnrichmentAt}
-              />
+              <MetadataStatusCard work={work} />
             </div>
           </div>
         ) : null}
@@ -135,11 +132,11 @@ function WorksFormEditor({ workId, work }: { workId: string; work: AdminWorkView
         <div className="space-y-2">
           <Label>正文（只读）</Label>
           <div className="rounded-xl border border-border bg-secondary/40 px-4 py-4">
-            {work.status === 'processing' ? (
-              <p className="text-sm text-muted-foreground">作品解析中，正文即将生成…</p>
+            {work.status === 'processing' || work.status === 'metadata' || work.status === 'tts' ? (
+              <p className="text-sm text-muted-foreground">作品处理中，正文即将更新…</p>
             ) : work.status === 'failed' ? (
               <p className="text-sm text-muted-foreground">
-                解析失败：{String(work.originMeta.lastError ?? '未知错误')}。可在流程页重新解析。
+                处理失败：{String(work.originMeta.lastError ?? '未知错误')}。可在流程页重试。
               </p>
             ) : hasParts ? (
               <p className="text-sm text-muted-foreground">

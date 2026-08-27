@@ -25,8 +25,7 @@ export type AdminWorkView = WorkView & {
   parts: AdminWork['parts'];
   sources: AdminWork['sources'];
   category: AdminWork['category'];
-  metadataEnrichmentStatus: AdminWork['metadataEnrichmentStatus'];
-  metadataEnrichmentAt: string | null;
+  failedStep: AdminWork['failedStep'];
   metadataProvenance: AdminWork['metadataProvenance'];
 };
 
@@ -36,8 +35,7 @@ export type AdminWorkSummaryView = WorkView & {
   originAsset: AdminOriginAsset | null;
   partCount: number;
   category: AdminWorkSummary['category'];
-  metadataEnrichmentStatus: AdminWorkSummary['metadataEnrichmentStatus'];
-  metadataEnrichmentAt: string | null;
+  failedStep: AdminWorkSummary['failedStep'];
   metadataProvenance: AdminWorkSummary['metadataProvenance'];
 };
 
@@ -73,8 +71,7 @@ export function normalizeAdminWork(raw: AdminWork): AdminWorkView {
     parts: raw.parts,
     sources: raw.sources,
     category: raw.category,
-    metadataEnrichmentStatus: raw.metadataEnrichmentStatus,
-    metadataEnrichmentAt: raw.metadataEnrichmentAt == null ? null : toIso(raw.metadataEnrichmentAt),
+    failedStep: raw.failedStep,
     metadataProvenance: raw.metadataProvenance,
   };
 }
@@ -87,8 +84,7 @@ export function normalizeAdminWorkSummary(raw: AdminWorkSummary): AdminWorkSumma
     originAsset: raw.originAsset,
     partCount: raw.partCount,
     category: raw.category,
-    metadataEnrichmentStatus: raw.metadataEnrichmentStatus,
-    metadataEnrichmentAt: raw.metadataEnrichmentAt == null ? null : toIso(raw.metadataEnrichmentAt),
+    failedStep: raw.failedStep,
     metadataProvenance: raw.metadataProvenance,
   };
 }

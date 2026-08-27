@@ -4,7 +4,7 @@ import { Pencil } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 
-import type { MetadataEnrichmentStatus, UpdateWorkBody, WorkMetadataProvenance } from '@gloaming/shared/api/works';
+import type { UpdateWorkBody, WorkflowStep, WorkMetadataProvenance } from '@gloaming/shared/api/works';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,25 +16,23 @@ import { Textarea } from '@/components/ui/textarea';
 import { TaxonomyMultiPicker, TaxonomySelect } from '@/features/admin/taxonomy-picker';
 import {
   formatWorksApiError,
-  refillAdminWork,
+  retryAdminWorkflow,
   updateAdminWork,
   useInvalidateAdminWorks,
 } from '@/features/admin/works-api';
 import type { AdminWorkView } from '@/features/works-http';
 import { cn } from '@/lib/utils';
 
-const ENRICH_STATUS_LABEL: Record<MetadataEnrichmentStatus, string> = {
-  pending: '待回填',
-  running: '回填中',
-  completed: '已完成',
-  failed: '回填失败',
-  skipped: '已跳过',
-};
-
 const PROVENANCE_LABEL: Record<WorkMetadataProvenance, string> = {
   extracted: '提取',
   ai: 'AI 生成',
   manual: '人工',
+};
+
+const STEP_LABEL: Record<WorkflowStep, string> = {
+  parse: '内容解析',
+  metadata: '原数据完善',
+  tts: '音频生成',
 };
 
 /** Secondary source badges — the ember accent stays reserved for busy/active states. */
@@ -267,96 +265,125 @@ type MetadataReviewPanelProps = {
   work: AdminWorkView;
 };
 
-/** Whether the refill retry action applies — failed/skipped, or a stalled pending claim. */
-export function canRefillMetadata(status: MetadataEnrichmentStatus, workStatus: string): boolean {
-  return (
-    status === 'failed' ||
-    status === 'skipped' ||
-    (status === 'pending' && workStatus !== 'processing' && workStatus !== 'failed')
-  );
-}
-
-type MetadataRefillStatusProps = {
-  workId: string;
-  status: MetadataEnrichmentStatus;
-  /** `reading_work.status` — processing means the parse still owns the pipeline. */
-  workStatus: string;
-  enrichmentAt?: string | Date | null;
-};
-
 /**
- * Enrichment status line + retry action, shared by the workflow page and the
- * standalone work edit page. Retry re-runs fill → AI enrich without re-parsing.
+ * "原数据完善" step status line + retry actions. The step is part of the work
+ * status machine: busy states (processing/metadata), failure (failed +
+ * failedStep) and completion (ready/published) drive what is shown and whether
+ * a retry / re-run action is available.
  */
-export function MetadataRefillStatus({ workId, status, workStatus, enrichmentAt }: MetadataRefillStatusProps) {
+export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
   const invalidate = useInvalidateAdminWorks();
-  const isBusy = status === 'running' || workStatus === 'processing';
-  const isStalledPending = status === 'pending' && workStatus !== 'processing' && workStatus !== 'failed';
-  const canRefill = canRefillMetadata(status, workStatus);
-  const [isRefilling, setIsRefilling] = useState(false);
+  const [isActing, setIsActing] = useState(false);
+  const { status, failedStep } = work;
 
-  async function handleRefill() {
-    if (!window.confirm('将重新运行信息回填（规则填充 + AI 补全），确定继续？')) return;
-    setIsRefilling(true);
+  const metadataAt = typeof work.originMeta.metadataAt === 'string' ? work.originMeta.metadataAt : null;
+  const isBusy = status === 'processing' || status === 'metadata' || status === 'tts';
+  const isFailedHere = status === 'failed' && failedStep === 'metadata';
+  const isDone = status === 'ready' || status === 'published';
+
+  async function handleRetry(step: WorkflowStep, confirmText: string) {
+    if (!window.confirm(confirmText)) return;
+    setIsActing(true);
     try {
-      await refillAdminWork(workId);
-      await invalidate(workId);
-      toast.success('已重新开始回填');
+      await retryAdminWorkflow(work.id, step);
+      await invalidate(work.id);
+      toast.success('已重新开始处理');
     } catch (error) {
       toast.error(formatWorksApiError(error));
     } finally {
-      setIsRefilling(false);
+      setIsActing(false);
     }
   }
 
-  const hint =
-    status === 'pending'
-      ? isStalledPending
-        ? '回填任务尚未完成（可能因重试耗尽而中断），可点击「重新回填」重试。'
-        : '解析完成后，AI 将自动补全缺失的简介、标签与分类。'
-      : status === 'running'
-        ? 'AI 正在根据正文内容补全信息，完成后即可逐项核对。'
-        : status === 'failed'
-          ? '回填失败，可点击「重新回填」重试。'
-          : status === 'skipped'
-            ? '未配置回填模型，已跳过自动生成；可点击「重新回填」重试。'
-            : 'AI 已自动补全缺失信息，可逐项核对编辑；发布时以当前内容为准。';
+  let hint = '';
+  if (isBusy) {
+    hint =
+      status === 'processing'
+        ? '等待内容解析完成后自动完善…'
+        : status === 'metadata'
+          ? '正在根据正文内容补全信息，完成后即可逐项核对。'
+          : '正在生成章节音频…';
+  } else if (isFailedHere) {
+    hint = String(work.originMeta.lastError ?? '原数据完善失败，未知错误');
+  } else if (status === 'failed' && failedStep) {
+    hint = `「${STEP_LABEL[failedStep]}」步骤失败：${String(work.originMeta.lastError ?? '未知错误')}，可在对应步骤重试。`;
+  } else if (status === 'failed') {
+    hint = '处理失败：' + String(work.originMeta.lastError ?? '未知错误');
+  } else if (isDone) {
+    hint = 'AI 已自动补全缺失信息，可逐项核对编辑；发布时以当前内容为准。';
+  } else {
+    hint = '解析完成后，AI 将自动补全缺失的简介、标签与分类。';
+  }
 
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2">
-        {status === 'running' ? <Spinner className="size-4 text-brand" /> : null}
-        <Badge variant={status === 'completed' ? 'secondary' : 'outline'}>{ENRICH_STATUS_LABEL[status]}</Badge>
-        {status === 'completed' && enrichmentAt ? (
-          <span className="text-xs text-muted-foreground">回填于 {new Date(enrichmentAt).toLocaleString('zh-CN')}</span>
+        {status === 'metadata' || status === 'tts' ? <Spinner className="size-4 text-brand" /> : null}
+        <Badge
+          variant={
+            status === 'failed' ? 'destructive' : status === 'ready' || status === 'published' ? 'secondary' : 'outline'
+          }
+        >
+          {status === 'failed'
+            ? isFailedHere
+              ? '原数据完善失败'
+              : '处理失败'
+            : status === 'processing'
+              ? '待完善'
+              : status === 'metadata'
+                ? '完善中'
+                : status === 'tts'
+                  ? '音频生成中'
+                  : status === 'published'
+                    ? '已完成（已发布）'
+                    : '已完成'}
+        </Badge>
+        {isDone && metadataAt ? (
+          <span className="text-xs text-muted-foreground">完善于 {new Date(metadataAt).toLocaleString('zh-CN')}</span>
         ) : null}
       </div>
-      <p className="mt-2 text-sm text-muted-foreground">{hint}</p>
-      {canRefill ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          className="mt-3"
-          onClick={() => void handleRefill()}
-          disabled={isRefilling || isBusy}
-        >
-          {isRefilling ? '回填中…' : '重新回填'}
-        </Button>
-      ) : null}
+      <p className={cn('mt-2 text-sm text-muted-foreground', isFailedHere && 'text-destructive')}>{hint}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {isFailedHere ? (
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => void handleRetry('metadata', '将重新运行原数据完善（规则填充 + AI 补全），确定继续？')}
+            disabled={isActing}
+          >
+            {isActing ? '处理中…' : '重试'}
+          </Button>
+        ) : null}
+        {isDone && status !== 'published' ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              void handleRetry('metadata', '将重新运行原数据完善，并覆盖 AI 生成的内容（不含手工编辑），确定继续？')
+            }
+            disabled={isActing}
+          >
+            {isActing ? '处理中…' : '重新执行'}
+          </Button>
+        ) : null}
+        {status === 'published' ? (
+          <span className="text-xs text-muted-foreground">如需重新完善请先下架作品。</span>
+        ) : null}
+      </div>
     </div>
   );
 }
 
 /**
- * "信息回填" step — shows the AI backfill outcome field-by-field with source
- * badges, lets the admin edit in place, and the publish action submits whatever
- * the rows hold at that moment.
+ * "原数据完善" step — shows the outcome field-by-field with source badges,
+ * lets the admin edit in place, and the publish action submits whatever the
+ * rows hold at that moment.
  */
 export function MetadataReviewPanel({ workId, work }: MetadataReviewPanelProps) {
   const invalidate = useInvalidateAdminWorks();
-  const status = work.metadataEnrichmentStatus;
-  const isBusy = status === 'running' || work.status === 'processing';
+  const status = work.status;
+  const isBusy = status === 'processing' || status === 'metadata' || status === 'tts';
 
   const [tagsDraft, setTagsDraft] = useState<string[]>(work.tags);
   const [sourcesDraft, setSourcesDraft] = useState<string[]>(work.sources);
@@ -370,14 +397,9 @@ export function MetadataReviewPanel({ workId, work }: MetadataReviewPanelProps) 
 
   return (
     <div className="mt-4">
-      <MetadataRefillStatus
-        workId={workId}
-        status={status}
-        workStatus={work.status}
-        enrichmentAt={work.metadataEnrichmentAt}
-      />
+      <MetadataStatusCard work={work} />
 
-      {status === 'running' ? (
+      {isBusy ? (
         <div className="mt-4 space-y-3" aria-busy="true">
           {[0, 1, 2, 3, 4].map((index) => (
             <Skeleton key={index} className="h-12 rounded-xl" />

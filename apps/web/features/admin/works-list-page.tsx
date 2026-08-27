@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-import { type WorkStatus } from '@gloaming/shared/api/works';
+import { WORK_STATUSES, type WorkStatus } from '@gloaming/shared/api/works';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,27 +27,32 @@ import {
   deleteAdminWork,
   formatWorksApiError,
   publishAdminWork,
-  reparseAdminWork,
+  retryAdminWorkflow,
   unpublishAdminWork,
   useAdminWorksListQuery,
   useInvalidateAdminWorks,
 } from '@/features/admin/works-api';
 import type { AdminWorkSummaryView } from '@/features/works-http';
 
-const STATUS_FILTERS: { value: WorkStatus | 'all'; label: string }[] = [
+const STATUS_FILTERS: { value: WorkStatus | 'all' | 'busy'; label: string }[] = [
   { value: 'all', label: '全部' },
-  { value: 'draft', label: '草稿' },
-  { value: 'processing', label: '解析中' },
-  { value: 'failed', label: '解析失败' },
+  { value: 'busy', label: '处理中' },
+  { value: 'ready', label: '待发布' },
+  { value: 'failed', label: '处理失败' },
   { value: 'published', label: '已发布' },
 ];
 
 const STATUS_LABEL: Record<WorkStatus, string> = {
-  draft: '草稿',
   processing: '解析中',
+  metadata: '解析完成',
+  tts: '原数据完善完成',
+  ready: '已完成',
+  failed: '处理失败',
   published: '已发布',
-  failed: '解析失败',
 };
+
+/** Processing filter — the three running steps grouped as one tab. */
+const BUSY_STATUSES = ['processing', 'metadata', 'tts'] as const;
 
 function formatUpdatedAt(iso: string): string {
   return new Date(iso).toLocaleString('zh-CN', {
@@ -62,18 +67,19 @@ type WorkRowActionsProps = {
   work: AdminWorkSummaryView;
   onPublish: (id: string) => void;
   onUnpublish: (id: string) => void;
-  onReparse: (id: string) => void;
+  onRetry: (id: string) => void;
   onDelete: (id: string) => void;
 };
 
 /** Row actions: one status-primary action inline + the rest in a 「更多」 menu. */
-function WorkRowActions({ work, onPublish, onUnpublish, onReparse, onDelete }: WorkRowActionsProps) {
+function WorkRowActions({ work, onPublish, onUnpublish, onRetry, onDelete }: WorkRowActionsProps) {
   const router = useRouter();
-  const canPreview = work.partCount > 0 && work.status !== 'processing' && work.status !== 'failed';
+  const canPreview =
+    work.partCount > 0 && work.status !== 'processing' && work.status !== 'metadata' && work.status !== 'failed';
 
   return (
     <div className="flex justify-end gap-2">
-      {work.status === 'draft' ? (
+      {work.status === 'ready' ? (
         <Button type="button" size="sm" variant="secondary" onClick={() => onPublish(work.id)}>
           发布
         </Button>
@@ -84,8 +90,8 @@ function WorkRowActions({ work, onPublish, onUnpublish, onReparse, onDelete }: W
         </Button>
       ) : null}
       {work.status === 'failed' ? (
-        <Button type="button" size="sm" variant="secondary" onClick={() => onReparse(work.id)}>
-          重新解析
+        <Button type="button" size="sm" variant="secondary" onClick={() => onRetry(work.id)}>
+          重试
         </Button>
       ) : null}
 
@@ -100,7 +106,7 @@ function WorkRowActions({ work, onPublish, onUnpublish, onReparse, onDelete }: W
           {work.status !== 'published' ? (
             <DropdownMenuItem onClick={() => router.push(ADMIN_ROUTES.workDetail(work.id))}>
               <Play />
-              继续处理
+              查看进度
             </DropdownMenuItem>
           ) : null}
           {canPreview ? (
@@ -172,9 +178,15 @@ function WorksTableSkeleton({ rows }: { rows: number }) {
 }
 
 export function WorksListPage() {
-  const [statusFilter, setStatusFilter] = useState<WorkStatus | 'all'>('all');
+  const [statusFilter, setStatusFilter] = useState<WorkStatus | 'all' | 'busy'>('all');
   const invalidate = useInvalidateAdminWorks();
-  const listQuery = useAdminWorksListQuery(statusFilter === 'all' ? {} : { status: statusFilter });
+  const listQuery = useAdminWorksListQuery(
+    statusFilter === 'all'
+      ? {}
+      : statusFilter === 'busy'
+        ? { status: BUSY_STATUSES.join(',') }
+        : { status: statusFilter },
+  );
 
   async function handlePublish(id: string) {
     try {
@@ -196,11 +208,11 @@ export function WorksListPage() {
     }
   }
 
-  async function handleReparse(id: string) {
+  async function handleRetry(id: string) {
     try {
-      await reparseAdminWork(id);
+      await retryAdminWorkflow(id);
       await invalidate(id);
-      toast.success('已重新开始解析');
+      toast.success('已重新开始处理');
     } catch (error) {
       toast.error(formatWorksApiError(error));
     }
@@ -239,14 +251,8 @@ export function WorksListPage() {
         <Tabs
           value={statusFilter}
           onValueChange={(value) => {
-            if (
-              value === 'all' ||
-              value === 'draft' ||
-              value === 'processing' ||
-              value === 'failed' ||
-              value === 'published'
-            ) {
-              setStatusFilter(value);
+            if (value === 'all' || value === 'busy' || (WORK_STATUSES as readonly string[]).includes(value)) {
+              setStatusFilter(value as WorkStatus | 'all' | 'busy');
             }
           }}
         >
@@ -315,7 +321,7 @@ export function WorksListPage() {
                   <TableCell className="px-5 py-4">
                     <Badge
                       variant={
-                        work.status === 'published' ? 'secondary' : work.status === 'failed' ? 'destructive' : 'outline'
+                        work.status === 'failed' ? 'destructive' : work.status === 'ready' ? 'secondary' : 'outline'
                       }
                     >
                       {STATUS_LABEL[work.status]}
@@ -330,7 +336,7 @@ export function WorksListPage() {
                       work={work}
                       onPublish={(id) => void handlePublish(id)}
                       onUnpublish={(id) => void handleUnpublish(id)}
-                      onReparse={(id) => void handleReparse(id)}
+                      onRetry={(id) => void handleRetry(id)}
                       onDelete={(id) => void handleDelete(id)}
                     />
                   </TableCell>

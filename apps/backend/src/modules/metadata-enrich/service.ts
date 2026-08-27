@@ -5,7 +5,6 @@ import type { z } from 'zod';
 
 import {
   category as categoryTable,
-  type MetadataEnrichmentStatus,
   readingPart as readingPartTable,
   readingWork as readingWorkTable,
   readingWorkCategory as readingWorkCategoryTable,
@@ -13,12 +12,14 @@ import {
   tag as tagTable,
   type WorkMetadataProvenanceMap,
 } from '@gloaming/db';
+import { TTS_STEP_ENABLED } from '@gloaming/shared/api/works';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';
 import { AppError } from '@/lib/errors';
 import { rootLogger } from '@/lib/logger';
 import { normalizeTag } from '@/lib/text';
+import { completeWorkflowStep } from '@/lib/workflow';
 import { type AiInvokeResult, invokeAi } from '@/modules/ai';
 import type { MetadataFieldId } from '@/modules/metadata-enrich/fields';
 import { buildEnrichMessages, EXCERPT_MAX_CHARS, TOC_TITLE_MAX } from '@/modules/metadata-enrich/prompt';
@@ -77,11 +78,18 @@ function isModelNotConfigured(error: unknown): boolean {
   return error instanceof AppError && error.statusCode === HTTP_STATUS.SERVICE_UNAVAILABLE;
 }
 
+/** Complete the `metadata` step — TTS step is reserved but skipped for now. */
+async function completeMetadataStep(workId: string): Promise<void> {
+  await completeWorkflowStep(workId, TTS_STEP_ENABLED ? 'tts' : 'ready', {
+    metadataAt: new Date().toISOString(),
+  });
+}
+
 /**
  * AI backfill orchestration — fills empty/weak fields only (never overrides
  * manual values). Short-circuits with zero cost when nothing is needed.
- * Model-not-configured degrades to `skipped`; other failures bubble up so the
- * job can restore `pending` for a bounded retry (at-least-once).
+ * Model-not-configured degrades to a completed step (rules already landed);
+ * other failures bubble up so the job can fail the step and retry.
  */
 export async function enrichWorkMetadata(workId: string): Promise<void> {
   const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId)).limit(1);
@@ -91,7 +99,7 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
   if (work.originKind !== 'admin_epub') {
     return;
   }
-  if (work.metadataEnrichmentStatus !== 'pending') {
+  if (work.status !== 'metadata') {
     return;
   }
 
@@ -112,19 +120,7 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
   }
 
   if (needed.size === 0) {
-    await db
-      .update(readingWorkTable)
-      .set({ metadataEnrichmentStatus: 'completed', metadataEnrichmentAt: new Date() })
-      .where(eq(readingWorkTable.id, workId));
-    return;
-  }
-
-  const claimed = await db
-    .update(readingWorkTable)
-    .set({ metadataEnrichmentStatus: 'running' })
-    .where(and(eq(readingWorkTable.id, workId), eq(readingWorkTable.metadataEnrichmentStatus, 'pending')))
-    .returning({ id: readingWorkTable.id });
-  if (claimed.length === 0) {
+    await completeMetadataStep(workId);
     return;
   }
 
@@ -151,17 +147,13 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
     });
   } catch (error) {
     if (isModelNotConfigured(error)) {
-      await db
-        .update(readingWorkTable)
-        .set({ metadataEnrichmentStatus: 'skipped' })
-        .where(eq(readingWorkTable.id, workId));
+      await completeMetadataStep(workId);
       return;
     }
     throw error;
   }
 
   const provenance: WorkMetadataProvenanceMap = { ...work.metadataProvenance };
-  const status: MetadataEnrichmentStatus = 'completed';
 
   await db.transaction(async (tx) => {
     const patch: Partial<typeof readingWorkTable.$inferInsert> = {};
@@ -217,11 +209,11 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
       }
     }
 
-    patch.metadataEnrichmentStatus = status;
-    patch.metadataEnrichmentAt = new Date();
     patch.metadataProvenance = provenance;
     await tx.update(readingWorkTable).set(patch).where(eq(readingWorkTable.id, workId));
   });
+
+  await completeMetadataStep(workId);
 
   // Observation point: required fields that the model skipped entirely.
   const missing: MetadataFieldId[] = [];

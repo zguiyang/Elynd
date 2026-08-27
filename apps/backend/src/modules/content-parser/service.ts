@@ -10,6 +10,7 @@ import {
 
 import { db } from '@/db';
 import { rootLogger } from '@/lib/logger';
+import { claimWorkflowStep, failWorkflowStep } from '@/lib/workflow';
 import { parserFor } from '@/modules/content-parser/registry';
 import type { ParsedContent } from '@/modules/content-parser/types';
 import { deleteObject, getObject, putObject } from '@/modules/oss';
@@ -51,7 +52,8 @@ async function loadOriginBytes(workId: string): Promise<Buffer> {
   return object.body;
 }
 
-async function clearDerivedAssets(workId: string): Promise<void> {
+/** Delete derived image/cover assets (objects + rows) — re-parse / workflow reset. */
+export async function clearDerivedAssets(workId: string): Promise<void> {
   const rows = await db
     .select({ id: contentAssetTable.id, storageKey: contentAssetTable.storageKey, kind: contentAssetTable.kind })
     .from(contentAssetTable)
@@ -99,11 +101,16 @@ function rewriteImageSrcs(html: string, images: ParsedContent['images'], hrefToA
 /**
  * Content ingest job — resolve the source parser, then store parts/images/cover
  * and update the work. Idempotent: re-running replaces parts + derived assets.
+ * Claims the `parse` workflow step (self-heals from a failed parse retry) and
+ * moves the work to `metadata` on success.
  */
 export async function processContentWork(workId: string): Promise<void> {
   const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId)).limit(1);
   if (!work) {
     throw new Error(`Work ${workId} not found`);
+  }
+  if (!(await claimWorkflowStep(workId, 'parse'))) {
+    return;
   }
 
   try {
@@ -191,7 +198,7 @@ export async function processContentWork(workId: string): Promise<void> {
         author: hasParsedBefore ? work.author : '',
         description: hasParsedBefore ? work.description : '',
         coverAssetId,
-        status: 'draft',
+        status: 'metadata',
         publishedAt: null,
         originMeta: {
           ...work.originMeta,
@@ -209,21 +216,17 @@ export async function processContentWork(workId: string): Promise<void> {
             imageCount: storedImages,
             parsedAt: new Date().toISOString(),
           },
+          failedStep: undefined,
+          lastError: undefined,
+          failedAt: undefined,
         },
       })
       .where(eq(readingWorkTable.id, workId));
 
     ingestLogger.info({ workId, chapters: content.chapters.length, images: storedImages }, 'Content ingest complete');
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
     ingestLogger.error({ err: error, workId }, 'Content ingest failed');
-    await db
-      .update(readingWorkTable)
-      .set({
-        status: 'failed',
-        originMeta: { ...work.originMeta, lastError: message, failedAt: new Date().toISOString() },
-      })
-      .where(eq(readingWorkTable.id, workId));
+    await failWorkflowStep(workId, 'parse', error);
     throw error;
   }
 }

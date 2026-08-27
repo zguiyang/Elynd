@@ -10,6 +10,6 @@ export type ContentParseJobData = {
 
 export async function processContentParse(data: ContentParseJobData): Promise<{ ok: true; workId: string }> {
   await processContentWork(data.workId);
-  await enqueue(JOB_METADATA_FILL, { workId: data.workId });
+  await enqueue(JOB_METADATA_FILL, { workId: data.workId }, { attempts: 2 });
   return { ok: true, workId: data.workId };
 }

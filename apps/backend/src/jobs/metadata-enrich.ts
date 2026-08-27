@@ -1,9 +1,5 @@
-import { and, eq } from 'drizzle-orm';
-
-import { readingWork as readingWorkTable } from '@gloaming/db';
-
-import { db } from '@/db';
 import { rootLogger } from '@/lib/logger';
+import { claimWorkflowStep, failWorkflowStep } from '@/lib/workflow';
 import { enrichWorkMetadata } from '@/modules/metadata-enrich/service';
 
 export const JOB_METADATA_ENRICH = 'metadata-enrich';
@@ -15,19 +11,20 @@ export type MetadataEnrichJobData = {
 const enrichJobLogger = rootLogger.child({ module: 'MetadataEnrichJob' });
 
 /**
- * AI backfill job (attempts: 2, at-least-once). On failure the claim is
- * restored to `pending` so the retry can re-claim; the model-not-configured
- * case degrades to `skipped` inside the service and never reaches here.
+ * AI backfill job (step `metadata`, attempts: 2, at-least-once). Failure
+ * surfaces as `failed` + `failedStep: metadata`; the BullMQ retry re-claims the
+ * step (self-heal). The model-not-configured case degrades inside the service
+ * and completes the step without AI.
  */
 export async function processMetadataEnrich(data: MetadataEnrichJobData): Promise<{ ok: true; workId: string }> {
+  if (!(await claimWorkflowStep(data.workId, 'metadata'))) {
+    return { ok: true, workId: data.workId };
+  }
   try {
     await enrichWorkMetadata(data.workId);
   } catch (error) {
     enrichJobLogger.error({ err: error, workId: data.workId }, 'Metadata enrich failed');
-    await db
-      .update(readingWorkTable)
-      .set({ metadataEnrichmentStatus: 'pending' })
-      .where(and(eq(readingWorkTable.id, data.workId), eq(readingWorkTable.metadataEnrichmentStatus, 'running')));
+    await failWorkflowStep(data.workId, 'metadata', error);
     throw error;
   }
   return { ok: true, workId: data.workId };

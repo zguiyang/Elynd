@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -16,6 +16,7 @@ import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';
 import { processMetadataEnrich } from '@/jobs/metadata-enrich';
 import { AppError } from '@/lib/errors';
+import { normalizeTag } from '@/lib/text';
 import { processContentWork } from '@/modules/content-parser';
 import { enrichWorkMetadata } from '@/modules/metadata-enrich/service';
 import { listCategoriesTool, listExistingTagsTool } from '@/modules/metadata-enrich/tools';
@@ -50,7 +51,28 @@ function cookieHeader(response: Response): string {
 describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
   const memory = createMemoryObjectStore();
   const createdWorkIds: string[] = [];
+  const createdCategoryIds: string[] = [];
   let adminCookie = '';
+
+  /** Categories are no longer seeded (0020) — create on demand for fixtures. */
+  async function ensureCategory(name: string): Promise<string> {
+    const existing = await db
+      .select({ id: categoryTable.id })
+      .from(categoryTable)
+      .where(eq(categoryTable.name, name))
+      .limit(1);
+    if (existing[0]) return existing[0].id;
+    const [row] = await db
+      .insert(categoryTable)
+      .values({
+        id: `cat-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name,
+        normalized: normalizeTag(name),
+      })
+      .returning({ id: categoryTable.id });
+    createdCategoryIds.push(row!.id);
+    return row!.id;
+  }
 
   const chapter = {
     href: 'chapter-1.xhtml',
@@ -88,6 +110,7 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
     for (const workId of createdWorkIds) {
       await db.delete(readingWorkTable).where(eq(readingWorkTable.id, workId));
     }
+    await db.delete(categoryTable).where(inArray(categoryTable.id, createdCategoryIds));
     await db.delete(uploadedObjectTable);
     resetObjectStoreCache();
   });
@@ -129,11 +152,8 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
         'A fully written description with plenty of detail to be useful for readers browsing the catalog shelf.',
       subjects: ['Science'],
     });
-    const [cat] = await db
-      .select({ id: categoryTable.id })
-      .from(categoryTable)
-      .where(eq(categoryTable.name, 'Science'));
-    await db.insert(readingWorkCategoryTable).values({ workId, categoryId: cat!.id, provenance: 'extracted' });
+    const categoryId = await ensureCategory('Science');
+    await db.insert(readingWorkCategoryTable).values({ workId, categoryId, provenance: 'extracted' });
 
     await enrichWorkMetadata(workId);
 
@@ -144,6 +164,7 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
 
   it('fills empty/weak fields with ai provenance and merges the jsonb view', async () => {
     const workId = await createParsedWork({ title: 'Fill Book' });
+    await ensureCategory('Science Fiction');
 
     invokeAiMock.mockResolvedValueOnce({
       content: {
@@ -251,10 +272,10 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
     expect(parsedSearch.tags.map((t) => t.name)).toContain('Adventure');
   });
 
-  it('list_categories returns the seeded enumeration', async () => {
+  it('list_categories returns the admin-managed enumeration', async () => {
+    await ensureCategory('Mystery');
     const raw = await listCategoriesTool().invoke({});
     const parsed = JSON.parse(raw) as { categories: string[] };
-    expect(parsed.categories).toContain('Science Fiction');
-    expect(parsed.categories).toContain('Classic');
+    expect(parsed.categories).toContain('Mystery');
   });
 });

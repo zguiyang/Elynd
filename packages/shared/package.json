@@ -14,6 +14,7 @@
     "./api/reader": "./src/api/reader.ts",
     "./api/reading-history": "./src/api/reading-history.ts",
     "./api/shelf": "./src/api/shelf.ts",
+    "./api/taxonomy": "./src/api/taxonomy.ts",
     "./api/llm-config": "./src/api/llm-config.ts",
     "./api/llm-config-keys": "./src/api/llm-config-keys.ts",
     "./api/pagination": "./src/api/pagination.ts",

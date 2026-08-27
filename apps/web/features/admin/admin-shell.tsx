@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, AudioLines, FileText, Menu, ScrollText, Sparkles, Volume2 } from 'lucide-react';
+import { ArrowLeft, AudioLines, FileText, Menu, ScrollText, Sparkles, Tags, Volume2 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { type ReactNode, useState } from 'react';
@@ -40,6 +40,12 @@ function adminNavItems(pathname: string): AdminNavItem[] {
       label: 'AI 配置',
       icon: Sparkles,
       isActive: pathname === ADMIN_ROUTES.ai || pathname.startsWith(`${ADMIN_ROUTES.ai}/`),
+    },
+    {
+      href: ADMIN_ROUTES.taxonomy,
+      label: '维度管理',
+      icon: Tags,
+      isActive: pathname === ADMIN_ROUTES.taxonomy || pathname.startsWith(`${ADMIN_ROUTES.taxonomy}/`),
     },
     {
       href: ADMIN_ROUTES.aiLogs,

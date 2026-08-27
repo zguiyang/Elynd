@@ -17,11 +17,15 @@ import {
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';
 import { AppError } from '@/lib/errors';
+import { rootLogger } from '@/lib/logger';
 import { normalizeTag } from '@/lib/text';
 import { type AiInvokeResult, invokeAi } from '@/modules/ai';
+import type { MetadataFieldId } from '@/modules/metadata-enrich/fields';
 import { buildEnrichMessages, EXCERPT_MAX_CHARS, TOC_TITLE_MAX } from '@/modules/metadata-enrich/prompt';
 import { aiFillableFields, buildMetadataOutputSchema, metadataFieldRegistry } from '@/modules/metadata-enrich/registry';
 import { listCategoriesTool, listExistingTagsTool } from '@/modules/metadata-enrich/tools';
+
+const enrichLogger = rootLogger.child({ module: 'MetadataEnrich' });
 
 function stripHtml(html: string): string {
   return html
@@ -124,7 +128,7 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
     return;
   }
 
-  const outputSchema = buildMetadataOutputSchema();
+  const outputSchema = buildMetadataOutputSchema([...needed]);
   let result: AiInvokeResult<z.infer<typeof outputSchema>>;
   try {
     result = await invokeAi({
@@ -139,6 +143,7 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
         ruleDescription: work.description,
         excerpt: context.excerpt,
         tocTitles: context.tocTitles,
+        requiredFields: [...needed],
       }),
       tools: [listExistingTagsTool(), listCategoriesTool()],
       outputSchema,
@@ -167,56 +172,46 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
       provenance.description = 'ai';
     }
 
-    const aiTags = metadataFieldRegistry.tags.normalize(result.content.tags);
-    if (needed.has('tags') && Array.isArray(aiTags) && aiTags.length > 0) {
+    // Tags — the model declares reuse (kind:"existing" + id from tools) or
+    // creation. Intent is advisory: ids are validated, and names always fall
+    // back to normalized reuse-first upserts (never duplicate dimensions).
+    const aiTags = metadataFieldRegistry.tags.normalize(result.content.tags) as
+      Array<{ name: string; existingId?: string }> | undefined;
+    if (needed.has('tags') && Array.isArray(aiTags)) {
       const tagIds: string[] = [];
-      for (const name of aiTags) {
-        const [row] = await tx
-          .insert(tagTable)
-          .values({ id: randomUUID(), name, normalized: normalizeTag(name), origin: 'ai' })
-          .onConflictDoUpdate({ target: tagTable.normalized, set: { name } })
-          .returning();
-        tagIds.push(row!.id);
+      for (const tag of aiTags) {
+        const id = await resolveTagId(tx, tag);
+        if (id) tagIds.push(id);
       }
-      await tx
-        .delete(readingWorkTagTable)
-        .where(and(eq(readingWorkTagTable.workId, workId), eq(readingWorkTagTable.provenance, 'ai')));
-      for (const tagId of tagIds) {
-        await tx.insert(readingWorkTagTable).values({ workId, tagId, provenance: 'ai' }).onConflictDoNothing();
+      if (tagIds.length > 0) {
+        await tx
+          .delete(readingWorkTagTable)
+          .where(and(eq(readingWorkTagTable.workId, workId), eq(readingWorkTagTable.provenance, 'ai')));
+        for (const tagId of tagIds) {
+          await tx.insert(readingWorkTagTable).values({ workId, tagId, provenance: 'ai' }).onConflictDoNothing();
+        }
+        const rows = await tx
+          .select({ name: tagTable.name })
+          .from(readingWorkTagTable)
+          .innerJoin(tagTable, eq(readingWorkTagTable.tagId, tagTable.id))
+          .where(eq(readingWorkTagTable.workId, workId));
+        patch.tags = rows.map((row) => row.name);
+        provenance.tags = 'ai';
       }
-      const rows = await tx
-        .select({ name: tagTable.name })
-        .from(readingWorkTagTable)
-        .innerJoin(tagTable, eq(readingWorkTagTable.tagId, tagTable.id))
-        .where(eq(readingWorkTagTable.workId, workId));
-      patch.tags = rows.map((row) => row.name);
-      provenance.tags = 'ai';
     }
 
-    const aiCategory = metadataFieldRegistry.category.normalize(result.content.category);
-    if (needed.has('category') && typeof aiCategory === 'string') {
-      const normalized = normalizeTag(aiCategory);
-      const categories = await tx.select().from(categoryTable);
-      let matched = categories.find((c) => normalizeTag(c.name) === normalized);
-      if (!matched) {
-        // No existing category fits — create one (origin='ai'), matching the
-        // tag behavior: reuse-first, create only when nothing exists.
-        const [created] = await tx
-          .insert(categoryTable)
-          .values({ id: randomUUID(), name: aiCategory, normalized, origin: 'ai' })
-          .onConflictDoNothing()
-          .returning();
-        matched =
-          created ??
-          (await tx.select().from(categoryTable).where(eq(categoryTable.normalized, normalized)).limit(1))[0];
-      }
-      if (matched) {
+    // Category — single-select; null means "no category". Same adjudication.
+    const aiCategory = metadataFieldRegistry.category.normalize(result.content.category) as
+      { name: string; existingId?: string } | undefined;
+    if (needed.has('category') && aiCategory) {
+      const categoryId = await resolveCategoryId(tx, aiCategory);
+      if (categoryId) {
         await tx
           .delete(readingWorkCategoryTable)
           .where(and(eq(readingWorkCategoryTable.workId, workId), eq(readingWorkCategoryTable.provenance, 'ai')));
         await tx
           .insert(readingWorkCategoryTable)
-          .values({ workId, categoryId: matched.id, provenance: 'ai' })
+          .values({ workId, categoryId, provenance: 'ai' })
           .onConflictDoNothing();
         provenance.category = 'ai';
       }
@@ -227,4 +222,65 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
     patch.metadataProvenance = provenance;
     await tx.update(readingWorkTable).set(patch).where(eq(readingWorkTable.id, workId));
   });
+
+  // Observation point: required fields that the model skipped entirely.
+  const missing: MetadataFieldId[] = [];
+  if (needed.has('description') && !result.content.description) missing.push('description');
+  if (needed.has('tags') && !Array.isArray(result.content.tags)) missing.push('tags');
+  if (needed.has('category') && result.content.category === undefined) missing.push('category');
+  if (missing.length > 0) {
+    enrichLogger.warn({ workId, missingFields: missing }, 'Metadata enrich completed with fields left unfilled');
+  }
+}
+
+/** Resolve a tag ref to a concrete dimension id — reuse validated, then normalized, then create. */
+async function resolveTagId(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  tag: { name: string; existingId?: string },
+): Promise<string | null> {
+  if (tag.existingId) {
+    const [row] = await tx.select({ id: tagTable.id }).from(tagTable).where(eq(tagTable.id, tag.existingId)).limit(1);
+    if (row) return row.id;
+  }
+  return upsertTagId(tx, tag.name);
+}
+
+/** Category ref — same adjudication, single row. */
+async function resolveCategoryId(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  category: { name: string; existingId?: string },
+): Promise<string | null> {
+  if (category.existingId) {
+    const [row] = await tx
+      .select({ id: categoryTable.id })
+      .from(categoryTable)
+      .where(eq(categoryTable.id, category.existingId))
+      .limit(1);
+    if (row) return row.id;
+  }
+  return upsertCategoryId(tx, category.name);
+}
+
+async function upsertTagId(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  name: string,
+): Promise<string | null> {
+  const [row] = await tx
+    .insert(tagTable)
+    .values({ id: randomUUID(), name, normalized: normalizeTag(name), origin: 'ai' })
+    .onConflictDoUpdate({ target: tagTable.normalized, set: { name } })
+    .returning();
+  return row?.id ?? null;
+}
+
+async function upsertCategoryId(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  name: string,
+): Promise<string | null> {
+  const [row] = await tx
+    .insert(categoryTable)
+    .values({ id: randomUUID(), name, normalized: normalizeTag(name), origin: 'ai' })
+    .onConflictDoUpdate({ target: categoryTable.normalized, set: { name } })
+    .returning();
+  return row?.id ?? null;
 }

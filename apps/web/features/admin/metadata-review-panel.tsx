@@ -14,7 +14,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
 import { TaxonomyMultiPicker, TaxonomySelect } from '@/features/admin/taxonomy-picker';
-import { formatWorksApiError, updateAdminWork, useInvalidateAdminWorks } from '@/features/admin/works-api';
+import {
+  formatWorksApiError,
+  refillAdminWork,
+  updateAdminWork,
+  useInvalidateAdminWorks,
+} from '@/features/admin/works-api';
 import type { AdminWorkView } from '@/features/works-http';
 import { cn } from '@/lib/utils';
 
@@ -262,6 +267,87 @@ type MetadataReviewPanelProps = {
   work: AdminWorkView;
 };
 
+/** Whether the refill retry action applies — failed/skipped, or a stalled pending claim. */
+export function canRefillMetadata(status: MetadataEnrichmentStatus, workStatus: string): boolean {
+  return (
+    status === 'failed' ||
+    status === 'skipped' ||
+    (status === 'pending' && workStatus !== 'processing' && workStatus !== 'failed')
+  );
+}
+
+type MetadataRefillStatusProps = {
+  workId: string;
+  status: MetadataEnrichmentStatus;
+  /** `reading_work.status` — processing means the parse still owns the pipeline. */
+  workStatus: string;
+  enrichmentAt?: string | Date | null;
+};
+
+/**
+ * Enrichment status line + retry action, shared by the workflow page and the
+ * standalone work edit page. Retry re-runs fill → AI enrich without re-parsing.
+ */
+export function MetadataRefillStatus({ workId, status, workStatus, enrichmentAt }: MetadataRefillStatusProps) {
+  const invalidate = useInvalidateAdminWorks();
+  const isBusy = status === 'running' || workStatus === 'processing';
+  const isStalledPending = status === 'pending' && workStatus !== 'processing' && workStatus !== 'failed';
+  const canRefill = canRefillMetadata(status, workStatus);
+  const [isRefilling, setIsRefilling] = useState(false);
+
+  async function handleRefill() {
+    if (!window.confirm('将重新运行信息回填（规则填充 + AI 补全），确定继续？')) return;
+    setIsRefilling(true);
+    try {
+      await refillAdminWork(workId);
+      await invalidate(workId);
+      toast.success('已重新开始回填');
+    } catch (error) {
+      toast.error(formatWorksApiError(error));
+    } finally {
+      setIsRefilling(false);
+    }
+  }
+
+  const hint =
+    status === 'pending'
+      ? isStalledPending
+        ? '回填任务尚未完成（可能因重试耗尽而中断），可点击「重新回填」重试。'
+        : '解析完成后，AI 将自动补全缺失的简介、标签与分类。'
+      : status === 'running'
+        ? 'AI 正在根据正文内容补全信息，完成后即可逐项核对。'
+        : status === 'failed'
+          ? '回填失败，可点击「重新回填」重试。'
+          : status === 'skipped'
+            ? '未配置回填模型，已跳过自动生成；可点击「重新回填」重试。'
+            : 'AI 已自动补全缺失信息，可逐项核对编辑；发布时以当前内容为准。';
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-2">
+        {status === 'running' ? <Spinner className="size-4 text-brand" /> : null}
+        <Badge variant={status === 'completed' ? 'secondary' : 'outline'}>{ENRICH_STATUS_LABEL[status]}</Badge>
+        {status === 'completed' && enrichmentAt ? (
+          <span className="text-xs text-muted-foreground">回填于 {new Date(enrichmentAt).toLocaleString('zh-CN')}</span>
+        ) : null}
+      </div>
+      <p className="mt-2 text-sm text-muted-foreground">{hint}</p>
+      {canRefill ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          className="mt-3"
+          onClick={() => void handleRefill()}
+          disabled={isRefilling || isBusy}
+        >
+          {isRefilling ? '回填中…' : '重新回填'}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
 /**
  * "信息回填" step — shows the AI backfill outcome field-by-field with source
  * badges, lets the admin edit in place, and the publish action submits whatever
@@ -282,29 +368,14 @@ export function MetadataReviewPanel({ workId, work }: MetadataReviewPanelProps) 
     toast.success('已保存');
   }
 
-  const hint =
-    status === 'pending'
-      ? '解析完成后，AI 将自动补全缺失的简介、标签与分类。'
-      : status === 'running'
-        ? 'AI 正在根据正文内容补全信息，完成后即可逐项核对。'
-        : status === 'failed'
-          ? '回填失败，可在内容解析步骤重新解析以重试。'
-          : status === 'skipped'
-            ? '未配置回填模型，已跳过自动生成；可在此手动完善。'
-            : 'AI 已自动补全缺失信息，可逐项核对编辑；发布时以当前内容为准。';
-
   return (
     <div className="mt-4">
-      <div className="flex flex-wrap items-center gap-2">
-        {status === 'running' ? <Spinner className="size-4 text-brand" /> : null}
-        <Badge variant={status === 'completed' ? 'secondary' : 'outline'}>{ENRICH_STATUS_LABEL[status]}</Badge>
-        {status === 'completed' && work.metadataEnrichmentAt ? (
-          <span className="text-xs text-muted-foreground">
-            回填于 {new Date(work.metadataEnrichmentAt).toLocaleString('zh-CN')}
-          </span>
-        ) : null}
-      </div>
-      <p className="mt-2 text-sm text-muted-foreground">{hint}</p>
+      <MetadataRefillStatus
+        workId={workId}
+        status={status}
+        workStatus={work.status}
+        enrichmentAt={work.metadataEnrichmentAt}
+      />
 
       {status === 'running' ? (
         <div className="mt-4 space-y-3" aria-busy="true">

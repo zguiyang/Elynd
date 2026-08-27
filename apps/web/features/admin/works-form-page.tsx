@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ADMIN_ROUTES } from '@/constants';
+import { MetadataRefillStatus } from '@/features/admin/metadata-review-panel';
 import { TaxonomyMultiPicker, TaxonomySelect } from '@/features/admin/taxonomy-picker';
 import {
   formatWorksApiError,
@@ -116,6 +117,20 @@ function WorksFormEditor({ workId, work }: { workId: string; work: AdminWorkView
           <Label htmlFor="sources">来源（可选，留空表示未知）</Label>
           <TaxonomyMultiPicker kind="source" value={sources} onChange={setSources} placeholder="搜索选择来源…" />
         </div>
+
+        {work.originKind === 'admin_epub' ? (
+          <div className="space-y-2">
+            <Label>信息回填</Label>
+            <div className="rounded-xl border border-border bg-secondary/40 px-4 py-3.5">
+              <MetadataRefillStatus
+                workId={work.id}
+                status={work.metadataEnrichmentStatus}
+                workStatus={work.status}
+                enrichmentAt={work.metadataEnrichmentAt}
+              />
+            </div>
+          </div>
+        ) : null}
 
         <div className="space-y-2">
           <Label>正文（只读）</Label>

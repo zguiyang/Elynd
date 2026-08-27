@@ -107,6 +107,16 @@ export async function reparseAdminWork(id: string, init?: { signal?: AbortSignal
   return normalizeAdminWork(raw);
 }
 
+/** Retry metadata backfill (fill → AI enrich) without re-parsing content. */
+export async function refillAdminWork(id: string, init?: { signal?: AbortSignal }) {
+  const raw = await apiRequest(`/api/admin/works/${encodeURIComponent(id)}/refill`, {
+    method: 'POST',
+    schema: adminWorkSchema,
+    signal: init?.signal,
+  });
+  return normalizeAdminWork(raw);
+}
+
 export async function deleteAdminWork(id: string, init?: { signal?: AbortSignal }) {
   await apiRequest(`/api/admin/works/${encodeURIComponent(id)}`, {
     method: 'DELETE',

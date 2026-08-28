@@ -67,11 +67,11 @@ Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root) — visual
 
 ### Loading
 
-| Mode                                   | Rules                                                                                 |
-| -------------------------------------- | ------------------------------------------------------------------------------------- |
-| Always-on                              | `core`, `ponytail`, `layering`, `structure`, `testing-database-safety`                |
-| Glob (when matching paths are in play) | `backend` (`apps/backend/**`), `frontend` (`apps/web/**`), `packages` (`packages/**`) |
-| On demand                              | Project skills (by description) → MCP if skills insufficient                          |
+| Mode                                   | Rules                                                                                               |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Always-on                              | `core`, `ponytail`, `layering`, `structure`, `testing-database-safety`, `infrastructure-operations` |
+| Glob (when matching paths are in play) | `backend` (`apps/backend/**`), `frontend` (`apps/web/**`), `packages` (`packages/**`)               |
+| On demand                              | Project skills (by description) → MCP if skills insufficient                                        |
 
 ### Precedence (first wins on conflict)
 
@@ -80,25 +80,27 @@ Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root) — visual
 3. `ponytail` — coding minimalism / ladder
 4. `layering` — where a concern belongs
 5. `structure` — create/delete/split/move files
-6. Glob rule for the touched app/package
-7. **[`DESIGN.md`](DESIGN.md)** for visual / UI appearance (`apps/web` UI)
-8. Project skills
-9. MCP (docs / live systems)
-10. **Filled** [`docs/product/`](docs/product/) for product-scope decisions
-11. User Rules
+6. `infrastructure-operations` — env/infra discovery and ops methodology (defers to `core` / `testing-database-safety` for policy)
+7. Glob rule for the touched app/package
+8. **[`DESIGN.md`](DESIGN.md)** for visual / UI appearance (`apps/web` UI)
+9. Project skills
+10. MCP (docs / live systems)
+11. **Filled** [`docs/product/`](docs/product/) for product-scope decisions
+12. User Rules
 
 ### Index
 
-| Rule                                                                     | Load              | Role                                                        |
-| ------------------------------------------------------------------------ | ----------------- | ----------------------------------------------------------- |
-| [core.mdc](.cursor/rules/core.mdc)                                       | Always            | Constitution, gate, Ask/Never, TDD, DoD, router             |
-| [ponytail.mdc](.cursor/rules/ponytail.mdc)                               | Always            | Lazy-senior ladder before writing code                      |
-| [layering.mdc](.cursor/rules/layering.mdc)                               | Always            | Package graph, concern placement, cross-layer order         |
-| [structure.mdc](.cursor/rules/structure.mdc)                             | Always            | File/dir create/delete/split/move; feature UI size ceiling  |
-| [testing-database-safety.mdc](.cursor/rules/testing-database-safety.mdc) | Always            | Test DB isolation; AI agent pre-test checks                 |
-| [backend.mdc](.cursor/rules/backend.mdc)                                 | `apps/backend/**` | Hono API conventions                                        |
-| [frontend.mdc](.cursor/rules/frontend.mdc)                               | `apps/web/**`     | Next.js / UI; feature page composition (anti–god component) |
-| [packages.mdc](.cursor/rules/packages.mdc)                               | `packages/**`     | Shared package conventions                                  |
+| Rule                                                                         | Load              | Role                                                        |
+| ---------------------------------------------------------------------------- | ----------------- | ----------------------------------------------------------- |
+| [core.mdc](.cursor/rules/core.mdc)                                           | Always            | Constitution, gate, Ask/Never, TDD, DoD, router             |
+| [ponytail.mdc](.cursor/rules/ponytail.mdc)                                   | Always            | Lazy-senior ladder before writing code                      |
+| [layering.mdc](.cursor/rules/layering.mdc)                                   | Always            | Package graph, concern placement, cross-layer order         |
+| [structure.mdc](.cursor/rules/structure.mdc)                                 | Always            | File/dir create/delete/split/move; feature UI size ceiling  |
+| [testing-database-safety.mdc](.cursor/rules/testing-database-safety.mdc)     | Always            | Test DB isolation; AI agent pre-test checks                 |
+| [infrastructure-operations.mdc](.cursor/rules/infrastructure-operations.mdc) | Always            | Env/infra discovery — config first, runtime when needed     |
+| [backend.mdc](.cursor/rules/backend.mdc)                                     | `apps/backend/**` | Hono API conventions                                        |
+| [frontend.mdc](.cursor/rules/frontend.mdc)                                   | `apps/web/**`     | Next.js / UI; feature page composition (anti–god component) |
+| [packages.mdc](.cursor/rules/packages.mdc)                                   | `packages/**`     | Shared package conventions                                  |
 
 ## Language
 

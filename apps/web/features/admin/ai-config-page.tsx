@@ -150,6 +150,7 @@ export function AiConfigPage() {
         return updateLlmModel(editingModel.id, {
           modelId: values.modelId.trim(),
           label: values.label.trim(),
+          protocol: values.protocol,
           temperature,
           maxTokens,
           contextLength,
@@ -161,7 +162,7 @@ export function AiConfigPage() {
         providerId: modelSheetProvider.id,
         modelId: values.modelId.trim(),
         label: values.label.trim(),
-        protocol: 'chat-completions',
+        protocol: values.protocol,
         temperature,
         maxTokens,
         contextLength,

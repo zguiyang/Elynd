@@ -3,7 +3,7 @@
 import { RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 
-import type { LlmModel, LlmProvider, ProviderModelCandidate } from '@gloaming/shared/api/llm-config';
+import type { LlmModel, LlmModelProtocol, LlmProvider, ProviderModelCandidate } from '@gloaming/shared/api/llm-config';
 
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
@@ -13,10 +13,12 @@ import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetT
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import { fetchLlmProviderModels, formatAdminLlmApiError } from '@/features/admin/ai-config-api';
+import { isLlmModelProtocol, LLM_MODEL_PROTOCOL_OPTIONS } from '@/features/admin/llm-model-protocol';
 
 export type ModelFormValues = {
   modelId: string;
   label: string;
+  protocol: LlmModelProtocol;
   temperature: string;
   maxTokens: string;
   contextLength: string;
@@ -36,6 +38,7 @@ function emptyValues(): ModelFormValues {
   return {
     modelId: '',
     label: '',
+    protocol: 'chat-completions',
     temperature: '0.3',
     maxTokens: '2048',
     contextLength: '',
@@ -48,6 +51,7 @@ function fromModel(model: LlmModel): ModelFormValues {
   return {
     modelId: model.modelId,
     label: model.label,
+    protocol: model.protocol,
     temperature: model.temperature != null ? String(model.temperature) : '',
     maxTokens: model.maxTokens != null ? String(model.maxTokens) : '',
     contextLength: model.contextLength != null ? String(model.contextLength) : '',
@@ -259,6 +263,39 @@ function AiModelSheetForm({
             ) : (
               <FieldDescription>传给上游的模型标识。</FieldDescription>
             )}
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="model-protocol">API 协议</FieldLabel>
+            <Select
+              items={LLM_MODEL_PROTOCOL_OPTIONS.map((option) => ({
+                value: option.value,
+                label: option.label,
+              }))}
+              value={values.protocol}
+              onValueChange={(value) => {
+                if (value != null && isLlmModelProtocol(value)) {
+                  setValues((prev) => ({ ...prev, protocol: value }));
+                }
+              }}
+            >
+              <SelectTrigger id="model-protocol" className="h-10 w-full rounded-xl">
+                <SelectValue placeholder="选择 API 协议" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {LLM_MODEL_PROTOCOL_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                      <span className="ml-2 font-mono text-xs text-muted-foreground">{option.endpoint}</span>
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <FieldDescription>
+              {LLM_MODEL_PROTOCOL_OPTIONS.find((option) => option.value === values.protocol)?.description}
+            </FieldDescription>
           </Field>
 
           <div className="grid grid-cols-2 gap-4">

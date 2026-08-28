@@ -14,7 +14,10 @@ import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 
 import app from '@/app';
 import { db } from '@/db';
+import { processPartAudioGenerate } from '@/jobs/part-audio-generate';
+import * as audioConcat from '@/lib/audio-concat';
 import { encryptApiKey } from '@/lib/llm';
+import * as queueLib from '@/lib/queue';
 import * as redisLib from '@/lib/redis';
 import * as azureTts from '@/lib/tts/azure';
 import { partAudioObjectKey } from '@/modules/content-assets/service';
@@ -182,6 +185,13 @@ describe('learner part audio', () => {
       mimeType: 'audio/mpeg',
       wordTimings: [{ text: 'Listen', audioOffsetMs: 0, durationMs: 100, textOffset: 0 }],
     }));
+    vi.spyOn(audioConcat, 'concatMp3Buffers').mockImplementation(async (parts) => Buffer.concat(parts));
+    vi.spyOn(queueLib, 'enqueue').mockImplementation(async (name, data) => {
+      if (name === 'part-audio-generate') {
+        await processPartAudioGenerate(data as Parameters<typeof processPartAudioGenerate>[0]);
+      }
+      return `job-${Date.now()}`;
+    });
 
     const draftAudio = await app.request(`/api/reader/parts/${partId}/audio?role=us`, {
       headers: { Cookie: learner.cookie },
@@ -226,7 +236,8 @@ describe('learner part audio', () => {
     const usBody = (await usTrack.json()) as ReaderAudioTrack;
     expect(usBody.role).toBe('us');
     expect(usBody.voice).toBe('en-US-GuyNeural');
-    expect(usBody.audioBase64).toBeTruthy();
+    expect(usBody.audioUrl).toMatch(/^\/api\/assets\//);
+    expect(usBody.assetId).toBeTruthy();
     expect(usBody.wordTimings.length).toBeGreaterThan(0);
     expect(usBody.wordTimings[0]).toMatchObject({
       text: 'Listen',

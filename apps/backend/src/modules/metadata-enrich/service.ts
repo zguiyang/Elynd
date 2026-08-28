@@ -86,11 +86,15 @@ function isModelNotConfigured(error: unknown): boolean {
   return error instanceof AppError && error.statusCode === HTTP_STATUS.SERVICE_UNAVAILABLE;
 }
 
-/** Complete the `metadata` step — TTS step is reserved but skipped for now. */
+/** Complete the `metadata` step — advances to `tts` and enqueues dual-accent audio. */
 async function completeMetadataStep(workId: string): Promise<void> {
   await completeWorkflowStep(workId, TTS_STEP_ENABLED ? 'tts' : 'ready', {
     metadataAt: new Date().toISOString(),
   });
+  if (TTS_STEP_ENABLED) {
+    const { enqueueWorkAudio } = await import('@/modules/content-assets/service');
+    await enqueueWorkAudio(workId, { force: false, roles: ['us', 'uk'] });
+  }
 }
 
 /**

@@ -3,6 +3,11 @@ import { Worker } from 'bullmq';
 
 import { type ContentParseJobData, JOB_CONTENT_PARSE, processContentParse } from '@/jobs/content-parse';
 import { JOB_METADATA_ENRICH, type MetadataEnrichJobData, processMetadataEnrich } from '@/jobs/metadata-enrich';
+import {
+  JOB_PART_AUDIO_GENERATE,
+  type PartAudioGenerateJobData,
+  processPartAudioGenerate,
+} from '@/jobs/part-audio-generate';
 import type { PingJobData } from '@/jobs/ping';
 import { JOB_PING, processPing } from '@/jobs/ping';
 import { JOB_METADATA_FILL, processWorkMetadataFill, type WorkMetadataFillJobData } from '@/jobs/work-metadata-fill';
@@ -19,6 +24,8 @@ async function processJob(job: Pick<Job, 'name' | 'data'>): Promise<unknown> {
       return processWorkMetadataFill(job.data as WorkMetadataFillJobData);
     case JOB_METADATA_ENRICH:
       return processMetadataEnrich(job.data as MetadataEnrichJobData);
+    case JOB_PART_AUDIO_GENERATE:
+      return processPartAudioGenerate(job.data as PartAudioGenerateJobData);
     default:
       throw new Error(`Unknown job name: ${job.name}`);
   }

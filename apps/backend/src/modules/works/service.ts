@@ -805,7 +805,21 @@ export async function retryWorkflow(id: string, input: RetryWorkflowBody = {}): 
     throw new AppError(HTTP_STATUS.BAD_REQUEST, '没有可重试的步骤');
   }
   if (step === 'tts') {
-    throw new AppError(HTTP_STATUS.BAD_REQUEST, '音频步骤尚未开放');
+    await db
+      .update(readingWorkTable)
+      .set({
+        status: stepRunningStatus(step),
+        originMeta: {
+          ...existing.originMeta,
+          failedStep: undefined,
+          lastError: undefined,
+          failedAt: undefined,
+        },
+      })
+      .where(eq(readingWorkTable.id, id));
+    const { enqueueWorkAudio } = await import('@/modules/content-assets/service');
+    await enqueueWorkAudio(id, { force: false, roles: ['us', 'uk'] });
+    return getAdminWork(id);
   }
 
   // Overwrite semantics: clear this step's and later steps' outputs now.
@@ -887,6 +901,7 @@ export async function deleteWork(id: string): Promise<void> {
       storageKey: contentAssetTable.storageKey,
       kind: contentAssetTable.kind,
       partId: contentAssetTable.partId,
+      meta: contentAssetTable.meta,
     })
     .from(contentAssetTable)
     .where(eq(contentAssetTable.workId, id));
@@ -898,6 +913,9 @@ export async function deleteWork(id: string): Promise<void> {
     if (row.kind === 'origin_file') {
       // Dedup-registered objects: release one reference; garbage-collected at zero.
       await releaseUploadedObject(row.storageKey);
+    } else if (row.kind.startsWith('audio_')) {
+      const { deleteAudioAssetObjects } = await import('@/modules/content-assets/service');
+      await deleteAudioAssetObjects({ kind: row.kind, storageKey: row.storageKey, meta: row.meta });
     } else {
       await deleteObject(row.storageKey);
     }

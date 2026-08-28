@@ -35,10 +35,11 @@ export async function synthesizeAzureTts(input: AzureTtsSynthesizeInput): Promis
   const wordTimings: AzureTtsWordTiming[] = [];
 
   synthesizer.wordBoundary = (_sender, event) => {
+    // Azure ticks are 100ns; division can yield fractional ms — API/Zod expect ints.
     wordTimings.push({
       text: event.text,
-      audioOffsetMs: event.audioOffset / 10_000,
-      durationMs: event.duration / 10_000,
+      audioOffsetMs: Math.round(event.audioOffset / 10_000),
+      durationMs: Math.round(event.duration / 10_000),
       textOffset: event.textOffset,
     });
   };

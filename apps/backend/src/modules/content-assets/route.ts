@@ -2,7 +2,11 @@ import { Hono } from 'hono';
 
 import { type AuthVariables, requireAdmin } from '@/middleware/auth';
 import * as contentAssetsService from '@/modules/content-assets/service';
-import { validateGeneratePartAudio } from '@/modules/content-assets/validator';
+import {
+  validateGeneratePartAudio,
+  validateGenerateWorkAudio,
+  validateWorkAudioQuery,
+} from '@/modules/content-assets/validator';
 
 export const contentAssetsRoutes = new Hono<{ Variables: AuthVariables }>();
 
@@ -15,11 +19,20 @@ contentAssetsRoutes.post(
   requireAdmin,
   validateGeneratePartAudio,
   async (c) => {
-    const user = c.get('user');
-    return c.json(
-      await contentAssetsService.generatePartAudio(c.req.param('partId'), c.req.valid('json'), {
-        userId: user?.id,
-      }),
-    );
+    return c.json(await contentAssetsService.enqueuePartAudio(c.req.param('partId'), c.req.valid('json')));
+  },
+);
+
+contentAssetsRoutes.get('/api/admin/works/:workId/audio', requireAdmin, validateWorkAudioQuery, async (c) => {
+  const { role } = c.req.valid('query');
+  return c.json(await contentAssetsService.getWorkAudio(c.req.param('workId'), role));
+});
+
+contentAssetsRoutes.post(
+  '/api/admin/works/:workId/audio/generate',
+  requireAdmin,
+  validateGenerateWorkAudio,
+  async (c) => {
+    return c.json(await contentAssetsService.enqueueWorkAudio(c.req.param('workId'), c.req.valid('json')));
   },
 );

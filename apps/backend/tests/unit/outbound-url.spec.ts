@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { AppError } from '@/lib/errors';
-import { assertSafeOutboundUrl } from '@/lib/llm/outbound-url';
+import { assertSafeOutboundUrl, resolveProviderBalanceUrl } from '@/lib/llm/outbound-url';
 
 describe('assertSafeOutboundUrl', () => {
   it('allows public https URLs', () => {
@@ -19,5 +19,22 @@ describe('assertSafeOutboundUrl', () => {
 
   it('blocks metadata endpoints', () => {
     expect(() => assertSafeOutboundUrl('http://169.254.169.254/latest/meta-data/')).toThrow(AppError);
+  });
+});
+
+describe('resolveProviderBalanceUrl', () => {
+  it('returns absolute endpoints unchanged', () => {
+    expect(resolveProviderBalanceUrl('https://api.ofox.io/v1', 'https://api.ofox.io/v1/user/balance')).toBe(
+      'https://api.ofox.io/v1/user/balance',
+    );
+  });
+
+  it('joins relative endpoints to baseUrl path (preserves /v1)', () => {
+    expect(resolveProviderBalanceUrl('https://api.ofox.io/v1', '/user/balance')).toBe(
+      'https://api.ofox.io/v1/user/balance',
+    );
+    expect(resolveProviderBalanceUrl('https://api.ofox.io/v1', 'user/balance')).toBe(
+      'https://api.ofox.io/v1/user/balance',
+    );
   });
 });

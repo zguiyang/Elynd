@@ -222,8 +222,22 @@ export async function queryProviderBalance(row: ProviderRow, apiKey: string): Pr
 
   const currencyRaw = row.balanceCurrencyPath ? resolvePath(payload, row.balanceCurrencyPath) : undefined;
   const currency = typeof currencyRaw === 'string' && currencyRaw.trim() ? currencyRaw.trim() : 'USD';
-  const isAvailableRaw = pickFirst(payload, ['is_available', 'data.is_available', 'isAvailable', 'data.isAvailable']);
-  const usedRaw = pickFirst(payload, ['used_quota', 'data.used_quota', 'data.total_usage', 'total_usage']);
+  const isAvailableRaw = pickFirst(payload, [
+    'is_active',
+    'is_available',
+    'data.is_active',
+    'data.is_available',
+    'isAvailable',
+    'data.isAvailable',
+  ]);
+  const usedRaw = pickFirst(payload, [
+    'used',
+    'used_quota',
+    'data.used',
+    'data.used_quota',
+    'data.total_usage',
+    'total_usage',
+  ]);
 
   return {
     supported: true,

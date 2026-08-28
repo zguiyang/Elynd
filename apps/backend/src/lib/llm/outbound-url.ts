@@ -84,9 +84,9 @@ export function resolveProviderBalanceUrl(baseUrl: string, balanceEndpoint: stri
     assertSafeOutboundUrl(balanceEndpoint, '余额端点');
     return balanceEndpoint;
   }
-  const origin = new URL(baseUrl).origin;
-  const path = balanceEndpoint.startsWith('/') ? balanceEndpoint : `/${balanceEndpoint}`;
-  const resolved = `${origin}${path}`;
+  const base = baseUrl.replace(/\/+$/, '');
+  const path = balanceEndpoint.replace(/^\/+/, '');
+  const resolved = `${base}/${path}`;
   assertSafeOutboundUrl(resolved, '余额端点');
   return resolved;
 }

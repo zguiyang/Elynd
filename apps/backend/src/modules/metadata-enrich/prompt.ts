@@ -9,6 +9,8 @@ export type EnrichPromptInput = {
   author: string;
   language: string;
   existingTags: string[];
+  /** Raw EPUB dc:subject strings — hints only; never copy LCSH verbatim into tags. */
+  catalogSubjects?: string[];
   ruleDescription: string;
   excerpt: string;
   tocTitles: string[];
@@ -43,7 +45,7 @@ export function buildEnrichMessages(input: EnrichPromptInput): AiMessageInput[] 
     complete.length > 0 ? `Already complete, do not output: ${complete.join(', ')}.` : null,
     'For tags and category: prefer reusing entries from the tools (list_existing_tags / list_categories) — return kind:"existing" with the id from the tool. Only return kind:"new" when nothing existing accurately fits.',
     'description: 2-3 sentences in the book language.',
-    'tags: noun phrases, up to 6, concise and specific.',
+    'tags: noun phrases, up to 6, concise and specific — never copy library catalog headings (LCSH) or strings with "--".',
   ]
     .filter((line): line is string => line !== null)
     .join('\n');
@@ -56,6 +58,9 @@ export function buildEnrichMessages(input: EnrichPromptInput): AiMessageInput[] 
     `Author: ${input.author || 'unknown'}`,
     `Language: ${input.language}`,
     input.existingTags.length > 0 ? `Existing tags: ${input.existingTags.join(', ')}` : null,
+    input.catalogSubjects && input.catalogSubjects.length > 0
+      ? `Ebook catalog subjects (hints only — do not copy verbatim): ${input.catalogSubjects.join('; ')}`
+      : null,
     input.ruleDescription ? `Existing description: ${input.ruleDescription}` : null,
     '',
     '--- Excerpt (start of reading content) ---',

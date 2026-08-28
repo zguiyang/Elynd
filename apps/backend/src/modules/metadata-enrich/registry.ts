@@ -94,6 +94,7 @@ export const metadataFieldRegistry: Record<MetadataFieldId, MetadataFieldDef> = 
     promptSection: 'tags: noun phrases, prefer existing tags from list_existing_tags',
     outputKey: 'tags',
     schema: z.array(taxonomyRefSchema).max(AI_TAG_MAX_ITEMS).optional(),
+    /** Prefer `areProductTagsWeak(names[])` in orchestration — joined string is best-effort. */
     isWeak(value) {
       return !value || !value.trim();
     },

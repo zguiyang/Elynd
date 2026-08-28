@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { z } from 'zod';
 
 import {
@@ -24,6 +24,7 @@ import type { MetadataFieldId } from '@/modules/metadata-enrich/fields';
 import { buildEnrichMessages, EXCERPT_MAX_CHARS, TOC_TITLE_MAX } from '@/modules/metadata-enrich/prompt';
 import { aiFillableFields, buildMetadataOutputSchema, metadataFieldRegistry } from '@/modules/metadata-enrich/registry';
 import { listCategoriesTool, listExistingTagsTool } from '@/modules/metadata-enrich/tools';
+import { areProductTagsWeak } from '@/modules/metadata-fill/subjects';
 
 const enrichLogger = rootLogger.child({ module: 'MetadataEnrich' });
 
@@ -73,6 +74,14 @@ async function loadCurrentCategory(workId: string): Promise<string | undefined> 
   return row?.name;
 }
 
+function loadCatalogSubjects(work: typeof readingWorkTable.$inferSelect): string[] {
+  const parsed = (work.originMeta as Record<string, unknown> | undefined)?.parsed;
+  if (!parsed || typeof parsed !== 'object') return [];
+  const subjects = (parsed as Record<string, unknown>).subjects;
+  if (!Array.isArray(subjects)) return [];
+  return subjects.filter((s): s is string => typeof s === 'string' && s.trim().length > 0);
+}
+
 function isModelNotConfigured(error: unknown): boolean {
   return error instanceof AppError && error.statusCode === HTTP_STATUS.SERVICE_UNAVAILABLE;
 }
@@ -110,9 +119,12 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
 
   const needed = new Set<(typeof aiFillableFields)[number]>();
   for (const id of aiFillableFields) {
+    if (id === 'tags') {
+      if (areProductTagsWeak(currentTags)) needed.add(id);
+      continue;
+    }
     const def = metadataFieldRegistry[id];
-    const current =
-      id === 'description' ? work.description : id === 'tags' ? currentTags.join(', ') : (currentCategory ?? '');
+    const current = id === 'description' ? work.description : (currentCategory ?? '');
     if (def.isWeak(current)) {
       needed.add(id);
     }
@@ -123,6 +135,7 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
     return;
   }
 
+  const catalogSubjects = loadCatalogSubjects(work);
   const outputSchema = buildMetadataOutputSchema([...needed]);
   let result: AiInvokeResult<z.infer<typeof outputSchema>>;
   try {
@@ -135,6 +148,7 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
         author: work.author,
         language: work.language,
         existingTags: currentTags,
+        catalogSubjects,
         ruleDescription: work.description,
         excerpt: context.excerpt,
         tocTitles: context.tocTitles,
@@ -164,6 +178,7 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
     // Tags — the model declares reuse (kind:"existing" + id from tools) or
     // creation. Intent is advisory: ids are validated, and names always fall
     // back to normalized reuse-first upserts (never duplicate dimensions).
+    // When AI fills weak tags, replace extracted+ai associations (keep manual).
     const aiTags = metadataFieldRegistry.tags.normalize(result.content.tags) as
       Array<{ name: string; existingId?: string }> | undefined;
     if (needed.has('tags') && Array.isArray(aiTags)) {
@@ -175,7 +190,9 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
       if (tagIds.length > 0) {
         await tx
           .delete(readingWorkTagTable)
-          .where(and(eq(readingWorkTagTable.workId, workId), eq(readingWorkTagTable.provenance, 'ai')));
+          .where(
+            and(eq(readingWorkTagTable.workId, workId), inArray(readingWorkTagTable.provenance, ['extracted', 'ai'])),
+          );
         for (const tagId of tagIds) {
           await tx.insert(readingWorkTagTable).values({ workId, tagId, provenance: 'ai' }).onConflictDoNothing();
         }

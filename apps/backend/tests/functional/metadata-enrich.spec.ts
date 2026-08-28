@@ -181,6 +181,66 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
     expect(work!.status).toBe('ready');
   });
 
+  it('treats catalog-like extracted tags as weak and overwrites them with AI tags', async () => {
+    const workId = await createParsedWork({
+      title: 'LCSH Legacy Book',
+      description:
+        'A fully written description with plenty of detail to be useful for readers browsing the catalog shelf.',
+    });
+    const lcshName = 'Fables, Greek -- Translations into English';
+    await db
+      .insert(tagTable)
+      .values({
+        id: 'tag-lcsh-legacy',
+        name: lcshName,
+        normalized: normalizeTag(lcshName),
+        origin: 'extracted',
+      })
+      .onConflictDoNothing();
+    createdTagIds.push('tag-lcsh-legacy');
+    const [lcshTag] = await db.select({ id: tagTable.id }).from(tagTable).where(eq(tagTable.name, lcshName));
+    await db.delete(readingWorkTagTable).where(eq(readingWorkTagTable.workId, workId));
+    await db
+      .insert(readingWorkTagTable)
+      .values({ workId, tagId: lcshTag!.id, provenance: 'extracted' })
+      .onConflictDoNothing();
+    await db.update(readingWorkTable).set({ status: 'metadata' }).where(eq(readingWorkTable.id, workId));
+
+    invokeAiMock.mockResolvedValueOnce({
+      content: {
+        tags: [
+          { kind: 'new', name: 'Fables' },
+          { kind: 'new', name: 'Morality' },
+        ],
+        category: { kind: 'new', name: 'Folklore' },
+      },
+      model: { rowId: 'row', label: 'mock', modelId: 'mock-model' },
+      usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 },
+    });
+
+    await enrichWorkMetadata(workId);
+
+    expect(invokeAiMock).toHaveBeenCalledTimes(1);
+    const invokeArgs = invokeAiMock.mock.calls[0]![0] as {
+      messages: Array<{ role: string; content: string }>;
+      requestSummaryExtra: { neededFields: string };
+    };
+    expect(invokeArgs.requestSummaryExtra.neededFields.split(',')).toEqual(
+      expect.arrayContaining(['tags', 'category']),
+    );
+
+    const apiWork = await fetchAdminWork(workId);
+    expect([...apiWork.tags].sort()).toEqual(['Fables', 'Morality']);
+    expect(apiWork.metadataProvenance.tags).toBe('ai');
+    expect(apiWork.tags).not.toContain(lcshName);
+
+    const provenances = await db
+      .select({ provenance: readingWorkTagTable.provenance })
+      .from(readingWorkTagTable)
+      .where(eq(readingWorkTagTable.workId, workId));
+    expect(provenances.every((row) => row.provenance === 'ai')).toBe(true);
+  });
+
   it('fills empty/weak fields with ai provenance via junction SSOT', async () => {
     const workId = await createParsedWork({ title: 'Fill Book' });
 

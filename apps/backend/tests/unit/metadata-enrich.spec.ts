@@ -25,6 +25,25 @@ describe('metadata-enrich quality heuristics', () => {
     expect(isShouty('THE WOLF IN SHEEP')).toBe(true);
     expect(isShouty('The Wolf in Sheep')).toBe(false);
   });
+
+  it('mentions LCSH prohibition and passes catalog subject hints', () => {
+    const messages = buildEnrichMessages({
+      title: 'T',
+      author: '',
+      language: 'en',
+      existingTags: [],
+      catalogSubjects: ['Fables, Greek -- Translations into English'],
+      ruleDescription: '',
+      excerpt: 'x'.repeat(200),
+      tocTitles: [],
+      requiredFields: ['tags'],
+    });
+    const system = messages.find((m) => m.role === 'system')!.content;
+    const user = messages.find((m) => m.role === 'user')!.content;
+    expect(system).toContain('LCSH');
+    expect(user).toContain('Ebook catalog subjects');
+    expect(user).toContain('Fables, Greek -- Translations into English');
+  });
 });
 
 describe('metadata-enrich prompt (single-book context only)', () => {

@@ -54,14 +54,15 @@ export function TaxonomyMultiPicker({ kind, value, onChange, placeholder, disabl
       <PopoverTrigger
         disabled={disabled}
         render={
-          <button
-            type="button"
+          <div
+            role="combobox"
             aria-haspopup="listbox"
+            tabIndex={disabled ? -1 : 0}
             className={cn(
               'flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-lg border border-input bg-background px-2.5 py-1.5 text-sm text-foreground shadow-xs outline-none',
               'focus-visible:ring-2 focus-visible:ring-brand/40',
               'data-[popup-open]:ring-2 data-[popup-open]:ring-brand/40',
-              disabled && 'cursor-not-allowed opacity-50',
+              disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
             )}
           />
         }
@@ -73,6 +74,10 @@ export function TaxonomyMultiPicker({ kind, value, onChange, placeholder, disabl
               <button
                 type="button"
                 aria-label={`移除 ${name}`}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
                 onClick={(event) => {
                   event.stopPropagation();
                   toggle(name);

@@ -5,6 +5,48 @@ import { config as loadDotenv } from 'dotenv';
 import { z } from 'zod';
 
 const envFilePath = resolve(dirname(fileURLToPath(import.meta.url)), '../../.env');
+const testEnvFilePath = resolve(dirname(fileURLToPath(import.meta.url)), '../../.env.test');
+
+const DEV_DATABASE_NAME = 'gloaming_backend';
+
+function databaseNameFromUrl(url: string): string {
+  const parsed = new URL(url);
+  const name = parsed.pathname.replace(/^\//, '').split('/')[0];
+  if (!name) {
+    throw new Error(`Cannot parse database name from DATABASE_URL: ${url}`);
+  }
+  return decodeURIComponent(name);
+}
+
+/** Vitest only — require TEST_DATABASE_URL; never fall back to development DATABASE_URL. */
+function applyTestDatabaseEnv(processEnv: NodeJS.ProcessEnv): void {
+  if (processEnv.VITEST !== 'true') {
+    return;
+  }
+
+  loadDotenv({ path: testEnvFilePath, override: true });
+
+  const testUrl = processEnv.TEST_DATABASE_URL?.trim();
+  if (!testUrl) {
+    delete processEnv.DATABASE_URL;
+    throw new Error(
+      [
+        'TEST_DATABASE_URL is required for backend tests.',
+        'Copy apps/backend/.env.test.example → apps/backend/.env.test, create database gloaming_test, then run: pnpm db:migrate:test',
+      ].join(' '),
+    );
+  }
+
+  const dbName = databaseNameFromUrl(testUrl);
+  if (dbName === DEV_DATABASE_NAME) {
+    delete processEnv.DATABASE_URL;
+    throw new Error(
+      `TEST_DATABASE_URL must not point at the development database "${DEV_DATABASE_NAME}". Use a dedicated test database (e.g. gloaming_test).`,
+    );
+  }
+
+  processEnv.DATABASE_URL = testUrl;
+}
 
 /** Empty string in `.env` → treat as unset. */
 const emptyToUndefined = (value: unknown) => (value === '' || value === undefined ? undefined : value);
@@ -61,6 +103,7 @@ export type Env = z.infer<typeof envSchema>;
  */
 function getEnvConfig(processEnv: NodeJS.ProcessEnv = process.env): Env {
   loadDotenv({ path: envFilePath, override: true });
+  applyTestDatabaseEnv(processEnv);
   return envSchema.parse(processEnv);
 }
 

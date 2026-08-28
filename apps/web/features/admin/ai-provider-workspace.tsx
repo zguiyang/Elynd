@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Plus, Wallet } from 'lucide-react';
+import { ChevronDown, Plug, Plus, Trash2, Wallet } from 'lucide-react';
 import { useId, useMemo, useState } from 'react';
 
 import type { LlmModel, LlmProvider, ProviderBalanceResult } from '@gloaming/shared/api/llm-config';
@@ -11,6 +11,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Spinner } from '@/components/ui/spinner';
+import { Switch } from '@/components/ui/switch';
+import { Tabs } from '@/components/ui/tabs';
+import { AdminSegmentedTabsList, AdminSegmentedTabsTrigger } from '@/features/admin/admin-segmented-tabs';
 import { AiModelForm, type ModelFormValues } from '@/features/admin/ai-model-form';
 import { AiModelList } from '@/features/admin/ai-model-list';
 import { AiProviderForm, type ProviderFormValues } from '@/features/admin/ai-provider-form';
@@ -37,6 +40,7 @@ type AiProviderWorkspaceProps = {
   models: LlmModel[];
   onCreateProvider: (apiFamily: LlmApiFamily, values: ProviderFormValues) => Promise<LlmProvider>;
   onUpdateProvider: (provider: LlmProvider, values: ProviderFormValues) => Promise<void>;
+  onToggleProviderEnabled: (provider: LlmProvider, isEnabled: boolean) => Promise<void>;
   onDeleteProvider: (provider: LlmProvider) => void;
   onCreateModel: (provider: LlmProvider, values: ModelFormValues) => Promise<void>;
   onUpdateModel: (model: LlmModel, values: ModelFormValues) => Promise<void>;
@@ -44,6 +48,7 @@ type AiProviderWorkspaceProps = {
   onTestProvider: (provider: LlmProvider) => void;
   onQueryBalance: (provider: LlmProvider) => void;
   testingProviderId: string | null;
+  togglingProviderId: string | null;
   testResult: ProviderTestResult | null;
   balanceByProvider: Record<string, ProviderBalanceResult>;
   queryingBalanceId: string | null;
@@ -70,11 +75,24 @@ function formatBaseUrlHost(baseUrl: string): string {
   }
 }
 
+function isBalanceConfigured(provider: LlmProvider): boolean {
+  return Boolean(provider.balanceEndpoint?.trim() && provider.balanceAmountPath?.trim());
+}
+
+function formatSummaryMeta(provider: LlmProvider, modelCount: number, familyLabel: string): string {
+  const parts = [formatBaseUrlHost(provider.baseUrl), familyLabel, `${modelCount} 模型`];
+  if (!getWireFamilyDefinition(provider.apiFamily).runtimeImplemented) {
+    parts.push('运行时尚未支持');
+  }
+  return parts.join(' · ');
+}
+
 export function AiProviderWorkspace({
   providers,
   models,
   onCreateProvider,
   onUpdateProvider,
+  onToggleProviderEnabled,
   onDeleteProvider,
   onCreateModel,
   onUpdateModel,
@@ -82,6 +100,7 @@ export function AiProviderWorkspace({
   onTestProvider,
   onQueryBalance,
   testingProviderId,
+  togglingProviderId,
   testResult,
   balanceByProvider,
   queryingBalanceId,
@@ -125,32 +144,29 @@ export function AiProviderWorkspace({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant={familyFilter === 'all' ? 'secondary' : 'outline'}
-            className="rounded-xl"
-            onClick={() => setFamilyFilter('all')}
-          >
-            全部
-          </Button>
-          {families.map((family) => (
-            <Button
-              key={family.id}
-              type="button"
-              size="sm"
-              variant={familyFilter === family.id ? 'secondary' : 'outline'}
-              className="rounded-xl"
-              onClick={() => setFamilyFilter(family.id)}
-            >
-              {family.label}
-            </Button>
-          ))}
-        </div>
+        <Tabs
+          value={familyFilter}
+          className="w-fit"
+          onValueChange={(value) => {
+            if (value === 'all' || families.some((family) => family.id === value)) {
+              setFamilyFilter(value as FamilyFilter);
+            }
+          }}
+        >
+          <AdminSegmentedTabsList aria-label="按协议族筛选">
+            <AdminSegmentedTabsTrigger value="all" className="px-3.5">
+              全部
+            </AdminSegmentedTabsTrigger>
+            {families.map((family) => (
+              <AdminSegmentedTabsTrigger key={family.id} value={family.id} className="px-3.5">
+                {family.label}
+              </AdminSegmentedTabsTrigger>
+            ))}
+          </AdminSegmentedTabsList>
+        </Tabs>
         <Button className="h-9 rounded-xl px-4 hover:bg-brand-deep" onClick={startCreate}>
           <Plus data-icon="inline-start" />
-          添加服务商
+          添加
         </Button>
       </div>
 
@@ -158,12 +174,7 @@ export function AiProviderWorkspace({
         <div className="flex flex-col gap-6 rounded-2xl border border-border bg-card p-5 md:p-6">
           {createWizard.step === 'family' ? (
             <div className="flex flex-col gap-4">
-              <div>
-                <h3 className="text-base font-medium">选择 API 协议族</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  创建后不可修改；同一网关可分别创建不同协议族的服务商。
-                </p>
-              </div>
+              <p className="text-sm text-muted-foreground">选择 API 协议族（创建后不可修改）</p>
               <ul className="grid gap-3 sm:grid-cols-2">
                 {families.map((family) => (
                   <li key={family.id}>
@@ -180,7 +191,6 @@ export function AiProviderWorkspace({
                           </Badge>
                         ) : null}
                       </div>
-                      <p className="text-sm text-muted-foreground">{family.description}</p>
                     </button>
                   </li>
                 ))}
@@ -226,7 +236,7 @@ export function AiProviderWorkspace({
             </EmptyDescription>
           </EmptyHeader>
           <Button className="mt-2 rounded-xl hover:bg-brand-deep" onClick={startCreate}>
-            添加服务商
+            添加
           </Button>
         </Empty>
       ) : (
@@ -237,106 +247,99 @@ export function AiProviderWorkspace({
             const providerModels = models
               .filter((model) => model.providerId === provider.id)
               .sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label));
-            const enabledModelCount = providerModels.filter((model) => model.isEnabled).length;
             const resultForRow = testResult?.providerId === provider.id ? testResult : null;
             const balanceResult = balanceByProvider[provider.id];
             const isTesting = testingProviderId === provider.id;
+            const isToggling = togglingProviderId === provider.id;
             const isQueryingBalance = queryingBalanceId === provider.id;
             const isModelFormOpen = modelForm?.providerId === provider.id;
+            const hasBalanceConfig = isBalanceConfigured(provider);
 
             return (
-              <li key={provider.id} className="overflow-hidden rounded-2xl border border-border bg-card">
-                <div className="px-4 py-4 md:px-5">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <li
+                key={provider.id}
+                className={cn(
+                  'overflow-hidden rounded-2xl border border-border bg-card transition-opacity',
+                  !provider.isEnabled && 'opacity-60',
+                )}
+              >
+                <div className="px-4 py-3 md:px-5">
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      className="min-w-0 flex-1 text-left"
+                      className="flex min-w-0 flex-1 items-center gap-2 text-left"
                       aria-expanded={isExpanded}
                       onClick={() => toggleExpanded(provider.id)}
                     >
-                      <div className="flex items-start gap-2">
-                        <ChevronDown
-                          className={cn(
-                            'mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform duration-200',
-                            !isExpanded && '-rotate-90',
-                          )}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-medium text-foreground">{provider.name}</span>
-                            <Badge variant="secondary" className="text-xs font-normal">
-                              {familyDef.label}
-                            </Badge>
-                            {!provider.isEnabled ? (
-                              <Badge variant="outline" className="text-xs">
-                                停用
-                              </Badge>
-                            ) : null}
-                            {!familyDef.runtimeImplemented ? (
-                              <Badge variant="outline" className="text-xs font-normal">
-                                运行时尚未支持
-                              </Badge>
-                            ) : null}
-                          </div>
-                          <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
-                            {formatBaseUrlHost(provider.baseUrl)}
-                          </p>
-                          <p className="mt-2 text-sm text-muted-foreground">
-                            {providerModels.length} 个模型
-                            {providerModels.length > 0 ? ` · ${enabledModelCount} 个启用` : null}
-                            {provider.apiKeyMasked ? ` · Key ${provider.apiKeyMasked}` : null}
-                          </p>
-                        </div>
+                      <ChevronDown
+                        className={cn(
+                          'size-4 shrink-0 text-muted-foreground transition-transform duration-200',
+                          !isExpanded && '-rotate-90',
+                        )}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-foreground">{provider.name}</p>
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                          {formatSummaryMeta(provider, providerModels.length, familyDef.label)}
+                        </p>
                       </div>
                     </button>
 
-                    <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Switch
+                        checked={provider.isEnabled}
+                        disabled={isToggling}
+                        aria-label={`${provider.name} 启用状态`}
+                        onCheckedChange={(checked) => {
+                          void onToggleProviderEnabled(provider, checked);
+                        }}
+                        onClick={(event) => event.stopPropagation()}
+                      />
                       <Button
                         type="button"
-                        variant="outline"
-                        size="sm"
-                        className="rounded-xl"
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 rounded-xl"
                         disabled={isTesting || !familyDef.runtimeImplemented}
+                        aria-label="测试连通"
                         onClick={(event) => {
                           event.stopPropagation();
                           onTestProvider(provider);
                         }}
                       >
-                        {isTesting ? <Spinner data-icon="inline-start" /> : null}
-                        测试连通
+                        {isTesting ? <Spinner /> : <Plug className="size-4" />}
                       </Button>
                       {familyDef.provider.capabilities.balanceQuery ? (
                         <Button
                           type="button"
-                          variant="outline"
-                          size="sm"
-                          className="rounded-xl"
+                          variant="ghost"
+                          size="icon"
+                          className={cn('relative size-8 rounded-xl', !hasBalanceConfig && 'text-muted-foreground')}
                           disabled={isQueryingBalance}
+                          aria-label="查询余额"
                           onClick={(event) => {
                             event.stopPropagation();
                             onQueryBalance(provider);
                           }}
                         >
-                          {isQueryingBalance ? (
-                            <Spinner data-icon="inline-start" />
-                          ) : (
-                            <Wallet data-icon="inline-start" />
-                          )}
-                          余额
+                          {isQueryingBalance ? <Spinner /> : <Wallet className="size-4" />}
+                          {hasBalanceConfig ? (
+                            <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-brand-deep" />
+                          ) : null}
                         </Button>
                       ) : null}
                     </div>
                   </div>
 
                   {resultForRow || balanceResult ? (
-                    <div className="mt-3 space-y-1 border-t border-border/60 pt-3 text-sm">
+                    <div className="mt-2 border-t border-border/60 pt-2 text-xs">
                       {resultForRow ? (
                         <p className={resultForRow.ok ? 'text-muted-foreground' : 'text-destructive'}>
                           {resultForRow.message}
                         </p>
                       ) : null}
                       {balanceResult?.supported ? (
-                        <p className="text-muted-foreground">余额：{formatBalance(balanceResult)}</p>
+                        <p className="text-muted-foreground">{formatBalance(balanceResult)}</p>
                       ) : balanceResult && !balanceResult.supported ? (
                         <p className="text-muted-foreground">{balanceResult.message}</p>
                       ) : null}
@@ -346,16 +349,16 @@ export function AiProviderWorkspace({
 
                 {isExpanded ? (
                   <div className="flex flex-col gap-6 border-t border-border px-4 py-5 md:px-5">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <p className="text-sm text-muted-foreground">展开后可编辑完整配置与模型。</p>
+                    <div className="flex justify-end">
                       <Button
                         type="button"
-                        variant="destructive"
-                        size="sm"
-                        className="rounded-xl"
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 rounded-xl text-destructive hover:text-destructive"
+                        aria-label="删除服务商"
                         onClick={() => onDeleteProvider(provider)}
                       >
-                        删除服务商
+                        <Trash2 className="size-4" />
                       </Button>
                     </div>
 
@@ -368,20 +371,18 @@ export function AiProviderWorkspace({
                     />
 
                     <section className="flex flex-col gap-4 border-t border-border pt-5">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <h4 className="text-base font-medium">模型</h4>
-                          <p className="mt-1 text-sm text-muted-foreground">API 模式由当前协议族决定。</p>
-                        </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <h4 className="text-base font-medium">模型</h4>
                         {!isModelFormOpen ? (
                           <Button
                             type="button"
-                            size="sm"
-                            className="rounded-xl hover:bg-brand-deep"
+                            size="icon"
+                            variant="ghost"
+                            className="size-8 rounded-xl"
+                            aria-label="添加模型"
                             onClick={() => setModelForm({ providerId: provider.id, mode: 'create' })}
                           >
-                            <Plus data-icon="inline-start" />
-                            添加模型
+                            <Plus className="size-4" />
                           </Button>
                         ) : null}
                       </div>

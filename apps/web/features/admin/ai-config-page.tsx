@@ -80,6 +80,7 @@ export function AiConfigPage() {
   const [purposeDraft, setPurposeDraft] = useState<Partial<Record<AiSettingKey, string>>>({});
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
   const [testingProviderId, setTestingProviderId] = useState<string | null>(null);
+  const [togglingProviderId, setTogglingProviderId] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<ProviderTestResult | null>(null);
   const [balanceByProvider, setBalanceByProvider] = useState<Record<string, ProviderBalanceResult>>({});
   const [queryingBalanceId, setQueryingBalanceId] = useState<string | null>(null);
@@ -100,7 +101,7 @@ export function AiConfigPage() {
         balanceEndpoint: values.balanceEndpoint.trim() || null,
         balanceAmountPath: values.balanceAmountPath.trim() || null,
         balanceCurrencyPath: values.balanceCurrencyPath.trim() || null,
-        isEnabled: values.isEnabled,
+        isEnabled: true,
       }),
     onSuccess: async () => {
       await invalidateLlmQueries();
@@ -122,7 +123,6 @@ export function AiConfigPage() {
         balanceEndpoint: values.balanceEndpoint.trim() || null,
         balanceAmountPath: values.balanceAmountPath.trim() || null,
         balanceCurrencyPath: values.balanceCurrencyPath.trim() || null,
-        isEnabled: values.isEnabled,
         ...(apiKey ? { apiKey } : {}),
       });
     },
@@ -132,6 +132,22 @@ export function AiConfigPage() {
     },
     onError: (error) => {
       toast.error(formatAdminLlmApiError(error));
+    },
+  });
+
+  const toggleProviderMutation = useMutation({
+    mutationFn: async ({ provider, isEnabled }: { provider: LlmProvider; isEnabled: boolean }) => {
+      setTogglingProviderId(provider.id);
+      return updateLlmProvider(provider.id, { isEnabled });
+    },
+    onSuccess: async () => {
+      await invalidateLlmQueries();
+    },
+    onError: (error) => {
+      toast.error(formatAdminLlmApiError(error));
+    },
+    onSettled: () => {
+      setTogglingProviderId(null);
     },
   });
 
@@ -333,6 +349,9 @@ export function AiConfigPage() {
               onUpdateProvider={async (provider, values) => {
                 await updateProviderMutation.mutateAsync({ provider, values });
               }}
+              onToggleProviderEnabled={async (provider, isEnabled) => {
+                await toggleProviderMutation.mutateAsync({ provider, isEnabled });
+              }}
               onDeleteProvider={(provider) => setDeleteTarget({ kind: 'provider', provider })}
               onCreateModel={async (provider, values) => {
                 await createModelMutation.mutateAsync({ provider, values });
@@ -344,6 +363,7 @@ export function AiConfigPage() {
               onTestProvider={(provider) => testMutation.mutate(provider)}
               onQueryBalance={(provider) => balanceMutation.mutate(provider)}
               testingProviderId={testingProviderId}
+              togglingProviderId={togglingProviderId}
               testResult={testResult}
               balanceByProvider={balanceByProvider}
               queryingBalanceId={queryingBalanceId}

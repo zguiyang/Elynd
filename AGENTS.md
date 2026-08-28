@@ -69,7 +69,7 @@ Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root) — visual
 
 | Mode                                   | Rules                                                                                 |
 | -------------------------------------- | ------------------------------------------------------------------------------------- |
-| Always-on                              | `core`, `ponytail`, `layering`, `structure`                                           |
+| Always-on                              | `core`, `ponytail`, `layering`, `structure`, `testing-database-safety`                |
 | Glob (when matching paths are in play) | `backend` (`apps/backend/**`), `frontend` (`apps/web/**`), `packages` (`packages/**`) |
 | On demand                              | Project skills (by description) → MCP if skills insufficient                          |
 
@@ -89,15 +89,16 @@ Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root) — visual
 
 ### Index
 
-| Rule                                         | Load              | Role                                                        |
-| -------------------------------------------- | ----------------- | ----------------------------------------------------------- |
-| [core.mdc](.cursor/rules/core.mdc)           | Always            | Constitution, gate, Ask/Never, TDD, DoD, router             |
-| [ponytail.mdc](.cursor/rules/ponytail.mdc)   | Always            | Lazy-senior ladder before writing code                      |
-| [layering.mdc](.cursor/rules/layering.mdc)   | Always            | Package graph, concern placement, cross-layer order         |
-| [structure.mdc](.cursor/rules/structure.mdc) | Always            | File/dir create/delete/split/move; feature UI size ceiling  |
-| [backend.mdc](.cursor/rules/backend.mdc)     | `apps/backend/**` | Hono API conventions                                        |
-| [frontend.mdc](.cursor/rules/frontend.mdc)   | `apps/web/**`     | Next.js / UI; feature page composition (anti–god component) |
-| [packages.mdc](.cursor/rules/packages.mdc)   | `packages/**`     | Shared package conventions                                  |
+| Rule                                                                     | Load              | Role                                                        |
+| ------------------------------------------------------------------------ | ----------------- | ----------------------------------------------------------- |
+| [core.mdc](.cursor/rules/core.mdc)                                       | Always            | Constitution, gate, Ask/Never, TDD, DoD, router             |
+| [ponytail.mdc](.cursor/rules/ponytail.mdc)                               | Always            | Lazy-senior ladder before writing code                      |
+| [layering.mdc](.cursor/rules/layering.mdc)                               | Always            | Package graph, concern placement, cross-layer order         |
+| [structure.mdc](.cursor/rules/structure.mdc)                             | Always            | File/dir create/delete/split/move; feature UI size ceiling  |
+| [testing-database-safety.mdc](.cursor/rules/testing-database-safety.mdc) | Always            | Test DB isolation; AI agent pre-test checks                 |
+| [backend.mdc](.cursor/rules/backend.mdc)                                 | `apps/backend/**` | Hono API conventions                                        |
+| [frontend.mdc](.cursor/rules/frontend.mdc)                               | `apps/web/**`     | Next.js / UI; feature page composition (anti–god component) |
+| [packages.mdc](.cursor/rules/packages.mdc)                               | `packages/**`     | Shared package conventions                                  |
 
 ## Language
 
@@ -118,6 +119,7 @@ pnpm run lint
 pnpm run format:check
 pnpm run typecheck
 pnpm run test
+pnpm db:migrate:test   # migrate gloaming_test (after cp apps/backend/.env.test.example → .env.test)
 pnpm run build
 pnpm db:generate       # Drizzle generate (@gloaming/db)
 pnpm db:migrate        # Drizzle migrate

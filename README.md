@@ -105,6 +105,18 @@ pnpm run test
 pnpm run build
 ```
 
+### Backend integration tests (PostgreSQL)
+
+Functional tests use a **separate** database (`gloaming_test`), not `gloaming_backend`:
+
+```bash
+cp apps/backend/.env.test.example apps/backend/.env.test
+# New compose volumes get gloaming_test automatically; existing volumes:
+psql -h 127.0.0.1 -p 5433 -U root -d gloaming_backend -c "CREATE DATABASE gloaming_test;"
+pnpm db:migrate:test
+pnpm run test:backend
+```
+
 ## 生产部署
 
 流水线尚未纳入本仓库。已锁定的部署目标（Workers + Node/VPS，产品做完后再做）：[`docs/deploy-targets.md`](./docs/deploy-targets.md)。

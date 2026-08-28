@@ -1,0 +1,73 @@
+---
+description: Test database isolation — AI agents must not mutate development PostgreSQL/Redis data
+alwaysApply: true
+---
+
+# Testing & Database Safety
+
+## Databases
+
+| DB | Connection | Purpose |
+| --- | --- | --- |
+| `gloaming_backend` | `DATABASE_URL` in `apps/backend/.env` | Human development, manual debugging, local dev server |
+| `gloaming_test` | `TEST_DATABASE_URL` in `apps/backend/.env.test` | Vitest integration/functional tests, AI automated tests |
+
+**AI Agent:** may INSERT/UPDATE/DELETE/RESET/SEED on `gloaming_test` only. **Never** use `gloaming_backend` for automated tests.
+
+## Fail fast (no fallback)
+
+If `TEST_DATABASE_URL` is missing or target is unclear → **STOP**. Do not guess. Do not fall back to `DATABASE_URL`.
+
+```text
+TEST_DATABASE_URL missing → pnpm test:backend fails immediately → no DB writes
+```
+
+Enforced in `apps/backend/tests/setup.ts` and `src/lib/env.ts` (`VITEST === 'true'`).
+
+## Before any test or DB write
+
+Read actual config — do not guess:
+
+| Check | Stop if unknown |
+| --- | --- |
+| Test type | — |
+| Needs real PostgreSQL? | — |
+| Target DB name from connection string | **Yes** |
+| Dedicated test DB (`gloaming_test`)? | **Yes** |
+| Writes? | **Yes** |
+| Cleanup strategy | **Yes** |
+
+## Hard rules
+
+| Forbidden on `gloaming_backend` | Required |
+| --- | --- |
+| Vitest / AI automated tests | Unit tests: mock; no `@/db` unless unavoidable |
+| TRUNCATE, unscoped `DELETE`, DROP, reset, seed | Integration: `TEST_DATABASE_URL` → `gloaming_test` |
+| `db:migrate` / `db:push` for test runs | Scoped cleanup: delete **only IDs this test created** |
+| E2E against dev server + dev DB | Queue tests: memory Redis mock (see `tts-config`, `jobs` specs) |
+
+**Backup + restore** — one-off high-risk ops only (migration verification), with user consent. Not routine test isolation.
+
+## Wiring (SSOT)
+
+| Concern | Location |
+| --- | --- |
+| Vitest boot | `vitest.config.ts` + `tests/setup.ts` + `env.ts` (`applyTestDatabaseEnv`) |
+| Migrate test DB | `pnpm db:migrate:test` |
+| Functional tests | `apps/backend/tests/functional/**` |
+
+## AI workflow
+
+1. Inspect env before `pnpm test`, SQL, migrate, seed, or API writes.
+2. No test DB? Document setup; ask user — do not use dev DB.
+3. New integration test: unique prefixes, track created IDs, scoped `afterAll`.
+4. Manual verification on dev: read-only OK; writes need test DB or explicit approval.
+
+## Forbidden defaults
+
+```text
+"Clear the database to verify" on gloaming_backend
+Fallback to DATABASE_URL when TEST_DATABASE_URL is unset
+Use developer accounts or hand-seeded data as test fixtures
+Unscoped db.delete(table) in test cleanup
+```

@@ -10,7 +10,6 @@ import {
   readingWorkCategory as readingWorkCategoryTable,
   readingWorkTag as readingWorkTagTable,
   tag as tagTable,
-  type WorkMetadataProvenanceMap,
 } from '@gloaming/db';
 import { TTS_STEP_ENABLED } from '@gloaming/shared/api/works';
 
@@ -153,15 +152,13 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
     throw error;
   }
 
-  const provenance: WorkMetadataProvenanceMap = { ...work.metadataProvenance };
-
   await db.transaction(async (tx) => {
     const patch: Partial<typeof readingWorkTable.$inferInsert> = {};
 
     const aiDescription = metadataFieldRegistry.description.normalize(result.content.description);
     if (needed.has('description') && typeof aiDescription === 'string') {
       patch.description = aiDescription;
-      provenance.description = 'ai';
+      patch.descriptionProvenance = 'ai';
     }
 
     // Tags — the model declares reuse (kind:"existing" + id from tools) or
@@ -182,13 +179,6 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
         for (const tagId of tagIds) {
           await tx.insert(readingWorkTagTable).values({ workId, tagId, provenance: 'ai' }).onConflictDoNothing();
         }
-        const rows = await tx
-          .select({ name: tagTable.name })
-          .from(readingWorkTagTable)
-          .innerJoin(tagTable, eq(readingWorkTagTable.tagId, tagTable.id))
-          .where(eq(readingWorkTagTable.workId, workId));
-        patch.tags = rows.map((row) => row.name);
-        provenance.tags = 'ai';
       }
     }
 
@@ -205,12 +195,12 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
           .insert(readingWorkCategoryTable)
           .values({ workId, categoryId, provenance: 'ai' })
           .onConflictDoNothing();
-        provenance.category = 'ai';
       }
     }
 
-    patch.metadataProvenance = provenance;
-    await tx.update(readingWorkTable).set(patch).where(eq(readingWorkTable.id, workId));
+    if (Object.keys(patch).length > 0) {
+      await tx.update(readingWorkTable).set(patch).where(eq(readingWorkTable.id, workId));
+    }
   });
 
   await completeMetadataStep(workId);

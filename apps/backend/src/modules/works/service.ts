@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { and, asc, count, desc, eq, ilike, inArray, or, type SQL, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, exists, ilike, inArray, or, type SQL, sql } from 'drizzle-orm';
 
 import {
   category as categoryTable,
@@ -13,6 +13,7 @@ import {
   readingWorkTag as readingWorkTagTable,
   source as sourceTable,
   tag as tagTable,
+  type WorkMetadataProvenance,
   type WorkMetadataProvenanceMap,
 } from '@gloaming/db';
 import {
@@ -68,7 +69,85 @@ function toIso(value: Date): string {
   return value.toISOString();
 }
 
-function toWork(row: WorkRow): Work {
+/** admin_epub re-parse: hide tags in API projection (junction rows are preserved). */
+function shouldHideTagsDuringProcessing(row: WorkRow): boolean {
+  return row.originKind === 'admin_epub' && row.status === 'processing';
+}
+
+function resolveTagProvenance(provenances: WorkMetadataProvenance[]): WorkMetadataProvenance | undefined {
+  if (provenances.some((p) => p === 'manual')) return 'manual';
+  if (provenances.some((p) => p === 'ai')) return 'ai';
+  if (provenances.some((p) => p === 'extracted')) return 'extracted';
+  return undefined;
+}
+
+/** Tag names for one work — junction SSOT. */
+export async function loadTagsForWork(workId: string): Promise<string[]> {
+  const rows = await db
+    .select({ name: tagTable.name })
+    .from(readingWorkTagTable)
+    .innerJoin(tagTable, eq(readingWorkTagTable.tagId, tagTable.id))
+    .where(eq(readingWorkTagTable.workId, workId))
+    .orderBy(asc(tagTable.name));
+  return rows.map((row) => row.name);
+}
+
+/** Batch tag names keyed by work id. */
+export async function loadTagsByWorkIds(workIds: string[]): Promise<Map<string, string[]>> {
+  if (workIds.length === 0) {
+    return new Map();
+  }
+  const rows = await db
+    .select({ workId: readingWorkTagTable.workId, name: tagTable.name })
+    .from(readingWorkTagTable)
+    .innerJoin(tagTable, eq(readingWorkTagTable.tagId, tagTable.id))
+    .where(inArray(readingWorkTagTable.workId, workIds))
+    .orderBy(asc(tagTable.name));
+  const map = new Map<string, string[]>();
+  for (const row of rows) {
+    const list = map.get(row.workId) ?? [];
+    list.push(row.name);
+    map.set(row.workId, list);
+  }
+  return map;
+}
+
+async function loadTagProvenanceForWork(workId: string): Promise<WorkMetadataProvenance | undefined> {
+  const rows = await db
+    .select({ provenance: readingWorkTagTable.provenance })
+    .from(readingWorkTagTable)
+    .where(eq(readingWorkTagTable.workId, workId));
+  return resolveTagProvenance(rows.map((row) => row.provenance));
+}
+
+async function loadCategoryProvenanceForWork(workId: string): Promise<WorkMetadataProvenance | undefined> {
+  const [row] = await db
+    .select({ provenance: readingWorkCategoryTable.provenance })
+    .from(readingWorkCategoryTable)
+    .where(eq(readingWorkCategoryTable.workId, workId))
+    .limit(1);
+  return row?.provenance;
+}
+
+/** Runtime admin API projection — not persisted on reading_work. */
+function buildMetadataProvenance(
+  row: WorkRow,
+  junction: { tagProvenance?: WorkMetadataProvenance; categoryProvenance?: WorkMetadataProvenance },
+): WorkMetadataProvenanceMap {
+  const map: WorkMetadataProvenanceMap = {};
+  if (row.descriptionProvenance) {
+    map.description = row.descriptionProvenance;
+  }
+  if (junction.tagProvenance && !shouldHideTagsDuringProcessing(row)) {
+    map.tags = junction.tagProvenance;
+  }
+  if (junction.categoryProvenance) {
+    map.category = junction.categoryProvenance;
+  }
+  return map;
+}
+
+function toWork(row: WorkRow, tags: string[]): Work {
   return {
     id: row.id,
     title: row.title,
@@ -78,7 +157,7 @@ function toWork(row: WorkRow): Work {
     status: row.status as Work['status'],
     visibility: row.visibility as Work['visibility'],
     originKind: row.originKind as Work['originKind'],
-    tags: row.tags,
+    tags: shouldHideTagsDuringProcessing(row) ? [] : tags,
     sourceNote: row.sourceNote,
     coverAssetId: row.coverAssetId,
     publishedAt: row.publishedAt ? toIso(row.publishedAt) : null,
@@ -177,16 +256,22 @@ async function toAdminWork(row: WorkRow, parts?: PartRow[]): Promise<AdminWork> 
         ])
       ).get(row.id)
     : { audio: 'missing' as const };
+  const [tags, tagProvenance, category, categoryProvenance] = await Promise.all([
+    loadTagsForWork(row.id),
+    loadTagProvenanceForWork(row.id),
+    loadCategoryForWork(row.id),
+    loadCategoryProvenanceForWork(row.id),
+  ]);
   return {
-    ...toWork(row),
+    ...toWork(row, tags),
     derivedFreshness: freshness ?? { audio: 'missing' },
     originMeta: row.originMeta,
     originAsset: await loadOriginFileAsset(row.id),
     parts: partRows.map(toPart),
     sources: await loadSourcesForWork(row.id),
-    category: await loadCategoryForWork(row.id),
+    category,
     failedStep: failedStepOf(row),
-    metadataProvenance: row.metadataProvenance,
+    metadataProvenance: buildMetadataProvenance(row, { tagProvenance, categoryProvenance }),
   };
 }
 
@@ -201,15 +286,21 @@ async function toAdminWorkSummary(row: WorkRow): Promise<AdminWorkSummary> {
       ).get(row.id)
     : { audio: 'missing' as const };
   const partCount = await countPartsForWork(row.id);
+  const [tags, tagProvenance, category, categoryProvenance] = await Promise.all([
+    loadTagsForWork(row.id),
+    loadTagProvenanceForWork(row.id),
+    loadCategoryForWork(row.id),
+    loadCategoryProvenanceForWork(row.id),
+  ]);
   return {
-    ...toWork(row),
+    ...toWork(row, tags),
     derivedFreshness: freshness ?? { audio: 'missing' },
     originMeta: row.originMeta,
     originAsset: await loadOriginFileAsset(row.id),
     partCount,
-    category: await loadCategoryForWork(row.id),
+    category,
     failedStep: failedStepOf(row),
-    metadataProvenance: row.metadataProvenance,
+    metadataProvenance: buildMetadataProvenance(row, { tagProvenance, categoryProvenance }),
   };
 }
 
@@ -229,12 +320,32 @@ function publishedListWhere(query: Pick<CatalogListQuery, 'tag' | 'q'>): SQL {
   const parts: SQL[] = [eq(readingWorkTable.status, 'published')];
 
   if (query.tag) {
-    parts.push(sql`${readingWorkTable.tags} @> ${JSON.stringify([query.tag])}::jsonb`);
+    const normalized = normalizeTag(query.tag);
+    parts.push(
+      exists(
+        db
+          .select({ one: sql`1` })
+          .from(readingWorkTagTable)
+          .innerJoin(tagTable, eq(readingWorkTagTable.tagId, tagTable.id))
+          .where(and(eq(readingWorkTagTable.workId, readingWorkTable.id), eq(tagTable.normalized, normalized))),
+      ),
+    );
   }
 
   if (query.q) {
     const pattern = `%${escapeIlikePattern(query.q)}%`;
-    parts.push(or(ilike(readingWorkTable.title, pattern), sql`${readingWorkTable.tags}::text ilike ${pattern}`)!);
+    parts.push(
+      or(
+        ilike(readingWorkTable.title, pattern),
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(readingWorkTagTable)
+            .innerJoin(tagTable, eq(readingWorkTagTable.tagId, tagTable.id))
+            .where(and(eq(readingWorkTagTable.workId, readingWorkTable.id), ilike(tagTable.name, pattern))),
+        ),
+      )!,
+    );
   }
 
   return and(...parts)!;
@@ -251,18 +362,16 @@ function publishedListOrderBy(query: Pick<CatalogListQuery, 'sortBy' | 'sortOrde
   return [primary, desc(readingWorkTable.id)] as const;
 }
 
-function aggregateTags(rows: { tags: string[] }[]): string[] {
+function aggregateTagNames(names: string[]): string[] {
   const seen = new Set<string>();
   const ordered: string[] = [];
-  for (const row of rows) {
-    for (const tag of row.tags) {
-      const key = tag.trim();
-      if (!key || seen.has(key)) {
-        continue;
-      }
-      seen.add(key);
-      ordered.push(key);
+  for (const tag of names) {
+    const key = tag.trim();
+    if (!key || seen.has(key)) {
+      continue;
     }
+    seen.add(key);
+    ordered.push(key);
   }
   return ordered;
 }
@@ -296,7 +405,6 @@ export async function createAdminTextWork(input: CreateAdminTextWorkBody): Promi
       description: '',
       status: 'ready',
       originKind: 'admin_text',
-      tags: [],
       sourceNote: '',
       publishedAt: null,
     })
@@ -360,7 +468,6 @@ async function insertEpubWorkAndAsset(input: {
       status: 'processing',
       originKind: 'admin_epub',
       originMeta: { originalFileName: input.fileName, reused: input.reused },
-      tags: [],
       sourceNote: '',
       publishedAt: null,
     });
@@ -528,11 +635,11 @@ export async function updateWork(id: string, input: UpdateWorkBody): Promise<Adm
   const patch: Partial<typeof readingWorkTable.$inferInsert> = {};
   if (input.title !== undefined) patch.title = input.title;
   if (input.author !== undefined) patch.author = input.author;
-  if (input.description !== undefined) patch.description = input.description;
+  if (input.description !== undefined) {
+    patch.description = input.description;
+    patch.descriptionProvenance = 'manual';
+  }
   if (input.sourceNote !== undefined) patch.sourceNote = input.sourceNote;
-  const provenance: WorkMetadataProvenanceMap = { ...existing.metadataProvenance };
-  if (input.description !== undefined) provenance.description = 'manual';
-  if (input.tags !== undefined) provenance.tags = 'manual';
 
   if (
     input.tags === undefined &&
@@ -563,12 +670,6 @@ export async function updateWork(id: string, input: UpdateWorkBody): Promise<Adm
           .values(tagIds.map((tagId) => ({ workId: id, tagId, provenance: 'manual' as const })))
           .onConflictDoNothing();
       }
-      const rows = await tx
-        .select({ name: tagTable.name })
-        .from(readingWorkTagTable)
-        .innerJoin(tagTable, eq(readingWorkTagTable.tagId, tagTable.id))
-        .where(eq(readingWorkTagTable.workId, id));
-      patch.tags = rows.map((row) => row.name);
     }
 
     if (input.sources !== undefined) {
@@ -607,15 +708,9 @@ export async function updateWork(id: string, input: UpdateWorkBody): Promise<Adm
           .insert(readingWorkCategoryTable)
           .values({ workId: id, categoryId: row!.id, provenance: 'manual' })
           .onConflictDoNothing();
-        provenance.category = 'manual';
-      } else {
-        delete provenance.category;
       }
     }
 
-    if (input.description !== undefined || input.tags !== undefined || input.category !== undefined) {
-      patch.metadataProvenance = provenance;
-    }
     if (Object.keys(patch).length > 0) {
       await tx.update(readingWorkTable).set(patch).where(eq(readingWorkTable.id, id));
     }
@@ -634,10 +729,11 @@ export async function publishWork(id: string): Promise<AdminWork> {
   }
 
   const parts = await loadPartsForWork(id);
+  const tags = await loadTagsForWork(id);
   const issues = getPublishWorkIssues({
     title: existing.title,
     sourceNote: existing.sourceNote,
-    tags: existing.tags,
+    tags,
     parts: parts.map((part) => ({ body: part.body })),
   });
   if (issues.length > 0) {
@@ -737,11 +833,17 @@ export async function retryWorkflow(id: string, input: RetryWorkflowBody = {}): 
   return getAdminWork(id);
 }
 
-/** Re-parse reset: parts, derived assets, AI outputs, and filled metadata fields. */
+/** Re-parse reset: parts, derived assets, AI outputs, extracted junctions, and filled metadata fields. */
 async function clearParseOutputs(work: WorkRow): Promise<void> {
   await clearDerivedAssets(work.id);
   await db.delete(readingPartTable).where(eq(readingPartTable.workId, work.id));
   await clearAiOutputs(work);
+  await db
+    .delete(readingWorkTagTable)
+    .where(and(eq(readingWorkTagTable.workId, work.id), eq(readingWorkTagTable.provenance, 'extracted')));
+  await db
+    .delete(readingWorkSourceTable)
+    .where(and(eq(readingWorkSourceTable.workId, work.id), eq(readingWorkSourceTable.provenance, 'extracted')));
   await db
     .update(readingWorkTable)
     .set({
@@ -749,8 +851,7 @@ async function clearParseOutputs(work: WorkRow): Promise<void> {
       author: '',
       description: '',
       coverAssetId: null,
-      tags: [],
-      metadataProvenance: {},
+      descriptionProvenance: null,
     })
     .where(eq(readingWorkTable.id, work.id));
 }
@@ -763,21 +864,11 @@ async function clearAiOutputs(work: WorkRow): Promise<void> {
   await db
     .delete(readingWorkCategoryTable)
     .where(and(eq(readingWorkCategoryTable.workId, work.id), eq(readingWorkCategoryTable.provenance, 'ai')));
-  const provenance: WorkMetadataProvenanceMap = { ...work.metadataProvenance };
-  const patch: Partial<typeof readingWorkTable.$inferInsert> = {};
-  if (provenance.description === 'ai') {
-    patch.description = '';
-    delete provenance.description;
-  }
-  if (provenance.tags === 'ai') {
-    delete provenance.tags;
-  }
-  if (provenance.category === 'ai') {
-    delete provenance.category;
-  }
-  if (Object.keys(patch).length > 0 || Object.keys(provenance).length !== Object.keys(work.metadataProvenance).length) {
-    patch.metadataProvenance = provenance;
-    await db.update(readingWorkTable).set(patch).where(eq(readingWorkTable.id, work.id));
+  if (work.descriptionProvenance === 'ai') {
+    await db
+      .update(readingWorkTable)
+      .set({ description: '', descriptionProvenance: null })
+      .where(eq(readingWorkTable.id, work.id));
   }
 }
 
@@ -839,13 +930,18 @@ export async function listCatalogWorks(query: CatalogListQuery): Promise<Catalog
     .limit(query.pageSize)
     .offset(offset);
 
+  const tagsByWork = await loadTagsByWorkIds(rows.map((row) => row.id));
+
   const tagRows = await db
-    .select({ tags: readingWorkTable.tags })
-    .from(readingWorkTable)
-    .where(eq(readingWorkTable.status, 'published'));
+    .selectDistinct({ name: tagTable.name })
+    .from(readingWorkTagTable)
+    .innerJoin(tagTable, eq(readingWorkTagTable.tagId, tagTable.id))
+    .innerJoin(readingWorkTable, eq(readingWorkTagTable.workId, readingWorkTable.id))
+    .where(eq(readingWorkTable.status, 'published'))
+    .orderBy(asc(tagTable.name));
 
   return {
-    items: rows.map(toWork),
+    items: rows.map((row) => toWork(row, tagsByWork.get(row.id) ?? [])),
     pagination: buildPaginationMeta({
       page: query.page,
       pageSize: query.pageSize,
@@ -853,7 +949,7 @@ export async function listCatalogWorks(query: CatalogListQuery): Promise<Catalog
       sortBy: query.sortBy,
       sortOrder: query.sortOrder,
     }),
-    tags: aggregateTags(tagRows),
+    tags: aggregateTagNames(tagRows.map((row) => row.name)),
   };
 }
 
@@ -867,7 +963,8 @@ export async function getPublishedWork(id: string): Promise<Work> {
   if (!row) {
     throw new NotFoundError('Work');
   }
-  return toWork(row);
+  const tags = await loadTagsForWork(id);
+  return toWork(row, tags);
 }
 
 export async function requirePublishedWorkWithParts(workId: string): Promise<{ work: WorkRow; parts: PartRow[] }> {

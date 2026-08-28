@@ -8,7 +8,6 @@ import {
   readingWorkTag as readingWorkTagTable,
   source as sourceTable,
   tag as tagTable,
-  type WorkMetadataProvenanceMap,
 } from '@gloaming/db';
 
 import { db } from '@/db';
@@ -89,20 +88,6 @@ export async function fillWorkMetadata(workId: string): Promise<void> {
   const description = work.description || cleanDesc;
   const language = parsed.language ?? work.language;
 
-  const provenance: WorkMetadataProvenanceMap = { ...work.metadataProvenance };
-  if (cleanDesc) {
-    const keepsExisting = Boolean(work.description && work.description !== cleanDesc);
-    if (keepsExisting) {
-      // A kept value is never "extracted". Preserve existing ai/manual
-      // semantics (AI-filled descriptions survive re-parse untouched) and
-      // only fall back to manual when nothing is recorded yet.
-      if (!provenance.description || provenance.description === 'extracted') {
-        provenance.description = 'manual';
-      }
-    } else {
-      provenance.description = 'extracted';
-    }
-  }
   const subjects = parsed.subjects ?? [];
 
   await db.transaction(async (tx) => {
@@ -112,6 +97,20 @@ export async function fillWorkMetadata(workId: string): Promise<void> {
       description,
       language,
     };
+
+    if (cleanDesc) {
+      const keepsExisting = Boolean(work.description && work.description !== cleanDesc);
+      if (keepsExisting) {
+        // A kept value is never "extracted". Preserve existing ai/manual
+        // semantics (AI-filled descriptions survive re-parse untouched) and
+        // only fall back to manual when nothing is recorded yet.
+        if (!work.descriptionProvenance || work.descriptionProvenance === 'extracted') {
+          patch.descriptionProvenance = 'manual';
+        }
+      } else {
+        patch.descriptionProvenance = 'extracted';
+      }
+    }
 
     // Tags: subjects → extracted associations (re-insert idempotent).
     await tx
@@ -127,23 +126,6 @@ export async function fillWorkMetadata(workId: string): Promise<void> {
         .insert(readingWorkTagTable)
         .values({ workId, tagId: row!.id, provenance: 'extracted' })
         .onConflictDoNothing();
-    }
-    const tagRows = await tx
-      .select({ name: tagTable.name })
-      .from(readingWorkTagTable)
-      .innerJoin(tagTable, eq(readingWorkTagTable.tagId, tagTable.id))
-      .where(eq(readingWorkTagTable.workId, workId));
-    patch.tags = tagRows.map((row) => row.name);
-    if (subjects.length > 0) {
-      const provenanceRows = await tx
-        .select({ provenance: readingWorkTagTable.provenance })
-        .from(readingWorkTagTable)
-        .where(eq(readingWorkTagTable.workId, workId));
-      const hasManual = provenanceRows.some((row) => row.provenance === 'manual');
-      const hasAi = provenanceRows.some((row) => row.provenance === 'ai');
-      // Priority manual > ai > extracted — re-parse must not degrade surviving
-      // AI associations to "extracted" just because no manual row exists.
-      provenance.tags = hasManual ? 'manual' : hasAi ? 'ai' : 'extracted';
     }
 
     // Source: dc:source → match_rule association (extracted), else left empty.
@@ -161,7 +143,6 @@ export async function fillWorkMetadata(workId: string): Promise<void> {
       }
     }
 
-    patch.metadataProvenance = provenance;
     await tx.update(readingWorkTable).set(patch).where(eq(readingWorkTable.id, workId));
   });
 

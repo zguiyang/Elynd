@@ -122,6 +122,7 @@ export const adminWorkSchema = workSchema.extend({
   category: z.string().nullable(),
   /** Step that failed when status is `failed` (from originMeta.failedStep). */
   failedStep: z.enum(WORKFLOW_STEPS).nullable(),
+  /** Per-field provenance for admin review UI — runtime projection from junction + description_provenance. */
   metadataProvenance: z.record(z.string(), z.enum(WORK_METADATA_PROVENANCES)).default({}),
 });
 
@@ -138,6 +139,7 @@ export const adminWorkSummarySchema = workSchema.extend({
   partCount: z.number().int().nonnegative(),
   category: z.string().nullable(),
   failedStep: z.enum(WORKFLOW_STEPS).nullable(),
+  /** Per-field provenance for admin review UI — runtime projection from junction + description_provenance. */
   metadataProvenance: z.record(z.string(), z.enum(WORK_METADATA_PROVENANCES)).default({}),
 });
 

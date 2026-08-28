@@ -5,6 +5,7 @@ import { computeProgressRatio } from '@gloaming/shared/api/reader';
 import { SHELF_ITEMS_LIMIT, type ShelfData } from '@gloaming/shared/api/shelf';
 
 import { db } from '@/db';
+import { loadTagsByWorkIds } from '@/modules/works/service';
 
 type WorkRow = typeof readingWorkTable.$inferSelect;
 type StateRow = typeof readingStateTable.$inferSelect;
@@ -13,12 +14,12 @@ function toIso(value: Date): string {
   return value.toISOString();
 }
 
-function toWorkSummary(row: WorkRow) {
+function toWorkSummary(row: WorkRow, tags: string[]) {
   return {
     id: row.id,
     title: row.title,
     description: row.description,
-    tags: row.tags,
+    tags,
     publishedAt: row.publishedAt ? toIso(row.publishedAt) : null,
   };
 }
@@ -73,10 +74,18 @@ export async function getShelf(userId: string): Promise<ShelfData> {
     .orderBy(desc(readingStateTable.lastReadAt), desc(readingStateTable.id))
     .limit(SHELF_ITEMS_LIMIT);
 
+  const workIds = [...(currentRow ? [currentRow.work.id] : []), ...itemRows.map((row) => row.work.id)];
+  const tagsByWork = await loadTagsByWorkIds(workIds);
+
   return {
-    current: currentRow ? { work: toWorkSummary(currentRow.work), state: toState(currentRow.state) } : null,
+    current: currentRow
+      ? {
+          work: toWorkSummary(currentRow.work, tagsByWork.get(currentRow.work.id) ?? []),
+          state: toState(currentRow.state),
+        }
+      : null,
     items: itemRows.map((row) => ({
-      work: toWorkSummary(row.work),
+      work: toWorkSummary(row.work, tagsByWork.get(row.work.id) ?? []),
       state: toState(row.state),
     })),
   };

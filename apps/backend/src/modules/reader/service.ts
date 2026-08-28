@@ -10,7 +10,7 @@ import { db } from '@/db';
 import { AppError, NotFoundError } from '@/lib/errors';
 import { getPartAudioAvailability, getPublishedPartAudioTrack } from '@/modules/content-assets/service';
 import { touchReadingDay } from '@/modules/reading-history/service';
-import { requirePublishedWorkWithParts } from '@/modules/works/service';
+import { loadTagsForWork, requirePublishedWorkWithParts } from '@/modules/works/service';
 
 type StateRow = typeof readingStateTable.$inferSelect;
 type PartRow = typeof readingPartTable.$inferSelect;
@@ -45,6 +45,7 @@ function resolveCurrentPart(parts: PartRow[], state: StateRow | null): PartRow {
 
 function buildSession(
   work: Awaited<ReturnType<typeof requirePublishedWorkWithParts>>['work'],
+  tags: string[],
   parts: PartRow[],
   currentPart: PartRow,
   state: StateRow,
@@ -55,7 +56,7 @@ function buildSession(
       id: work.id,
       title: work.title,
       description: work.description,
-      tags: work.tags,
+      tags,
       publishedAt: work.publishedAt ? toIso(work.publishedAt) : null,
     },
     parts: parts.map((part) => ({
@@ -93,6 +94,7 @@ async function defaultAnonymousState(now: string): Promise<ReaderSessionData['st
 /** Read-only reader payload for anonymous visitors; no user data is created. */
 export async function getPublicReaderSession(workId: string): Promise<ReaderSessionData> {
   const { work, parts } = await requirePublishedWorkWithParts(workId);
+  const tags = await loadTagsForWork(workId);
   const currentPart = parts[0]!;
   const now = new Date().toISOString();
   const audioAvailable = await getPartAudioAvailability(currentPart.id, currentPart.title, currentPart.body);
@@ -102,7 +104,7 @@ export async function getPublicReaderSession(workId: string): Promise<ReaderSess
       id: work.id,
       title: work.title,
       description: work.description,
-      tags: work.tags,
+      tags,
       publishedAt: work.publishedAt ? toIso(work.publishedAt) : null,
     },
     parts: parts.map((part) => ({
@@ -180,7 +182,8 @@ export async function getReaderSession(userId: string, workId: string): Promise<
   const audioAvailable = await getPartAudioAvailability(currentPart.id, currentPart.title, currentPart.body);
   await touchReadingDay(userId);
 
-  return buildSession(work, parts, currentPart, state, audioAvailable);
+  const tags = await loadTagsForWork(workId);
+  return buildSession(work, tags, parts, currentPart, state, audioAvailable);
 }
 
 export async function updateReadingState(

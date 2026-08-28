@@ -1,9 +1,15 @@
 import { z } from 'zod';
 
 import { AI_SETTING_KEY_VALUES } from '@gloaming/shared/api/llm-config-keys';
+import { LLM_API_FAMILIES } from '@gloaming/shared/llm/wire-registry';
+
+export const llmApiFamilySchema = z.enum(LLM_API_FAMILIES);
+
+export type LlmApiFamily = z.infer<typeof llmApiFamilySchema>;
 
 export const llmProviderSchema = z.object({
   id: z.string(),
+  apiFamily: llmApiFamilySchema,
   name: z.string(),
   baseUrl: z.string(),
   proxyUrl: z.string().nullable(),
@@ -21,6 +27,7 @@ export const llmProviderSchema = z.object({
 export type LlmProvider = z.infer<typeof llmProviderSchema>;
 
 export const createLlmProviderBodySchema = z.object({
+  apiFamily: llmApiFamilySchema,
   name: z.string().trim().min(1).max(120),
   baseUrl: z.string().trim().url().max(500),
   apiKey: z.string().min(1).max(2000),
@@ -94,16 +101,12 @@ export const updateLlmProviderBodySchema = z
 
 export type UpdateLlmProviderBody = z.infer<typeof updateLlmProviderBodySchema>;
 
-export const LLM_MODEL_PROTOCOLS = ['chat-completions', 'responses'] as const;
-
-export type LlmModelProtocol = (typeof LLM_MODEL_PROTOCOLS)[number];
-
 export const llmModelSchema = z.object({
   id: z.string(),
   providerId: z.string(),
   modelId: z.string(),
   label: z.string(),
-  protocol: z.enum(LLM_MODEL_PROTOCOLS),
+  wireVariant: z.string().min(1),
   contextLength: z.number().int().nullable(),
   temperature: z.number().nullable(),
   maxTokens: z.number().int().nullable(),
@@ -119,7 +122,7 @@ export const createLlmModelBodySchema = z.object({
   providerId: z.string().min(1),
   modelId: z.string().trim().min(1).max(200),
   label: z.string().trim().min(1).max(120),
-  protocol: z.enum(LLM_MODEL_PROTOCOLS).optional().default('chat-completions'),
+  wireVariant: z.string().trim().min(1).max(120).optional(),
   contextLength: z.number().int().positive().max(100_000_000).nullable().optional(),
   temperature: z.number().min(0).max(2).nullable().optional(),
   maxTokens: z.number().int().positive().max(1_000_000).nullable().optional(),
@@ -133,7 +136,7 @@ export const updateLlmModelBodySchema = z
   .object({
     modelId: z.string().trim().min(1).max(200).optional(),
     label: z.string().trim().min(1).max(120).optional(),
-    protocol: z.enum(LLM_MODEL_PROTOCOLS).optional(),
+    wireVariant: z.string().trim().min(1).max(120).optional(),
     contextLength: z.number().int().positive().max(100_000_000).nullable().optional(),
     temperature: z.number().min(0).max(2).nullable().optional(),
     maxTokens: z.number().int().positive().max(1_000_000).nullable().optional(),
@@ -155,6 +158,8 @@ export const llmAppSettingSchema = z.object({
   modelId: z.string().nullable(),
   modelLabel: z.string().nullable(),
   healthy: z.boolean(),
+  /** False when bound model's API family runtime is not implemented. */
+  runtimeReady: z.boolean(),
 });
 
 export type LlmAppSettingView = z.infer<typeof llmAppSettingSchema>;

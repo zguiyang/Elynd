@@ -17,6 +17,7 @@
     "./api/taxonomy": "./src/api/taxonomy.ts",
     "./api/llm-config": "./src/api/llm-config.ts",
     "./api/llm-config-keys": "./src/api/llm-config-keys.ts",
+    "./llm/wire-registry": "./src/llm/wire-registry.ts",
     "./api/pagination": "./src/api/pagination.ts",
     "./api/translate": "./src/api/translate.ts",
     "./api/tts": "./src/api/tts.ts",

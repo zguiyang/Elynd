@@ -1,13 +1,25 @@
 'use client';
 
+import { useMemo } from 'react';
+
 import type { LlmAppSettingView, LlmModel, LlmProvider } from '@gloaming/shared/api/llm-config';
 import type { AiSettingKey } from '@gloaming/shared/api/llm-config-keys';
-import { getWireFamilyDefinition, getWireVariantLabel, isRuntimeImplemented } from '@gloaming/shared/llm/wire-registry';
+import { isRuntimeImplemented } from '@gloaming/shared/llm/wire-registry';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Combobox,
+  ComboboxCollection,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxGroup,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxLabel,
+  ComboboxList,
+} from '@/components/ui/combobox';
+import { Field, FieldLabel } from '@/components/ui/field';
 
 const AI_PURPOSE_LABELS: Record<AiSettingKey, { title: string; description: string }> = {
   'assist.default_model_id': {
@@ -22,6 +34,19 @@ const AI_PURPOSE_LABELS: Record<AiSettingKey, { title: string; description: stri
     title: '元数据回填',
     description: '上传 EPUB 后自动填充简介、标签与分类使用的默认模型。',
   },
+};
+
+type ModelComboboxItem = {
+  id: string;
+  label: string;
+  searchText: string;
+  disabled?: boolean;
+};
+
+type ModelComboboxGroup = {
+  value: string;
+  label: string;
+  items: ModelComboboxItem[];
 };
 
 type AiPurposePanelProps = {
@@ -66,14 +91,113 @@ function resolveHealth(
   return { label: '已配置', tone: 'ok' };
 }
 
-function modelOptionLabel(model: LlmModel, providers: LlmProvider[]): string {
-  const provider = providers.find((item) => item.id === model.providerId);
-  if (!provider) {
-    return model.label;
+function buildModelGroups(
+  bindableModels: LlmModel[],
+  providers: LlmProvider[],
+  draftId: string,
+  allModels: LlmModel[],
+  fallbackLabel?: string | null,
+): ModelComboboxGroup[] {
+  const providerById = new Map(providers.map((provider) => [provider.id, provider]));
+  const grouped = new Map<string, ModelComboboxItem[]>();
+
+  for (const model of bindableModels) {
+    const provider = providerById.get(model.providerId);
+    const providerName = provider?.name ?? '未知服务商';
+    const item: ModelComboboxItem = {
+      id: model.id,
+      label: model.label,
+      searchText: `${providerName} ${model.label}`,
+    };
+    const items = grouped.get(model.providerId) ?? [];
+    items.push(item);
+    grouped.set(model.providerId, items);
   }
-  const familyLabel = getWireFamilyDefinition(provider.apiFamily).label;
-  const wireLabel = getWireVariantLabel(provider.apiFamily, model.wireVariant);
-  return `${model.label} · ${provider.name} · ${familyLabel} · ${wireLabel}`;
+
+  const groups = [...grouped.entries()]
+    .map(([providerId, items]) => ({
+      value: providerId,
+      label: providerById.get(providerId)?.name ?? '未知服务商',
+      items: items.sort((a, b) => a.label.localeCompare(b.label)),
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+  if (draftId && !bindableModels.some((model) => model.id === draftId)) {
+    const model = allModels.find((item) => item.id === draftId);
+    const provider = model ? providerById.get(model.providerId) : undefined;
+    const providerName = provider?.name ?? '未知服务商';
+    groups.unshift({
+      value: '__unavailable__',
+      label: '当前绑定（不可用）',
+      items: [
+        {
+          id: draftId,
+          label: model?.label ?? fallbackLabel ?? draftId,
+          searchText: `${providerName} ${model?.label ?? fallbackLabel ?? draftId}`,
+          disabled: true,
+        },
+      ],
+    });
+  }
+
+  return groups;
+}
+
+function findModelItem(groups: ModelComboboxGroup[], modelId: string): ModelComboboxItem | null {
+  for (const group of groups) {
+    const match = group.items.find((item) => item.id === modelId);
+    if (match) {
+      return match;
+    }
+  }
+  return null;
+}
+
+type PurposeModelComboboxProps = {
+  id: string;
+  groups: ModelComboboxGroup[];
+  value: string;
+  disabled?: boolean;
+  placeholder: string;
+  onValueChange: (modelId: string) => void;
+};
+
+function PurposeModelCombobox({ id, groups, value, disabled, placeholder, onValueChange }: PurposeModelComboboxProps) {
+  const selected = value ? findModelItem(groups, value) : null;
+
+  return (
+    <Combobox
+      items={groups}
+      value={selected}
+      disabled={disabled}
+      itemToStringValue={(item) => item.searchText}
+      isItemEqualToValue={(a, b) => a.id === b.id}
+      onValueChange={(item) => {
+        if (item && !item.disabled) {
+          onValueChange(item.id);
+        }
+      }}
+    >
+      <ComboboxInput id={id} placeholder={placeholder} className="h-10 w-full rounded-xl" />
+      <ComboboxContent>
+        <ComboboxEmpty>没有匹配的模型</ComboboxEmpty>
+        <ComboboxList>
+          {(group) => (
+            <ComboboxGroup key={group.value} items={group.items}>
+              <ComboboxLabel>{group.label}</ComboboxLabel>
+              <ComboboxCollection>
+                {(item) => (
+                  <ComboboxItem key={item.id} value={item} disabled={item.disabled}>
+                    {item.label}
+                  </ComboboxItem>
+                )}
+              </ComboboxCollection>
+            </ComboboxGroup>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  );
 }
 
 export function AiPurposePanel({
@@ -84,9 +208,13 @@ export function AiPurposePanel({
   onDraftChange,
   onSave,
 }: AiPurposePanelProps) {
-  const bindableModels = models
-    .filter((model) => modelRuntimeReady(model, providers))
-    .sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label));
+  const bindableModels = useMemo(
+    () =>
+      models
+        .filter((model) => modelRuntimeReady(model, providers))
+        .sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label)),
+    [models, providers],
+  );
 
   return (
     <section className="flex flex-col gap-4">
@@ -105,19 +233,7 @@ export function AiPurposePanel({
             providers,
           );
           const isDirty = draft !== (setting.modelId ?? '');
-          const selectItems = (() => {
-            const byId = new Map(
-              bindableModels.map((model) => [model.id, { value: model.id, label: modelOptionLabel(model, providers) }]),
-            );
-            if (draft && !byId.has(draft)) {
-              const model = models.find((item) => item.id === draft);
-              byId.set(draft, {
-                value: draft,
-                label: model ? modelOptionLabel(model, providers) : (setting.modelLabel ?? draft),
-              });
-            }
-            return [...byId.values()];
-          })();
+          const groups = buildModelGroups(bindableModels, providers, draft, models, setting.modelLabel);
 
           return (
             <li
@@ -151,33 +267,14 @@ export function AiPurposePanel({
               <Field className="min-w-0 gap-2">
                 <FieldLabel htmlFor={`purpose-${setting.key}`}>默认模型</FieldLabel>
                 <div className="flex items-center gap-3">
-                  <Select
-                    items={selectItems}
-                    value={draft || null}
-                    onValueChange={(value) => {
-                      if (value == null) {
-                        return;
-                      }
-                      onDraftChange(setting.key, value);
-                    }}
-                  >
-                    <SelectTrigger
-                      id={`purpose-${setting.key}`}
-                      className="h-10 min-w-0 flex-1 rounded-xl"
-                      disabled={bindableModels.length === 0 && !draft}
-                    >
-                      <SelectValue placeholder={bindableModels.length === 0 ? '暂无可绑定模型' : '选择可运行模型'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {bindableModels.map((model) => (
-                          <SelectItem key={model.id} value={model.id}>
-                            {modelOptionLabel(model, providers)}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                  <PurposeModelCombobox
+                    id={`purpose-${setting.key}`}
+                    groups={groups}
+                    value={draft}
+                    disabled={bindableModels.length === 0 && !draft}
+                    placeholder={bindableModels.length === 0 ? '暂无可绑定模型' : '搜索或选择模型'}
+                    onValueChange={(modelId) => onDraftChange(setting.key, modelId)}
+                  />
                   <Button
                     className="h-10 shrink-0 rounded-xl px-6 hover:bg-brand-deep"
                     disabled={!draft || !isDirty}
@@ -186,7 +283,6 @@ export function AiPurposePanel({
                     保存
                   </Button>
                 </div>
-                <FieldDescription>需服务商与模型均已启用，且 API 协议族运行时已接入。</FieldDescription>
               </Field>
             </li>
           );

@@ -8,6 +8,14 @@ import type { LlmApiFamily } from '@gloaming/shared/llm/wire-registry';
 import { getDefaultWireVariant, getWireFamilyDefinition } from '@gloaming/shared/llm/wire-registry';
 
 import { Button } from '@/components/ui/button';
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/components/ui/combobox';
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -128,7 +136,7 @@ export function AiModelForm({ formId, provider, model, onSubmit, onCancel }: AiM
     return Object.keys(next).length === 0;
   }
 
-  const platformModelItems = candidates?.map((candidate) => ({ value: candidate.id, label: candidate.label })) ?? [];
+  const selectedPlatformModel = candidates?.find((item) => item.id === pickedModelId) ?? null;
 
   return (
     <form
@@ -148,33 +156,37 @@ export function AiModelForm({ formId, provider, model, onSubmit, onCancel }: AiM
             <FieldLabel htmlFor={`${formId}-platform-model`}>平台模型</FieldLabel>
             <div className="flex items-center gap-2">
               <div className="min-w-0 flex-1">
-                <Select
-                  items={platformModelItems}
-                  value={pickedModelId}
+                <Combobox
+                  items={candidates ?? []}
+                  value={selectedPlatformModel}
                   disabled={!candidates?.length}
-                  onValueChange={(value) => {
-                    if (value == null) {
-                      return;
-                    }
-                    const candidate = candidates?.find((item) => item.id === value);
-                    if (candidate) {
-                      applyCandidate(candidate);
+                  itemToStringValue={(item) => (item.label === item.id ? item.id : `${item.label} ${item.id}`)}
+                  isItemEqualToValue={(a, b) => a.id === b.id}
+                  onValueChange={(item) => {
+                    if (item) {
+                      applyCandidate(item);
                     }
                   }}
                 >
-                  <SelectTrigger id={`${formId}-platform-model`} className="h-10 w-full rounded-xl">
-                    <SelectValue placeholder={candidates?.length ? '选择平台模型' : '刷新后选择'} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {platformModelItems.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
+                  <ComboboxInput
+                    id={`${formId}-platform-model`}
+                    placeholder={candidates?.length ? '搜索或选择平台模型' : '刷新后选择'}
+                    className="h-10 w-full rounded-xl"
+                  />
+                  <ComboboxContent>
+                    <ComboboxEmpty>没有匹配的模型</ComboboxEmpty>
+                    <ComboboxList>
+                      {(item) => (
+                        <ComboboxItem key={item.id} value={item}>
                           {item.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                          {item.label !== item.id ? (
+                            <span className="font-mono text-xs text-muted-foreground">{item.id}</span>
+                          ) : null}
+                        </ComboboxItem>
+                      )}
+                    </ComboboxList>
+                  </ComboboxContent>
+                </Combobox>
               </div>
               <Button
                 type="button"

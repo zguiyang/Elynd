@@ -146,6 +146,15 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
     return created.id;
   }
 
+  async function fetchAdminWork(workId: string) {
+    const response = await app.request(`/api/admin/works/${workId}`, { headers: { Cookie: adminCookie } });
+    expect(response.status).toBe(200);
+    return (await response.json()) as {
+      tags: string[];
+      metadataProvenance: Record<string, string | undefined>;
+    };
+  }
+
   beforeEach(() => {
     invokeAiMock.mockReset();
     invokeAiMock.mockResolvedValue({
@@ -172,7 +181,7 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
     expect(work!.status).toBe('ready');
   });
 
-  it('fills empty/weak fields with ai provenance and merges the jsonb view', async () => {
+  it('fills empty/weak fields with ai provenance via junction SSOT', async () => {
     const workId = await createParsedWork({ title: 'Fill Book' });
 
     invokeAiMock.mockResolvedValueOnce({
@@ -194,14 +203,17 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
     expect(work!.status).toBe('ready');
     expect(work!.description).toBe('An AI written summary of the book.');
-    expect(work!.metadataProvenance).toMatchObject({ description: 'ai', tags: 'ai', category: 'ai' });
+    expect(work!.descriptionProvenance).toBe('ai');
 
     const tagRows = await db
       .select({ provenance: readingWorkTagTable.provenance })
       .from(readingWorkTagTable)
       .where(eq(readingWorkTagTable.workId, workId));
     expect(tagRows.map((r) => r.provenance)).toEqual(['ai', 'ai']);
-    expect(work!.tags).toEqual(['Space', 'Adventure']);
+
+    const apiWork = await fetchAdminWork(workId);
+    expect(apiWork.metadataProvenance).toMatchObject({ description: 'ai', tags: 'ai', category: 'ai' });
+    expect([...apiWork.tags].sort()).toEqual(['Adventure', 'Space']);
 
     // AI-created tags are recorded as origin='ai' on the dimension row.
     const [spaceTag] = await db
@@ -249,8 +261,10 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
 
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
     expect(work!.status).toBe('ready');
-    expect(work!.tags).toEqual(['Reuse Tag']);
-    expect(work!.metadataProvenance.tags).toBe('ai');
+
+    const apiWork = await fetchAdminWork(workId);
+    expect(apiWork.tags).toEqual(['Reuse Tag']);
+    expect(apiWork.metadataProvenance.tags).toBe('ai');
 
     // Reused rows keep their original creator — no origin rewrite, no dupes.
     const [tag] = await db
@@ -319,8 +333,15 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
 
     const invokeArgs = invokeAiMock.mock.calls[0]![0] as { outputSchema: { shape: Record<string, unknown> } };
     expect(Object.keys(invokeArgs.outputSchema.shape)).toEqual(['category']);
-    const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
-    expect(work!.metadataProvenance.category).toBe('ai');
+
+    const categoryRows = await db
+      .select({ provenance: readingWorkCategoryTable.provenance })
+      .from(readingWorkCategoryTable)
+      .where(eq(readingWorkCategoryTable.workId, workId));
+    expect(categoryRows[0]!.provenance).toBe('ai');
+
+    const apiWork = await fetchAdminWork(workId);
+    expect(apiWork.metadataProvenance.category).toBe('ai');
   });
 
   it('does not override manual values and skips works outside the metadata step', async () => {
@@ -339,8 +360,11 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
 
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
     expect(work!.description).toBe('A solid hand-written description that is long enough.');
-    expect(work!.metadataProvenance.description).toBe('manual');
-    expect(work!.tags).toContain('Manual Tag');
+    expect(work!.descriptionProvenance).toBe('manual');
+
+    const apiWork = await fetchAdminWork(workId);
+    expect(apiWork.metadataProvenance.description).toBe('manual');
+    expect(apiWork.tags).toContain('Manual Tag');
 
     // Second run on a completed work must not invoke the model again.
     const callsAfterFirst = invokeAiMock.mock.calls.length;

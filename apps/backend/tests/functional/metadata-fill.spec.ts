@@ -114,7 +114,7 @@ describe('metadata-fill rule layer (extracted) + updateWork (manual)', () => {
     });
   }
 
-  it('writes extracted tag/source associations and the jsonb merge view', async () => {
+  it('writes extracted tag/source associations via junction SSOT', async () => {
     const workId = await uploadAndFill(
       await buildEpubBytes({
         title: 'Subject Book',
@@ -128,8 +128,15 @@ describe('metadata-fill rule layer (extracted) + updateWork (manual)', () => {
 
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
     expect(work!.title).toBe('Subject Book');
-    expect(work!.tags).toEqual(['Zeta Alpha', 'Zeta Beta']);
-    expect(work!.metadataProvenance).toEqual({ description: undefined, tags: 'extracted' });
+
+    const detail = await app.request(`/api/admin/works/${workId}`, { headers: { Cookie: adminCookie } });
+    expect(detail.status).toBe(200);
+    const apiWork = (await detail.json()) as {
+      tags: string[];
+      metadataProvenance: Record<string, string | undefined>;
+    };
+    expect(apiWork.tags).toEqual(['Zeta Alpha', 'Zeta Beta']);
+    expect(apiWork.metadataProvenance).toEqual({ tags: 'extracted' });
 
     const tagRows = await db
       .select({ name: tagTable.name, provenance: readingWorkTagTable.provenance })
@@ -172,7 +179,7 @@ describe('metadata-fill rule layer (extracted) + updateWork (manual)', () => {
     expect(tagRows[0]!.provenance).toBe('extracted');
   });
 
-  it('manual tags/sources from updateWork survive re-fill and merge into jsonb', async () => {
+  it('manual tags/sources from updateWork survive re-fill (junction SSOT)', async () => {
     const workId = await uploadAndFill(
       await buildEpubBytes({
         title: 'Manual Book',
@@ -193,17 +200,27 @@ describe('metadata-fill rule layer (extracted) + updateWork (manual)', () => {
       sources: string[];
       metadataProvenance: Record<string, string | undefined>;
     };
-    expect(body.tags).toEqual(['Science', 'Manual Tag']);
+    expect([...body.tags].sort()).toEqual(['Manual Tag', 'Science'].sort());
     expect([...(body.sources ?? [])].sort()).toEqual(['Standard Ebooks', 'Test Publisher'].sort());
 
     await fillWorkMetadata(workId);
 
+    const tagNames = await db
+      .select({ name: tagTable.name })
+      .from(readingWorkTagTable)
+      .innerJoin(tagTable, eq(readingWorkTagTable.tagId, tagTable.id))
+      .where(eq(readingWorkTagTable.workId, workId))
+      .orderBy(tagTable.name);
+    expect(tagNames.map((row) => row.name).sort()).toEqual(['Manual Tag', 'Science'].sort());
+
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
-    expect([...(work!.tags ?? [])].sort()).toEqual(['Manual Tag', 'Science'].sort());
     expect(work!.description).toBe('A hand-written description that is long enough to count.');
-    // Manual provenance survives re-fill — never downgraded to "extracted".
-    expect(work!.metadataProvenance.description).toBe('manual');
-    expect(work!.metadataProvenance.tags).toBe('manual');
+    expect(work!.descriptionProvenance).toBe('manual');
+
+    const detail = await app.request(`/api/admin/works/${workId}`, { headers: { Cookie: adminCookie } });
+    const apiWork = (await detail.json()) as { metadataProvenance: Record<string, string | undefined> };
+    expect(apiWork.metadataProvenance.description).toBe('manual');
+    expect(apiWork.metadataProvenance.tags).toBe('manual');
 
     const manualRows = await db.select().from(readingWorkTagTable).where(eq(readingWorkTagTable.workId, workId));
     expect(manualRows).toHaveLength(2);
@@ -231,7 +248,7 @@ describe('metadata-fill rule layer (extracted) + updateWork (manual)', () => {
       .update(readingWorkTable)
       .set({
         description: 'An AI written description that is long enough and clearly differs from extraction.',
-        metadataProvenance: { description: 'ai', tags: 'ai' },
+        descriptionProvenance: 'ai',
       })
       .where(eq(readingWorkTable.id, workId));
     await db
@@ -248,7 +265,13 @@ describe('metadata-fill rule layer (extracted) + updateWork (manual)', () => {
     expect(work!.description).toBe(
       'An AI written description that is long enough and clearly differs from extraction.',
     );
-    expect(work!.metadataProvenance).toMatchObject({ description: 'ai', tags: 'ai' });
+    expect(work!.descriptionProvenance).toBe('ai');
+
+    const aiTagRows = await db
+      .select({ provenance: readingWorkTagTable.provenance })
+      .from(readingWorkTagTable)
+      .where(eq(readingWorkTagTable.workId, workId));
+    expect(aiTagRows.some((row) => row.provenance === 'ai')).toBe(true);
   });
 
   it('updateWork sets/clears category with manual provenance', async () => {
@@ -297,8 +320,13 @@ describe('metadata-fill rule layer (extracted) + updateWork (manual)', () => {
     expect(body.tags).toEqual(['Science']);
     expect(body.sources).toEqual([]);
 
-    const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
-    expect(work!.tags).toEqual(['Science']);
+    const tagNames = await db
+      .select({ name: tagTable.name })
+      .from(readingWorkTagTable)
+      .innerJoin(tagTable, eq(readingWorkTagTable.tagId, tagTable.id))
+      .where(eq(readingWorkTagTable.workId, workId))
+      .orderBy(tagTable.name);
+    expect(tagNames.map((row) => row.name)).toEqual(['Science']);
   });
 
   it('retry resumes a failed metadata step (no body → failedStep)', async () => {

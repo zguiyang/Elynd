@@ -310,7 +310,7 @@ describe('POST /api/admin/works/:id/workflow/retry', () => {
     const workId = await uploadAndRun();
     await db
       .update(readingWorkTable)
-      .set({ status: 'ready', description: 'AI filled summary', metadataProvenance: { description: 'ai' } })
+      .set({ status: 'ready', description: 'AI filled summary', descriptionProvenance: 'ai' })
       .where(eq(readingWorkTable.id, workId));
 
     const retry = await retryRequest(workId, { step: 'metadata' });
@@ -319,7 +319,7 @@ describe('POST /api/admin/works/:id/workflow/retry', () => {
 
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
     expect(work!.description).toBe('');
-    expect(work!.metadataProvenance.description).toBeUndefined();
+    expect(work!.descriptionProvenance).toBeNull();
   });
 
   it('requires a failure or an explicit step, and refuses the tts step for now', async () => {

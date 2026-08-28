@@ -33,6 +33,7 @@ export const adminLlmQueryKey = {
   providers: () => [...adminLlmQueryKey.all, 'providers'] as const,
   models: () => [...adminLlmQueryKey.all, 'models'] as const,
   settings: () => [...adminLlmQueryKey.all, 'settings'] as const,
+  wireRegistry: () => [...adminLlmQueryKey.all, 'wire-registry'] as const,
 };
 
 export async function listLlmProviders(init?: { signal?: AbortSignal }): Promise<LlmProvider[]> {

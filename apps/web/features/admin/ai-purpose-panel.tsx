@@ -2,6 +2,7 @@
 
 import type { LlmAppSettingView, LlmModel, LlmProvider } from '@gloaming/shared/api/llm-config';
 import type { AiSettingKey } from '@gloaming/shared/api/llm-config-keys';
+import { getWireFamilyDefinition, getWireVariantLabel, isRuntimeImplemented } from '@gloaming/shared/llm/wire-registry';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,14 @@ type AiPurposePanelProps = {
   onSave: (key: AiSettingKey) => void;
 };
 
+function modelRuntimeReady(model: LlmModel, providers: LlmProvider[]): boolean {
+  const provider = providers.find((item) => item.id === model.providerId);
+  if (!provider?.isEnabled || !model.isEnabled) {
+    return false;
+  }
+  return isRuntimeImplemented(provider.apiFamily);
+}
+
 function resolveHealth(
   setting: LlmAppSettingView,
   models: LlmModel[],
@@ -51,7 +60,20 @@ function resolveHealth(
   if (!provider?.isEnabled) {
     return { label: '服务商已停用', tone: 'warn' };
   }
+  if (!isRuntimeImplemented(provider.apiFamily)) {
+    return { label: '运行时尚未支持', tone: 'warn' };
+  }
   return { label: '已配置', tone: 'ok' };
+}
+
+function modelOptionLabel(model: LlmModel, providers: LlmProvider[]): string {
+  const provider = providers.find((item) => item.id === model.providerId);
+  if (!provider) {
+    return model.label;
+  }
+  const familyLabel = getWireFamilyDefinition(provider.apiFamily).label;
+  const wireLabel = getWireVariantLabel(provider.apiFamily, model.wireVariant);
+  return `${model.label} · ${provider.name} · ${familyLabel} · ${wireLabel}`;
 }
 
 export function AiPurposePanel({
@@ -62,21 +84,15 @@ export function AiPurposePanel({
   onDraftChange,
   onSave,
 }: AiPurposePanelProps) {
-  const enabledModels = models
-    .filter((model) => {
-      if (!model.isEnabled) {
-        return false;
-      }
-      const provider = providers.find((item) => item.id === model.providerId);
-      return Boolean(provider?.isEnabled);
-    })
+  const bindableModels = models
+    .filter((model) => modelRuntimeReady(model, providers))
     .sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label));
 
   return (
     <section className="flex flex-col gap-4">
       <div>
         <h2 className="text-base font-medium text-foreground">用途默认模型</h2>
-        <p className="mt-1 text-sm text-muted-foreground">决定各业务能力实际调用哪一个已启用模型。</p>
+        <p className="mt-1 text-sm text-muted-foreground">仅可选择已启用且运行时已接入的模型。</p>
       </div>
 
       <ul className="overflow-hidden rounded-2xl border border-border bg-secondary/60">
@@ -90,12 +106,14 @@ export function AiPurposePanel({
           );
           const isDirty = draft !== (setting.modelId ?? '');
           const selectItems = (() => {
-            const byId = new Map(enabledModels.map((model) => [model.id, { value: model.id, label: model.label }]));
+            const byId = new Map(
+              bindableModels.map((model) => [model.id, { value: model.id, label: modelOptionLabel(model, providers) }]),
+            );
             if (draft && !byId.has(draft)) {
               const model = models.find((item) => item.id === draft);
               byId.set(draft, {
                 value: draft,
-                label: model?.label ?? setting.modelLabel ?? draft,
+                label: model ? modelOptionLabel(model, providers) : (setting.modelLabel ?? draft),
               });
             }
             return [...byId.values()];
@@ -121,6 +139,11 @@ export function AiPurposePanel({
                   >
                     {health.label}
                   </Badge>
+                  {!setting.runtimeReady && setting.modelId ? (
+                    <Badge variant="outline" className="text-xs font-normal">
+                      当前绑定不可运行
+                    </Badge>
+                  ) : null}
                 </div>
                 <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">{copy.description}</p>
               </div>
@@ -141,15 +164,15 @@ export function AiPurposePanel({
                     <SelectTrigger
                       id={`purpose-${setting.key}`}
                       className="h-10 min-w-0 flex-1 rounded-xl"
-                      disabled={enabledModels.length === 0 && !draft}
+                      disabled={bindableModels.length === 0 && !draft}
                     >
-                      <SelectValue placeholder={enabledModels.length === 0 ? '暂无可用模型' : '选择启用中的模型'} />
+                      <SelectValue placeholder={bindableModels.length === 0 ? '暂无可绑定模型' : '选择可运行模型'} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        {enabledModels.map((model) => (
+                        {bindableModels.map((model) => (
                           <SelectItem key={model.id} value={model.id}>
-                            {model.label}
+                            {modelOptionLabel(model, providers)}
                           </SelectItem>
                         ))}
                       </SelectGroup>
@@ -163,7 +186,7 @@ export function AiPurposePanel({
                     保存
                   </Button>
                 </div>
-                <FieldDescription>仅列出已启用服务商下的启用模型。</FieldDescription>
+                <FieldDescription>需服务商与模型均已启用，且 API 协议族运行时已接入。</FieldDescription>
               </Field>
             </li>
           );

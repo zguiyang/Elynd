@@ -1,12 +1,12 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 import type { LlmModel, LlmProvider, ProviderBalanceResult } from '@gloaming/shared/api/llm-config';
 import type { AiSettingKey } from '@gloaming/shared/api/llm-config-keys';
+import type { LlmApiFamily } from '@gloaming/shared/llm/wire-registry';
 
 import {
   AlertDialog,
@@ -18,8 +18,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs } from '@/components/ui/tabs';
+import { AdminSegmentedTabsList, AdminSegmentedTabsTrigger } from '@/features/admin/admin-segmented-tabs';
 import {
   adminLlmQueryKey,
   createLlmModel,
@@ -36,9 +37,9 @@ import {
   updateLlmModel,
   updateLlmProvider,
 } from '@/features/admin/ai-config-api';
-import { AiModelSheet, type ModelFormValues } from '@/features/admin/ai-model-sheet';
-import { AiProviderList, type ProviderTestResult } from '@/features/admin/ai-provider-list';
-import { AiProviderSheet, type ProviderFormValues } from '@/features/admin/ai-provider-sheet';
+import type { ModelFormValues } from '@/features/admin/ai-model-form';
+import type { ProviderFormValues } from '@/features/admin/ai-provider-form';
+import { AiProviderWorkspace, type ProviderTestResult } from '@/features/admin/ai-provider-workspace';
 import { AiPurposePanel } from '@/features/admin/ai-purpose-panel';
 
 type DeleteTarget = { kind: 'provider'; provider: LlmProvider } | { kind: 'model'; model: LlmModel } | null;
@@ -54,6 +55,7 @@ function parseOptionalNumber(raw: string): number | null {
 
 export function AiConfigPage() {
   const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<'purposes' | 'providers'>('purposes');
 
   const providersQuery = useQuery({
     queryKey: adminLlmQueryKey.providers(),
@@ -76,15 +78,7 @@ export function AiConfigPage() {
   const loadError = providersQuery.error ?? modelsQuery.error ?? settingsQuery.error;
 
   const [purposeDraft, setPurposeDraft] = useState<Partial<Record<AiSettingKey, string>>>({});
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-
-  const [isProviderSheetOpen, setIsProviderSheetOpen] = useState(false);
-  const [editingProvider, setEditingProvider] = useState<LlmProvider | null>(null);
-  const [isModelSheetOpen, setIsModelSheetOpen] = useState(false);
-  const [modelSheetProvider, setModelSheetProvider] = useState<LlmProvider | null>(null);
-  const [editingModel, setEditingModel] = useState<LlmModel | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
-
   const [testingProviderId, setTestingProviderId] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<ProviderTestResult | null>(null);
   const [balanceByProvider, setBalanceByProvider] = useState<Record<string, ProviderBalanceResult>>({});
@@ -94,23 +88,10 @@ export function AiConfigPage() {
     await queryClient.invalidateQueries({ queryKey: adminLlmQueryKey.all });
   }
 
-  const providerMutation = useMutation({
-    mutationFn: async (values: ProviderFormValues) => {
-      if (editingProvider) {
-        const apiKey = values.apiKey.trim();
-        return updateLlmProvider(editingProvider.id, {
-          name: values.name.trim(),
-          baseUrl: values.baseUrl.trim(),
-          proxyUrl: values.proxyUrl.trim() || null,
-          thinkingParam: values.thinkingParam.trim() || null,
-          balanceEndpoint: values.balanceEndpoint.trim() || null,
-          balanceAmountPath: values.balanceAmountPath.trim() || null,
-          balanceCurrencyPath: values.balanceCurrencyPath.trim() || null,
-          isEnabled: values.isEnabled,
-          ...(apiKey ? { apiKey } : {}),
-        });
-      }
-      return createLlmProvider({
+  const createProviderMutation = useMutation({
+    mutationFn: async ({ apiFamily, values }: { apiFamily: LlmApiFamily; values: ProviderFormValues }) =>
+      createLlmProvider({
+        apiFamily,
         name: values.name.trim(),
         baseUrl: values.baseUrl.trim(),
         apiKey: values.apiKey.trim(),
@@ -120,49 +101,52 @@ export function AiConfigPage() {
         balanceAmountPath: values.balanceAmountPath.trim() || null,
         balanceCurrencyPath: values.balanceCurrencyPath.trim() || null,
         isEnabled: values.isEnabled,
-      });
-    },
-    onSuccess: async (provider) => {
+      }),
+    onSuccess: async () => {
       await invalidateLlmQueries();
-      if (!editingProvider) {
-        setExpandedIds((prev) => new Set([...prev, provider.id]));
-      }
-      setIsProviderSheetOpen(false);
-      toast.success(editingProvider ? '已保存服务商' : '已添加服务商');
+      toast.success('已添加服务商');
     },
     onError: (error) => {
       toast.error(formatAdminLlmApiError(error));
     },
   });
 
-  const modelMutation = useMutation({
-    mutationFn: async (values: ModelFormValues) => {
-      if (!modelSheetProvider) {
-        throw new Error('缺少服务商上下文');
-      }
+  const updateProviderMutation = useMutation({
+    mutationFn: async ({ provider, values }: { provider: LlmProvider; values: ProviderFormValues }) => {
+      const apiKey = values.apiKey.trim();
+      return updateLlmProvider(provider.id, {
+        name: values.name.trim(),
+        baseUrl: values.baseUrl.trim(),
+        proxyUrl: values.proxyUrl.trim() || null,
+        thinkingParam: values.thinkingParam.trim() || null,
+        balanceEndpoint: values.balanceEndpoint.trim() || null,
+        balanceAmountPath: values.balanceAmountPath.trim() || null,
+        balanceCurrencyPath: values.balanceCurrencyPath.trim() || null,
+        isEnabled: values.isEnabled,
+        ...(apiKey ? { apiKey } : {}),
+      });
+    },
+    onSuccess: async () => {
+      await invalidateLlmQueries();
+      toast.success('已保存服务商');
+    },
+    onError: (error) => {
+      toast.error(formatAdminLlmApiError(error));
+    },
+  });
+
+  const createModelMutation = useMutation({
+    mutationFn: async ({ provider, values }: { provider: LlmProvider; values: ModelFormValues }) => {
       const temperature = parseOptionalNumber(values.temperature);
       const maxTokensRaw = parseOptionalNumber(values.maxTokens);
       const maxTokens = maxTokensRaw != null ? Math.trunc(maxTokensRaw) : null;
       const contextLength = parseOptionalNumber(values.contextLength);
       const sortOrder = Math.trunc(parseOptionalNumber(values.sortOrder) ?? 0);
-
-      if (editingModel) {
-        return updateLlmModel(editingModel.id, {
-          modelId: values.modelId.trim(),
-          label: values.label.trim(),
-          protocol: values.protocol,
-          temperature,
-          maxTokens,
-          contextLength,
-          isEnabled: values.isEnabled,
-          sortOrder,
-        });
-      }
       return createLlmModel({
-        providerId: modelSheetProvider.id,
+        providerId: provider.id,
         modelId: values.modelId.trim(),
         label: values.label.trim(),
-        protocol: values.protocol,
+        wireVariant: values.wireVariant,
         temperature,
         maxTokens,
         contextLength,
@@ -172,8 +156,34 @@ export function AiConfigPage() {
     },
     onSuccess: async () => {
       await invalidateLlmQueries();
-      setIsModelSheetOpen(false);
-      toast.success(editingModel ? '已保存模型' : '已添加模型');
+      toast.success('已添加模型');
+    },
+    onError: (error) => {
+      toast.error(formatAdminLlmApiError(error));
+    },
+  });
+
+  const updateModelMutation = useMutation({
+    mutationFn: async ({ model, values }: { model: LlmModel; values: ModelFormValues }) => {
+      const temperature = parseOptionalNumber(values.temperature);
+      const maxTokensRaw = parseOptionalNumber(values.maxTokens);
+      const maxTokens = maxTokensRaw != null ? Math.trunc(maxTokensRaw) : null;
+      const contextLength = parseOptionalNumber(values.contextLength);
+      const sortOrder = Math.trunc(parseOptionalNumber(values.sortOrder) ?? 0);
+      return updateLlmModel(model.id, {
+        modelId: values.modelId.trim(),
+        label: values.label.trim(),
+        wireVariant: values.wireVariant,
+        temperature,
+        maxTokens,
+        contextLength,
+        isEnabled: values.isEnabled,
+        sortOrder,
+      });
+    },
+    onSuccess: async () => {
+      await invalidateLlmQueries();
+      toast.success('已保存模型');
     },
     onError: (error) => {
       toast.error(formatAdminLlmApiError(error));
@@ -274,54 +284,34 @@ export function AiConfigPage() {
     },
   });
 
-  function openCreateProvider() {
-    setEditingProvider(null);
-    setIsProviderSheetOpen(true);
-  }
-
-  function openEditProvider(provider: LlmProvider) {
-    setEditingProvider(provider);
-    setIsProviderSheetOpen(true);
-  }
-
-  function openCreateModel(provider: LlmProvider) {
-    setModelSheetProvider(provider);
-    setEditingModel(null);
-    setIsModelSheetOpen(true);
-  }
-
-  function openEditModel(model: LlmModel) {
-    const provider = providers.find((item) => item.id === model.providerId) ?? null;
-    setModelSheetProvider(provider);
-    setEditingModel(model);
-    setIsModelSheetOpen(true);
-  }
-
   return (
     <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700 mx-auto max-w-6xl">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="font-heading text-3xl font-bold tracking-tight">AI 配置</h1>
-          <p className="mt-3 text-lg text-muted-foreground">配置 OpenAI 兼容服务商与模型，并指定阅读助手默认调用。</p>
-        </div>
-        <Button className="h-10 shrink-0 rounded-xl px-6 hover:bg-brand-deep" onClick={openCreateProvider}>
-          <Plus data-icon="inline-start" />
-          添加服务商
-        </Button>
+      <div className="min-w-0">
+        <h1 className="font-heading text-3xl font-bold tracking-tight">AI 配置</h1>
+        <p className="mt-3 text-lg text-muted-foreground">系统级 AI 服务商、模型与用途绑定；仅管理员可配置。</p>
       </div>
 
-      <div className="mt-10 flex flex-col gap-8">
-        {isPending ? (
-          <>
-            <Skeleton className="h-40 w-full rounded-2xl bg-muted/70" />
-            <Skeleton className="h-72 w-full rounded-2xl bg-muted/70" />
-          </>
-        ) : loadError ? (
-          <p className="rounded-2xl border border-border bg-secondary/60 px-5 py-8 text-sm text-destructive md:px-6">
-            {formatAdminLlmApiError(loadError)}
-          </p>
-        ) : (
-          <>
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as 'purposes' | 'providers')}
+        className="mt-8"
+      >
+        <AdminSegmentedTabsList>
+          <AdminSegmentedTabsTrigger value="purposes">用途绑定</AdminSegmentedTabsTrigger>
+          <AdminSegmentedTabsTrigger value="providers">服务商与模型</AdminSegmentedTabsTrigger>
+        </AdminSegmentedTabsList>
+
+        <div className="mt-8">
+          {isPending ? (
+            <>
+              <Skeleton className="h-40 w-full rounded-2xl bg-muted/70" />
+              <Skeleton className="mt-6 h-72 w-full rounded-2xl bg-muted/70" />
+            </>
+          ) : loadError ? (
+            <p className="rounded-2xl border border-border bg-secondary/60 px-5 py-8 text-sm text-destructive md:px-6">
+              {formatAdminLlmApiError(loadError)}
+            </p>
+          ) : activeTab === 'purposes' ? (
             <AiPurposePanel
               settings={settings}
               providers={providers}
@@ -335,59 +325,36 @@ export function AiConfigPage() {
               }
               onSave={(key) => purposeMutation.mutate(key)}
             />
-
-            <section className="flex flex-col gap-4">
-              <div>
-                <h2 className="text-base font-medium text-foreground">服务商与模型</h2>
-                <p className="mt-1 text-sm text-muted-foreground">展开服务商查看模型；测试将请求上游做一次连通探测。</p>
-              </div>
-              <AiProviderList
-                providers={providers}
-                models={models}
-                expandedIds={expandedIds}
-                testingProviderId={testingProviderId}
-                testResult={testResult}
-                balanceByProvider={balanceByProvider}
-                queryingBalanceId={queryingBalanceId}
-                onToggleExpand={(providerId) => {
-                  setExpandedIds((prev) => {
-                    const next = new Set(prev);
-                    if (next.has(providerId)) {
-                      next.delete(providerId);
-                    } else {
-                      next.add(providerId);
-                    }
-                    return next;
-                  });
-                }}
-                onAddProvider={openCreateProvider}
-                onEditProvider={openEditProvider}
-                onDeleteProvider={(provider) => setDeleteTarget({ kind: 'provider', provider })}
-                onTestProvider={(provider) => testMutation.mutate(provider)}
-                onQueryBalance={(provider) => balanceMutation.mutate(provider)}
-                onAddModel={openCreateModel}
-                onEditModel={openEditModel}
-                onDeleteModel={(model) => setDeleteTarget({ kind: 'model', model })}
-              />
-            </section>
-          </>
-        )}
-      </div>
-
-      <AiProviderSheet
-        open={isProviderSheetOpen}
-        provider={editingProvider}
-        onOpenChange={setIsProviderSheetOpen}
-        onSubmit={(values) => providerMutation.mutate(values)}
-      />
-
-      <AiModelSheet
-        open={isModelSheetOpen}
-        provider={modelSheetProvider}
-        model={editingModel}
-        onOpenChange={setIsModelSheetOpen}
-        onSubmit={(values) => modelMutation.mutate(values)}
-      />
+          ) : (
+            <AiProviderWorkspace
+              providers={providers}
+              models={models}
+              onCreateProvider={async (apiFamily, values) => {
+                await createProviderMutation.mutateAsync({ apiFamily, values });
+              }}
+              onUpdateProvider={async (provider, values) => {
+                await updateProviderMutation.mutateAsync({ provider, values });
+              }}
+              onDeleteProvider={(provider) => setDeleteTarget({ kind: 'provider', provider })}
+              onCreateModel={async (provider, values) => {
+                await createModelMutation.mutateAsync({ provider, values });
+              }}
+              onUpdateModel={async (model, values) => {
+                await updateModelMutation.mutateAsync({ model, values });
+              }}
+              onDeleteModel={(model) => setDeleteTarget({ kind: 'model', model })}
+              onTestProvider={(provider) => testMutation.mutate(provider)}
+              onQueryBalance={(provider) => balanceMutation.mutate(provider)}
+              testingProviderId={testingProviderId}
+              testResult={testResult}
+              balanceByProvider={balanceByProvider}
+              queryingBalanceId={queryingBalanceId}
+              isProviderSaving={createProviderMutation.isPending || updateProviderMutation.isPending}
+              isModelSaving={createModelMutation.isPending || updateModelMutation.isPending}
+            />
+          )}
+        </div>
+      </Tabs>
 
       <AlertDialog open={deleteTarget != null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>

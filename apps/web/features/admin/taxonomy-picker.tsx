@@ -53,6 +53,7 @@ export function TaxonomyMultiPicker({ kind, value, onChange, placeholder, disabl
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger
         disabled={disabled}
+        nativeButton={false}
         render={
           <div
             role="combobox"

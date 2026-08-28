@@ -14,6 +14,7 @@ import { db } from '@/db';
 import { rootLogger } from '@/lib/logger';
 import { normalizeTag } from '@/lib/text';
 import { cleanBookTitle, cleanDescription, joinAuthors } from '@/modules/epub-ingest/metadata';
+import { cleanSubjectsToProductTags } from '@/modules/metadata-fill/subjects';
 
 const fillLogger = rootLogger.child({ module: 'MetadataFill' });
 
@@ -88,7 +89,8 @@ export async function fillWorkMetadata(workId: string): Promise<void> {
   const description = work.description || cleanDesc;
   const language = parsed.language ?? work.language;
 
-  const subjects = parsed.subjects ?? [];
+  // Raw subjects stay in originMeta.parsed; only bookstore-style names become tags.
+  const productTags = cleanSubjectsToProductTags(parsed.subjects ?? []);
 
   await db.transaction(async (tx) => {
     const patch: Partial<typeof readingWorkTable.$inferInsert> = {
@@ -112,15 +114,15 @@ export async function fillWorkMetadata(workId: string): Promise<void> {
       }
     }
 
-    // Tags: subjects → extracted associations (re-insert idempotent).
+    // Tags: cleaned subjects → extracted associations (re-insert idempotent).
     await tx
       .delete(readingWorkTagTable)
       .where(and(eq(readingWorkTagTable.workId, workId), eq(readingWorkTagTable.provenance, 'extracted')));
-    for (const subject of subjects) {
+    for (const name of productTags) {
       const [row] = await tx
         .insert(tagTable)
-        .values({ id: randomUUID(), name: subject, normalized: normalizeTag(subject), origin: 'extracted' })
-        .onConflictDoUpdate({ target: tagTable.normalized, set: { name: subject } })
+        .values({ id: randomUUID(), name, normalized: normalizeTag(name), origin: 'extracted' })
+        .onConflictDoUpdate({ target: tagTable.normalized, set: { name } })
         .returning();
       await tx
         .insert(readingWorkTagTable)
@@ -146,5 +148,5 @@ export async function fillWorkMetadata(workId: string): Promise<void> {
     await tx.update(readingWorkTable).set(patch).where(eq(readingWorkTable.id, workId));
   });
 
-  fillLogger.info({ workId, title, tags: subjects.length, sourceRaw: parsed.sourceRaw }, 'Metadata fill complete');
+  fillLogger.info({ workId, title, tags: productTags.length, sourceRaw: parsed.sourceRaw }, 'Metadata fill complete');
 }

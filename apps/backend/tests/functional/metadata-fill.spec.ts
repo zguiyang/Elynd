@@ -162,6 +162,30 @@ describe('metadata-fill rule layer (extracted) + updateWork (manual)', () => {
     expect(sourceRows[0]!.provenance).toBe('extracted');
   });
 
+  it('cleans LCSH subjects into short product tags (never stores the catalog string)', async () => {
+    const workId = await uploadAndFill(
+      await buildEpubBytes({
+        title: 'Aesop LCSH Book',
+        subjects: ['Fables, Greek -- Translations into English'],
+        chapters: [
+          { href: 'chapter-1.xhtml', tocLabel: 'Chapter 1', content: '<html><body><p>Body.</p></body></html>' },
+        ],
+      }),
+    );
+
+    const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
+    const parsed = work!.originMeta.parsed as { subjects?: string[] };
+    expect(parsed.subjects).toEqual(['Fables, Greek -- Translations into English']);
+
+    const tagNames = await db
+      .select({ name: tagTable.name })
+      .from(readingWorkTagTable)
+      .innerJoin(tagTable, eq(readingWorkTagTable.tagId, tagTable.id))
+      .where(eq(readingWorkTagTable.workId, workId))
+      .orderBy(tagTable.name);
+    expect(tagNames.map((row) => row.name)).toEqual(['Fables', 'Greek']);
+  });
+
   it('is idempotent: re-running fill keeps exactly one extracted association', async () => {
     const workId = await uploadAndFill(
       await buildEpubBytes({

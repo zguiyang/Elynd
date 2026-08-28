@@ -9,6 +9,7 @@ tmp
 .env
 .env.*
 !.env.example
+!.env.test.example
 
 # Local Docker Compose (copy from docker-compose.yaml.example)
 docker-compose.yaml

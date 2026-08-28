@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'drizzle-kit';
 
 const root = dirname(fileURLToPath(import.meta.url));
-config({ path: resolve(root, '../../apps/backend/.env'), override: true });
+// Shell-exported DATABASE_URL (e.g. db:migrate:test) must not be overwritten by .env.
+config({ path: resolve(root, '../../apps/backend/.env'), override: false });
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {

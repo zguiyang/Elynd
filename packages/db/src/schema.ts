@@ -344,9 +344,11 @@ export const readingStateRelations = relations(readingState, ({ one }) => ({
   }),
 }));
 
-/** OpenAI-compatible LLM gateway credentials (API key encrypted at rest). */
+/** LLM gateway credentials (API key encrypted at rest); one row per API family instance. */
 export const llmProvider = pgTable('llm_provider', {
   id: text('id').primaryKey(),
+  /** Wire API family for this provider; immutable after create. See @gloaming/shared/llm/wire-registry. */
+  apiFamily: text('api_family').notNull().default('openai'),
   name: text('name').notNull(),
   baseUrl: text('base_url').notNull(),
   apiKeyCiphertext: text('api_key_ciphertext').notNull(),
@@ -368,9 +370,6 @@ export const llmProvider = pgTable('llm_provider', {
     .notNull(),
 });
 
-/** Wire protocol for a callable model: OpenAI Chat Completions or Responses API. */
-export type LlmModelProtocol = 'chat-completions' | 'responses';
-
 /** Callable model under a provider (upstream model id + tuning). */
 export const llmModel = pgTable(
   'llm_model',
@@ -381,8 +380,8 @@ export const llmModel = pgTable(
       .references(() => llmProvider.id, { onDelete: 'cascade' }),
     modelId: text('model_id').notNull(),
     label: text('label').notNull(),
-    /** Wire protocol for this model: OpenAI Chat Completions or Responses API. */
-    protocol: text('protocol').$type<LlmModelProtocol>().notNull().default('chat-completions'),
+    /** Family-scoped wire variant (see wire-registry SSOT). */
+    wireVariant: text('wire_variant').notNull().default('chat-completions'),
     /** Model context window in tokens (informational; from provider model list when available). */
     contextLength: integer('context_length'),
     temperature: doublePrecision('temperature'),

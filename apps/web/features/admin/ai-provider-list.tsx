@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Spinner } from '@/components/ui/spinner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { llmModelProtocolLabel } from '@/features/admin/llm-model-protocol';
 import { cn } from '@/lib/utils';
 
 export type ProviderTestResult = {
@@ -241,11 +242,12 @@ export function AiProviderList({
                     <p className="py-6 text-center text-sm text-muted-foreground">该服务商下还没有模型。</p>
                   ) : (
                     <div className="overflow-x-auto rounded-2xl border border-border bg-card">
-                      <Table className="min-w-[36rem]">
+                      <Table className="min-w-[42rem]">
                         <TableHeader>
                           <TableRow className="hover:bg-transparent">
                             <TableHead className="h-10 bg-surface-container-low px-4">显示名</TableHead>
                             <TableHead className="h-10 bg-surface-container-low px-4">Model ID</TableHead>
+                            <TableHead className="h-10 bg-surface-container-low px-4">API 协议</TableHead>
                             <TableHead className="h-10 bg-surface-container-low px-4">温度</TableHead>
                             <TableHead className="h-10 bg-surface-container-low px-4">Max tokens</TableHead>
                             <TableHead className="h-10 bg-surface-container-low px-4">状态</TableHead>
@@ -258,6 +260,11 @@ export function AiProviderList({
                               <TableCell className="px-4 py-3 font-medium">{model.label}</TableCell>
                               <TableCell className="px-4 py-3 font-mono text-xs text-muted-foreground">
                                 {model.modelId}
+                              </TableCell>
+                              <TableCell className="px-4 py-3">
+                                <Badge variant="outline" className="font-normal">
+                                  {llmModelProtocolLabel(model.protocol)}
+                                </Badge>
                               </TableCell>
                               <TableCell className="px-4 py-3 tabular-nums text-muted-foreground">
                                 {model.temperature ?? '-'}

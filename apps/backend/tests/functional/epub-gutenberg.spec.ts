@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -20,6 +20,7 @@ import { planChapters } from '@/modules/epub-ingest/chapters';
 import { cleanXhtml } from '@/modules/epub-ingest/clean';
 import { parseEpub } from '@/modules/epub-ingest/epub';
 import { resetObjectStoreCache, setObjectStoreForTests } from '@/modules/oss';
+import { hashFileContent } from '@/modules/uploads/service';
 
 import { buildEpubBytes } from '../helpers/epub-builder';
 import { createMemoryObjectStore } from '../helpers/memory-oss';
@@ -77,7 +78,8 @@ async function createAdminSession() {
   return cookieHeader(login);
 }
 
-async function uploadEpub(cookie: string, bytes: Buffer, fileName = 'book.epub') {
+async function uploadEpub(cookie: string, bytes: Buffer, contentHashes: string[], fileName = 'book.epub') {
+  contentHashes.push(hashFileContent(bytes));
   const form = new FormData();
   form.append('file', new File([new Blob([bytes])], fileName, { type: 'application/epub+zip' }));
   return app.request('/api/admin/works/epub', {
@@ -154,6 +156,7 @@ describe('Gutenberg EPUB regression (fixtures/pg11339.epub)', () => {
 describe('EPUB ingest pipeline with real Gutenberg book (integration)', () => {
   const memory = createMemoryObjectStore();
   const createdWorkIds: string[] = [];
+  const createdContentHashes: string[] = [];
   let adminCookie = '';
 
   beforeAll(async () => {
@@ -166,12 +169,14 @@ describe('EPUB ingest pipeline with real Gutenberg book (integration)', () => {
     for (const workId of createdWorkIds) {
       await db.delete(readingWorkTable).where(eq(readingWorkTable.id, workId));
     }
-    await db.delete(uploadedObjectTable);
+    if (createdContentHashes.length > 0) {
+      await db.delete(uploadedObjectTable).where(inArray(uploadedObjectTable.contentHash, createdContentHashes));
+    }
     resetObjectStoreCache();
   });
 
   it('stores clean parts, nav metadata and no cover chapter', async () => {
-    const response = await uploadEpub(adminCookie, FIXTURE_BYTES, 'Aesop Fables.epub');
+    const response = await uploadEpub(adminCookie, FIXTURE_BYTES, createdContentHashes, 'Aesop Fables.epub');
     expect(response.status).toBe(201);
     const created = (await response.json()) as { id: string };
     createdWorkIds.push(created.id);
@@ -207,6 +212,7 @@ describe('EPUB ingest pipeline with real Gutenberg book (integration)', () => {
 describe('EPUB cleaning & chaptering fixes (builder fixtures)', () => {
   const memory = createMemoryObjectStore();
   const createdWorkIds: string[] = [];
+  const createdContentHashes: string[] = [];
   let adminCookie = '';
 
   beforeAll(async () => {
@@ -219,12 +225,14 @@ describe('EPUB cleaning & chaptering fixes (builder fixtures)', () => {
     for (const workId of createdWorkIds) {
       await db.delete(readingWorkTable).where(eq(readingWorkTable.id, workId));
     }
-    await db.delete(uploadedObjectTable);
+    if (createdContentHashes.length > 0) {
+      await db.delete(uploadedObjectTable).where(inArray(uploadedObjectTable.contentHash, createdContentHashes));
+    }
     resetObjectStoreCache();
   });
 
   async function runEpub(bytes: Buffer): Promise<string> {
-    const response = await uploadEpub(adminCookie, bytes);
+    const response = await uploadEpub(adminCookie, bytes, createdContentHashes);
     expect(response.status).toBe(201);
     const created = (await response.json()) as { id: string };
     createdWorkIds.push(created.id);

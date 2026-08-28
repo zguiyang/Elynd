@@ -8,7 +8,6 @@ import {
   readingWorkTag as readingWorkTagTable,
   source as sourceTable,
   tag as tagTable,
-  uploadedObject as uploadedObjectTable,
   user as userTable,
 } from '@gloaming/db';
 import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
@@ -74,13 +73,20 @@ describe('taxonomy dimensions management', () => {
   });
 
   afterAll(async () => {
-    await db.delete(readingWorkTagTable);
-    await db.delete(readingWorkCategoryTable);
-    await db.delete(readingWorkTable).where(inArray(readingWorkTable.id, workIds));
-    await db.delete(tagTable).where(inArray(tagTable.id, tagIds));
-    await db.delete(categoryTable).where(inArray(categoryTable.id, categoryIds));
-    await db.delete(sourceTable).where(inArray(sourceTable.id, sourceIds));
-    await db.delete(uploadedObjectTable);
+    if (workIds.length > 0) {
+      await db.delete(readingWorkTagTable).where(inArray(readingWorkTagTable.workId, workIds));
+      await db.delete(readingWorkCategoryTable).where(inArray(readingWorkCategoryTable.workId, workIds));
+      await db.delete(readingWorkTable).where(inArray(readingWorkTable.id, workIds));
+    }
+    if (tagIds.length > 0) {
+      await db.delete(tagTable).where(inArray(tagTable.id, tagIds));
+    }
+    if (categoryIds.length > 0) {
+      await db.delete(categoryTable).where(inArray(categoryTable.id, categoryIds));
+    }
+    if (sourceIds.length > 0) {
+      await db.delete(sourceTable).where(inArray(sourceTable.id, sourceIds));
+    }
   });
 
   async function createWork(title: string): Promise<string> {

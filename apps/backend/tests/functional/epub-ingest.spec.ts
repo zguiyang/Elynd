@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -15,6 +15,7 @@ import { db } from '@/db';
 import { processContentWork } from '@/modules/content-parser';
 import { fillWorkMetadata } from '@/modules/metadata-fill/service';
 import { resetObjectStoreCache, setObjectStoreForTests } from '@/modules/oss';
+import { hashFileContent } from '@/modules/uploads/service';
 
 import { buildEpubBytes, buildSampleEpubBytes } from '../helpers/epub-builder';
 import { createMemoryObjectStore } from '../helpers/memory-oss';
@@ -74,7 +75,8 @@ async function createAdminSession() {
   return cookieHeader(login);
 }
 
-async function uploadEpub(cookie: string, bytes: Buffer) {
+async function uploadEpub(cookie: string, bytes: Buffer, contentHashes: string[]) {
+  contentHashes.push(hashFileContent(bytes));
   const form = new FormData();
   form.append('file', new File([new Blob([bytes])], 'book.epub', { type: 'application/epub+zip' }));
   return app.request('/api/admin/works/epub', {
@@ -87,6 +89,7 @@ async function uploadEpub(cookie: string, bytes: Buffer) {
 describe('EPUB ingest pipeline', () => {
   const memory = createMemoryObjectStore();
   const createdWorkIds: string[] = [];
+  const createdContentHashes: string[] = [];
   let adminCookie = '';
 
   beforeAll(async () => {
@@ -99,13 +102,15 @@ describe('EPUB ingest pipeline', () => {
     for (const workId of createdWorkIds) {
       await db.delete(readingWorkTable).where(eq(readingWorkTable.id, workId));
     }
-    await db.delete(uploadedObjectTable);
+    if (createdContentHashes.length > 0) {
+      await db.delete(uploadedObjectTable).where(inArray(uploadedObjectTable.contentHash, createdContentHashes));
+    }
     resetObjectStoreCache();
   });
 
   it('parses a sample EPUB into chapters, metadata, cover and images', async () => {
     const bytes = await buildSampleEpubBytes();
-    const response = await uploadEpub(adminCookie, bytes);
+    const response = await uploadEpub(adminCookie, bytes, createdContentHashes);
     expect(response.status).toBe(201);
     const created = (await response.json()) as { id: string };
     createdWorkIds.push(created.id);
@@ -158,7 +163,7 @@ describe('EPUB ingest pipeline', () => {
         },
       ],
     });
-    const response = await uploadEpub(adminCookie, bytes);
+    const response = await uploadEpub(adminCookie, bytes, createdContentHashes);
     expect(response.status).toBe(201);
     const created = (await response.json()) as { id: string };
     createdWorkIds.push(created.id);
@@ -178,7 +183,7 @@ describe('EPUB ingest pipeline', () => {
     const zip = new (await import('jszip')).default();
     zip.file('random.txt', 'not an epub');
     const badBytes = await zip.generateAsync({ type: 'nodebuffer' });
-    const response = await uploadEpub(adminCookie, badBytes);
+    const response = await uploadEpub(adminCookie, badBytes, createdContentHashes);
     expect(response.status).toBe(201);
     const created = (await response.json()) as { id: string };
     createdWorkIds.push(created.id);
@@ -194,6 +199,7 @@ describe('EPUB ingest pipeline', () => {
 describe('POST /api/admin/works/:id/workflow/retry', () => {
   const memory = createMemoryObjectStore();
   const createdWorkIds: string[] = [];
+  const createdContentHashes: string[] = [];
   let adminCookie = '';
 
   beforeAll(async () => {
@@ -206,7 +212,9 @@ describe('POST /api/admin/works/:id/workflow/retry', () => {
     for (const workId of createdWorkIds) {
       await db.delete(readingWorkTable).where(eq(readingWorkTable.id, workId));
     }
-    await db.delete(uploadedObjectTable);
+    if (createdContentHashes.length > 0) {
+      await db.delete(uploadedObjectTable).where(inArray(uploadedObjectTable.contentHash, createdContentHashes));
+    }
     resetObjectStoreCache();
   });
 
@@ -219,7 +227,7 @@ describe('POST /api/admin/works/:id/workflow/retry', () => {
   }
 
   async function uploadAndRun(): Promise<string> {
-    const response = await uploadEpub(adminCookie, await buildSampleEpubBytes());
+    const response = await uploadEpub(adminCookie, await buildSampleEpubBytes(), createdContentHashes);
     expect(response.status).toBe(201);
     const created = (await response.json()) as { id: string };
     createdWorkIds.push(created.id);
@@ -262,7 +270,7 @@ describe('POST /api/admin/works/:id/workflow/retry', () => {
   });
 
   it('refuses to retry while processing', async () => {
-    const response = await uploadEpub(adminCookie, await buildSampleEpubBytes());
+    const response = await uploadEpub(adminCookie, await buildSampleEpubBytes(), createdContentHashes);
     expect(response.status).toBe(201);
     const created = (await response.json()) as { id: string };
     createdWorkIds.push(created.id);

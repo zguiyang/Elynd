@@ -18,6 +18,7 @@ import { db } from '@/db';
 import { processContentWork } from '@/modules/content-parser';
 import { fillWorkMetadata } from '@/modules/metadata-fill/service';
 import { resetObjectStoreCache, setObjectStoreForTests } from '@/modules/oss';
+import { hashFileContent } from '@/modules/uploads/service';
 
 import { buildEpubBytes } from '../helpers/epub-builder';
 import { createMemoryObjectStore } from '../helpers/memory-oss';
@@ -40,6 +41,8 @@ function cookieHeader(response: Response): string {
 describe('metadata-fill rule layer (extracted) + updateWork (manual)', () => {
   const memory = createMemoryObjectStore();
   const createdWorkIds: string[] = [];
+  const createdContentHashes: string[] = [];
+  const createdTagIds: string[] = [];
   let adminCookie = '';
   const testSourceId = 'src-standard-ebooks';
 
@@ -62,11 +65,14 @@ describe('metadata-fill rule layer (extracted) + updateWork (manual)', () => {
     });
     adminCookie = cookieHeader(login);
 
-    await db.insert(sourceTable).values({
-      id: testSourceId,
-      name: 'Standard Ebooks',
-      matchRule: 'standardebooks.org',
-    });
+    await db
+      .insert(sourceTable)
+      .values({
+        id: testSourceId,
+        name: 'Standard Ebooks',
+        matchRule: 'standardebooks.org',
+      })
+      .onConflictDoNothing();
   });
 
   afterAll(async () => {
@@ -74,11 +80,17 @@ describe('metadata-fill rule layer (extracted) + updateWork (manual)', () => {
       await db.delete(readingWorkTable).where(eq(readingWorkTable.id, workId));
     }
     await db.delete(sourceTable).where(eq(sourceTable.id, testSourceId));
-    await db.delete(uploadedObjectTable);
+    if (createdContentHashes.length > 0) {
+      await db.delete(uploadedObjectTable).where(inArray(uploadedObjectTable.contentHash, createdContentHashes));
+    }
+    if (createdTagIds.length > 0) {
+      await db.delete(tagTable).where(inArray(tagTable.id, createdTagIds));
+    }
     resetObjectStoreCache();
   });
 
   async function uploadAndFill(bytes: Buffer): Promise<string> {
+    createdContentHashes.push(hashFileContent(bytes));
     const form = new FormData();
     form.append('file', new File([new Blob([bytes])], 'book.epub', { type: 'application/epub+zip' }));
     const response = await app.request('/api/admin/works/epub', {
@@ -226,6 +238,7 @@ describe('metadata-fill rule layer (extracted) + updateWork (manual)', () => {
       .insert(tagTable)
       .values({ id: 'tag-ai-provenance', name: 'AI Tag', normalized: 'aitag' })
       .onConflictDoNothing();
+    createdTagIds.push('tag-ai-provenance');
     const [aiRow] = await db.select({ id: tagTable.id }).from(tagTable).where(eq(tagTable.name, 'AI Tag'));
     await db.insert(readingWorkTagTable).values({ workId, tagId: aiRow!.id, provenance: 'ai' }).onConflictDoNothing();
 

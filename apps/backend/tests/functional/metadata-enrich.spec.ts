@@ -23,6 +23,7 @@ import { enrichWorkMetadata } from '@/modules/metadata-enrich/service';
 import { listCategoriesTool, listExistingTagsTool } from '@/modules/metadata-enrich/tools';
 import { fillWorkMetadata } from '@/modules/metadata-fill/service';
 import { resetObjectStoreCache, setObjectStoreForTests } from '@/modules/oss';
+import { hashFileContent } from '@/modules/uploads/service';
 
 import { buildEpubBytes } from '../helpers/epub-builder';
 import { createMemoryObjectStore } from '../helpers/memory-oss';
@@ -53,6 +54,8 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
   const memory = createMemoryObjectStore();
   const createdWorkIds: string[] = [];
   const createdCategoryIds: string[] = [];
+  const createdContentHashes: string[] = [];
+  const createdTagIds: string[] = [];
   let adminCookie = '';
 
   /** Categories are no longer seeded (0020) — create on demand for fixtures. */
@@ -112,7 +115,12 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
       await db.delete(readingWorkTable).where(eq(readingWorkTable.id, workId));
     }
     await db.delete(categoryTable).where(inArray(categoryTable.id, createdCategoryIds));
-    await db.delete(uploadedObjectTable);
+    if (createdContentHashes.length > 0) {
+      await db.delete(uploadedObjectTable).where(inArray(uploadedObjectTable.contentHash, createdContentHashes));
+    }
+    if (createdTagIds.length > 0) {
+      await db.delete(tagTable).where(inArray(tagTable.id, createdTagIds));
+    }
     resetObjectStoreCache();
   });
 
@@ -122,6 +130,7 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
     subjects?: string[];
   }): Promise<string> {
     const bytes = await buildEpubBytes({ title: input.title, chapters: [chapter], ...input });
+    createdContentHashes.push(hashFileContent(bytes));
     const form = new FormData();
     form.append('file', new File([new Blob([bytes])], 'book.epub', { type: 'application/epub+zip' }));
     const response = await app.request('/api/admin/works/epub', {
@@ -224,6 +233,7 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
       .insert(tagTable)
       .values({ id: 'tag-reuse-fixture', name: 'Reuse Tag', normalized: 'reusetag', origin: 'manual' })
       .onConflictDoNothing();
+    createdTagIds.push('tag-reuse-fixture');
     const categoryId = await ensureCategory('Reuse Category');
 
     invokeAiMock.mockResolvedValueOnce({

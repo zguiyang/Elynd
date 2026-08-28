@@ -229,13 +229,13 @@ export function AiProviderForm({ apiFamily, provider, formId, onSubmit, onCancel
               <Input
                 className="font-mono text-sm"
                 value={values.balanceAmountPath}
-                placeholder="data.balance"
+                placeholder="balance 或 data.balance"
                 onChange={(e) => setValues((p) => ({ ...p, balanceAmountPath: e.target.value }))}
               />
               <Input
                 className="font-mono text-sm"
                 value={values.balanceCurrencyPath}
-                placeholder="data.currency"
+                placeholder="currency 或 data.currency"
                 onChange={(e) => setValues((p) => ({ ...p, balanceCurrencyPath: e.target.value }))}
               />
             </div>

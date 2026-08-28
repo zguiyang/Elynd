@@ -115,7 +115,7 @@ export const accountRelations = relations(account, ({ one }) => ({
 /** Provenance of a work-dimension association (rules / AI / manual). */
 export type WorkMetadataProvenance = 'extracted' | 'ai' | 'manual';
 
-/** Per-field provenance snapshot for admin display (jsonb mirror of association rows). */
+/** Runtime-derived admin API projection — not persisted on reading_work. */
 export type WorkMetadataProvenanceMap = {
   description?: WorkMetadataProvenance;
   tags?: WorkMetadataProvenance;
@@ -136,9 +136,8 @@ export const readingWork = pgTable(
     ownerUserId: text('owner_user_id').references(() => user.id, { onDelete: 'set null' }),
     originKind: text('origin_kind').notNull().default('admin_text'),
     originMeta: jsonb('origin_meta').$type<Record<string, unknown>>().notNull().default({}),
-    tags: jsonb('tags').$type<string[]>().notNull().default([]),
     sourceNote: text('source_note').notNull().default(''),
-    metadataProvenance: jsonb('metadata_provenance').$type<WorkMetadataProvenanceMap>().notNull().default({}),
+    descriptionProvenance: text('description_provenance').$type<WorkMetadataProvenance | null>(),
     coverAssetId: text('cover_asset_id'),
     publishedAt: timestamp('published_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),

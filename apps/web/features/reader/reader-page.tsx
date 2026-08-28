@@ -257,7 +257,7 @@ export function ReaderPage({ workId }: ReaderPageProps) {
     setAudioStatus('loading');
     try {
       const track = await getReaderAudioTrack(session.partId, role);
-      const src = `data:${track.mimeType};base64,${track.audioBase64}`;
+      const src = track.audioUrl;
       audioRef.current?.pause();
       const audio = new Audio(src);
       audioRef.current = audio;

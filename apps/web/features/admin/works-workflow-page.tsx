@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { ADMIN_ROUTES } from '@/constants';
 import { MetadataReviewPanel } from '@/features/admin/metadata-review-panel';
+import { WorkAudioPanel } from '@/features/admin/work-audio-panel';
 import {
   checkEpubWorkReuse,
   deleteAdminWork,
@@ -58,12 +59,6 @@ const STEP_LABEL: Record<'parse' | 'metadata' | 'tts', string> = {
   parse: '内容解析',
   metadata: '原数据完善',
   tts: '音频生成',
-};
-
-const AUDIO_STATE_LABEL: Record<'missing' | 'fresh' | 'stale', string> = {
-  missing: '尚未生成章节音频',
-  fresh: '首章音频已就绪',
-  stale: '内容已更新，音频可能过期',
 };
 
 function formatFileSize(bytes: number): string {
@@ -617,17 +612,10 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
           </h2>
           {!isEpub ? (
             <p className="mt-4 text-sm text-muted-foreground">文本作品不参与音频流程。</p>
-          ) : work.status === 'tts' ? (
-            <div className="mt-4 flex items-center gap-3 text-sm text-muted-foreground">
-              <Spinner className="size-4 text-brand" />
-              正在生成章节音频…
-            </div>
+          ) : work.parts.length === 0 ? (
+            <p className="mt-4 text-sm text-muted-foreground">等待内容解析完成后再生成音频。</p>
           ) : (
-            <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-              <span>{AUDIO_STATE_LABEL[work.derivedFreshness.audio]}</span>
-              <span className="text-xs">（基于首章检测）</span>
-              <Badge variant="outline">生成功能即将上线</Badge>
-            </div>
+            <WorkAudioPanel workId={work.id} />
           )}
         </section>
 

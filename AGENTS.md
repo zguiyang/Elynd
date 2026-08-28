@@ -52,11 +52,13 @@ Shipped code may still use legacy Article names until **Phase 3** migration — 
 
 ## Visual design (UI)
 
-Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root).
+Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root) — visual tokens **and** interaction philosophy (information economy, compression, admin density, **UI vs product behavior**).
 
-- **Before** generating or restyling UI in `apps/web`, read `DESIGN.md` and follow its tokens, usage rules, and Do's / Don'ts.
+**UI rule stack:** locked task brief + [`docs/product/`](docs/product/) (persistence, fetch, confirm, side effects) → **`DESIGN.md`** → [`.cursor/rules/frontend.mdc`](.cursor/rules/frontend.mdc) → Taste skills (visual polish only) → shadcn defaults last. UI simplification must **not** infer product behavior (auto-save, automatic fetch, implicit confirm, etc.).
+
+- **Before** generating or restyling UI in `apps/web`, read `DESIGN.md` (including **Interaction philosophy**) and [`.cursor/rules/frontend.mdc`](.cursor/rules/frontend.mdc) UI design judgment + Anti-Redundancy Checklist + **Behavior boundary**.
 - Implement appearance via CSS variables / semantic utilities in `apps/web/app/globals.css` — do not hardcode theme colors in feature code.
-- Screen flows: [`docs/product/prototype-flows.md`](docs/product/prototype-flows.md). Visual tokens: **`DESIGN.md`**.
+- Screen flows: [`docs/product/prototype-flows.md`](docs/product/prototype-flows.md). Visual tokens: **`DESIGN.md`**. Visual polish: Taste skills — they do **not** replace interaction rules or override admin/reader scope in `DESIGN.md` / `frontend.mdc`.
 - Product philosophy / anti-drift (non-visual): [`docs/product/`](docs/product/) — especially [`design-guardrails.md`](docs/product/design-guardrails.md).
 
 ## Rules source of truth

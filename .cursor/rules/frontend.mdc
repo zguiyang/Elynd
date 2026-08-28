@@ -65,9 +65,126 @@ Shared content helpers live in `features/content/content-model.ts` (cover tints,
 
 Tailwind v4 (`@import "tailwindcss"`); semantic tokens over raw colors.
 
-### UI implementation ladder (aesthetics first)
+Philosophy SSOT: [`DESIGN.md`](../../DESIGN.md) **Interaction philosophy** (why). This file (how + checklists). Taste skills (visual polish only — do not duplicate or override interaction rules here).
 
-Product UI must look like Gloaming (`DESIGN.md`) first; atoms are a means, not the goal.
+### UI design judgment (before styling)
+
+**UI rule stack:** locked task brief + `docs/product/` (behavior) → [`DESIGN.md`](../../DESIGN.md) Interaction philosophy → this section → Taste skills (**visual only**) → shadcn / component defaults **last**. Library form patterns do not override project interaction judgment.
+
+**Read order:** `DESIGN.md` Interaction philosophy → this section → UI implementation ladder below → Taste skill if visual polish is in scope.
+
+**Default priority:** Remove → Simplify → Combine → Clarify → Polish. Never scaffold Label + Description + Card + Button first and style later.
+
+**Decision flow (every new or changed UI surface):**
+
+1. Product task — what must complete here?
+2. Minimum information — what cannot be inferred from title, tab, grouping, or control?
+3. Minimum interactions — fewest controls that finish the task
+4. Context inference — what does the user already know?
+5. Merge — can related actions share one control context?
+6. Delete — run Anti-Redundancy Checklist
+7. Polish — tokens + shadcn + Taste skills
+
+#### Information economy
+
+Each visible element must provide **unique** information or **unique** action. Before adding Label, Description, Helper text, Badge, status text, Heading, Divider, Card, Button, Icon button, or secondary action, ask:
+
+- Why does this exist?
+- Is this already represented elsewhere on the same surface?
+- If I remove it, does comprehension, discoverability, or function clearly suffer?
+
+If not → remove. **Not** “labels/descriptions/cards/buttons are bad” — keep any element with unique information, action, context, or discoverability for that audience and task.
+
+#### Behavior boundary (do not infer product behavior)
+
+UI judgment may merge controls, remove copy, or relocate actions. It must **not** change persistence, fetch timing, confirmation, or side effects without product/task basis.
+
+**Preserve unless the task explicitly requires otherwise:** explicit Save/Submit, APIs that save per field or per row, manual refresh, confirm dialogs, fetch-on-open, debounced auto-save, optimistic updates, delete confirmations.
+
+**Do not introduce without product/task basis:** auto-save, blur-save, immediate or optimistic persistence, automatic fetch or refresh on mount, automatic submission, automatic deletion, implicit confirmation, hidden side effects.
+
+If simplification would replace Save with auto-save (or similar) → mark **PRODUCT / BEHAVIOR**, keep current behavior, stop (`core` decision gate). Execution detail: [`DESIGN.md`](../../DESIGN.md) Interaction philosophy → **UI vs product behavior**.
+
+#### Interaction compression
+
+Assign every action to its **object** and **task** first:
+
+| Pattern | Prefer |
+| --- | --- |
+| Load list + pick item | One Select/Combobox with contextual refresh (icon in trigger row), not Fetch button + Select |
+| Toggle a setting | Switch with one label naming the **setting**, not label + "启用/Enabled" status text |
+| Edit one record | One save **surface** per editing context when product already uses form-level save — do not remove Save or switch to auto-save without product decision |
+| Row maintenance | Icon actions on the row (edit/delete/test), not a separate action bar for the same row |
+
+Standalone buttons stay when the action is page-scoped, destructive, or needs primary emphasis.
+
+#### Contextual actions
+
+Place actions adjacent to what they modify — field row end, Select trigger group, table row — instead of a detached button that repeats the same task.
+
+#### State representation
+
+- **Switch:** control = state. Label names the setting (`AI 模型`), not on/off. No parallel "启用" / "Enabled" text.
+- **Select / Combobox:** selected value = state. No redundant "已选择" badge.
+- **Badge / status line:** only for health, errors, or saved-vs-draft — not duplicate control state.
+- **Form vs collection:** no redundant status beside a form Switch; table/list status columns for scanning many rows are OK.
+- **a11y:** `aria-label` or visually hidden name when the visible UI is icon-only — not a second visible status word.
+
+#### Semantic redundancy
+
+Do not stack the same fact in title + description + field label + helper + badge. Page title + section + field name often already answer "what is this?"
+
+Description/helper text: **only** for non-obvious constraints (format, side effects, irreversible ops) — not restating the field name in prose.
+
+#### Admin UI (`features/admin/**`, `/admin/**`)
+
+**Scope:** stricter economy for admin/configuration only — not a global mandate to strip labels, descriptions, or text buttons from reader/consumer UI.
+
+Operators understand domain terms. Apply stricter economy:
+
+- One-line page intro when the task is non-obvious; skip when nav + layout already state the job.
+- No consumer-style helper on every field; Region/API Key/Model need labels, not paragraphs.
+- Prefer flat sections and row actions over Card → Card → Heading stacks for one task.
+- Tables/lists: inline icon actions; status column only when not inferable from row opacity/disabled state.
+- Same `DESIGN.md` tokens; denser spacing OK — not a separate theme.
+
+#### Anti-Redundancy Checklist (post-design, before polish)
+
+**Element audit** — for each visible element:
+
+- What unique information or action does it provide?
+- Already represented elsewhere?
+- Can this action merge into another control?
+- Removable without harm?
+
+**Interaction audit** — for each user task:
+
+- How many steps and independent controls?
+- Any controls separated without a task reason?
+- Can a standalone button become inline/contextual?
+
+**Density audit** — flag and remove:
+
+- redundant labels, descriptions, helper text, status text
+- unnecessary buttons, cards, dividers, headings
+- duplicated actions; decorative chrome without function
+
+Do **not** treat the checklist as “delete all labels/descriptions/badges/cards/buttons” or “icons always win.” Re-check against **Behavior boundary** before removing Save, confirm, or fetch controls.
+
+#### Component patterns (Gloaming)
+
+| Control | Rule |
+| --- | --- |
+| `Switch` | One label = setting name. Horizontal `Field` OK. No "启用" beside switch. |
+| `Select` / `Combobox` | Label = object (`模型`, `默认模型`). Refresh/fetch as sibling icon in trigger row when lists are remote. |
+| `Field` + `FieldDescription` | Max one description per field; must add constraint not in label. No Description + helper saying the same thing. |
+| `Card` | One task or one grouping level. No card inside card for a single form. Prefer bordered section when elevation adds nothing. |
+| Page header | `h1` + optional one-line subtitle. No subtitle that repeats tab label. |
+| Save | Form-level or explicit dirty-state Save when product uses batch save; per-row/per-key Save when API requires it — **never** swap Save for auto-save without **PRODUCT / BEHAVIOR** approval |
+
+### UI implementation ladder (visual polish last)
+
+Product UI must look like Gloaming (`DESIGN.md`) **after** interaction judgment above passes. Atoms are a means, not the goal.
 
 1. Prefer **shadcn** atoms in `components/ui/` (add via CLI: `pnpm exec shadcn add …` from `apps/web`). Use variants/props first.
 2. Polish with **Tailwind `className`** on those atoms when defaults fall short.

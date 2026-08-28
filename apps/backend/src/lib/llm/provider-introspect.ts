@@ -1,6 +1,8 @@
 import type { llmProvider as llmProviderTable } from '@gloaming/db';
 import type { ProviderBalanceResult, ProviderModelCandidate } from '@gloaming/shared/api/llm-config';
+import { getWireFamilyDefinition, isLlmApiFamily } from '@gloaming/shared/llm/wire-registry';
 
+import { resolveProviderBalanceUrl } from '@/lib/llm/outbound-url';
 import { buildProxiedFetch } from '@/lib/llm/proxy';
 
 type ProviderRow = typeof llmProviderTable.$inferSelect;
@@ -110,6 +112,14 @@ export async function fetchProviderModelCandidates(
   row: ProviderRow,
   apiKey: string,
 ): Promise<ProviderModelCandidate[]> {
+  if (!isLlmApiFamily(row.apiFamily)) {
+    throw new UpstreamRequestError('服务商 API 协议族无效');
+  }
+  const familyDef = getWireFamilyDefinition(row.apiFamily);
+  if (!familyDef.provider.capabilities.modelList) {
+    throw new UpstreamRequestError('当前 API 协议族不支持拉取模型列表');
+  }
+
   const base = row.baseUrl.replace(/\/+$/, '');
   const candidates: string[] = base.endsWith('/v1') ? [`${base}/models`] : [`${base}/models`, `${base}/v1/models`];
 
@@ -165,6 +175,13 @@ export async function fetchProviderModelCandidates(
  * Returns a discriminated result; never throws for upstream failures.
  */
 export async function queryProviderBalance(row: ProviderRow, apiKey: string): Promise<ProviderBalanceResult> {
+  if (!isLlmApiFamily(row.apiFamily)) {
+    return { supported: false, reason: 'invalid-config', message: '服务商 API 协议族无效' };
+  }
+  const familyDef = getWireFamilyDefinition(row.apiFamily);
+  if (!familyDef.provider.capabilities.balanceQuery) {
+    return { supported: false, reason: 'not-configured', message: '当前 API 协议族不支持余额查询' };
+  }
   if (!row.balanceEndpoint) {
     return { supported: false, reason: 'not-configured', message: '未配置余额查询端点' };
   }
@@ -173,11 +190,14 @@ export async function queryProviderBalance(row: ProviderRow, apiKey: string): Pr
   }
 
   let url: string;
-  if (/^https?:\/\//i.test(row.balanceEndpoint)) {
-    url = row.balanceEndpoint;
-  } else {
-    const origin = new URL(row.baseUrl).origin;
-    url = origin + (row.balanceEndpoint.startsWith('/') ? row.balanceEndpoint : `/${row.balanceEndpoint}`);
+  try {
+    url = resolveProviderBalanceUrl(row.baseUrl, row.balanceEndpoint);
+  } catch (error) {
+    return {
+      supported: false,
+      reason: 'invalid-config',
+      message: error instanceof Error ? error.message : '余额端点无效',
+    };
   }
 
   let payload: unknown;

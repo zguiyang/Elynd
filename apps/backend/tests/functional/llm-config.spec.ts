@@ -118,6 +118,7 @@ describe('LLM config HTTP', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
       body: JSON.stringify({
+        apiFamily: 'openai',
         name: 'Test Gateway',
         baseUrl: 'https://example.com/v1',
         apiKey: 'sk-test-secret-abcdef',
@@ -193,5 +194,92 @@ describe('LLM config HTTP', () => {
     });
     expect(deleteProvider.status).toBe(204);
     createdProviderIds.length = 0;
+  });
+
+  it('rejects cross-family wire variants and unimplemented runtime bindings', async () => {
+    const admin = await createSession('admin');
+    createdEmails.push(admin.email);
+
+    const createOpenAi = await app.request('/api/admin/llm/providers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+      body: JSON.stringify({
+        apiFamily: 'openai',
+        name: 'OpenAI Family',
+        baseUrl: 'https://example.com/v1',
+        apiKey: 'sk-openai-test',
+      }),
+    });
+    expect(createOpenAi.status).toBe(201);
+    const openAiProvider = (await createOpenAi.json()) as LlmProvider;
+    createdProviderIds.push(openAiProvider.id);
+
+    const invalidWire = await app.request('/api/admin/llm/models', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+      body: JSON.stringify({
+        providerId: openAiProvider.id,
+        modelId: 'bad-wire',
+        label: 'Bad Wire',
+        wireVariant: 'messages',
+      }),
+    });
+    expect(invalidWire.status).toBe(400);
+
+    const createAnthropic = await app.request('/api/admin/llm/providers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+      body: JSON.stringify({
+        apiFamily: 'anthropic',
+        name: 'Anthropic Family',
+        baseUrl: 'https://api.anthropic.com',
+        apiKey: 'sk-ant-test',
+      }),
+    });
+    expect(createAnthropic.status).toBe(201);
+    const anthropicProvider = (await createAnthropic.json()) as LlmProvider;
+    createdProviderIds.push(anthropicProvider.id);
+    expect(anthropicProvider.apiFamily).toBe('anthropic');
+
+    const createAnthropicModel = await app.request('/api/admin/llm/models', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+      body: JSON.stringify({
+        providerId: anthropicProvider.id,
+        modelId: 'claude-test',
+        label: 'Claude Test',
+        wireVariant: 'messages',
+      }),
+    });
+    expect(createAnthropicModel.status).toBe(201);
+    const anthropicModel = (await createAnthropicModel.json()) as LlmModel;
+
+    const bindBlocked = await app.request(`/api/admin/llm/settings/${ASSIST_SETTING_KEY}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+      body: JSON.stringify({ modelId: anthropicModel.id }),
+    });
+    expect(bindBlocked.status).toBe(400);
+
+    const testBlocked = await app.request(`/api/admin/llm/providers/${anthropicProvider.id}/test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+      body: JSON.stringify({}),
+    });
+    expect(testBlocked.status).toBe(503);
+
+    const registry = await app.request('/api/admin/llm/wire-registry', {
+      headers: { cookie: admin.cookie },
+    });
+    expect(registry.status).toBe(200);
+    const registryBody = (await registry.json()) as { families: Array<{ id: string }> };
+    expect(registryBody.families.map((family) => family.id)).toEqual(
+      expect.arrayContaining(['openai', 'anthropic', 'gemini']),
+    );
+
+    await app.request(`/api/admin/llm/models/${anthropicModel.id}`, {
+      method: 'DELETE',
+      headers: { cookie: admin.cookie },
+    });
   });
 });

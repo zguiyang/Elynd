@@ -20,6 +20,7 @@ describe('resolveLlmByModelRowId', () => {
   it('rejects disabled provider or model', async () => {
     await db.insert(llmProviderTable).values({
       id: providerId,
+      apiFamily: 'openai',
       name: 'resolve-test',
       baseUrl: 'https://example.com/v1',
       apiKeyCiphertext: encryptApiKey('sk-resolve-test'),
@@ -30,6 +31,7 @@ describe('resolveLlmByModelRowId', () => {
       providerId,
       modelId: 'm-disabled',
       label: 'Disabled',
+      wireVariant: 'chat-completions',
       isEnabled: false,
     });
 

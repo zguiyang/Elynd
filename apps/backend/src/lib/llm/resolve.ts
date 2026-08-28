@@ -1,7 +1,8 @@
 import { eq } from 'drizzle-orm';
 
 import { llmModel as llmModelTable, llmProvider as llmProviderTable } from '@gloaming/db';
-import type { LlmModelProtocol } from '@gloaming/shared/api/llm-config';
+import type { LlmApiFamily } from '@gloaming/shared/llm/wire-registry';
+import { assertWireVariantForFamily, isLlmApiFamily, isRuntimeImplemented } from '@gloaming/shared/llm/wire-registry';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';
@@ -11,14 +12,14 @@ import { decryptApiKey } from '@/lib/llm/crypto';
 export type ResolvedLlm = {
   modelRowId: string;
   providerId: string;
+  providerName: string;
+  apiFamily: LlmApiFamily;
+  wireVariant: string;
   label: string;
   modelId: string;
   baseUrl: string;
   apiKey: string;
-  protocol: LlmModelProtocol;
-  /** Optional outbound proxy URI (provider-level config). */
   proxyUrl: string | null;
-  /** Provider-specific thinking-toggle parameter name; null = pass nothing. */
   thinkingParam: string | null;
   temperature: number | null;
   maxTokens: number | null;
@@ -33,9 +34,11 @@ export async function resolveLlmByModelRowId(modelRowId: string): Promise<Resolv
     .select({
       modelRowId: llmModelTable.id,
       providerId: llmModelTable.providerId,
+      providerName: llmProviderTable.name,
+      apiFamily: llmProviderTable.apiFamily,
       label: llmModelTable.label,
       modelId: llmModelTable.modelId,
-      protocol: llmModelTable.protocol,
+      wireVariant: llmModelTable.wireVariant,
       temperature: llmModelTable.temperature,
       maxTokens: llmModelTable.maxTokens,
       modelEnabled: llmModelTable.isEnabled,
@@ -55,6 +58,23 @@ export async function resolveLlmByModelRowId(modelRowId: string): Promise<Resolv
     throw new AppError(HTTP_STATUS.SERVICE_UNAVAILABLE, 'AI unavailable');
   }
 
+  if (!isLlmApiFamily(row.apiFamily)) {
+    throw new AppError(HTTP_STATUS.SERVICE_UNAVAILABLE, 'AI unavailable');
+  }
+
+  try {
+    assertWireVariantForFamily(row.apiFamily, row.wireVariant);
+  } catch {
+    throw new AppError(HTTP_STATUS.SERVICE_UNAVAILABLE, 'AI unavailable');
+  }
+
+  if (!isRuntimeImplemented(row.apiFamily)) {
+    throw new AppError(
+      HTTP_STATUS.SERVICE_UNAVAILABLE,
+      `LLM API family "${row.apiFamily}" is registered but runtime support is not implemented.`,
+    );
+  }
+
   let apiKey: string;
   try {
     apiKey = decryptApiKey(row.apiKeyCiphertext);
@@ -65,11 +85,13 @@ export async function resolveLlmByModelRowId(modelRowId: string): Promise<Resolv
   return {
     modelRowId: row.modelRowId,
     providerId: row.providerId,
+    providerName: row.providerName,
+    apiFamily: row.apiFamily,
+    wireVariant: row.wireVariant,
     label: row.label,
     modelId: row.modelId,
     baseUrl: row.baseUrl,
     apiKey,
-    protocol: row.protocol,
     proxyUrl: row.proxyUrl ?? null,
     thinkingParam: row.thinkingParam ?? null,
     temperature: row.temperature,

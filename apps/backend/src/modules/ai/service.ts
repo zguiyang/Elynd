@@ -9,7 +9,7 @@ import { llmAppSetting as llmAppSettingTable } from '@gloaming/db';
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';
 import { AppError } from '@/lib/errors';
-import { createChatModel, type ResolvedLlm, resolveLlmByModelRowId } from '@/lib/llm';
+import { createLlmClient, type ResolvedLlm, resolveLlmByModelRowId } from '@/lib/llm';
 import { rootLogger } from '@/lib/logger';
 import { recordInvocation, truncatePreview } from '@/modules/ai/log';
 import { type AiPurpose, settingKeyForPurpose } from '@/modules/ai/purposes';
@@ -198,7 +198,7 @@ export async function invokeAi<TSchema extends ZodTypeAny | undefined = undefine
   try {
     const modelRowId = await resolveModelRowId(options);
     resolved = await resolveLlmByModelRowId(modelRowId);
-    const chat = createChatModel(resolved, {
+    const chat = createLlmClient(resolved, {
       timeoutMs: options.timeoutMs,
       enableThinking: options.enableThinking ?? false,
     });
@@ -344,7 +344,7 @@ export async function* streamAi(options: AiStreamOptions): AsyncGenerator<AiStre
 
     const modelRowId = await resolveModelRowId(options);
     resolved = await resolveLlmByModelRowId(modelRowId);
-    const chat = createChatModel(resolved, {
+    const chat = createLlmClient(resolved, {
       timeoutMs: options.timeoutMs,
       enableThinking: options.enableThinking ?? false,
     });

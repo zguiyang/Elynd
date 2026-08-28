@@ -23,11 +23,22 @@ import {
   type UpdateLlmProviderBody,
 } from '@gloaming/shared/api/llm-config';
 import { AI_SETTING_KEY_VALUES, type AiSettingKey } from '@gloaming/shared/api/llm-config-keys';
+import {
+  assertWireVariantForFamily,
+  getDefaultWireVariant,
+  getWireFamilyDefinition,
+  isLlmApiFamily,
+  isRuntimeImplemented,
+  listWireFamilies,
+  type LlmApiFamily,
+  providerSupportsOptionalField,
+} from '@gloaming/shared/llm/wire-registry';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';
 import { AppError, NotFoundError } from '@/lib/errors';
 import {
+  assertSafeOutboundUrl,
   decryptApiKey,
   encryptApiKey,
   fetchProviderModelCandidates,
@@ -40,7 +51,21 @@ import { isAiSettingKey } from '@/modules/ai/purposes';
 type ProviderRow = typeof llmProviderTable.$inferSelect;
 type ModelRow = typeof llmModelTable.$inferSelect;
 
+function parseApiFamily(value: string): LlmApiFamily {
+  if (!isLlmApiFamily(value)) {
+    throw new AppError(HTTP_STATUS.BAD_REQUEST, 'Unknown API family');
+  }
+  return value;
+}
+
+function validateProviderOptionalFields(family: LlmApiFamily, thinkingParam: string | null | undefined): void {
+  if (thinkingParam && !providerSupportsOptionalField(family, 'thinkingParam')) {
+    throw new AppError(HTTP_STATUS.BAD_REQUEST, '当前 API 协议族不支持思考参数配置');
+  }
+}
+
 function toProvider(row: ProviderRow): LlmProvider {
+  const apiFamily = parseApiFamily(row.apiFamily);
   let apiKeyMasked: string | null = null;
   try {
     apiKeyMasked = maskApiKey(decryptApiKey(row.apiKeyCiphertext));
@@ -49,6 +74,7 @@ function toProvider(row: ProviderRow): LlmProvider {
   }
   return {
     id: row.id,
+    apiFamily,
     name: row.name,
     baseUrl: row.baseUrl,
     proxyUrl: row.proxyUrl ?? null,
@@ -70,7 +96,7 @@ function toModel(row: ModelRow): LlmModel {
     providerId: row.providerId,
     modelId: row.modelId,
     label: row.label,
-    protocol: row.protocol,
+    wireVariant: row.wireVariant,
     contextLength: row.contextLength,
     temperature: row.temperature,
     maxTokens: row.maxTokens,
@@ -99,11 +125,16 @@ export async function listProviders(): Promise<LlmProvider[]> {
 }
 
 export async function createProvider(body: CreateLlmProviderBody): Promise<LlmProvider> {
+  const apiFamily = parseApiFamily(body.apiFamily);
+  assertSafeOutboundUrl(body.baseUrl, 'Base URL');
+  validateProviderOptionalFields(apiFamily, body.thinkingParam);
+
   const id = randomUUID();
   const [row] = await db
     .insert(llmProviderTable)
     .values({
       id,
+      apiFamily,
       name: body.name,
       baseUrl: body.baseUrl,
       apiKeyCiphertext: encryptApiKey(body.apiKey),
@@ -123,18 +154,21 @@ export async function updateProvider(id: string, body: UpdateLlmProviderBody): P
   if (!existing[0]) {
     throw new NotFoundError('LLM provider');
   }
+  const apiFamily = parseApiFamily(existing[0].apiFamily);
 
   const patch: Partial<typeof llmProviderTable.$inferInsert> = {};
   if (body.name !== undefined) {
     patch.name = body.name;
   }
   if (body.baseUrl !== undefined) {
+    assertSafeOutboundUrl(body.baseUrl, 'Base URL');
     patch.baseUrl = body.baseUrl;
   }
   if (body.proxyUrl !== undefined) {
     patch.proxyUrl = body.proxyUrl;
   }
   if (body.thinkingParam !== undefined) {
+    validateProviderOptionalFields(apiFamily, body.thinkingParam);
     patch.thinkingParam = body.thinkingParam;
   }
   if (body.balanceEndpoint !== undefined) {
@@ -187,6 +221,13 @@ export async function createModel(body: CreateLlmModelBody): Promise<LlmModel> {
   if (!provider[0]) {
     throw new NotFoundError('LLM provider');
   }
+  const apiFamily = parseApiFamily(provider[0].apiFamily);
+  const wireVariant = body.wireVariant ?? getDefaultWireVariant(apiFamily);
+  try {
+    assertWireVariantForFamily(apiFamily, wireVariant);
+  } catch {
+    throw new AppError(HTTP_STATUS.BAD_REQUEST, 'Wire variant is not valid for this provider API family');
+  }
 
   const id = randomUUID();
   try {
@@ -197,7 +238,7 @@ export async function createModel(body: CreateLlmModelBody): Promise<LlmModel> {
         providerId: body.providerId,
         modelId: body.modelId,
         label: body.label,
-        protocol: body.protocol,
+        wireVariant,
         contextLength: body.contextLength ?? null,
         temperature: body.temperature ?? null,
         maxTokens: body.maxTokens ?? null,
@@ -212,10 +253,19 @@ export async function createModel(body: CreateLlmModelBody): Promise<LlmModel> {
 }
 
 export async function updateModel(id: string, body: UpdateLlmModelBody): Promise<LlmModel> {
-  const existing = await db.select().from(llmModelTable).where(eq(llmModelTable.id, id)).limit(1);
+  const existing = await db
+    .select({
+      model: llmModelTable,
+      apiFamily: llmProviderTable.apiFamily,
+    })
+    .from(llmModelTable)
+    .innerJoin(llmProviderTable, eq(llmModelTable.providerId, llmProviderTable.id))
+    .where(eq(llmModelTable.id, id))
+    .limit(1);
   if (!existing[0]) {
     throw new NotFoundError('LLM model');
   }
+  const apiFamily = parseApiFamily(existing[0].apiFamily);
 
   const patch: Partial<typeof llmModelTable.$inferInsert> = {};
   if (body.modelId !== undefined) {
@@ -224,8 +274,13 @@ export async function updateModel(id: string, body: UpdateLlmModelBody): Promise
   if (body.label !== undefined) {
     patch.label = body.label;
   }
-  if (body.protocol !== undefined) {
-    patch.protocol = body.protocol;
+  if (body.wireVariant !== undefined) {
+    try {
+      assertWireVariantForFamily(apiFamily, body.wireVariant);
+    } catch {
+      throw new AppError(HTTP_STATUS.BAD_REQUEST, 'Wire variant is not valid for this provider API family');
+    }
+    patch.wireVariant = body.wireVariant;
   }
   if (body.contextLength !== undefined) {
     patch.contextLength = body.contextLength;
@@ -251,6 +306,14 @@ export async function updateModel(id: string, body: UpdateLlmModelBody): Promise
   }
 }
 
+function isModelRuntimeReady(apiFamily: LlmApiFamily): boolean {
+  return isRuntimeImplemented(apiFamily);
+}
+
+export async function getWireRegistry() {
+  return { families: listWireFamilies() };
+}
+
 export async function deleteModel(id: string): Promise<void> {
   const existing = await db.select().from(llmModelTable).where(eq(llmModelTable.id, id)).limit(1);
   if (!existing[0]) {
@@ -274,6 +337,7 @@ export async function listSettings(): Promise<LlmAppSettingView[]> {
             label: llmModelTable.label,
             modelEnabled: llmModelTable.isEnabled,
             providerEnabled: llmProviderTable.isEnabled,
+            apiFamily: llmProviderTable.apiFamily,
           })
           .from(llmModelTable)
           .innerJoin(llmProviderTable, eq(llmModelTable.providerId, llmProviderTable.id))
@@ -284,11 +348,15 @@ export async function listSettings(): Promise<LlmAppSettingView[]> {
   return AI_SETTING_KEY_VALUES.map((key) => {
     const modelId = byKey.get(key) ?? null;
     const model = modelId ? modelById.get(modelId) : undefined;
+    const apiFamily = model && isLlmApiFamily(model.apiFamily) ? model.apiFamily : null;
+    const runtimeReady = apiFamily ? isModelRuntimeReady(apiFamily) : false;
+    const healthy = Boolean(model?.modelEnabled && model.providerEnabled && runtimeReady);
     return {
       key,
       modelId: model ? model.id : modelId,
       modelLabel: model?.label ?? null,
-      healthy: Boolean(model?.modelEnabled && model.providerEnabled),
+      healthy,
+      runtimeReady,
     };
   });
 }
@@ -304,6 +372,7 @@ export async function putSetting(key: string, body: PutLlmAppSettingBody): Promi
       label: llmModelTable.label,
       modelEnabled: llmModelTable.isEnabled,
       providerEnabled: llmProviderTable.isEnabled,
+      apiFamily: llmProviderTable.apiFamily,
     })
     .from(llmModelTable)
     .innerJoin(llmProviderTable, eq(llmModelTable.providerId, llmProviderTable.id))
@@ -316,6 +385,13 @@ export async function putSetting(key: string, body: PutLlmAppSettingBody): Promi
   }
   if (!model.modelEnabled || !model.providerEnabled) {
     throw new AppError(HTTP_STATUS.BAD_REQUEST, 'Model or provider is disabled');
+  }
+  const apiFamily = parseApiFamily(model.apiFamily);
+  if (!isModelRuntimeReady(apiFamily)) {
+    throw new AppError(
+      HTTP_STATUS.BAD_REQUEST,
+      `LLM API family "${apiFamily}" is registered but runtime support is not implemented.`,
+    );
   }
 
   await db
@@ -331,6 +407,7 @@ export async function putSetting(key: string, body: PutLlmAppSettingBody): Promi
     modelId: model.id,
     modelLabel: model.label,
     healthy: true,
+    runtimeReady: true,
   };
 }
 
@@ -341,6 +418,13 @@ export async function testProvider(providerId: string, body: TestLlmProviderBody
   }
   if (!provider[0].isEnabled) {
     throw new AppError(HTTP_STATUS.BAD_REQUEST, 'Provider is disabled');
+  }
+  const apiFamily = parseApiFamily(provider[0].apiFamily);
+  if (!isModelRuntimeReady(apiFamily)) {
+    throw new AppError(
+      HTTP_STATUS.SERVICE_UNAVAILABLE,
+      `LLM API family "${apiFamily}" is registered but runtime support is not implemented.`,
+    );
   }
 
   let modelRowId = body.modelId;
@@ -402,6 +486,13 @@ async function loadProviderWithKey(providerId: string): Promise<{ row: ProviderR
 
 export async function fetchProviderModels(providerId: string): Promise<FetchProviderModelsResult> {
   const { row, apiKey } = await loadProviderWithKey(providerId);
+  if (!isLlmApiFamily(row.apiFamily)) {
+    throw new AppError(HTTP_STATUS.BAD_REQUEST, '服务商 API 协议族无效');
+  }
+  const familyDef = getWireFamilyDefinition(row.apiFamily);
+  if (!familyDef.provider.capabilities.modelList) {
+    throw new AppError(HTTP_STATUS.BAD_REQUEST, '当前 API 协议族不支持拉取模型列表');
+  }
   try {
     const models = await fetchProviderModelCandidates(row, apiKey);
     return { models };

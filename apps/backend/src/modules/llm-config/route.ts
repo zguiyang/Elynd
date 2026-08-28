@@ -15,6 +15,10 @@ import {
 
 export const llmConfigRoutes = new Hono<{ Variables: AuthVariables }>();
 
+llmConfigRoutes.get('/api/admin/llm/wire-registry', requireAdmin, async (c) => {
+  return c.json(await llmConfigService.getWireRegistry());
+});
+
 llmConfigRoutes.get('/api/admin/llm/providers', requireAdmin, async (c) => {
   return c.json(await llmConfigService.listProviders());
 });

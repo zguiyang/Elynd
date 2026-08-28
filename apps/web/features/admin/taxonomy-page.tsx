@@ -27,10 +27,10 @@ import {
 } from '@/features/admin/taxonomy-api';
 import { cn } from '@/lib/utils';
 
-const KIND_TABS: { value: TaxonomyKind; label: string; description: string }[] = [
-  { value: 'tag', label: '标签', description: '作品标签，AI 生成时优先复用；可清理未使用项。' },
-  { value: 'category', label: '分类', description: '作品分类（单选），AI 只能从列表中选择；可清理未使用项。' },
-  { value: 'source', label: '来源', description: '内容来源，由 dc:source 匹配规则自动关联；系统保留，不可删除。' },
+const KIND_TABS: { value: TaxonomyKind; label: string }[] = [
+  { value: 'tag', label: '标签' },
+  { value: 'category', label: '分类' },
+  { value: 'source', label: '来源' },
 ];
 
 const ORIGIN_LABEL: Record<WorkMetadataProvenance, string> = {
@@ -382,8 +382,6 @@ export function TaxonomyPage() {
           ))}
         </AdminSegmentedTabsList>
       </Tabs>
-
-      <p className="mb-5 text-sm text-muted-foreground">{KIND_TABS.find((tab) => tab.value === kind)?.description}</p>
 
       <TaxonomyPanel key={kind} kind={kind} />
     </div>

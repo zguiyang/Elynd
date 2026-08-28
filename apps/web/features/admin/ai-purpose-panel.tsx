@@ -19,21 +19,11 @@ import {
   ComboboxLabel,
   ComboboxList,
 } from '@/components/ui/combobox';
-import { Field, FieldLabel } from '@/components/ui/field';
 
-const AI_PURPOSE_LABELS: Record<AiSettingKey, { title: string; description: string }> = {
-  'assist.default_model_id': {
-    title: '阅读助手',
-    description: '阅读页提问与划词帮助使用的默认模型。',
-  },
-  'translate.default_model_id': {
-    title: '双语翻译',
-    description: '阅读页双语模式下英译中使用的默认模型。',
-  },
-  'metadata-enrich.default_model_id': {
-    title: '元数据回填',
-    description: '上传 EPUB 后自动填充简介、标签与分类使用的默认模型。',
-  },
+const AI_PURPOSE_TITLES: Record<AiSettingKey, string> = {
+  'assist.default_model_id': '阅读助手',
+  'translate.default_model_id': '双语翻译',
+  'metadata-enrich.default_model_id': '元数据回填',
 };
 
 type ModelComboboxItem = {
@@ -70,7 +60,7 @@ function resolveHealth(
   setting: LlmAppSettingView,
   models: LlmModel[],
   providers: LlmProvider[],
-): { label: string; tone: 'ok' | 'warn' | 'off' } {
+): { label: string; tone: 'warn' | 'off' } | null {
   if (!setting.modelId) {
     return { label: '未配置', tone: 'warn' };
   }
@@ -88,7 +78,7 @@ function resolveHealth(
   if (!isRuntimeImplemented(provider.apiFamily)) {
     return { label: '运行时尚未支持', tone: 'warn' };
   }
-  return { label: '已配置', tone: 'ok' };
+  return null;
 }
 
 function buildModelGroups(
@@ -217,77 +207,62 @@ export function AiPurposePanel({
   );
 
   return (
-    <section className="flex flex-col gap-4">
-      <div>
-        <h2 className="text-base font-medium text-foreground">用途默认模型</h2>
-        <p className="mt-1 text-sm text-muted-foreground">仅可选择已启用且运行时已接入的模型。</p>
-      </div>
+    <ul className="overflow-hidden rounded-2xl border border-border bg-secondary/60">
+      {settings.map((setting) => {
+        const title = AI_PURPOSE_TITLES[setting.key];
+        const draft = draftByKey[setting.key] ?? setting.modelId ?? '';
+        const health = resolveHealth(
+          { ...setting, modelId: draft || null, healthy: Boolean(draft) },
+          models,
+          providers,
+        );
+        const isDirty = draft !== (setting.modelId ?? '');
+        const groups = buildModelGroups(bindableModels, providers, draft, models, setting.modelLabel);
 
-      <ul className="overflow-hidden rounded-2xl border border-border bg-secondary/60">
-        {settings.map((setting) => {
-          const copy = AI_PURPOSE_LABELS[setting.key];
-          const draft = draftByKey[setting.key] ?? setting.modelId ?? '';
-          const health = resolveHealth(
-            { ...setting, modelId: draft || null, healthy: Boolean(draft) },
-            models,
-            providers,
-          );
-          const isDirty = draft !== (setting.modelId ?? '');
-          const groups = buildModelGroups(bindableModels, providers, draft, models, setting.modelLabel);
+        return (
+          <li
+            key={setting.key}
+            className="flex flex-col gap-3 border-t border-border/80 px-5 py-5 first:border-t-0 md:flex-row md:items-center md:gap-6 md:px-6 md:py-5"
+          >
+            <div className="flex min-w-0 flex-wrap items-center gap-2 md:w-40 md:shrink-0">
+              <p className="font-medium text-foreground">{title}</p>
+              {health ? (
+                <Badge
+                  variant="secondary"
+                  className={
+                    health.tone === 'warn' ? 'bg-muted text-muted-foreground' : 'bg-destructive/10 text-destructive'
+                  }
+                >
+                  {health.label}
+                </Badge>
+              ) : null}
+              {!setting.runtimeReady && setting.modelId ? (
+                <Badge variant="outline" className="text-xs font-normal">
+                  当前绑定不可运行
+                </Badge>
+              ) : null}
+            </div>
 
-          return (
-            <li
-              key={setting.key}
-              className="grid gap-5 border-t border-border/80 px-5 py-5 first:border-t-0 md:grid-cols-2 md:items-start md:gap-10 md:px-6 md:py-6"
-            >
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-base font-medium text-foreground">{copy.title}</p>
-                  <Badge
-                    variant="secondary"
-                    className={
-                      health.tone === 'ok'
-                        ? 'bg-accent text-accent-foreground'
-                        : health.tone === 'warn'
-                          ? 'bg-muted text-muted-foreground'
-                          : 'bg-destructive/10 text-destructive'
-                    }
-                  >
-                    {health.label}
-                  </Badge>
-                  {!setting.runtimeReady && setting.modelId ? (
-                    <Badge variant="outline" className="text-xs font-normal">
-                      当前绑定不可运行
-                    </Badge>
-                  ) : null}
-                </div>
-                <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">{copy.description}</p>
-              </div>
-
-              <Field className="min-w-0 gap-2">
-                <FieldLabel htmlFor={`purpose-${setting.key}`}>默认模型</FieldLabel>
-                <div className="flex items-center gap-3">
-                  <PurposeModelCombobox
-                    id={`purpose-${setting.key}`}
-                    groups={groups}
-                    value={draft}
-                    disabled={bindableModels.length === 0 && !draft}
-                    placeholder={bindableModels.length === 0 ? '暂无可绑定模型' : '搜索或选择模型'}
-                    onValueChange={(modelId) => onDraftChange(setting.key, modelId)}
-                  />
-                  <Button
-                    className="h-10 shrink-0 rounded-xl px-6 hover:bg-brand-deep"
-                    disabled={!draft || !isDirty}
-                    onClick={() => onSave(setting.key)}
-                  >
-                    保存
-                  </Button>
-                </div>
-              </Field>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <PurposeModelCombobox
+                id={`purpose-${setting.key}`}
+                groups={groups}
+                value={draft}
+                disabled={bindableModels.length === 0 && !draft}
+                placeholder={bindableModels.length === 0 ? '暂无可绑定模型' : '搜索或选择模型'}
+                onValueChange={(modelId) => onDraftChange(setting.key, modelId)}
+              />
+              <Button
+                className="h-10 shrink-0 rounded-xl px-5 hover:bg-brand-deep"
+                disabled={!draft || !isDirty}
+                onClick={() => onSave(setting.key)}
+              >
+                保存
+              </Button>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

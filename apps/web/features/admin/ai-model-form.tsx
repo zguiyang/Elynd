@@ -8,7 +8,7 @@ import type { LlmApiFamily } from '@gloaming/shared/llm/wire-registry';
 import { getDefaultWireVariant, getWireFamilyDefinition } from '@gloaming/shared/llm/wire-registry';
 
 import { Button } from '@/components/ui/button';
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
@@ -128,10 +128,12 @@ export function AiModelForm({ formId, provider, model, onSubmit, onCancel }: AiM
     return Object.keys(next).length === 0;
   }
 
+  const platformModelItems = candidates?.map((candidate) => ({ value: candidate.id, label: candidate.label })) ?? [];
+
   return (
     <form
       id={formId}
-      className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4"
+      className="flex flex-col gap-4"
       onSubmit={(event) => {
         event.preventDefault();
         if (!validate()) {
@@ -140,63 +142,53 @@ export function AiModelForm({ formId, provider, model, onSubmit, onCancel }: AiM
         onSubmit(values);
       }}
     >
-      <p className="text-sm font-medium text-foreground">{isEdit ? '编辑模型' : '添加模型'}</p>
-
       <FieldGroup className="gap-4">
         {!isEdit && canFetchModels ? (
           <Field>
-            <FieldLabel>从平台拉取模型（可选）</FieldLabel>
-            <div className="flex flex-col gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-fit rounded-xl"
-                disabled={isFetching}
-                onClick={loadPlatformModels}
-              >
-                {isFetching ? (
-                  <>
-                    <Spinner data-icon="inline-start" />
-                    拉取中
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw data-icon="inline-start" />
-                    拉取模型列表
-                  </>
-                )}
-              </Button>
-              {fetchError ? <p className="text-xs text-destructive">{fetchError}</p> : null}
-              {candidates && candidates.length > 0 ? (
+            <FieldLabel htmlFor={`${formId}-platform-model`}>平台模型</FieldLabel>
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
                 <Select
-                  items={candidates.map((candidate) => ({ value: candidate.id, label: candidate.label }))}
+                  items={platformModelItems}
                   value={pickedModelId}
+                  disabled={!candidates?.length}
                   onValueChange={(value) => {
                     if (value == null) {
                       return;
                     }
-                    const candidate = candidates.find((item) => item.id === value);
+                    const candidate = candidates?.find((item) => item.id === value);
                     if (candidate) {
                       applyCandidate(candidate);
                     }
                   }}
                 >
-                  <SelectTrigger className="h-10 w-full rounded-xl">
-                    <SelectValue placeholder="选择平台模型" />
+                  <SelectTrigger id={`${formId}-platform-model`} className="h-10 w-full rounded-xl">
+                    <SelectValue placeholder={candidates?.length ? '选择平台模型' : '刷新后选择'} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      {candidates.map((candidate) => (
-                        <SelectItem key={candidate.id} value={candidate.id}>
-                          {candidate.label}
+                      {platformModelItems.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
                         </SelectItem>
                       ))}
                     </SelectGroup>
                   </SelectContent>
                 </Select>
-              ) : null}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="size-10 shrink-0 rounded-xl"
+                disabled={isFetching}
+                aria-label={isFetching ? '正在刷新平台模型列表' : '刷新平台模型列表'}
+                onClick={() => void loadPlatformModels()}
+              >
+                {isFetching ? <Spinner /> : <RefreshCw className="size-4" />}
+              </Button>
             </div>
+            {fetchError ? <p className="text-xs text-destructive">{fetchError}</p> : null}
           </Field>
         ) : null}
 
@@ -247,9 +239,6 @@ export function AiModelForm({ formId, provider, model, onSubmit, onCancel }: AiM
               </SelectGroup>
             </SelectContent>
           </Select>
-          <FieldDescription>
-            {wireVariantOptions.find((option) => option.id === values.wireVariant)?.description}
-          </FieldDescription>
           <FieldError>{errors.wireVariant}</FieldError>
         </Field>
 
@@ -272,11 +261,8 @@ export function AiModelForm({ formId, provider, model, onSubmit, onCancel }: AiM
           </Field>
         </div>
 
-        <Field
-          orientation="horizontal"
-          className="items-center justify-between rounded-xl border border-border px-3 py-3"
-        >
-          <FieldLabel htmlFor={`${formId}-enabled`}>启用</FieldLabel>
+        <Field orientation="horizontal" className="items-center justify-between">
+          <FieldLabel htmlFor={`${formId}-enabled`}>可供调用</FieldLabel>
           <Switch
             id={`${formId}-enabled`}
             checked={values.isEnabled}

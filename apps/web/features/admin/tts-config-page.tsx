@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { type TtsConfigView, type TtsVoicePreset, type TtsVoiceRole } from '@gloaming/shared/api/tts';
 
 import { Button } from '@/components/ui/button';
-import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -108,7 +108,7 @@ function TtsConfigForm({ config, presets }: { config: TtsConfigView; presets: Tt
       <header className="flex flex-col gap-2">
         <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground">语音配置</h1>
         <p className="text-sm leading-6 text-muted-foreground">
-          配置 Azure Speech（TTS）凭证与默认音色。仅支持 Azure；密钥加密存储，页面只展示脱敏信息。
+          Azure Speech 凭证与默认音色；密钥加密存储，页面只展示脱敏信息。
         </p>
       </header>
 
@@ -122,10 +122,7 @@ function TtsConfigForm({ config, presets }: { config: TtsConfigView; presets: Tt
                 : '尚未配置，首次保存需填写 Subscription Key'}
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">启用</span>
-            <Switch checked={isEnabled} onCheckedChange={setIsEnabled} />
-          </div>
+          <Switch checked={isEnabled} onCheckedChange={setIsEnabled} aria-label="启用语音服务" />
         </div>
 
         <FieldGroup className="gap-5">
@@ -138,7 +135,6 @@ function TtsConfigForm({ config, presets }: { config: TtsConfigView; presets: Tt
               placeholder="eastasia"
               autoComplete="off"
             />
-            <FieldDescription>Azure Speech 资源区域，例如 eastasia、eastus。</FieldDescription>
           </Field>
 
           <Field>
@@ -173,7 +169,6 @@ function TtsConfigForm({ config, presets }: { config: TtsConfigView; presets: Tt
                 </SelectGroup>
               </SelectContent>
             </Select>
-            <FieldDescription>未指定美音/英音角色时使用。</FieldDescription>
           </Field>
 
           <div className="grid gap-5 md:grid-cols-2">
@@ -228,12 +223,7 @@ function TtsConfigForm({ config, presets }: { config: TtsConfigView; presets: Tt
       </section>
 
       <section className="rounded-2xl border border-border bg-card px-6 py-6">
-        <div className="mb-6">
-          <h2 className="text-base font-medium text-foreground">连通性测试</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            输入短句发起合成，成功后自动播放并显示耗时（与 AI 测试一致）。
-          </p>
-        </div>
+        <h2 className="mb-6 text-base font-medium text-foreground">连通性测试</h2>
 
         <FieldGroup className="gap-5">
           <Field>

@@ -329,9 +329,7 @@ export function AiConfigPage() {
             <AiProviderWorkspace
               providers={providers}
               models={models}
-              onCreateProvider={async (apiFamily, values) => {
-                await createProviderMutation.mutateAsync({ apiFamily, values });
-              }}
+              onCreateProvider={async (apiFamily, values) => createProviderMutation.mutateAsync({ apiFamily, values })}
               onUpdateProvider={async (provider, values) => {
                 await updateProviderMutation.mutateAsync({ provider, values });
               }}

@@ -14,7 +14,7 @@ export function roleForAudioKind(kind: ContentAssetAudioKind): (typeof ttsVoiceR
   return kind === 'audio_us' ? 'us' : 'uk';
 }
 
-export const CONTENT_ASSET_STATUSES = ['ready', 'failed'] as const;
+export const CONTENT_ASSET_STATUSES = ['generating', 'ready', 'failed'] as const;
 export type ContentAssetStatus = (typeof CONTENT_ASSET_STATUSES)[number];
 
 /** Collapse whitespace the same way Azure synth text is built (SSOT for offsets). */
@@ -50,13 +50,33 @@ export function partAudioBodyTextOffsetBase(title: string, body: string): number
 
 export const generatePartAudioBodySchema = z.object({
   roles: z.array(z.enum(ttsVoiceRoleValues)).min(1).max(2).optional(),
+  force: z.boolean().optional(),
 });
 
 export type GeneratePartAudioBody = z.infer<typeof generatePartAudioBodySchema>;
 
+export const generateWorkAudioBodySchema = z.object({
+  roles: z.array(z.enum(ttsVoiceRoleValues)).min(1).max(2).optional(),
+  force: z.boolean().optional(),
+});
+
+export type GenerateWorkAudioBody = z.infer<typeof generateWorkAudioBodySchema>;
+
+export const audioTimelineSegmentSchema = z.object({
+  index: z.number().int().nonnegative(),
+  textHash: z.string().min(1),
+  startMs: z.number().int().nonnegative(),
+  durationMs: z.number().int().nonnegative(),
+  storageKey: z.string().min(1),
+  wordTimings: z.array(ttsWordTimingSchema),
+});
+
+export type AudioTimelineSegment = z.infer<typeof audioTimelineSegmentSchema>;
+
+/** UI track status — `stale` is ready + contentHash mismatch (not a DB status). */
 export const contentAssetTrackSchema = z.object({
   role: z.enum(ttsVoiceRoleValues),
-  status: z.enum(['none', 'ready', 'failed']),
+  status: z.enum(['none', 'generating', 'ready', 'failed', 'stale']),
   voice: z.string().nullable(),
   contentHash: z.string().nullable(),
   contentStale: z.boolean(),
@@ -65,9 +85,11 @@ export const contentAssetTrackSchema = z.object({
   generatedAt: z.union([z.string(), z.date()]).nullable(),
   updatedAt: z.union([z.string(), z.date()]).nullable(),
   audioAvailable: z.boolean(),
-  expired: z.boolean(),
-  audioBase64: z.string().nullable(),
-  wordTimings: z.array(ttsWordTimingSchema).optional(),
+  /** Asset id for `/api/assets/:id` when playable. */
+  assetId: z.string().nullable(),
+  audioUrl: z.string().nullable(),
+  durationMs: z.number().int().nonnegative().nullable(),
+  timeline: z.array(audioTimelineSegmentSchema).optional(),
 });
 
 export type ContentAssetTrack = z.infer<typeof contentAssetTrackSchema>;
@@ -85,18 +107,58 @@ export const partAudioViewSchema = z.object({
 
 export type PartAudioView = z.infer<typeof partAudioViewSchema>;
 
-export const generatePartAudioRoleResultSchema = z.object({
+export const workAudioPartRowSchema = z.object({
+  partId: z.string(),
+  sortOrder: z.number().int(),
+  title: z.string(),
+  currentContentHash: z.string(),
+  track: contentAssetTrackSchema,
+});
+
+export type WorkAudioPartRow = z.infer<typeof workAudioPartRowSchema>;
+
+export const workAudioSummarySchema = z.object({
+  total: z.number().int().nonnegative(),
+  none: z.number().int().nonnegative(),
+  generating: z.number().int().nonnegative(),
+  ready: z.number().int().nonnegative(),
+  stale: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+});
+
+export type WorkAudioSummary = z.infer<typeof workAudioSummarySchema>;
+
+export const workAudioViewSchema = z.object({
+  workId: z.string(),
   role: z.enum(ttsVoiceRoleValues),
-  ok: z.boolean(),
-  latencyMs: z.number().int().nonnegative(),
-  cached: z.boolean().nullable(),
-  error: z.string().nullable(),
+  summary: workAudioSummarySchema,
+  parts: z.array(workAudioPartRowSchema),
 });
 
-export type GeneratePartAudioRoleResult = z.infer<typeof generatePartAudioRoleResultSchema>;
+export type WorkAudioView = z.infer<typeof workAudioViewSchema>;
 
-export const generatePartAudioResultSchema = partAudioViewSchema.extend({
-  results: z.array(generatePartAudioRoleResultSchema),
+export const workAudioQuerySchema = z.object({
+  role: z.enum(ttsVoiceRoleValues),
 });
 
-export type GeneratePartAudioResult = z.infer<typeof generatePartAudioResultSchema>;
+export type WorkAudioQuery = z.infer<typeof workAudioQuerySchema>;
+
+export const enqueueAudioItemSchema = z.object({
+  partId: z.string(),
+  role: z.enum(ttsVoiceRoleValues),
+  jobId: z.string(),
+});
+
+export const skipAudioItemSchema = z.object({
+  partId: z.string(),
+  role: z.enum(ttsVoiceRoleValues),
+  reason: z.enum(['fresh']),
+});
+
+export const enqueueAudioResultSchema = z.object({
+  workId: z.string(),
+  enqueued: z.array(enqueueAudioItemSchema),
+  skipped: z.array(skipAudioItemSchema),
+});
+
+export type EnqueueAudioResult = z.infer<typeof enqueueAudioResultSchema>;

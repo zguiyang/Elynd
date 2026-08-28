@@ -83,7 +83,10 @@ export const readerAudioTrackSchema = z.object({
   role: z.enum(ttsVoiceRoleValues),
   mimeType: z.string().min(1),
   voice: z.string().min(1),
-  audioBase64: z.string().min(1),
+  /** Gateway URL — `/api/assets/:assetId`. */
+  audioUrl: z.string().min(1),
+  assetId: z.string().min(1),
+  durationMs: z.number().int().nonnegative().nullable(),
   wordTimings: z.array(ttsWordTimingSchema),
 });
 

@@ -15,8 +15,8 @@ export type WorkStatus = (typeof WORK_STATUSES)[number];
 export const WORKFLOW_STEPS = ['parse', 'metadata', 'tts'] as const;
 export type WorkflowStep = (typeof WORKFLOW_STEPS)[number];
 
-/** TTS step flag — status/schema reserved, real job not wired yet. */
-export const TTS_STEP_ENABLED = false;
+/** TTS workflow step is live — metadata completion advances to `tts` and enqueues audio. */
+export const TTS_STEP_ENABLED = true;
 
 export const WORK_VISIBILITIES = ['catalog', 'private'] as const;
 export type WorkVisibility = (typeof WORK_VISIBILITIES)[number];

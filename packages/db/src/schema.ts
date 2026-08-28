@@ -433,12 +433,24 @@ export type ContentAssetWordTiming = {
   textOffset: number;
 };
 
+/** One TTS segment inside a part audio timeline (audio_* kinds). */
+export type ContentAssetAudioTimelineSegment = {
+  index: number;
+  textHash: string;
+  startMs: number;
+  durationMs: number;
+  storageKey: string;
+  wordTimings: ContentAssetWordTiming[];
+};
+
 export type ContentAssetMeta = {
   voice?: string;
   durationMs?: number;
-  wordTimings?: ContentAssetWordTiming[];
   lastError?: string;
   generatedAt?: string;
+  /** audio_* — segment index + chapter object keys (required when ready). */
+  timeline?: ContentAssetAudioTimelineSegment[];
+  objectKeys?: string[];
   /** Origin file uploads (kind = origin_file). */
   originalFileName?: string;
   size?: number;

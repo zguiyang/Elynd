@@ -105,81 +105,83 @@ export function AiProviderList({
           return (
             <li key={provider.id}>
               <div className="flex flex-col gap-4 px-5 py-5 md:flex-row md:items-start md:justify-between">
-                <button
-                  type="button"
-                  className="flex min-w-0 flex-1 items-start gap-3 text-left"
-                  onClick={() => onToggleExpand(provider.id)}
-                  aria-expanded={isExpanded}
-                >
-                  <ChevronDown
-                    className={cn(
-                      'mt-1 size-4 shrink-0 text-muted-foreground transition-transform duration-200',
-                      isExpanded ? 'rotate-0' : '-rotate-90',
-                    )}
-                  />
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-foreground">{provider.name}</p>
-                      <Badge variant={provider.isEnabled ? 'secondary' : 'outline'}>
-                        {provider.isEnabled ? '已启用' : '已停用'}
-                      </Badge>
-                      <Badge variant="outline">{providerModels.length} 个模型</Badge>
-                    </div>
-                    <p className="mt-1 truncate font-mono text-xs text-muted-foreground">{provider.baseUrl}</p>
-                    <div className="mt-1 flex flex-wrap items-center gap-2">
-                      <p className="text-xs text-muted-foreground">
-                        {provider.apiKeySet ? `API Key ${provider.apiKeyMasked ?? '已设置'}` : '尚未设置 API Key'}
-                      </p>
-                      {provider.proxyUrl ? (
-                        <Badge variant="outline" className="text-xs">
-                          经代理出站 · {formatProxyHost(provider.proxyUrl)}
+                <div className="min-w-0 flex-1">
+                  <button
+                    type="button"
+                    className="flex w-full items-start gap-3 text-left"
+                    onClick={() => onToggleExpand(provider.id)}
+                    aria-expanded={isExpanded}
+                  >
+                    <ChevronDown
+                      className={cn(
+                        'mt-1 size-4 shrink-0 text-muted-foreground transition-transform duration-200',
+                        isExpanded ? 'rotate-0' : '-rotate-90',
+                      )}
+                    />
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium text-foreground">{provider.name}</p>
+                        <Badge variant={provider.isEnabled ? 'secondary' : 'outline'}>
+                          {provider.isEnabled ? '已启用' : '已停用'}
                         </Badge>
-                      ) : null}
-                    </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-2">
-                      {balanceResult && balanceResult.supported ? (
-                        <>
-                          <Badge variant="secondary" className="gap-1 text-xs tabular-nums">
-                            <Wallet data-icon="inline-start" />
-                            余额 {formatBalance(balanceResult)}
+                        <Badge variant="outline">{providerModels.length} 个模型</Badge>
+                      </div>
+                      <p className="mt-1 truncate font-mono text-xs text-muted-foreground">{provider.baseUrl}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <p className="text-xs text-muted-foreground">
+                          {provider.apiKeySet ? `API Key ${provider.apiKeyMasked ?? '已设置'}` : '尚未设置 API Key'}
+                        </p>
+                        {provider.proxyUrl ? (
+                          <Badge variant="outline" className="text-xs">
+                            经代理出站 · {formatProxyHost(provider.proxyUrl)}
                           </Badge>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 rounded-lg px-2 text-xs"
-                            disabled={isQueryingBalance}
-                            onClick={() => onQueryBalance(provider)}
-                          >
-                            {isQueryingBalance ? <Spinner data-icon="inline-start" /> : null}
-                            刷新
-                          </Button>
-                        </>
-                      ) : balanceResult && !balanceResult.supported ? (
-                        <p className="text-xs text-muted-foreground">{balanceResult.message}</p>
-                      ) : (
+                        ) : null}
+                      </div>
+                    </div>
+                  </button>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 pl-7">
+                    {balanceResult && balanceResult.supported ? (
+                      <>
+                        <Badge variant="secondary" className="gap-1 text-xs tabular-nums">
+                          <Wallet data-icon="inline-start" />
+                          余额 {formatBalance(balanceResult)}
+                        </Badge>
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
                           className="h-6 rounded-lg px-2 text-xs"
                           disabled={isQueryingBalance}
                           onClick={() => onQueryBalance(provider)}
                         >
-                          {isQueryingBalance ? (
-                            <>
-                              <Spinner data-icon="inline-start" />
-                              查询中
-                            </>
-                          ) : (
-                            <>
-                              <Wallet data-icon="inline-start" />
-                              查询余额
-                            </>
-                          )}
+                          {isQueryingBalance ? <Spinner data-icon="inline-start" /> : null}
+                          刷新
                         </Button>
-                      )}
-                    </div>
+                      </>
+                    ) : balanceResult && !balanceResult.supported ? (
+                      <p className="text-xs text-muted-foreground">{balanceResult.message}</p>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 rounded-lg px-2 text-xs"
+                        disabled={isQueryingBalance}
+                        onClick={() => onQueryBalance(provider)}
+                      >
+                        {isQueryingBalance ? (
+                          <>
+                            <Spinner data-icon="inline-start" />
+                            查询中
+                          </>
+                        ) : (
+                          <>
+                            <Wallet data-icon="inline-start" />
+                            查询余额
+                          </>
+                        )}
+                      </Button>
+                    )}
                   </div>
-                </button>
+                </div>
 
                 <div className="flex flex-wrap items-center gap-2 pl-7 md:pl-0">
                   <Button

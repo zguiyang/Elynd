@@ -32,23 +32,23 @@
 
 ### 1.3 产品决策（已确认）
 
-| 决策项             | 结论                                                                                                                                                                                                     |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| metadata-fill 职责 | **选项 A**：title/author/description/language 规则落库全量迁入 metadata-fill，content-parse 收敛为内容侧（**保留** status='draft'/coverAssetId/publishedAt/originMeta.parsed 于 content-parse，见 §5.3） |
-| 分类来源           | **预定义枚举集合**（对齐 TextStack 16 类，清单见附录），存 category 表可增补，AI 只能从集合选                                                                                                            |
-| 来源               | **不用 AI**：规则解析（dc:source → matchRule）→ 命中关联；未命中留空，用户手填（provenance=manual）                                                                                                      |
-| AI 回填字段        | description + tags + category（source 不参与，`aiFillable: false`）                                                                                                                                      |
-| AI 调用路径        | **复用现有 invokeAi**（tools + `withStructuredOutput({method:'functionCalling'})`）；删除 createAgent/toolStrategy 独立路径（评审确认）                                                                  |
-| AI 复用策略        | 三层防线（prompt 引导复用 + normalized 规范化 + DB 唯一约束），物理上杜绝重复创建                                                                                                                        |
-| 上下文防膨胀       | 全局数据（标签/分类）100% 走 LangChain Tools 按需查询，不塞 prompt；prompt 只含单书固定量上下文                                                                                                          |
-| provenance 优先级  | `manual > ai > extracted`：只填空/弱值字段；弱值 extracted 可被 ai 覆盖（provenance 升 ai）；manual 永不覆盖（评审确认）                                                                                 |
-| 失败链路           | metadata-fill 失败只写 `originMeta.lastError`，**仍 enqueue metadata-enrich**（AI 兜底，enrich 自带短路检查）（评审确认）                                                                                |
-| 手填覆盖语义       | updateWork 手填 **只删 manual 再插 manual**；extracted/ai 关联永不删（评审确认）                                                                                                                         |
-| jsonb 双写         | 写**合并视图**（extracted+ai+manual 全量快照）；所有写方事务内同步；读 jsonb 过渡前端零改动；阶段 4 删列切关联表（评审确认）                                                                             |
-| 重试语义           | **at-least-once**：job catch 恢复 Pending；attempts:2 封顶；neededFields 只算空+弱值，重试天然幂等（评审确认）                                                                                           |
-| 存量数据           | 迁移时存量 work `metadataEnrichmentStatus='skipped'`（不批量烧钱回填，阶段 4 手动触发）（评审确认）                                                                                                      |
-| 模型               | OFox 平台 + `bailian/qwen3.7-plus`（function calling 实测可用）；**协议走 Responses 或 Chat Completions（model 级配置）**，锁 functionCalling 结构化输出                                                 |
-| LLM 协议           | `llm_model.protocol`：`'chat-completions' \| 'responses'`，默认 chat-completions；换平台零代码（见 §2.5）                                                                                                |
+| 决策项             | 结论                                                                                                                                                                                                             |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| metadata-fill 职责 | **选项 A**：title/author/description/language 规则落库全量迁入 metadata-fill，content-parse 收敛为内容侧（**保留** status='draft'/coverAssetId/publishedAt/originMeta.parsed 于 content-parse，见 §5.3）         |
+| 分类来源           | **预定义枚举集合**（对齐 TextStack 16 类，清单见附录），存 category 表可增补，AI 只能从集合选                                                                                                                    |
+| 来源               | **不用 AI**：规则解析（dc:source → matchRule）→ 命中关联；未命中留空，用户手填（provenance=manual）                                                                                                              |
+| AI 回填字段        | description + tags + category（source 不参与，`aiFillable: false`）                                                                                                                                              |
+| AI 调用路径        | **复用现有 invokeAi**（tools + `withStructuredOutput({method:'functionCalling'})`）；删除 createAgent/toolStrategy 独立路径（评审确认）                                                                          |
+| AI 复用策略        | 三层防线（prompt 引导复用 + normalized 规范化 + DB 唯一约束），物理上杜绝重复创建                                                                                                                                |
+| 上下文防膨胀       | 全局数据（标签/分类）100% 走 LangChain Tools 按需查询，不塞 prompt；prompt 只含单书固定量上下文                                                                                                                  |
+| provenance 优先级  | `manual > ai > extracted`：只填空/弱值字段；弱值 extracted 可被 ai 覆盖（provenance 升 ai）；manual 永不覆盖（评审确认）                                                                                         |
+| 失败链路           | metadata-fill 失败只写 `originMeta.lastError`，**仍 enqueue metadata-enrich**（AI 兜底，enrich 自带短路检查）（评审确认）                                                                                        |
+| 手填覆盖语义       | updateWork 手填 **只删 manual 再插 manual**；extracted/ai 关联永不删（评审确认）                                                                                                                                 |
+| 维度 SSOT          | **已完成（0026）**：`tag`/`category`/`source` + junction 为唯一事实源；`description_provenance` 单列；Admin `metadataProvenance` 为 runtime projection；已删除 `reading_work.tags` / `metadata_provenance` jsonb |
+| 重试语义           | **at-least-once**：job catch 恢复 Pending；attempts:2 封顶；neededFields 只算空+弱值，重试天然幂等（评审确认）                                                                                                   |
+| 存量数据           | 迁移时存量 work `metadataEnrichmentStatus='skipped'`（不批量烧钱回填，阶段 4 手动触发）（评审确认）                                                                                                              |
+| 模型               | OFox 平台 + `bailian/qwen3.7-plus`（function calling 实测可用）；**协议走 Responses 或 Chat Completions（model 级配置）**，锁 functionCalling 结构化输出                                                         |
+| LLM 协议           | `llm_model.protocol`：`'chat-completions' \| 'responses'`，默认 chat-completions；换平台零代码（见 §2.5）                                                                                                        |
 
 ---
 

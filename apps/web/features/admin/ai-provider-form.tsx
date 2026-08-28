@@ -1,18 +1,16 @@
 'use client';
 
-import { ChevronDown } from 'lucide-react';
-import { useState } from 'react';
+import { ChevronDown, Globe, Wallet } from 'lucide-react';
+import { type ReactNode, useState } from 'react';
 
-import { LLM_BALANCE_PRESETS, type LlmProvider } from '@gloaming/shared/api/llm-config';
+import type { LlmProvider } from '@gloaming/shared/api/llm-config';
 import type { LlmApiFamily } from '@gloaming/shared/llm/wire-registry';
 import { getWireFamilyDefinition, providerSupportsOptionalField } from '@gloaming/shared/llm/wire-registry';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 
 export type ProviderFormValues = {
@@ -24,7 +22,6 @@ export type ProviderFormValues = {
   balanceEndpoint: string;
   balanceAmountPath: string;
   balanceCurrencyPath: string;
-  isEnabled: boolean;
 };
 
 type AiProviderFormProps = {
@@ -46,7 +43,6 @@ export function emptyProviderValues(apiFamily: LlmApiFamily): ProviderFormValues
     balanceEndpoint: '',
     balanceAmountPath: '',
     balanceCurrencyPath: '',
-    isEnabled: true,
   };
 }
 
@@ -60,8 +56,40 @@ export function providerValuesFromRow(provider: LlmProvider): ProviderFormValues
     balanceEndpoint: provider.balanceEndpoint ?? '',
     balanceAmountPath: provider.balanceAmountPath ?? '',
     balanceCurrencyPath: provider.balanceCurrencyPath ?? '',
-    isEnabled: provider.isEnabled,
   };
+}
+
+function CollapsibleSection({
+  icon,
+  title,
+  open,
+  onToggle,
+  children,
+}: {
+  icon: typeof Globe;
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  const Icon = icon;
+  return (
+    <div className="rounded-xl border border-border">
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium"
+        onClick={onToggle}
+        aria-expanded={open}
+      >
+        <Icon className="size-4 shrink-0 text-muted-foreground" />
+        {title}
+        <ChevronDown
+          className={cn('ml-auto size-4 text-muted-foreground transition-transform', open && 'rotate-180')}
+        />
+      </button>
+      {open ? <div className="flex flex-col gap-3 border-t border-border px-4 py-4">{children}</div> : null}
+    </div>
+  );
 }
 
 export function AiProviderForm({ apiFamily, provider, formId, onSubmit, onCancel }: AiProviderFormProps) {
@@ -70,27 +98,14 @@ export function AiProviderForm({ apiFamily, provider, formId, onSubmit, onCancel
   const [values, setValues] = useState<ProviderFormValues>(() =>
     provider ? providerValuesFromRow(provider) : emptyProviderValues(apiFamily),
   );
-  const [presetId, setPresetId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Partial<Record<keyof ProviderFormValues, string>>>({});
-  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const [isProxyOpen, setIsProxyOpen] = useState(() => Boolean(provider?.proxyUrl));
+  const [isBalanceOpen, setIsBalanceOpen] = useState(() =>
+    Boolean(provider?.balanceEndpoint || provider?.balanceAmountPath),
+  );
 
   const shouldShowThinkingParam = providerSupportsOptionalField(apiFamily, 'thinkingParam');
   const shouldShowBalance = familyDef.provider.capabilities.balanceQuery;
-
-  function applyPreset(nextPresetId: string) {
-    const preset = LLM_BALANCE_PRESETS.find((item) => item.id === nextPresetId);
-    if (!preset) {
-      return;
-    }
-    setPresetId(preset.id);
-    setValues((prev) => ({
-      ...prev,
-      balanceEndpoint: preset.endpoint,
-      balanceAmountPath: preset.amountPath,
-      balanceCurrencyPath: preset.currencyPath ?? '',
-    }));
-    setIsAdvancedOpen(true);
-  }
 
   function validate(): boolean {
     const next: Partial<Record<keyof ProviderFormValues, string>> = {};
@@ -125,15 +140,16 @@ export function AiProviderForm({ apiFamily, provider, formId, onSubmit, onCancel
         onSubmit(values);
       }}
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-muted-foreground">API 协议族</span>
-        <Badge variant="secondary">{familyDef.label}</Badge>
-        {!familyDef.runtimeImplemented ? (
-          <Badge variant="outline" className="text-xs font-normal">
-            运行时尚未支持
-          </Badge>
-        ) : null}
-      </div>
+      {!isEdit ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="secondary">{familyDef.label}</Badge>
+          {!familyDef.runtimeImplemented ? (
+            <Badge variant="outline" className="text-xs font-normal">
+              运行时尚未支持
+            </Badge>
+          ) : null}
+        </div>
+      ) : null}
 
       <FieldGroup className="gap-4">
         <div className="grid gap-4 md:grid-cols-2">
@@ -152,9 +168,9 @@ export function AiProviderForm({ apiFamily, provider, formId, onSubmit, onCancel
               id={`${formId}-base-url`}
               className="font-mono text-sm"
               value={values.baseUrl}
+              placeholder={familyDef.provider.baseUrlPlaceholder}
               onChange={(e) => setValues((p) => ({ ...p, baseUrl: e.target.value }))}
             />
-            <FieldDescription>{familyDef.provider.baseUrlHint}</FieldDescription>
             <FieldError>{errors.baseUrl}</FieldError>
           </Field>
         </div>
@@ -169,7 +185,9 @@ export function AiProviderForm({ apiFamily, provider, formId, onSubmit, onCancel
             placeholder={isEdit ? '留空表示不修改' : 'sk-…'}
             onChange={(e) => setValues((p) => ({ ...p, apiKey: e.target.value }))}
           />
-          {isEdit && provider?.apiKeyMasked ? <FieldDescription>当前：{provider.apiKeyMasked}</FieldDescription> : null}
+          {isEdit && provider?.apiKeyMasked ? (
+            <p className="text-xs text-muted-foreground">当前：{provider.apiKeyMasked}</p>
+          ) : null}
           <FieldError>{errors.apiKey}</FieldError>
         </Field>
 
@@ -185,91 +203,49 @@ export function AiProviderForm({ apiFamily, provider, formId, onSubmit, onCancel
           </Field>
         ) : null}
 
-        <Field
-          orientation="horizontal"
-          className="items-center justify-between rounded-xl border border-border px-3 py-3"
-        >
-          <FieldLabel htmlFor={`${formId}-enabled`}>启用</FieldLabel>
-          <Switch
-            id={`${formId}-enabled`}
-            checked={values.isEnabled}
-            onCheckedChange={(checked) => setValues((p) => ({ ...p, isEnabled: checked }))}
+        <CollapsibleSection icon={Globe} title="代理" open={isProxyOpen} onToggle={() => setIsProxyOpen((o) => !o)}>
+          <Input
+            id={`${formId}-proxy`}
+            value={values.proxyUrl}
+            placeholder="http://127.0.0.1:7890"
+            onChange={(e) => setValues((p) => ({ ...p, proxyUrl: e.target.value }))}
           />
-        </Field>
+        </CollapsibleSection>
 
-        <div className="rounded-xl border border-border">
-          <button
-            type="button"
-            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium"
-            onClick={() => setIsAdvancedOpen((open) => !open)}
-            aria-expanded={isAdvancedOpen}
+        {shouldShowBalance ? (
+          <CollapsibleSection
+            icon={Wallet}
+            title="余额查询"
+            open={isBalanceOpen}
+            onToggle={() => setIsBalanceOpen((o) => !o)}
           >
-            高级设置
-            <ChevronDown
-              className={cn('size-4 text-muted-foreground transition-transform', isAdvancedOpen && 'rotate-180')}
+            <Input
+              className="font-mono text-sm"
+              value={values.balanceEndpoint}
+              placeholder="https://… 或 /user/balance"
+              onChange={(e) => setValues((p) => ({ ...p, balanceEndpoint: e.target.value }))}
             />
-          </button>
-          {isAdvancedOpen ? (
-            <div className="flex flex-col gap-4 border-t border-border px-4 py-4">
-              <Field>
-                <FieldLabel htmlFor={`${formId}-proxy`}>代理地址</FieldLabel>
-                <Input
-                  id={`${formId}-proxy`}
-                  value={values.proxyUrl}
-                  onChange={(e) => setValues((p) => ({ ...p, proxyUrl: e.target.value }))}
-                />
-              </Field>
-              {shouldShowBalance ? (
-                <Field>
-                  <FieldLabel>余额查询（可选）</FieldLabel>
-                  <Select
-                    items={LLM_BALANCE_PRESETS.map((preset) => ({ value: preset.id, label: preset.label }))}
-                    value={presetId}
-                    onValueChange={(value) => value != null && applyPreset(value)}
-                  >
-                    <SelectTrigger className="h-9 rounded-xl">
-                      <SelectValue placeholder="选择平台预设" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {LLM_BALANCE_PRESETS.map((preset) => (
-                          <SelectItem key={preset.id} value={preset.id}>
-                            {preset.label}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    className="mt-2 font-mono text-sm"
-                    value={values.balanceEndpoint}
-                    placeholder="余额端点 URL"
-                    onChange={(e) => setValues((p) => ({ ...p, balanceEndpoint: e.target.value }))}
-                  />
-                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                    <Input
-                      className="font-mono text-sm"
-                      value={values.balanceAmountPath}
-                      placeholder="data.balance"
-                      onChange={(e) => setValues((p) => ({ ...p, balanceAmountPath: e.target.value }))}
-                    />
-                    <Input
-                      className="font-mono text-sm"
-                      value={values.balanceCurrencyPath}
-                      placeholder="data.currency"
-                      onChange={(e) => setValues((p) => ({ ...p, balanceCurrencyPath: e.target.value }))}
-                    />
-                  </div>
-                </Field>
-              ) : null}
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Input
+                className="font-mono text-sm"
+                value={values.balanceAmountPath}
+                placeholder="data.balance"
+                onChange={(e) => setValues((p) => ({ ...p, balanceAmountPath: e.target.value }))}
+              />
+              <Input
+                className="font-mono text-sm"
+                value={values.balanceCurrencyPath}
+                placeholder="data.currency"
+                onChange={(e) => setValues((p) => ({ ...p, balanceCurrencyPath: e.target.value }))}
+              />
             </div>
-          ) : null}
-        </div>
+          </CollapsibleSection>
+        ) : null}
       </FieldGroup>
 
       <div className="flex flex-wrap gap-2">
         <Button type="submit" className="rounded-xl hover:bg-brand-deep">
-          {isEdit ? '保存服务商' : '添加服务商'}
+          {isEdit ? '保存' : '添加'}
         </Button>
         {onCancel ? (
           <Button type="button" variant="outline" className="rounded-xl" onClick={onCancel}>

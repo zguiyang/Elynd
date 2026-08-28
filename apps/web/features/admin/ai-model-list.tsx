@@ -1,5 +1,7 @@
 'use client';
 
+import { Pencil, Trash2 } from 'lucide-react';
+
 import type { LlmModel, LlmProvider } from '@gloaming/shared/api/llm-config';
 import { getWireFamilyDefinition, getWireVariantLabel } from '@gloaming/shared/llm/wire-registry';
 
@@ -49,11 +51,23 @@ export function AiModelList({ provider, models, onEdit, onDelete }: AiModelListP
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-1">
-                    <Button variant="ghost" size="sm" className="rounded-xl" onClick={() => onEdit(model)}>
-                      编辑
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 rounded-xl"
+                      aria-label={`编辑 ${model.label}`}
+                      onClick={() => onEdit(model)}
+                    >
+                      <Pencil className="size-4" />
                     </Button>
-                    <Button variant="destructive" size="sm" className="rounded-xl" onClick={() => onDelete(model)}>
-                      删除
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 rounded-xl text-destructive hover:text-destructive"
+                      aria-label={`删除 ${model.label}`}
+                      onClick={() => onDelete(model)}
+                    >
+                      <Trash2 className="size-4" />
                     </Button>
                   </div>
                 </TableCell>
@@ -82,12 +96,24 @@ export function AiModelList({ provider, models, onEdit, onDelete }: AiModelListP
                   ) : null}
                 </div>
               </div>
-              <div className="flex shrink-0 flex-col gap-1">
-                <Button variant="ghost" size="sm" className="rounded-xl" onClick={() => onEdit(model)}>
-                  编辑
+              <div className="flex shrink-0 gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 rounded-xl"
+                  aria-label={`编辑 ${model.label}`}
+                  onClick={() => onEdit(model)}
+                >
+                  <Pencil className="size-4" />
                 </Button>
-                <Button variant="destructive" size="sm" className="rounded-xl" onClick={() => onDelete(model)}>
-                  删除
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 rounded-xl text-destructive hover:text-destructive"
+                  aria-label={`删除 ${model.label}`}
+                  onClick={() => onDelete(model)}
+                >
+                  <Trash2 className="size-4" />
                 </Button>
               </div>
             </div>

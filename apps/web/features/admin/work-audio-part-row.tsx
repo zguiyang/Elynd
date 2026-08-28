@@ -1,7 +1,7 @@
 'use client';
 
-import { RotateCcw } from 'lucide-react';
-import { useRef } from 'react';
+import { Pause, Play, RotateCcw } from 'lucide-react';
+import { useRef, useState } from 'react';
 
 import type { ContentAssetTrack, WorkAudioPartRow } from '@gloaming/shared/api/content-assets';
 
@@ -18,22 +18,57 @@ const STATUS_LABEL: Record<ContentAssetTrack['status'], string> = {
   failed: '失败',
 };
 
+function formatDurationMs(ms: number | null): string {
+  if (ms == null || ms <= 0) {
+    return '—';
+  }
+  const totalSec = Math.round(ms / 1000);
+  const minutes = Math.floor(totalSec / 60);
+  const seconds = totalSec % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
 type WorkAudioPartRowProps = {
   row: WorkAudioPartRow;
   index: number;
   disabled?: boolean;
   onRetry: () => void;
-  onPlay: (audio: HTMLAudioElement | null) => void;
+  /** Ensure only one chapter plays at a time. */
+  onExclusivePlay: (audio: HTMLAudioElement) => void;
 };
 
-export function WorkAudioPartRowView({ row, index, disabled, onRetry, onPlay }: WorkAudioPartRowProps) {
+export function WorkAudioPartRowView({ row, index, disabled, onRetry, onExclusivePlay }: WorkAudioPartRowProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
   const track = row.track;
   const canPlay = track.status === 'ready' && Boolean(track.audioUrl);
   const isBusy = track.status === 'generating';
 
+  async function togglePlay() {
+    const audio = audioRef.current;
+    if (!audio || !canPlay) {
+      return;
+    }
+    if (isPlaying) {
+      audio.pause();
+      return;
+    }
+    onExclusivePlay(audio);
+    try {
+      await audio.play();
+    } catch {
+      setIsPlaying(false);
+    }
+  }
+
   return (
-    <div className="flex items-center gap-3 border-b border-border py-2.5 last:border-b-0">
+    <div
+      className={cn(
+        'flex items-center gap-3 py-2.5 transition-colors duration-200 ease-out-soft',
+        'border-b border-border last:border-b-0',
+        isPlaying && 'bg-brand-soft/40',
+      )}
+    >
       <span className="w-8 shrink-0 text-right font-mono text-xs tabular-nums text-muted-foreground">
         {String(index + 1).padStart(2, '0')}
       </span>
@@ -51,25 +86,49 @@ export function WorkAudioPartRowView({ row, index, disabled, onRetry, onPlay }: 
       >
         {isBusy ? <Spinner className="size-3" /> : STATUS_LABEL[track.status]}
       </Badge>
-      <div className="w-44 shrink-0">
-        {canPlay ? (
-          <audio
-            ref={audioRef}
-            controls
-            preload="none"
-            className="h-8 w-full"
-            src={track.audioUrl!}
-            onPlay={(e) => onPlay(e.currentTarget)}
-          />
-        ) : (
-          <span className="text-xs text-muted-foreground">—</span>
+
+      <span
+        className={cn(
+          'w-12 shrink-0 text-right font-mono text-xs tabular-nums',
+          canPlay ? 'text-muted-foreground' : 'text-muted-foreground/50',
         )}
-      </div>
+      >
+        {canPlay ? formatDurationMs(track.durationMs) : '—'}
+      </span>
+
       <Button
         type="button"
         variant="ghost"
         size="icon"
-        className="size-8 shrink-0"
+        className={cn(
+          'size-8 shrink-0 rounded-full',
+          isPlaying && 'bg-primary text-primary-foreground hover:bg-brand-deep hover:text-primary-foreground',
+          !isPlaying && canPlay && 'text-brand-deep hover:bg-brand-soft',
+        )}
+        disabled={!canPlay || disabled}
+        aria-label={isPlaying ? `暂停 ${row.title || row.partId}` : `播放 ${row.title || row.partId}`}
+        onClick={() => void togglePlay()}
+      >
+        {isPlaying ? <Pause className="size-3.5 fill-current" /> : <Play className="size-3.5 fill-current" />}
+      </Button>
+
+      {canPlay ? (
+        <audio
+          ref={audioRef}
+          preload="none"
+          src={track.audioUrl!}
+          className="sr-only"
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          onEnded={() => setIsPlaying(false)}
+        />
+      ) : null}
+
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="size-8 shrink-0 text-muted-foreground hover:text-foreground"
         disabled={disabled || isBusy}
         aria-label={`重试 ${row.title || row.partId}`}
         onClick={onRetry}

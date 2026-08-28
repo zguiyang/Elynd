@@ -116,7 +116,12 @@ export function WorkAudioPanel({ workId }: WorkAudioPanelProps) {
   const summary = data?.summary;
   const isMutating = fillMutation.isPending || forceMutation.isPending || retryMutation.isPending;
 
-  function handlePlay(audio: HTMLAudioElement | null) {
+  function stopExclusivePlayback() {
+    playingRef.current?.pause();
+    playingRef.current = null;
+  }
+
+  function handleExclusivePlay(audio: HTMLAudioElement) {
     if (playingRef.current && playingRef.current !== audio) {
       playingRef.current.pause();
     }
@@ -135,6 +140,7 @@ export function WorkAudioPanel({ workId }: WorkAudioPanelProps) {
           value={role}
           onValueChange={(value) => {
             if (value === 'us' || value === 'uk') {
+              stopExclusivePlayback();
               setRole(value);
             }
           }}
@@ -168,7 +174,7 @@ export function WorkAudioPanel({ workId }: WorkAudioPanelProps) {
       ) : query.isError ? (
         <p className="text-sm text-destructive">{formatWorksApiError(query.error)}</p>
       ) : (
-        <div className={cn('rounded-lg border border-border px-3')}>
+        <div className={cn('overflow-hidden rounded-xl border border-border bg-card px-3')}>
           {data!.parts.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">暂无章节</p>
           ) : (
@@ -179,7 +185,7 @@ export function WorkAudioPanel({ workId }: WorkAudioPanelProps) {
                 index={index}
                 disabled={isMutating}
                 onRetry={() => retryMutation.mutate(row.partId)}
-                onPlay={handlePlay}
+                onExclusivePlay={handleExclusivePlay}
               />
             ))
           )}

@@ -298,11 +298,95 @@ Depth from **tonal layering** and hairline outlines — not heavy drop shadows.
 
 ---
 
+## Interaction philosophy
+
+**Scope:** Product and interaction judgment for all Gloaming UI — what to show, what to merge, what to delete. **Visual polish** (typography, color, spacing, composition, anti-slop) stays in the sections above and in Taste skills. **AI execution checklists** live in [`.cursor/rules/frontend.mdc`](.cursor/rules/frontend.mdc).
+
+**Priority ladder (default):**
+
+```text
+Remove → Simplify → Combine → Clarify → Polish
+```
+
+Do not invert this by scaffolding a form shell first and decorating it afterward.
+
+### Information economy
+
+Every visible element must earn its place — label, description, helper text, badge, status line, heading, divider, card, button, icon button, secondary action.
+
+> If removing an element would not clearly hurt comprehension, discoverability, or function, prefer removing it.
+
+“Complete expression” is not the same as good design. Prefer one precise signal over three polite repeats.
+
+### Interaction compression
+
+Before adding a control, ask which **object** and **user task** it belongs to. Operations that serve the same task on the same object should share one interaction context when possible.
+
+| Prefer                                                                           | Over                                                             |
+| -------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Refresh as a contextual action on a Select / Combobox                            | A standalone “fetch list” button above the Select                |
+| Inline or icon action on the row it affects                                      | A separate toolbar button for the same row                       |
+| One save surface per editing context (when product already uses form-level save) | Removing Save or switching to auto-save without product decision |
+
+This is not “everything becomes an icon.” It is **task ownership first**, control shape second.
+
+**UI vs product behavior:** Compression and delete-first optimize **layout and control grouping** only. They must **not** change when or how data loads, persists, confirms, or side-effects. If merging controls would require auto-save, blur-save, optimistic persistence, automatic fetch/refresh/submit/delete, or dropping confirmation → that is **PRODUCT / BEHAVIOR**, not UI simplification. Preserve shipped or specified behavior; flag and stop — do not infer.
+
+### Contextual actions
+
+Place actions on the object they affect — end of a field row, inside a Select trigger group, on the list row — instead of inventing a new standalone button because the capability exists.
+
+Standalone buttons remain valid when the action is truly independent, destructive, or needs emphasis (primary submit, delete confirm, page-level create).
+
+### State representation
+
+Do not restate what the control already communicates.
+
+- **Switch / Toggle:** the control is the state. Do not add a parallel “Enabled / 启用” label unless the switch label names something _other than_ on/off (e.g. “AI 模型” with the switch as the value).
+- **Select / Combobox:** the selected value is the state. Do not add a redundant status badge for “已选择”.
+- **Badge / status text:** use only when it adds information the control cannot show (health, error, drift from saved value).
+- **Form vs collection:** in a **form**, do not restate control state in prose or badges; in a **list/table**, a status column for scanning many rows is valid — not the same as duplicating a Switch label.
+
+Accessibility: use `aria-label` / visually hidden text when a control lacks a visible name — not a duplicate visible status word.
+
+### Semantic redundancy
+
+Separate **visual layering** (panel vs field) from **semantic repetition** (saying the same fact in label + description + badge + helper).
+
+Ask: **What does the user already know from page title, tab, section, field name, or control state?** Do not explain again “for safety.”
+
+### Admin workbench density
+
+Admin (`/admin/**`) serves operators who already understand Provider, Model, API Key, Enable/Disable, Refresh, Configuration.
+
+- Context and field order carry meaning — not long descriptions on every field.
+- Prefer compact rows, inline actions, and one section per task over nested cards, duplicate headings, and consumer-style helper stacks.
+- Page-level intro copy: one line when the task is non-obvious; skip when the nav label + layout already state the job.
+- Same tokens and visual language as learner UI; **denser layout is OK** — not a second theme.
+
+**Scope:** stricter economy applies to **admin / configuration** surfaces only. Reader, shelf, discover, auth, and onboarding may keep labels, descriptions, and text actions when unfamiliarity, reading context, accessibility, or discoverability need them. **Reduce cognitive load for the task and audience** — not merely element count globally.
+
+### Decision order (before drawing UI)
+
+```text
+1. Product task — what must the user accomplish?
+2. Minimum information — what cannot be inferred?
+3. Minimum interactions — fewest controls that complete the task
+4. Context inference — what do title / tab / grouping already tell them?
+5. Merge related actions into shared control contexts
+6. Delete redundant elements (checklist in frontend.mdc)
+7. Visual polish — tokens above + Taste skills for hierarchy and composition
+```
+
+Taste skills own **visual quality**; this section owns **product / interaction quality**. They complement each other — do not replace Taste with more prose here.
+
+---
+
 ## Do's and Don'ts
 
 **Do**
 
-- Read this file before generating or restyling UI.
+- Read this file before generating or restyling UI — including **Interaction philosophy** above, not only color and type.
 - Express color only through semantic tokens / CSS variables (`bg-primary`, `text-muted-foreground`, `var(--surface-container)`, …).
 - Keep one accent; motion nearly invisible (short color transitions; optional light `active:scale` on primary CTA).
 - Keep **system UI language Chinese** (labels, nav, empty states, toasts, placeholders) until product i18n is explicit; learning content may be EN/ZH.
@@ -318,5 +402,7 @@ Depth from **tonal layering** and hairline outlines — not heavy drop shadows.
 - Don’t implement dark mode values until a night-reading theme is explicitly designed.
 - Don’t invent a parallel token set in feature CSS — extend this file / `globals.css` first.
 - Don’t invent a second Admin color theme — same tokens; denser workbench layout is OK.
+- Don’t add labels, descriptions, badges, cards, or buttons “to be complete” when context or the control already carries the meaning — see **Interaction philosophy**.
+- Don’t let UI simplification infer product behavior (auto-save, automatic fetch, implicit confirm, etc.) — see **UI vs product behavior** under Interaction compression.
 
-**UI composition:** Prefer shadcn atoms, then Tailwind polish, then limited native markup — aesthetics over atom purity. Ladder and Base UI gotchas: `.cursor/rules/frontend.mdc`.
+**UI composition:** Prefer shadcn atoms, then Tailwind polish, then limited native markup. Apply **Remove → Simplify → Combine → Clarify → Polish** before visual polish. Atom ladder and Base UI gotchas: `.cursor/rules/frontend.mdc`.

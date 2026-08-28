@@ -184,56 +184,6 @@ export const testLlmProviderResultSchema = z.object({
 
 export type TestLlmProviderResult = z.infer<typeof testLlmProviderResultSchema>;
 
-/**
- * Balance-query presets. The amount path may be a JSON path (e.g. `data.balance`)
- * or a subtraction of two paths (e.g. `data.total_credits - data.total_usage`).
- */
-export const llmBalancePresetsSchema = z.object({
-  id: z.string(),
-  label: z.string(),
-  endpoint: z.string(),
-  amountPath: z.string(),
-  currencyPath: z.string().nullable(),
-  hint: z.string().nullable(),
-});
-
-export type LlmBalancePreset = z.infer<typeof llmBalancePresetsSchema>;
-
-export const LLM_BALANCE_PRESETS: LlmBalancePreset[] = [
-  {
-    id: 'deepseek',
-    label: 'DeepSeek',
-    endpoint: 'https://api.deepseek.com/user/balance',
-    amountPath: 'balance_infos[0].total_balance',
-    currencyPath: 'balance_infos[0].currency',
-    hint: null,
-  },
-  {
-    id: 'moonshot',
-    label: 'Kimi / Moonshot',
-    endpoint: 'https://api.moonshot.cn/v1/users/me/balance',
-    amountPath: 'data.available_balance',
-    currencyPath: null,
-    hint: null,
-  },
-  {
-    id: 'openrouter',
-    label: 'OpenRouter',
-    endpoint: 'https://openrouter.ai/api/v1/credits',
-    amountPath: 'data.total_credits - data.total_usage',
-    currencyPath: null,
-    hint: null,
-  },
-  {
-    id: 'siliconflow',
-    label: 'SiliconFlow',
-    endpoint: 'https://api.siliconflow.cn/v1/user/info',
-    amountPath: 'data.balance',
-    currencyPath: null,
-    hint: '非官方接口，余额字段语义可能与控制台存在出入',
-  },
-];
-
 /** A model candidate fetched live from a provider's `GET /models`. */
 export const providerModelCandidateSchema = z.object({
   id: z.string(),

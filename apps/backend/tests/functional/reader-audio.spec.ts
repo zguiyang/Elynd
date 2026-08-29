@@ -20,7 +20,7 @@ import { encryptApiKey } from '@/lib/llm';
 import * as queueLib from '@/lib/queue';
 import * as redisLib from '@/lib/redis';
 import * as azureTts from '@/lib/tts/azure';
-import { partAudioObjectKey } from '@/modules/content-assets/service';
+import { partAudioObjectKey, partAudioSegmentKey } from '@/modules/content-assets/service';
 import { resetObjectStoreCache, setObjectStoreForTests } from '@/modules/oss';
 import { TTS_CONFIG_ID } from '@/modules/tts/service';
 import { hashPartContent } from '@/modules/works/content-hash';
@@ -149,7 +149,7 @@ afterAll(async () => {
 });
 
 describe('learner part audio', () => {
-  it('exposes availability and serves published fresh tracks only', async () => {
+  it('exposes DB-derived availability; missing chapter fails on asset GetObject only', async () => {
     const admin = await createSession('admin');
     const learner = await createSession('user');
     await ensureTtsConfig();
@@ -247,16 +247,46 @@ describe('learner part audio', () => {
     });
 
     const contentHash = hashPartContent('Listen Title', 'Listen body here.');
-    objectStore.store.delete(partAudioObjectKey(partId, audioKindForRole('uk'), contentHash));
-    const ukGone = await app.request(`/api/reader/parts/${partId}/audio?role=uk`, {
+
+    // Segments are not required for playback — only storageKey (chapter) is streamed.
+    objectStore.store.delete(partAudioSegmentKey(partId, audioKindForRole('us'), contentHash, 0));
+    const afterSegDelete = await app.request(`/api/reader/works/${work.id}`, {
       headers: { Cookie: learner.cookie },
     });
-    expect(ukGone.status).toBe(404);
+    expect(((await afterSegDelete.json()) as ReaderSessionData).audioAvailable).toEqual({ us: true, uk: true });
+    expect((await app.request(`/api/assets/${usBody.assetId}`, { headers: { Cookie: learner.cookie } })).status).toBe(
+      200,
+    );
+
+    const ukChapterKey = partAudioObjectKey(partId, audioKindForRole('uk'), contentHash);
+    objectStore.store.delete(ukChapterKey);
+
+    // P3: missing chapter does not affect DB-derived availability / track metadata.
+    const ukTrackAfterDelete = await app.request(`/api/reader/parts/${partId}/audio?role=uk`, {
+      headers: { Cookie: learner.cookie },
+    });
+    expect(ukTrackAfterDelete.status).toBe(200);
+    const ukTrackBody = (await ukTrackAfterDelete.json()) as ReaderAudioTrack;
+    expect(ukTrackBody.assetId).toBeTruthy();
 
     const avail = await app.request(`/api/reader/works/${work.id}`, {
       headers: { Cookie: learner.cookie },
     });
-    expect(((await avail.json()) as ReaderSessionData).audioAvailable).toEqual({ us: true, uk: false });
+    expect(((await avail.json()) as ReaderSessionData).audioAvailable).toEqual({ us: true, uk: true });
+
+    expect(
+      (await app.request(`/api/assets/${ukTrackBody.assetId}`, { headers: { Cookie: learner.cookie } })).status,
+    ).toBe(404);
+
+    // us chapter still present — independent of uk object loss
+    const usStillOk = await app.request(`/api/reader/parts/${partId}/audio?role=us`, {
+      headers: { Cookie: learner.cookie },
+    });
+    expect(usStillOk.status).toBe(200);
+    const usStillBody = (await usStillOk.json()) as ReaderAudioTrack;
+    expect(
+      (await app.request(`/api/assets/${usStillBody.assetId}`, { headers: { Cookie: learner.cookie } })).status,
+    ).toBe(200);
 
     // Parts are read-only now — simulate content change directly in the DB
     // to verify audio invalidation (hash is based on extracted plain text).

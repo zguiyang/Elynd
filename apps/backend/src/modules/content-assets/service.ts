@@ -290,6 +290,7 @@ export async function getWorkAudio(workId: string, role: TtsVoiceRole): Promise<
   };
 }
 
+/** Admin/enqueue only (`needsRegen`) — not used on the learner read path. */
 async function objectsExistForAsset(asset: AssetRow): Promise<boolean> {
   const keys = asset.meta.objectKeys;
   if (!keys?.length) {
@@ -679,6 +680,7 @@ export async function tryAdvanceTtsWorkflow(workId: string): Promise<void> {
 
 export type PartAudioAvailability = { us: boolean; uk: boolean };
 
+/** DB-only: ready + content hash match. Object presence is verified on GetObject. */
 async function isTrackPlayable(
   part: { title: string; body: string },
   partId: string,
@@ -691,10 +693,7 @@ async function isTrackPlayable(
     .from(contentAssetTable)
     .where(and(eq(contentAssetTable.partId, partId), eq(contentAssetTable.kind, kind)))
     .limit(1);
-  if (!asset || asset.status !== 'ready' || asset.contentHash !== sourceHash) {
-    return false;
-  }
-  return objectsExistForAsset(asset);
+  return Boolean(asset && asset.status === 'ready' && asset.contentHash === sourceHash);
 }
 
 export async function getPartAudioAvailability(
@@ -707,7 +706,10 @@ export async function getPartAudioAvailability(
   return { us, uk };
 }
 
-/** Learner: published work only; refuses stale or missing objects. */
+/**
+ * Learner: published work only; refuses stale (contentHash mismatch).
+ * Missing storage objects are not preflighted — `/api/assets/:id` GetObject returns 404.
+ */
 export async function getPublishedPartAudioTrack(partId: string, role: TtsVoiceRole): Promise<ReaderAudioTrack> {
   const [part] = await db
     .select({
@@ -733,9 +735,6 @@ export async function getPublishedPartAudioTrack(partId: string, role: TtsVoiceR
     .where(and(eq(contentAssetTable.partId, partId), eq(contentAssetTable.kind, kind)))
     .limit(1);
   if (!asset || asset.status !== 'ready' || asset.contentHash !== sourceHash) {
-    throw new NotFoundError('Part audio');
-  }
-  if (!(await objectsExistForAsset(asset))) {
     throw new NotFoundError('Part audio');
   }
 

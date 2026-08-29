@@ -267,9 +267,9 @@ type MetadataReviewPanelProps = {
 
 /**
  * "原数据完善" step status line + retry actions. The step is part of the work
- * status machine: busy states (processing/metadata), failure (failed +
- * failedStep) and completion (ready/published) drive what is shown and whether
- * a retry / re-run action is available.
+ * status machine: busy state (`metadata`), failure (failed + failedStep) and
+ * completion (ready/published, or past metadata into `tts` when auto-TTS is on)
+ * drive what is shown and whether a retry / re-run action is available.
  */
 export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
   const invalidate = useInvalidateAdminWorks();
@@ -277,9 +277,9 @@ export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
   const { status, failedStep } = work;
 
   const metadataAt = typeof work.originMeta.metadataAt === 'string' ? work.originMeta.metadataAt : null;
-  const isBusy = status === 'processing' || status === 'metadata' || status === 'tts';
+  const isBusy = status === 'processing' || status === 'metadata';
   const isFailedHere = status === 'failed' && failedStep === 'metadata';
-  const isDone = status === 'ready' || status === 'published';
+  const isDone = status === 'ready' || status === 'published' || status === 'tts' || Boolean(metadataAt);
 
   async function handleRetry(step: WorkflowStep, confirmText: string) {
     if (!window.confirm(confirmText)) return;
@@ -297,12 +297,7 @@ export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
 
   let hint = '';
   if (isBusy) {
-    hint =
-      status === 'processing'
-        ? '等待内容解析完成后自动完善…'
-        : status === 'metadata'
-          ? '正在根据正文内容补全信息，完成后即可逐项核对。'
-          : '正在生成章节音频…';
+    hint = status === 'processing' ? '等待内容解析完成后自动完善…' : '正在根据正文内容补全信息，完成后即可逐项核对。';
   } else if (isFailedHere) {
     hint = String(work.originMeta.lastError ?? '原数据完善失败，未知错误');
   } else if (status === 'failed' && failedStep) {
@@ -318,10 +313,14 @@ export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2">
-        {status === 'metadata' || status === 'tts' ? <Spinner className="size-4 text-brand" /> : null}
+        {status === 'metadata' ? <Spinner className="size-4 text-brand" /> : null}
         <Badge
           variant={
-            status === 'failed' ? 'destructive' : status === 'ready' || status === 'published' ? 'secondary' : 'outline'
+            status === 'failed'
+              ? 'destructive'
+              : status === 'ready' || status === 'published' || status === 'tts'
+                ? 'secondary'
+                : 'outline'
           }
         >
           {status === 'failed'
@@ -332,11 +331,11 @@ export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
               ? '待完善'
               : status === 'metadata'
                 ? '完善中'
-                : status === 'tts'
-                  ? '音频生成中'
-                  : status === 'published'
-                    ? '已完成（已发布）'
-                    : '已完成'}
+                : status === 'published'
+                  ? '已完成（已发布）'
+                  : isDone
+                    ? '已完成'
+                    : '待完善'}
         </Badge>
         {isDone && metadataAt ? (
           <span className="text-xs text-muted-foreground">完善于 {new Date(metadataAt).toLocaleString('zh-CN')}</span>
@@ -354,7 +353,7 @@ export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
             {isActing ? '处理中…' : '重试'}
           </Button>
         ) : null}
-        {isDone && status !== 'published' ? (
+        {status === 'ready' ? (
           <Button
             type="button"
             size="sm"
@@ -383,7 +382,7 @@ export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
 export function MetadataReviewPanel({ workId, work }: MetadataReviewPanelProps) {
   const invalidate = useInvalidateAdminWorks();
   const status = work.status;
-  const isBusy = status === 'processing' || status === 'metadata' || status === 'tts';
+  const isBusy = status === 'processing' || status === 'metadata';
 
   const [tagsDraft, setTagsDraft] = useState<string[]>(work.tags);
   const [sourcesDraft, setSourcesDraft] = useState<string[]>(work.sources);

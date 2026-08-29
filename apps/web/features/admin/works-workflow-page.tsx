@@ -10,7 +10,6 @@ import {
   type CreateEpubWorkResult,
   EPUB_UPLOAD_MAX_BYTES,
   getPublishWorkIssues,
-  TTS_STEP_ENABLED,
   type WorkflowStep,
 } from '@gloaming/shared/api/works';
 
@@ -107,17 +106,20 @@ function stepStates(work: AdminWorkView | null): Record<WorkflowStepId, StepStat
         : work.originMeta.parsed
           ? 'done'
           : 'todo';
-  // Metadata — active from parse completion through AI backfill.
+  // Metadata — active only while the metadata jobs run (not during audio).
   const metadataState =
-    work.status === 'metadata' || work.status === 'tts'
+    work.status === 'metadata'
       ? 'active'
       : work.status === 'failed' && work.failedStep === 'metadata'
         ? 'failed'
-        : work.status === 'ready' || work.status === 'published'
+        : work.status === 'tts' ||
+            work.status === 'ready' ||
+            work.status === 'published' ||
+            Boolean(work.originMeta.metadataAt)
           ? 'done'
           : 'todo';
-  // Audio — reserved; skipped while the TTS step is not enabled.
-  const audioState = work.status === 'tts' ? 'active' : TTS_STEP_ENABLED ? 'todo' : 'na';
+  // Audio — manual generation via WorkAudioPanel; status `tts` only when auto-pipeline is on.
+  const audioState = work.status === 'tts' ? 'active' : 'todo';
   // Publish — the human step; highlighted while the work is ready.
   const publishState = work.status === 'published' ? 'done' : work.status === 'ready' ? 'active' : 'todo';
   return {

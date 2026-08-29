@@ -137,7 +137,12 @@ function BookDetailView({
         <BookDetailRelated books={related} />
       </div>
 
-      <footer className="border-t border-border/50 pt-8 text-center text-sm text-muted-foreground">
+      <footer
+        className={cn(
+          'text-center text-sm text-muted-foreground',
+          related.length > 0 ? 'pt-2 md:pt-0' : 'border-t border-border/50 pt-8',
+        )}
+      >
         <p className="mb-1">Gloaming — The Quiet Art of Slow Reading.</p>
         {showDemoChrome ? <p className="text-xs tracking-wide uppercase opacity-70">Editorial Preview</p> : null}
       </footer>

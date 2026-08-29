@@ -20,8 +20,8 @@ export function BookDetailRelated({
   }
 
   return (
-    <section className={cn('space-y-5 md:space-y-6', showDivider && 'border-t border-border/50 pt-8')}>
-      <h2 className="font-heading text-xl font-semibold text-foreground md:text-2xl">{title}</h2>
+    <section className={cn('w-full space-y-5 md:space-y-6', showDivider && 'border-t border-border/50 pt-8')}>
+      <h2 className="font-heading text-left text-xl font-semibold text-foreground md:text-2xl">{title}</h2>
       <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-4 md:gap-6 md:overflow-visible md:px-0 md:pb-0">
         {books.map((book) => (
           <Link

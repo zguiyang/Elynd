@@ -19,13 +19,13 @@ export function BookDetailToc({ book }: { book: BookDetail }) {
   const canExpand = chapters.length > PREVIEW_COUNT;
 
   return (
-    <section className="mx-auto max-w-reading-column space-y-4 border-t border-border/50 pt-8 md:space-y-6">
-      <div className="flex items-end justify-between gap-3 md:mb-2 md:flex-col md:items-center md:justify-center">
+    <section className="w-full space-y-4 md:space-y-5">
+      <div className="flex items-baseline justify-between gap-3">
         <h2 className="font-heading text-xl font-semibold text-foreground md:text-2xl">目录</h2>
         <span className="text-sm text-muted-foreground">共 {chapters.length} 章</span>
       </div>
 
-      <ul className="space-y-1 md:space-y-2">
+      <ul className="space-y-0.5">
         {visible.map((chapter) => (
           <li key={chapter.id}>
             <ChapterRow chapter={chapter} workId={book.id} />
@@ -34,7 +34,7 @@ export function BookDetailToc({ book }: { book: BookDetail }) {
       </ul>
 
       {canExpand ? (
-        <div className="pt-2 text-center">
+        <div className="pt-1 text-center">
           <button
             type="button"
             className="inline-flex items-center gap-1 text-sm font-medium text-primary transition-colors duration-200 ease-out-soft hover:text-brand-deep"
@@ -64,15 +64,13 @@ function ChapterRow({ chapter, workId }: { chapter: BookChapter; workId: string 
     <Link
       href={href}
       className={cn(
-        'flex items-center justify-between gap-3 rounded-xl border px-3 py-4 transition-colors duration-200 ease-out-soft md:px-4',
+        'flex items-center justify-between gap-3 rounded-lg px-2 py-3 transition-colors duration-200 ease-out-soft md:px-3',
         'outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
-        isCurrent
-          ? 'border-primary/20 bg-surface-container shadow-sm'
-          : 'border-transparent hover:border-border/50 hover:bg-surface-container-low',
+        isCurrent ? 'bg-surface-container' : 'hover:bg-surface-container-low',
         isUnread && 'opacity-80',
       )}
     >
-      <div className="flex min-w-0 items-center gap-4">
+      <div className="flex min-w-0 items-center gap-3 md:gap-4">
         <ChapterIcon status={chapter.status} />
         <div className="min-w-0">
           <p

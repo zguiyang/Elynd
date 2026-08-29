@@ -12,9 +12,9 @@ export function BookDetailStats({ book }: { book: BookDetail }) {
   const difficultyCaption = book.cefrLabel ?? levelLabel;
 
   return (
-    <section className="border-y border-border/50 py-6 md:py-8">
-      <h2 className="font-heading mb-4 text-xl font-semibold text-foreground md:hidden">阅读信息</h2>
-      <div className="mx-auto grid max-w-reading-column grid-cols-3 divide-x divide-border/50 text-center">
+    <section className="border-b border-border/50 pb-6 md:pb-8">
+      <h2 className="font-heading mb-4 text-left text-xl font-semibold text-foreground md:hidden">阅读信息</h2>
+      <div className="grid w-full grid-cols-3 divide-x divide-border/50 text-center">
         <div className="px-2 md:px-4">
           <p className="mb-1 text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">难度等级</p>
           <div

@@ -10,7 +10,6 @@ import type { ShelfItem } from '@gloaming/shared/api/shelf';
 import { type PartSummary, type Work, workSchema } from '@gloaming/shared/api/works';
 
 import {
-  aboutParagraphsFromDescription,
   type BookChapter,
   type BookDetail,
   type BookDetailLevel,
@@ -113,7 +112,6 @@ function workToRelatedStub(work: Work): BookDetail {
     estimatedMinutes: BOOK_DETAIL_STATS_PLACEHOLDER.estimatedMinutes,
     wordCount: BOOK_DETAIL_STATS_PLACEHOLDER.wordCount,
     teaser: teaserFromDescription(work.description),
-    about: aboutParagraphsFromDescription(work.description),
     sourceLabel: '官方',
     languageLabel: languageLabelFromCode(work.language),
     sourceNote: work.sourceNote,
@@ -137,7 +135,6 @@ export function toBookDetail(
   const state = shelfItem?.state ?? null;
   const progressRatio = state?.progressRatio ?? null;
   const readingStatus = state ? readingStatusFromProgress(state.status, progressRatio) : 'unread';
-  const about = aboutParagraphsFromDescription(work.description);
   const teaser = teaserFromDescription(work.description);
 
   return {
@@ -151,7 +148,6 @@ export function toBookDetail(
     estimatedMinutes: BOOK_DETAIL_STATS_PLACEHOLDER.estimatedMinutes,
     wordCount: BOOK_DETAIL_STATS_PLACEHOLDER.wordCount,
     teaser,
-    about,
     sourceLabel: '官方',
     languageLabel: languageLabelFromCode(work.language),
     sourceNote: work.sourceNote,

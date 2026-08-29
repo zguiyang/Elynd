@@ -84,11 +84,6 @@ const CATALOG: BookDetail[] = [
     wordCount: 85_000,
     teaser:
       'Being Memoirs of the Adventures of Mr. John Marvel, a Servant of His Late Majesty King Charles I., in the years 1642-3: written by himself, and edited in Modern English by "Q".',
-    about: [
-      "Set against the tumultuous backdrop of the English Civil War, this sweeping narrative follows a young Oxford scholar who is unexpectedly thrust into a dangerous mission to deliver a vital message to the King's forces in the West Country.",
-      'Written by Arthur Quiller-Couch under the pseudonym "Q", The Splendid Spur is a masterful blend of historical romance and swashbuckling adventure. It captures the spirit of a divided nation while exploring themes of loyalty, courage, and the unpredictable nature of fate.',
-      'Readers will find themselves transported to 17th-century England, navigating treacherous roads, encountering colorful characters—from noble cavaliers to cunning highwaymen—and experiencing the thrill of a classic quest. The prose is rich with period detail yet accessible, making it an excellent choice for readers looking to immerse themselves in historical literature.',
-    ],
     sourceLabel: '官方',
     sourceNote: '',
     languageLabel: '英文原版',
@@ -120,11 +115,6 @@ const CATALOG: BookDetail[] = [
     wordCount: 3200,
     teaser:
       'An exploration of how modern digital infrastructure is reshaping our physical environments, blending the ethereal qualities of the cloud with tangible concrete and steel.',
-    about: [
-      'An exploration of how modern digital infrastructure is reshaping our physical environments, blending the ethereal qualities of the cloud with tangible concrete and steel.',
-      "Jenkins writes with a surveyor's patience: streets, servers, and the soft pressure of systems we rarely see. The essay rewards a slow afternoon more than a skim.",
-      'Read it as you would a long magazine piece—then keep going when a sentence sticks. Assistance stays inside the reader.',
-    ],
     sourceLabel: '官方',
     sourceNote: '',
     languageLabel: '英文原版',
@@ -154,11 +144,6 @@ const CATALOG: BookDetail[] = [
     wordCount: 2400,
     teaser:
       'A haunting collection of short stories detailing the quiet moments of transition in a city that refuses to let go of its past.',
-    about: [
-      'A haunting collection of short stories detailing the quiet moments of transition in a city that refuses to let go of its past, told through the eyes of its oldest residents.',
-      "Chen's sentences linger in courtyards and bus stops. You finish not with a certificate, but with a street you want to walk again.",
-      'When you are ready, open it once more—same text, new quiet.',
-    ],
     sourceLabel: '官方',
     sourceNote: '',
     languageLabel: '英文原版',
@@ -187,7 +172,6 @@ const CATALOG: BookDetail[] = [
     estimatedMinutes: 720,
     wordCount: 135_000,
     teaser: 'It was the best of times, it was the worst of times…',
-    about: ["A classic of the French Revolution, told with Dickens's full narrative force."],
     sourceLabel: '官方',
     sourceNote: '',
     languageLabel: '英文原版',
@@ -214,7 +198,6 @@ const CATALOG: BookDetail[] = [
     estimatedMinutes: 360,
     wordCount: 68_000,
     teaser: "Fifteen men on the dead man's chest…",
-    about: ['A coming-of-age adventure on the high seas.'],
     sourceLabel: '官方',
     sourceNote: '',
     languageLabel: '英文原版',
@@ -240,7 +223,6 @@ const CATALOG: BookDetail[] = [
     estimatedMinutes: 540,
     wordCount: 92_000,
     teaser: 'They seek him here, they seek him there…',
-    about: ['Romantic intrigue during the Reign of Terror.'],
     sourceLabel: '官方',
     sourceNote: '',
     languageLabel: '英文原版',
@@ -264,7 +246,6 @@ const CATALOG: BookDetail[] = [
     estimatedMinutes: 1080,
     wordCount: 180_000,
     teaser: 'A tale of chivalry in medieval England.',
-    about: ["Scott's romance of knights, tournaments, and contested loyalty."],
     sourceLabel: '官方',
     sourceNote: '',
     languageLabel: '英文原版',

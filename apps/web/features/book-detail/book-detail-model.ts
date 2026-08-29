@@ -32,8 +32,6 @@ export type BookDetail = {
   wordCount: number;
   /** Short hook under the title (serif italic). */
   teaser: string;
-  /** Longer about paragraphs (reading serif). Empty → hide About section. */
-  about: string[];
   sourceLabel: '官方';
   languageLabel: string;
   /** Free-text provenance from catalog `sourceNote`. */
@@ -152,17 +150,6 @@ export function languageLabelFromCode(language: string): string {
     return '英文原版';
   }
   return language.trim() || '原文';
-}
-
-export function aboutParagraphsFromDescription(description: string): string[] {
-  const trimmed = description.trim();
-  if (!trimmed) {
-    return [];
-  }
-  return trimmed
-    .split(/\n\s*\n/)
-    .map((p) => p.trim())
-    .filter(Boolean);
 }
 
 export function teaserFromDescription(description: string, maxLen = 180): string {

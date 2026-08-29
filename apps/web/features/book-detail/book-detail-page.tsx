@@ -7,7 +7,6 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { AUTH_ROUTES } from '@/constants';
-import { BookDetailAbout } from '@/features/book-detail/book-detail-about';
 import {
   bookDetailQueryKey,
   formatBookDetailApiError,
@@ -133,18 +132,9 @@ function BookDetailView({
       <BookDetailMobileProgress book={book} />
 
       <div className="flex flex-col gap-8 md:gap-14">
-        <div className="order-1">
-          <BookDetailStats book={book} />
-        </div>
-        <div className="order-2 md:order-3">
-          <BookDetailToc book={book} />
-        </div>
-        <div className="order-3 md:order-2">
-          <BookDetailAbout book={book} />
-        </div>
-        <div className="order-4">
-          <BookDetailRelated books={related} />
-        </div>
+        <BookDetailStats book={book} />
+        <BookDetailToc book={book} />
+        <BookDetailRelated books={related} />
       </div>
 
       <footer className="border-t border-border/50 pt-8 text-center text-sm text-muted-foreground">

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import { chaptersFromParts } from '@/features/book-detail/book-detail-api';
 import {
-  aboutParagraphsFromDescription,
   chapterOrdinalLabel,
   chapterStatusLabel,
   coverUrlFromAssetId,
@@ -55,11 +54,9 @@ describe('book-detail-model', () => {
     expect(readingStatusFromProgress(null, null)).toBe('unread');
   });
 
-  it('builds teaser and about from description', () => {
+  it('builds teaser from description', () => {
     expect(teaserFromDescription('Short desc')).toBe('Short desc');
     expect(teaserFromDescription('')).toBe('');
-    expect(aboutParagraphsFromDescription('A\n\nB')).toEqual(['A', 'B']);
-    expect(aboutParagraphsFromDescription('')).toEqual([]);
   });
 
   it('maps language and cover asset URLs', () => {

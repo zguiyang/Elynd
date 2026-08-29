@@ -22,6 +22,7 @@ import {
 } from '@gloaming/shared/api/content-assets';
 import { type ReaderAudioTrack } from '@gloaming/shared/api/reader';
 import { type TtsVoiceRole } from '@gloaming/shared/api/tts';
+import { TTS_STEP_ENABLED } from '@gloaming/shared/api/works';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';
@@ -638,6 +639,11 @@ export async function runPartAudioGenerate(input: {
 export async function tryAdvanceTtsWorkflow(workId: string): Promise<void> {
   const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId)).limit(1);
   if (!work || work.status !== 'tts') {
+    return;
+  }
+  // Auto-TTS pipeline off: never block publish on chapter audio.
+  if (!TTS_STEP_ENABLED) {
+    await completeWorkflowStep(workId, 'ready');
     return;
   }
 

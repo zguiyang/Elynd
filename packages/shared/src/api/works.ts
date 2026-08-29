@@ -15,8 +15,12 @@ export type WorkStatus = (typeof WORK_STATUSES)[number];
 export const WORKFLOW_STEPS = ['parse', 'metadata', 'tts'] as const;
 export type WorkflowStep = (typeof WORKFLOW_STEPS)[number];
 
-/** TTS workflow step is live — metadata completion advances to `tts` and enqueues audio. */
-export const TTS_STEP_ENABLED = true;
+/**
+ * When true, metadata completion advances to `tts` and auto-enqueues chapter audio.
+ * When false (default), metadata completes to `ready`; audio is generated only from
+ * the admin audio step (manual).
+ */
+export const TTS_STEP_ENABLED = false;
 
 export const WORK_VISIBILITIES = ['catalog', 'private'] as const;
 export type WorkVisibility = (typeof WORK_VISIBILITIES)[number];

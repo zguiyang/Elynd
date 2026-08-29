@@ -31,6 +31,7 @@ import {
   getPublishWorkIssues,
   type Part,
   type RetryWorkflowBody,
+  TTS_STEP_ENABLED,
   type UpdateWorkBody,
   type Work,
   WORKFLOW_STEPS,
@@ -45,7 +46,7 @@ import { AppError, NotFoundError, ValidationFailedError } from '@/lib/errors';
 import { rootLogger } from '@/lib/logger';
 import { enqueue } from '@/lib/queue';
 import { normalizeTag } from '@/lib/text';
-import { stepRunningStatus } from '@/lib/workflow';
+import { completeWorkflowStep, stepRunningStatus } from '@/lib/workflow';
 import { clearDerivedAssets } from '@/modules/content-parser/service';
 import { getWorksDerivedFreshness } from '@/modules/derived-freshness';
 import { deleteObject } from '@/modules/oss';
@@ -619,9 +620,17 @@ export async function listAdminWorks(query: AdminWorkListQuery): Promise<AdminWo
 }
 
 export async function getAdminWork(id: string): Promise<AdminWork> {
-  const [row] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, id)).limit(1);
+  let [row] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, id)).limit(1);
   if (!row) {
     throw new NotFoundError('Work');
+  }
+  // Heal works left in `tts` after the auto-TTS pipeline was turned off.
+  if (!TTS_STEP_ENABLED && row.status === 'tts') {
+    await completeWorkflowStep(id, 'ready');
+    [row] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, id)).limit(1);
+    if (!row) {
+      throw new NotFoundError('Work');
+    }
   }
   return toAdminWork(row);
 }
@@ -805,6 +814,9 @@ export async function retryWorkflow(id: string, input: RetryWorkflowBody = {}): 
     throw new AppError(HTTP_STATUS.BAD_REQUEST, '没有可重试的步骤');
   }
   if (step === 'tts') {
+    if (!TTS_STEP_ENABLED) {
+      throw new AppError(HTTP_STATUS.BAD_REQUEST, '音频步骤未启用自动流程，请在作品页手动生成');
+    }
     await db
       .update(readingWorkTable)
       .set({

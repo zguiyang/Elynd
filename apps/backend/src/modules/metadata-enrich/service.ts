@@ -86,7 +86,10 @@ function isModelNotConfigured(error: unknown): boolean {
   return error instanceof AppError && error.statusCode === HTTP_STATUS.SERVICE_UNAVAILABLE;
 }
 
-/** Complete the `metadata` step — advances to `tts` and enqueues dual-accent audio. */
+/**
+ * Complete the `metadata` step. Default (`TTS_STEP_ENABLED=false`): → `ready`.
+ * When the TTS pipeline flag is on: → `tts` and auto-enqueue dual-accent audio.
+ */
 async function completeMetadataStep(workId: string): Promise<void> {
   await completeWorkflowStep(workId, TTS_STEP_ENABLED ? 'tts' : 'ready', {
     metadataAt: new Date().toISOString(),

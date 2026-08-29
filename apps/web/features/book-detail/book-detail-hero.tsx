@@ -25,8 +25,11 @@ export function BookDetailHero({ book, onShelf, onAddToShelf, isAddingToShelf }:
   const readHref = AUTH_ROUTES.readBook(book.id);
   const readLabel = primaryReadLabel(book.readingStatus);
   const lastRead = formatRelativeReadTime(book.lastReadAt);
-  const hasProgress = book.readingStatus === 'in_progress' && book.progressRatio != null && book.progressRatio > 0;
   const isCompleted = book.readingStatus === 'completed';
+  const hasProgress =
+    isCompleted || (book.readingStatus === 'in_progress' && book.progressRatio != null && book.progressRatio > 0);
+  const progressPercent = isCompleted ? 100 : (book.progressRatio ?? 0);
+  const progressLabel = isCompleted ? '已读完' : `已阅读 ${book.progressRatio}%`;
   const chips = book.tags.slice(0, 3);
 
   return (
@@ -101,28 +104,15 @@ export function BookDetailHero({ book, onShelf, onAddToShelf, isAddingToShelf }:
           {hasProgress ? (
             <div className="w-full">
               <div className="mb-2 flex justify-between text-sm text-muted-foreground">
-                <span className="font-medium text-primary">已阅读 {book.progressRatio}%</span>
+                <span className="font-medium text-primary">{progressLabel}</span>
                 {lastRead ? <span>上次阅读：{lastRead}</span> : null}
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-container-highest">
                 <div
                   className="h-full rounded-full bg-primary transition-[width] duration-700 ease-out-soft"
-                  style={{ width: `${book.progressRatio}%` }}
+                  style={{ width: `${progressPercent}%` }}
                 />
               </div>
-            </div>
-          ) : null}
-
-          {isCompleted ? (
-            <div className="rounded-xl bg-surface-container px-4 py-3 text-left text-sm text-muted-foreground">
-              <p className="font-medium text-foreground">已读完</p>
-              {book.completedAt ? (
-                <p className="mt-0.5">
-                  完成于 {formatRelativeReadTime(book.completedAt) ?? '近日'} · 可再次打开同一篇文字
-                </p>
-              ) : (
-                <p className="mt-0.5">可以再次打开同一篇文字，安静地重读。</p>
-              )}
             </div>
           ) : null}
         </div>
@@ -141,29 +131,15 @@ export function BookDetailMobileProgress({ book }: { book: BookDetail }) {
   }
 
   const lastRead = formatRelativeReadTime(book.lastReadAt);
-
-  if (book.readingStatus === 'completed') {
-    return (
-      <section className="rounded-xl bg-surface-container-highest p-4 md:hidden">
-        <p className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">阅读状态</p>
-        <p className="font-heading mt-1 text-2xl font-semibold text-primary">已读完</p>
-        {book.completedAt ? (
-          <p className="mt-1 text-sm text-muted-foreground">
-            完成于 {formatRelativeReadTime(book.completedAt) ?? '近日'}
-          </p>
-        ) : null}
-      </section>
-    );
-  }
-
-  const ratio = book.progressRatio ?? 0;
+  const isCompleted = book.readingStatus === 'completed';
+  const ratio = isCompleted ? 100 : (book.progressRatio ?? 0);
 
   return (
     <section className="flex flex-col gap-3 rounded-xl bg-surface-container-highest p-4 md:hidden">
       <div className="flex items-end justify-between">
         <div>
           <p className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">阅读进度</p>
-          <p className="font-heading text-2xl font-semibold text-primary">{ratio}%</p>
+          <p className="font-heading text-2xl font-semibold text-primary">{isCompleted ? '已读完' : `${ratio}%`}</p>
         </div>
         {lastRead ? <span className="text-sm text-muted-foreground">上次阅读：{lastRead}</span> : null}
       </div>

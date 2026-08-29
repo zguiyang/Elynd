@@ -33,7 +33,13 @@ function toState(row: StateRow) {
   };
 }
 
-function resolveCurrentPart(parts: PartRow[], state: StateRow | null): PartRow {
+function resolveCurrentPart(parts: PartRow[], state: StateRow | null, preferredPartId?: string | null): PartRow {
+  if (preferredPartId) {
+    const preferred = parts.find((part) => part.id === preferredPartId);
+    if (preferred) {
+      return preferred;
+    }
+  }
   if (state?.currentPartId) {
     const matched = parts.find((part) => part.id === state.currentPartId);
     if (matched) {
@@ -92,10 +98,13 @@ async function defaultAnonymousState(now: string): Promise<ReaderSessionData['st
 }
 
 /** Read-only reader payload for anonymous visitors; no user data is created. */
-export async function getPublicReaderSession(workId: string): Promise<ReaderSessionData> {
+export async function getPublicReaderSession(
+  workId: string,
+  preferredPartId?: string | null,
+): Promise<ReaderSessionData> {
   const { work, parts } = await requirePublishedWorkWithParts(workId);
   const tags = await loadTagsForWork(workId);
-  const currentPart = parts[0]!;
+  const currentPart = resolveCurrentPart(parts, null, preferredPartId);
   const now = new Date().toISOString();
   const audioAvailable = await getPartAudioAvailability(currentPart.id, currentPart.title, currentPart.body);
 
@@ -130,9 +139,14 @@ export async function getPublicReaderSession(workId: string): Promise<ReaderSess
 }
 
 /** Open reader content and track reading state (unless already completed). */
-export async function getReaderSession(userId: string, workId: string): Promise<ReaderSessionData> {
+export async function getReaderSession(
+  userId: string,
+  workId: string,
+  preferredPartId?: string | null,
+): Promise<ReaderSessionData> {
   const { work, parts } = await requirePublishedWorkWithParts(workId);
   const now = new Date();
+  const preferred = preferredPartId && parts.some((part) => part.id === preferredPartId) ? preferredPartId : null;
 
   const [existing] = await db
     .select()
@@ -149,7 +163,7 @@ export async function getReaderSession(userId: string, workId: string): Promise<
         id: randomUUID(),
         userId,
         workId,
-        currentPartId: firstPart.id,
+        currentPartId: preferred ?? firstPart.id,
         anchorKind: 'percent',
         anchorValue: '0',
         status: 'in_progress',
@@ -162,6 +176,13 @@ export async function getReaderSession(userId: string, workId: string): Promise<
       throw new AppError(500, 'Failed to create reading state');
     }
     state = created;
+  } else if (preferred && existing.currentPartId !== preferred) {
+    const [updated] = await db
+      .update(readingStateTable)
+      .set({ currentPartId: preferred, lastReadAt: now })
+      .where(eq(readingStateTable.id, existing.id))
+      .returning();
+    state = updated ?? existing;
   } else if (existing.status === 'completed') {
     const [updated] = await db
       .update(readingStateTable)
@@ -178,7 +199,7 @@ export async function getReaderSession(userId: string, workId: string): Promise<
     state = updated ?? existing;
   }
 
-  const currentPart = resolveCurrentPart(parts, state);
+  const currentPart = resolveCurrentPart(parts, state, preferred);
   const audioAvailable = await getPartAudioAvailability(currentPart.id, currentPart.title, currentPart.body);
   await touchReadingDay(userId);
 

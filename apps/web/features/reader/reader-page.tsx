@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { type UIEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -54,10 +54,12 @@ function inlineUserPrompt(kind: InlineAssistKind, selectedText: string): string 
 
 export function ReaderPage({ workId }: ReaderPageProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const preferredPartId = searchParams.get('part')?.trim() || null;
   const { openLogin } = useAuthDialog();
   const { data: authData } = authClient.useSession();
   const isAuthenticated = Boolean(authData?.user);
-  const sessionQuery = useReaderSessionQuery(workId);
+  const sessionQuery = useReaderSessionQuery(workId, { partId: preferredPartId });
   const stateMutation = useUpdateReadingStateMutation(workId);
 
   const [isChromeVisible, setIsChromeVisible] = useState(false);

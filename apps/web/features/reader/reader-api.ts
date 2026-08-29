@@ -14,16 +14,19 @@ import { apiRequest, formatApiError } from '@/lib/api-request';
 
 export const readerQueryKey = {
   all: ['reader'] as const,
-  session: (workId: string) => [...readerQueryKey.all, 'session', workId] as const,
+  session: (workId: string, partId?: string | null) =>
+    [...readerQueryKey.all, 'session', workId, partId ?? ''] as const,
 };
 
 export async function getReaderSessionData(
   workId: string,
-  init?: { signal?: AbortSignal },
+  init?: { signal?: AbortSignal; credentials?: RequestCredentials; partId?: string | null },
 ): Promise<ReaderSessionData> {
-  return apiRequest(`/api/reader/works/${encodeURIComponent(workId)}`, {
+  const qs = init?.partId ? `?partId=${encodeURIComponent(init.partId)}` : '';
+  return apiRequest(`/api/reader/works/${encodeURIComponent(workId)}${qs}`, {
     schema: readerSessionDataSchema,
     signal: init?.signal,
+    credentials: init?.credentials,
   });
 }
 
@@ -79,10 +82,11 @@ export function toReaderSession(data: ReaderSessionData): ReaderSession {
   };
 }
 
-export function useReaderSessionQuery(workId: string, options?: { enabled?: boolean }) {
+export function useReaderSessionQuery(workId: string, options?: { enabled?: boolean; partId?: string | null }) {
+  const partId = options?.partId ?? null;
   return useQuery({
-    queryKey: readerQueryKey.session(workId),
-    queryFn: ({ signal }) => getReaderSessionData(workId, { signal }).then(toReaderSession),
+    queryKey: readerQueryKey.session(workId, partId),
+    queryFn: ({ signal }) => getReaderSessionData(workId, { signal, partId }).then(toReaderSession),
     enabled: options?.enabled ?? Boolean(workId),
   });
 }
@@ -92,7 +96,7 @@ export function useUpdateReadingStateMutation(workId: string) {
   return useMutation({
     mutationFn: (body: UpdateReadingStateBody) => updateReadingState(workId, body),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: readerQueryKey.session(workId) });
+      void queryClient.invalidateQueries({ queryKey: [...readerQueryKey.all, 'session', workId] });
       void queryClient.invalidateQueries({ queryKey: ['shelf'] });
     },
   });

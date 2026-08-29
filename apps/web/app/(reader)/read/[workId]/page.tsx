@@ -1,3 +1,5 @@
+import { Suspense } from 'react';
+
 import { ReaderPage } from '@/features/reader/reader-page';
 
 type PageProps = {
@@ -6,5 +8,9 @@ type PageProps = {
 
 export default async function Page({ params }: PageProps) {
   const { workId } = await params;
-  return <ReaderPage key={workId} workId={workId} />;
+  return (
+    <Suspense fallback={null}>
+      <ReaderPage key={workId} workId={workId} />
+    </Suspense>
+  );
 }

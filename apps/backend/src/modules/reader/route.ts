@@ -10,9 +10,10 @@ export const readerRoutes = new Hono<{ Variables: AuthVariables }>();
 
 readerRoutes.get('/api/reader/works/:workId', async (c) => {
   const user = c.get('user');
+  const preferredPartId = c.req.query('partId')?.trim() || null;
   const data = user
-    ? await readerService.getReaderSession(user.id, c.req.param('workId'))
-    : await readerService.getPublicReaderSession(c.req.param('workId'));
+    ? await readerService.getReaderSession(user.id, c.req.param('workId'), preferredPartId)
+    : await readerService.getPublicReaderSession(c.req.param('workId'), preferredPartId);
   return c.json(data);
 });
 

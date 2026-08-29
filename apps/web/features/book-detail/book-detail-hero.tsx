@@ -1,12 +1,17 @@
 'use client';
 
-import { BookmarkIcon, BookOpenIcon, CheckIcon, Loader2Icon } from 'lucide-react';
+import { BookmarkIcon, BookOpenIcon, CheckIcon, LanguagesIcon, Loader2Icon } from 'lucide-react';
 import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { AUTH_ROUTES } from '@/constants';
 import { BookDetailCover } from '@/features/book-detail/book-detail-cover';
-import { type BookDetail, formatRelativeReadTime, primaryReadLabel } from '@/features/book-detail/book-detail-model';
+import {
+  type BookDetail,
+  formatMinutes,
+  formatRelativeReadTime,
+  primaryReadLabel,
+} from '@/features/book-detail/book-detail-model';
 import { cn } from '@/lib/utils';
 
 type BookDetailHeroProps = {
@@ -22,11 +27,17 @@ export function BookDetailHero({ book, onShelf, onAddToShelf, isAddingToShelf }:
   const lastRead = formatRelativeReadTime(book.lastReadAt);
   const hasProgress = book.readingStatus === 'in_progress' && book.progressRatio != null && book.progressRatio > 0;
   const isCompleted = book.readingStatus === 'completed';
+  const chips = book.tags.slice(0, 3);
 
   return (
     <section className="grid grid-cols-1 items-center gap-8 md:grid-cols-12 md:gap-12 lg:gap-16">
       <div className="flex justify-center md:col-span-4 md:justify-start lg:col-span-3">
-        <BookDetailCover title={book.title} tags={book.tags} className="aspect-[2/3] w-48 md:w-full md:max-w-[280px]" />
+        <BookDetailCover
+          title={book.title}
+          tags={book.tags}
+          coverImageUrl={book.coverImageUrl}
+          className="aspect-[2/3] w-48 md:w-full md:max-w-[280px]"
+        />
       </div>
 
       <div className="space-y-5 text-center md:col-span-8 md:space-y-6 md:text-left lg:col-span-9">
@@ -35,22 +46,33 @@ export function BookDetailHero({ book, onShelf, onAddToShelf, isAddingToShelf }:
             <span className="rounded bg-primary/10 px-2 py-1 text-[11px] font-semibold tracking-[0.08em] text-primary uppercase">
               {book.sourceLabel}
             </span>
+            {book.languageLabel ? (
+              <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+                <LanguagesIcon className="size-3.5" strokeWidth={1.5} aria-hidden />
+                {book.languageLabel}
+              </span>
+            ) : null}
           </div>
           <h1 className="font-heading text-3xl leading-tight font-bold tracking-tight text-foreground text-balance md:text-5xl md:leading-[1.15]">
             {book.title}
           </h1>
+          {book.author ? (
+            <p className="font-heading text-lg text-muted-foreground italic md:text-2xl md:leading-8">{book.author}</p>
+          ) : null}
         </div>
 
-        <div className="flex flex-wrap justify-center gap-2 md:justify-start">
-          {book.tags.slice(0, 3).map((chip) => (
-            <span
-              key={chip}
-              className="rounded-full border border-border/40 bg-surface-container-highest/80 px-3.5 py-1.5 text-sm text-muted-foreground"
-            >
-              {chip}
-            </span>
-          ))}
-        </div>
+        {chips.length > 0 ? (
+          <div className="flex flex-wrap justify-center gap-2 md:justify-start">
+            {chips.map((chip) => (
+              <span
+                key={chip}
+                className="rounded-full border border-border/40 bg-surface-container-highest/80 px-3.5 py-1.5 text-sm text-muted-foreground"
+              >
+                {chip}
+              </span>
+            ))}
+          </div>
+        ) : null}
 
         {book.teaser ? (
           <p className="font-reading mx-auto max-w-2xl text-base leading-7 text-muted-foreground md:mx-0 md:text-lg md:leading-8 md:italic">
@@ -104,6 +126,10 @@ export function BookDetailHero({ book, onShelf, onAddToShelf, isAddingToShelf }:
             </div>
           ) : null}
         </div>
+
+        <p className="text-sm text-muted-foreground md:hidden">
+          {[formatMinutes(book.estimatedMinutes), book.category].filter(Boolean).join(' · ')}
+        </p>
       </div>
     </section>
   );

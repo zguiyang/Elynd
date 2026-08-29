@@ -13,7 +13,8 @@ export const AUTH_ROUTES = {
   history: '/reading-history',
   /** Immersive reader (mock UI; future book/chapter API). */
   read: '/read',
-  readBook: (id: string) => `/read/${id}` as const,
+  readBook: (id: string, partId?: string) =>
+    partId ? (`/read/${id}?part=${encodeURIComponent(partId)}` as const) : (`/read/${id}` as const),
 } as const;
 
 export const ADMIN_ROUTES = {

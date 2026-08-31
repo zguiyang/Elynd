@@ -23,12 +23,13 @@ import { ReaderChrome } from '@/features/reader/reader-chrome';
 import type {
   ReaderAiMessage,
   ReaderAiMode,
+  ReaderAudioRole,
   ReaderAudioStatus,
   ReaderFontSize,
   ReaderSelection,
   ReaderViewModel,
 } from '@/features/reader/reader-model';
-import { adjacentPart, partIndex } from '@/features/reader/reader-model';
+import { adjacentPart, partIndex, resolveAudioRole } from '@/features/reader/reader-model';
 import { ReaderPart, ReaderPartSkeleton } from '@/features/reader/reader-part';
 import { ReaderSelectionToolbar } from '@/features/reader/reader-selection-toolbar';
 import { ReaderTocSidebar } from '@/features/reader/reader-toc-sidebar';
@@ -86,6 +87,7 @@ export function ReaderPage({ workId }: ReaderPageProps) {
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [audioStatus, setAudioStatus] = useState<ReaderAudioStatus>('idle');
   const [audioLabel, setAudioLabel] = useState('听读');
+  const [preferredAudioRole, setPreferredAudioRole] = useState<ReaderAudioRole | null>(null);
   const [isTapHintVisible, setIsTapHintVisible] = useState(true);
 
   const scrollContainerRef = useRef<HTMLElement | null>(null);
@@ -148,6 +150,13 @@ export function ReaderPage({ workId }: ReaderPageProps) {
   const reader: ReaderViewModel | null =
     partsData && partQuery.data ? toReaderViewModel(partsData, partQuery.data, stateQuery.data ?? null) : null;
 
+  function resetAudioPlayback() {
+    audioRef.current?.pause();
+    audioRef.current = null;
+    setAudioStatus('idle');
+    setAudioLabel('听读');
+  }
+
   const navigateToPart = useCallback(
     async (partId: string, mode: 'navigate' | 'complete_chapter', nextPartId?: string) => {
       if (!isAuthenticated) {
@@ -160,6 +169,7 @@ export function ReaderPage({ workId }: ReaderPageProps) {
             ? await stateMutation.mutateAsync({ action: 'navigate', partId })
             : await stateMutation.mutateAsync({ action: 'complete_chapter', nextPartId });
         setLocalProgressRatio(updated.progressRatio);
+        resetAudioPlayback();
         setActivePartId(updated.currentPartId ?? partId);
         router.replace(`/read/${workId}?part=${encodeURIComponent(updated.currentPartId ?? partId)}`, {
           scroll: false,
@@ -272,6 +282,30 @@ export function ReaderPage({ workId }: ReaderPageProps) {
     void runAssist('ask', selectedText || text, paragraphId, text, 'drawer');
   }
 
+  async function playPartAudio(role: ReaderAudioRole) {
+    if (!reader) return;
+    if (!reader.audioAvailable[role]) {
+      toast.error(role === 'us' ? '暂无美音' : '暂无英音');
+      return;
+    }
+
+    setAudioStatus('loading');
+    try {
+      const track = await getReaderAudioTrack(reader.partId, role);
+      audioRef.current?.pause();
+      const audio = new Audio(track.audioUrl);
+      audioRef.current = audio;
+      setAudioLabel(`${track.voice} · ${role === 'us' ? '美音' : '英音'}`);
+      audio.onended = () => setAudioStatus('ready');
+      audio.onerror = () => setAudioStatus('failed');
+      await audio.play();
+      setAudioStatus('playing');
+    } catch (error) {
+      setAudioStatus('failed');
+      toast.error(formatReaderApiError(error));
+    }
+  }
+
   async function handleTtsToggle() {
     if (!reader) return;
 
@@ -287,27 +321,26 @@ export function ReaderPage({ workId }: ReaderPageProps) {
       return;
     }
 
-    const role = reader.audioAvailable.us ? 'us' : reader.audioAvailable.uk ? 'uk' : null;
+    const role = resolveAudioRole(reader.audioAvailable, preferredAudioRole);
     if (!role) {
       toast.error('暂无音频');
       return;
     }
 
-    setAudioStatus('loading');
-    try {
-      const track = await getReaderAudioTrack(reader.partId, role);
-      audioRef.current?.pause();
-      const audio = new Audio(track.audioUrl);
-      audioRef.current = audio;
-      setAudioLabel(`${track.voice} · ${role.toUpperCase()}`);
-      audio.onended = () => setAudioStatus('ready');
-      audio.onerror = () => setAudioStatus('failed');
-      await audio.play();
-      setAudioStatus('playing');
-    } catch (error) {
-      setAudioStatus('failed');
-      toast.error(formatReaderApiError(error));
+    await playPartAudio(role);
+  }
+
+  async function handleAccentSelect(role: ReaderAudioRole) {
+    if (!reader) return;
+    if (!reader.audioAvailable[role]) {
+      toast.error(role === 'us' ? '暂无美音' : '暂无英音');
+      return;
     }
+    if (role === resolveAudioRole(reader.audioAvailable, preferredAudioRole)) {
+      return;
+    }
+    setPreferredAudioRole(role);
+    await playPartAudio(role);
   }
 
   async function handleFinish() {
@@ -361,7 +394,8 @@ export function ReaderPage({ workId }: ReaderPageProps) {
   const prevPart = adjacentPart(reader.parts, reader.partId, 'prev');
   const progressRatio = localProgressRatio ?? stateData?.progressRatio ?? reader.state?.progressRatio ?? 0;
   const chapterLabel =
-    reader.state && reader.state.totalPartCount > 1 ? `${currentIndex + 1} / ${reader.state.totalPartCount}` : null;
+    reader.parts.length > 1 && currentIndex >= 0 ? `${currentIndex + 1} / ${reader.parts.length}` : null;
+  const audioRole = resolveAudioRole(reader.audioAvailable, preferredAudioRole) ?? 'us';
   const isDrawerOpen = aiMode === 'drawer';
   const isInlineOpen = aiMode === 'inline' && Boolean(selection);
 
@@ -475,7 +509,10 @@ export function ReaderPage({ workId }: ReaderPageProps) {
         label={audioLabel}
         tocOpen={isTocOpen}
         aiDrawerOpen={isDrawerOpen}
+        audioRole={audioRole}
+        audioAvailable={reader.audioAvailable}
         onToggle={() => void handleTtsToggle()}
+        onSelectRole={(role) => void handleAccentSelect(role)}
       />
 
       {isTapHintVisible ? (

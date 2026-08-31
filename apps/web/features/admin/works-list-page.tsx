@@ -43,16 +43,18 @@ const STATUS_FILTERS: { value: WorkStatus | 'all' | 'busy'; label: string }[] = 
 ];
 
 const STATUS_LABEL: Record<WorkStatus, string> = {
+  uploaded: '待解析',
   processing: '解析中',
-  metadata: '解析完成',
-  tts: '原数据完善完成',
-  ready: '已完成',
+  parsed: '待完善原数据',
+  metadata: '原数据完善中',
+  tts: '音频生成中',
+  ready: '待发布',
   failed: '处理失败',
   published: '已发布',
 };
 
-/** Processing filter — the three running steps grouped as one tab. */
-const BUSY_STATUSES = ['processing', 'metadata', 'tts'] as const;
+/** Running + idle-wait statuses grouped as one list tab. */
+const BUSY_STATUSES = ['uploaded', 'processing', 'parsed', 'metadata', 'tts'] as const;
 
 function formatUpdatedAt(iso: string): string {
   return new Date(iso).toLocaleString('zh-CN', {
@@ -75,7 +77,11 @@ type WorkRowActionsProps = {
 function WorkRowActions({ work, onPublish, onUnpublish, onRetry, onDelete }: WorkRowActionsProps) {
   const router = useRouter();
   const canPreview =
-    work.partCount > 0 && work.status !== 'processing' && work.status !== 'metadata' && work.status !== 'failed';
+    work.partCount > 0 &&
+    work.status !== 'processing' &&
+    work.status !== 'metadata' &&
+    work.status !== 'uploaded' &&
+    work.status !== 'failed';
 
   return (
     <div className="flex justify-end gap-2">

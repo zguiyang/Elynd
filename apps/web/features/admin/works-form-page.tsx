@@ -21,9 +21,11 @@ import {
 import type { AdminWorkView } from '@/features/works-http';
 
 const STATUS_LABEL: Record<AdminWorkView['status'], string> = {
+  uploaded: '待解析',
   processing: '解析中…',
-  metadata: '解析完成',
-  tts: '原数据完善完成',
+  parsed: '待完善原数据',
+  metadata: '原数据完善中…',
+  tts: '音频生成中…',
   ready: '已完成',
   failed: '处理失败',
   published: '已发布',
@@ -132,7 +134,10 @@ function WorksFormEditor({ workId, work }: { workId: string; work: AdminWorkView
         <div className="space-y-2">
           <Label>正文（只读）</Label>
           <div className="rounded-xl border border-border bg-secondary/40 px-4 py-4">
-            {work.status === 'processing' || work.status === 'metadata' || work.status === 'tts' ? (
+            {work.status === 'processing' ||
+            work.status === 'metadata' ||
+            work.status === 'tts' ||
+            work.status === 'uploaded' ? (
               <p className="text-sm text-muted-foreground">作品处理中，正文即将更新…</p>
             ) : work.status === 'failed' ? (
               <p className="text-sm text-muted-foreground">

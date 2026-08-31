@@ -10,6 +10,7 @@ import {
   type CreateEpubWorkResult,
   EPUB_UPLOAD_MAX_BYTES,
   getPublishWorkIssues,
+  WORKFLOW_AUTO_CHAIN,
   type WorkflowStep,
 } from '@gloaming/shared/api/works';
 
@@ -46,7 +47,9 @@ type WorkflowStepId = (typeof WORKFLOW_STEPS)[number]['id'];
 type StepState = 'done' | 'active' | 'todo' | 'failed' | 'na';
 
 const STATUS_LABEL: Record<AdminWorkView['status'], string> = {
+  uploaded: '待解析',
   processing: '解析中…',
+  parsed: '待完善原数据',
   metadata: '原数据完善中…',
   tts: '音频生成中…',
   ready: '已完成',
@@ -97,27 +100,31 @@ function stepStates(work: AdminWorkView | null): Record<WorkflowStepId, StepStat
       publish: work.status === 'published' ? 'done' : 'active',
     };
   }
-  // Parse — the first pipeline step.
+  // Parse — active while running, or waiting for the admin to start (manual mode).
   const parseState =
     work.status === 'processing'
       ? 'active'
-      : work.status === 'failed' && work.failedStep === 'parse'
-        ? 'failed'
-        : work.originMeta.parsed
-          ? 'done'
-          : 'todo';
-  // Metadata — active only while the metadata jobs run (not during audio).
+      : work.status === 'uploaded'
+        ? 'active'
+        : work.status === 'failed' && work.failedStep === 'parse'
+          ? 'failed'
+          : work.originMeta.parsed
+            ? 'done'
+            : 'todo';
+  // Metadata — active while jobs run, or waiting after parse in manual mode.
   const metadataState =
     work.status === 'metadata'
       ? 'active'
-      : work.status === 'failed' && work.failedStep === 'metadata'
-        ? 'failed'
-        : work.status === 'tts' ||
-            work.status === 'ready' ||
-            work.status === 'published' ||
-            Boolean(work.originMeta.metadataAt)
-          ? 'done'
-          : 'todo';
+      : work.status === 'parsed'
+        ? 'active'
+        : work.status === 'failed' && work.failedStep === 'metadata'
+          ? 'failed'
+          : work.status === 'tts' ||
+              work.status === 'ready' ||
+              work.status === 'published' ||
+              Boolean(work.originMeta.metadataAt)
+            ? 'done'
+            : 'todo';
   // Audio — manual generation via WorkAudioPanel; status `tts` only when auto-pipeline is on.
   const audioState = work.status === 'tts' ? 'active' : 'todo';
   // Publish — the human step; highlighted while the work is ready.
@@ -236,8 +243,9 @@ function EpubDropzone({ onFile, disabled }: { onFile: (file: File) => void; disa
       </div>
       <p className="font-heading text-base font-medium">拖拽 EPUB 到此处，或点击选择</p>
       <p className="text-sm text-muted-foreground">
-        上传后自动解析为章节。插图书请优先使用带图 EPUB（如 Gutenberg 的
-        *-images.epub）；无图占位会在解析时去掉，避免打断阅读。
+        {WORKFLOW_AUTO_CHAIN
+          ? '上传后自动解析为章节。插图书请优先使用带图 EPUB（如 Gutenberg 的 *-images.epub）；无图占位会在解析时去掉，避免打断阅读。'
+          : '上传后需手动点击「开始解析」。插图书请优先使用带图 EPUB（如 Gutenberg 的 *-images.epub）；无图占位会在解析时去掉，避免打断阅读。'}
       </p>
     </div>
   );
@@ -344,10 +352,17 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
 
   async function handleRetry(step?: WorkflowStep, confirmText?: string) {
     if (confirmText && !window.confirm(confirmText)) return;
+    const isStartingIdle = work.status === 'uploaded' || work.status === 'parsed';
     try {
       await retryAdminWorkflow(workId, step);
       await invalidate(workId);
-      toast.success(step ? `已重新开始「${STEP_LABEL[step]}」` : '已重试');
+      toast.success(
+        isStartingIdle && step
+          ? `已开始「${STEP_LABEL[step]}」`
+          : step
+            ? `已重新开始「${STEP_LABEL[step]}」`
+            : '已重试',
+      );
     } catch (error) {
       toast.error(formatWorksApiError(error));
     }
@@ -492,6 +507,13 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
 
           {!isEpub ? (
             <p className="mt-4 text-sm text-muted-foreground">文本作品不经过 EPUB 解析。</p>
+          ) : work.status === 'uploaded' ? (
+            <div className="mt-4 space-y-4">
+              <p className="text-sm text-muted-foreground">文件已就绪，点击开始解析章节内容。</p>
+              <Button type="button" size="sm" onClick={() => void handleRetry('parse')} disabled={!canRerun}>
+                开始解析
+              </Button>
+            </div>
           ) : work.status === 'processing' ? (
             <div className="mt-4 flex items-center gap-3 text-sm text-muted-foreground">
               <Spinner className="size-4 text-brand" />
@@ -599,8 +621,12 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
           </h2>
           {!isEpub ? (
             <p className="mt-4 text-sm text-muted-foreground">文本作品不参与原数据完善流程。</p>
-          ) : work.status === 'processing' || (work.status === 'failed' && work.failedStep === 'parse') ? (
-            <p className="mt-4 text-sm text-muted-foreground">等待内容解析完成后自动完善…</p>
+          ) : work.status === 'uploaded' ||
+            work.status === 'processing' ||
+            (work.status === 'failed' && work.failedStep === 'parse') ? (
+            <p className="mt-4 text-sm text-muted-foreground">
+              {WORKFLOW_AUTO_CHAIN ? '等待内容解析完成后自动完善…' : '等待内容解析完成后再开始完善。'}
+            </p>
           ) : (
             <MetadataReviewPanel workId={work.id} work={work} />
           )}

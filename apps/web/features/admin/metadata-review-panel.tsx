@@ -4,7 +4,12 @@ import { Pencil } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 
-import type { UpdateWorkBody, WorkflowStep, WorkMetadataProvenance } from '@gloaming/shared/api/works';
+import {
+  type UpdateWorkBody,
+  WORKFLOW_AUTO_CHAIN,
+  type WorkflowStep,
+  type WorkMetadataProvenance,
+} from '@gloaming/shared/api/works';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -266,10 +271,9 @@ type MetadataReviewPanelProps = {
 };
 
 /**
- * "原数据完善" step status line + retry actions. The step is part of the work
- * status machine: busy state (`metadata`), failure (failed + failedStep) and
- * completion (ready/published, or past metadata into `tts` when auto-TTS is on)
- * drive what is shown and whether a retry / re-run action is available.
+ * "原数据完善" step status line + start / retry actions.
+ * Busy (`metadata`), idle wait (`parsed` when auto-chain is off), failure, and
+ * completion drive what is shown.
  */
 export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
   const invalidate = useInvalidateAdminWorks();
@@ -278,16 +282,17 @@ export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
 
   const metadataAt = typeof work.originMeta.metadataAt === 'string' ? work.originMeta.metadataAt : null;
   const isBusy = status === 'processing' || status === 'metadata';
+  const isAwaitingStart = status === 'parsed';
   const isFailedHere = status === 'failed' && failedStep === 'metadata';
   const isDone = status === 'ready' || status === 'published' || status === 'tts' || Boolean(metadataAt);
 
-  async function handleRetry(step: WorkflowStep, confirmText: string) {
-    if (!window.confirm(confirmText)) return;
+  async function handleRetry(step: WorkflowStep, confirmText?: string) {
+    if (confirmText && !window.confirm(confirmText)) return;
     setIsActing(true);
     try {
       await retryAdminWorkflow(work.id, step);
       await invalidate(work.id);
-      toast.success('已重新开始处理');
+      toast.success(status === 'parsed' ? '已开始完善原数据' : '已重新开始处理');
     } catch (error) {
       toast.error(formatWorksApiError(error));
     } finally {
@@ -297,7 +302,14 @@ export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
 
   let hint = '';
   if (isBusy) {
-    hint = status === 'processing' ? '等待内容解析完成后自动完善…' : '正在根据正文内容补全信息，完成后即可逐项核对。';
+    hint =
+      status === 'processing'
+        ? WORKFLOW_AUTO_CHAIN
+          ? '等待内容解析完成后自动完善…'
+          : '等待内容解析完成后再开始完善。'
+        : '正在根据正文内容补全信息，完成后即可逐项核对。';
+  } else if (isAwaitingStart) {
+    hint = '内容已解析。核对预览无误后，点击开始完善原数据（规则填充 + AI 补全）。';
   } else if (isFailedHere) {
     hint = String(work.originMeta.lastError ?? '原数据完善失败，未知错误');
   } else if (status === 'failed' && failedStep) {
@@ -307,7 +319,9 @@ export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
   } else if (isDone) {
     hint = 'AI 已自动补全缺失信息，可逐项核对编辑；发布时以当前内容为准。';
   } else {
-    hint = '解析完成后，AI 将自动补全缺失的简介、标签与分类。';
+    hint = WORKFLOW_AUTO_CHAIN
+      ? '解析完成后，AI 将自动补全缺失的简介、标签与分类。'
+      : '解析完成后，需手动开始完善原数据。';
   }
 
   return (
@@ -327,15 +341,17 @@ export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
             ? isFailedHere
               ? '原数据完善失败'
               : '处理失败'
-            : status === 'processing'
+            : status === 'processing' || status === 'uploaded'
               ? '待完善'
-              : status === 'metadata'
-                ? '完善中'
-                : status === 'published'
-                  ? '已完成（已发布）'
-                  : isDone
-                    ? '已完成'
-                    : '待完善'}
+              : status === 'parsed'
+                ? '待开始'
+                : status === 'metadata'
+                  ? '完善中'
+                  : status === 'published'
+                    ? '已完成（已发布）'
+                    : isDone
+                      ? '已完成'
+                      : '待完善'}
         </Badge>
         {isDone && metadataAt ? (
           <span className="text-xs text-muted-foreground">完善于 {new Date(metadataAt).toLocaleString('zh-CN')}</span>
@@ -343,6 +359,11 @@ export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
       </div>
       <p className={cn('mt-2 text-sm text-muted-foreground', isFailedHere && 'text-destructive')}>{hint}</p>
       <div className="mt-3 flex flex-wrap gap-2">
+        {isAwaitingStart ? (
+          <Button type="button" size="sm" onClick={() => void handleRetry('metadata')} disabled={isActing}>
+            {isActing ? '处理中…' : '开始完善原数据'}
+          </Button>
+        ) : null}
         {isFailedHere ? (
           <Button
             type="button"

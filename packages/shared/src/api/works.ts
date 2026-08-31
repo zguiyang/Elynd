@@ -8,7 +8,21 @@ import {
   paginationQuerySchema,
 } from '@gloaming/shared/api/pagination';
 
-export const WORK_STATUSES = ['processing', 'metadata', 'tts', 'ready', 'failed', 'published'] as const;
+/**
+ * Work lifecycle statuses.
+ * `uploaded` / `parsed` are idle waits between manual pipeline steps
+ * (only used when `WORKFLOW_AUTO_CHAIN` is false).
+ */
+export const WORK_STATUSES = [
+  'uploaded',
+  'processing',
+  'parsed',
+  'metadata',
+  'tts',
+  'ready',
+  'failed',
+  'published',
+] as const;
 export type WorkStatus = (typeof WORK_STATUSES)[number];
 
 /** Linear generation steps of the EPUB work pipeline (retry/re-run target). */
@@ -16,9 +30,16 @@ export const WORKFLOW_STEPS = ['parse', 'metadata', 'tts'] as const;
 export type WorkflowStep = (typeof WORKFLOW_STEPS)[number];
 
 /**
+ * When true, upload → parse → metadata-fill → metadata-enrich chain automatically.
+ * When false (default), each step stops for an admin “next” click; auto-enqueue
+ * call sites stay in code behind this flag for a future switch-back.
+ */
+export const WORKFLOW_AUTO_CHAIN = false;
+
+/**
  * When true, metadata completion advances to `tts` and auto-enqueues chapter audio.
  * When false (default), metadata completes to `ready`; audio is generated only from
- * the admin audio step (manual).
+ * the admin audio step (manual). Independent of `WORKFLOW_AUTO_CHAIN`.
  */
 export const TTS_STEP_ENABLED = false;
 

@@ -235,7 +235,10 @@ function EpubDropzone({ onFile, disabled }: { onFile: (file: File) => void; disa
         <BookOpen className="size-6" />
       </div>
       <p className="font-heading text-base font-medium">拖拽 EPUB 到此处，或点击选择</p>
-      <p className="text-sm text-muted-foreground">上传后自动解析为章节，可在流程中审查并发布</p>
+      <p className="text-sm text-muted-foreground">
+        上传后自动解析为章节。插图书请优先使用带图 EPUB（如 Gutenberg 的
+        *-images.epub）；无图占位会在解析时去掉，避免打断阅读。
+      </p>
     </div>
   );
 }

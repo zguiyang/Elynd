@@ -24,28 +24,11 @@ export function normalizePartAudioWhitespace(text: string): string {
 
 /**
  * Exact string passed to TTS for a part. `textOffset` in wordTimings indexes this string.
- * Title and body are joined with `\n\n` when both are non-empty after normalize.
+ * Body-only SSOT — chapter `title` is navigation metadata and must not be prepended
+ * (keeps audio aligned with the reading HTML surface).
  */
-export function buildPartAudioText(title: string, body: string): string {
-  const normalizedTitle = normalizePartAudioWhitespace(title);
-  const normalizedBody = normalizePartAudioWhitespace(body);
-  if (!normalizedTitle) {
-    return normalizedBody;
-  }
-  if (!normalizedBody) {
-    return normalizedTitle;
-  }
-  return `${normalizedTitle}\n\n${normalizedBody}`;
-}
-
-/** Start index of the body segment inside `buildPartAudioText` output. */
-export function partAudioBodyTextOffsetBase(title: string, body: string): number {
-  const normalizedTitle = normalizePartAudioWhitespace(title);
-  const normalizedBody = normalizePartAudioWhitespace(body);
-  if (!normalizedTitle || !normalizedBody) {
-    return 0;
-  }
-  return normalizedTitle.length + 2;
+export function buildPartAudioText(bodyPlain: string): string {
+  return normalizePartAudioWhitespace(bodyPlain);
 }
 
 export const generatePartAudioBodySchema = z.object({

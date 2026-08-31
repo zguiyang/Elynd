@@ -1,3 +1,5 @@
+import { WORKFLOW_AUTO_CHAIN } from '@gloaming/shared/api/works';
+
 import { JOB_METADATA_FILL } from '@/jobs/work-metadata-fill';
 import { enqueue } from '@/lib/queue';
 import { processContentWork } from '@/modules/content-parser';
@@ -10,6 +12,10 @@ export type ContentParseJobData = {
 
 export async function processContentParse(data: ContentParseJobData): Promise<{ ok: true; workId: string }> {
   await processContentWork(data.workId);
-  await enqueue(JOB_METADATA_FILL, { workId: data.workId }, { attempts: 2 });
+  // Auto-chain kept for future: when WORKFLOW_AUTO_CHAIN flips back to true,
+  // parse success immediately queues metadata-fill without an admin click.
+  if (WORKFLOW_AUTO_CHAIN) {
+    await enqueue(JOB_METADATA_FILL, { workId: data.workId }, { attempts: 2 });
+  }
   return { ok: true, workId: data.workId };
 }

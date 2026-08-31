@@ -11,16 +11,21 @@ const STEP_RUNNING_STATUS: Record<WorkflowStep, WorkStatus> = {
   tts: 'tts',
 };
 
+/** Idle wait statuses that may still claim the next step (manual pipeline). */
+const STEP_IDLE_CLAIM_STATUS: Partial<Record<WorkflowStep, WorkStatus>> = {
+  parse: 'uploaded',
+  metadata: 'parsed',
+};
+
 export function stepRunningStatus(step: WorkflowStep): WorkStatus {
   return STEP_RUNNING_STATUS[step];
 }
 
 /**
  * Claim the workflow step before running its job: the work must currently be
- * in this step's running status, or failed on exactly this step (retry
- * self-heal — BullMQ re-runs the same job after a failure). Returns false when
- * the work is elsewhere (completed / published / failed on another step), in
- * which case the caller should no-op.
+ * in this step's running status, its idle wait status (manual next), or failed
+ * on exactly this step (retry self-heal). Returns false when the work is
+ * elsewhere, in which case the caller should no-op.
  */
 export async function claimWorkflowStep(workId: string, step: WorkflowStep): Promise<boolean> {
   const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId)).limit(1);
@@ -28,8 +33,9 @@ export async function claimWorkflowStep(workId: string, step: WorkflowStep): Pro
     return false;
   }
   const running = STEP_RUNNING_STATUS[step];
+  const idle = STEP_IDLE_CLAIM_STATUS[step];
   const failedHere = work.status === 'failed' && work.originMeta.failedStep === step;
-  if (work.status !== running && !failedHere) {
+  if (work.status !== running && work.status !== idle && !failedHere) {
     return false;
   }
   await db.update(readingWorkTable).set({ status: running }).where(eq(readingWorkTable.id, workId));

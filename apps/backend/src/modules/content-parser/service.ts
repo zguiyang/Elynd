@@ -7,6 +7,7 @@ import {
   readingPart as readingPartTable,
   readingWork as readingWorkTable,
 } from '@gloaming/db';
+import { WORKFLOW_AUTO_CHAIN } from '@gloaming/shared/api/works';
 
 import { db } from '@/db';
 import { rootLogger } from '@/lib/logger';
@@ -102,7 +103,7 @@ function rewriteImageSrcs(html: string, images: ParsedContent['images'], hrefToA
  * Content ingest job — resolve the source parser, then store parts/images/cover
  * and update the work. Idempotent: re-running replaces parts + derived assets.
  * Claims the `parse` workflow step (self-heals from a failed parse retry) and
- * moves the work to `metadata` on success.
+ * moves the work to `metadata` (auto-chain) or `parsed` (manual next) on success.
  */
 export async function processContentWork(workId: string): Promise<void> {
   const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId)).limit(1);
@@ -198,7 +199,7 @@ export async function processContentWork(workId: string): Promise<void> {
         author: hasParsedBefore ? work.author : '',
         description: hasParsedBefore ? work.description : '',
         coverAssetId,
-        status: 'metadata',
+        status: WORKFLOW_AUTO_CHAIN ? 'metadata' : 'parsed',
         publishedAt: null,
         originMeta: {
           ...work.originMeta,

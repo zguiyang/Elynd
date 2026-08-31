@@ -115,8 +115,9 @@ describe('EPUB ingest pipeline', () => {
     const created = (await response.json()) as { id: string };
     createdWorkIds.push(created.id);
 
-    // Upload enqueues the job; run the ingest + metadata-fill synchronously.
+    // Upload leaves the work in `uploaded`; run parse + fill synchronously.
     await processContentWork(created.id);
+    await db.update(readingWorkTable).set({ status: 'metadata' }).where(eq(readingWorkTable.id, created.id));
     await fillWorkMetadata(created.id);
 
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
@@ -232,6 +233,7 @@ describe('POST /api/admin/works/:id/workflow/retry', () => {
     const created = (await response.json()) as { id: string };
     createdWorkIds.push(created.id);
     await processContentWork(created.id);
+    await db.update(readingWorkTable).set({ status: 'metadata' }).where(eq(readingWorkTable.id, created.id));
     await fillWorkMetadata(created.id);
     return created.id;
   }
@@ -274,6 +276,7 @@ describe('POST /api/admin/works/:id/workflow/retry', () => {
     expect(response.status).toBe(201);
     const created = (await response.json()) as { id: string };
     createdWorkIds.push(created.id);
+    await db.update(readingWorkTable).set({ status: 'processing' }).where(eq(readingWorkTable.id, created.id));
 
     const retry = await retryRequest(created.id, { step: 'parse' });
     expect(retry.status).toBe(409);
@@ -297,6 +300,7 @@ describe('POST /api/admin/works/:id/workflow/retry', () => {
     expect(mid!.status).toBe('processing');
 
     await processContentWork(workId);
+    await db.update(readingWorkTable).set({ status: 'metadata' }).where(eq(readingWorkTable.id, workId));
     await fillWorkMetadata(workId);
 
     const [after] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));

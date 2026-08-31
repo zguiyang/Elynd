@@ -34,6 +34,7 @@ import {
   TTS_STEP_ENABLED,
   type UpdateWorkBody,
   type Work,
+  WORKFLOW_AUTO_CHAIN,
   WORKFLOW_STEPS,
   type WorkflowStep,
 } from '@gloaming/shared/api/works';
@@ -485,7 +486,7 @@ async function insertEpubWorkAndAsset(input: {
       id: workId,
       title,
       description: '',
-      status: 'processing',
+      status: WORKFLOW_AUTO_CHAIN ? 'processing' : 'uploaded',
       originKind: 'admin_epub',
       originMeta: { originalFileName: input.fileName, reused: input.reused },
       sourceNote: '',
@@ -514,7 +515,7 @@ async function insertEpubWorkAndAsset(input: {
   return {
     id: workId,
     title,
-    status: 'processing',
+    status: WORKFLOW_AUTO_CHAIN ? 'processing' : 'uploaded',
     originKind: 'admin_epub',
     originMeta: { originalFileName: input.fileName, reused: input.reused },
     asset: {
@@ -557,7 +558,9 @@ export async function createAdminEpubWork(input: {
     meta: result.meta,
     reused: result.duplicated,
   });
-  await enqueue(JOB_CONTENT_PARSE, { workId: created.id });
+  if (WORKFLOW_AUTO_CHAIN) {
+    await enqueue(JOB_CONTENT_PARSE, { workId: created.id });
+  }
   return created;
 }
 
@@ -594,7 +597,9 @@ export async function reuseAdminEpubWork(input: {
   }
 
   const created = await insertEpubWorkAndAsset({ fileName, meta: result.meta, reused: true });
-  await enqueue(JOB_CONTENT_PARSE, { workId: created.id });
+  if (WORKFLOW_AUTO_CHAIN) {
+    await enqueue(JOB_CONTENT_PARSE, { workId: created.id });
+  }
   return created;
 }
 
@@ -807,11 +812,11 @@ const STEP_JOB: Record<Exclude<WorkflowStep, 'tts'>, string> = {
 };
 
 /**
- * Workflow retry / re-run. Without `step` it resumes from the failed step
- * (originMeta.failedStep) and walks the remaining pipeline; with `step` it
- * re-runs that step and everything after it. Outputs of the step and later
- * steps are cleared synchronously — no intermediate state is served. Refused
- * while processing or published.
+ * Workflow retry / re-run / manual next-step. Without `step` it resumes from
+ * the failed step (originMeta.failedStep); with `step` it re-runs that step
+ * (and clears later outputs). Also starts an idle wait state (`uploaded` →
+ * parse, `parsed` → metadata) when auto-chain is off. Refused while a step is
+ * actively running or while published.
  */
 export async function retryWorkflow(id: string, input: RetryWorkflowBody = {}): Promise<AdminWork> {
   const [existing] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, id)).limit(1);

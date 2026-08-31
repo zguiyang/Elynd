@@ -61,7 +61,7 @@ describe('normalizePartText / partPlainText', () => {
     expect(normalizePartText('a\n\n b ')).toBe('a b');
   });
 
-  it('joins title and extracted body', () => {
-    expect(partPlainText('Chapter 1', '<p>Body text.</p>')).toBe('Chapter 1\n\nBody text.');
+  it('returns normalized body plain text', () => {
+    expect(partPlainText('<p>Body text.</p>')).toBe('Body text.');
   });
 });

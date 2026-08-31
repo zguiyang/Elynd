@@ -99,11 +99,7 @@ export function normalizePartText(text: string): string {
   return text.trim().replace(/\s+/g, ' ');
 }
 
-/** Plain text of a part (title + body) with normalized whitespace. */
-export function partPlainText(title: string, bodyHtml: string): string {
-  const normalizedTitle = normalizePartText(title);
-  const normalizedBody = normalizePartText(htmlToPlainText(bodyHtml));
-  if (!normalizedTitle) return normalizedBody;
-  if (!normalizedBody) return normalizedTitle;
-  return `${normalizedTitle}\n\n${normalizedBody}`;
+/** Plain text of a part body with normalized whitespace (title is metadata-only). */
+export function partPlainText(bodyHtml: string): string {
+  return normalizePartText(htmlToPlainText(bodyHtml));
 }

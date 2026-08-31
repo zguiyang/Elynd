@@ -23,7 +23,7 @@ import * as azureTts from '@/lib/tts/azure';
 import { partAudioObjectKey, partAudioSegmentKey } from '@/modules/content-assets/service';
 import { resetObjectStoreCache, setObjectStoreForTests } from '@/modules/oss';
 import { TTS_CONFIG_ID } from '@/modules/tts/service';
-import { hashPartContent } from '@/modules/works/content-hash';
+import { hashPartAudioContent } from '@/modules/works/content-hash';
 
 import { createMemoryObjectStore } from '../helpers/memory-oss';
 
@@ -180,11 +180,15 @@ describe('learner part audio', () => {
     const objectStore = createMemoryObjectStore();
     setObjectStoreForTests(objectStore);
     const redisSpy = vi.spyOn(redisLib, 'getRedis').mockReturnValue(memoryRedis.client as never);
-    vi.spyOn(azureTts, 'synthesizeAzureTts').mockImplementation(async (input) => ({
-      audio: Buffer.from(`mp3-${input.voice}`),
-      mimeType: 'audio/mpeg',
-      wordTimings: [{ text: 'Listen', audioOffsetMs: 0, durationMs: 100, textOffset: 0 }],
-    }));
+    vi.spyOn(azureTts, 'synthesizeAzureTts').mockImplementation(async (input) => {
+      expect(input.text).toBe('Listen body here.');
+      expect(input.text).not.toContain('Listen Title');
+      return {
+        audio: Buffer.from(`mp3-${input.voice}`),
+        mimeType: 'audio/mpeg',
+        wordTimings: [{ text: 'Listen', audioOffsetMs: 0, durationMs: 100, textOffset: 0 }],
+      };
+    });
     vi.spyOn(audioConcat, 'concatMp3Buffers').mockImplementation(async (parts) => Buffer.concat(parts));
     vi.spyOn(queueLib, 'enqueue').mockImplementation(async (name, data) => {
       if (name === 'part-audio-generate') {
@@ -246,7 +250,7 @@ describe('learner part audio', () => {
       textOffset: 0,
     });
 
-    const contentHash = hashPartContent('Listen Title', 'Listen body here.');
+    const contentHash = hashPartAudioContent('Listen body here.');
 
     // Segments are not required for playback — only storageKey (chapter) is streamed.
     objectStore.store.delete(partAudioSegmentKey(partId, audioKindForRole('us'), contentHash, 0));

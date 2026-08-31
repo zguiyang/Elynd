@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createTranslateLineParser, parseTranslateOutputLine, splitPartSentences } from '@/modules/translate/split';
-import { hashPartContent } from '@/modules/works/content-hash';
+import { hashPartAudioContent, hashPartContent } from '@/modules/works/content-hash';
 
 describe('hashPartContent', () => {
   it('is stable for equivalent whitespace', () => {
@@ -14,6 +14,19 @@ describe('hashPartContent', () => {
     const a = hashPartContent('Hello', 'One.');
     const b = hashPartContent('Hello', 'Two.');
     expect(a).not.toBe(b);
+  });
+});
+
+describe('hashPartAudioContent', () => {
+  it('is stable for equivalent body markup whitespace', () => {
+    const a = hashPartAudioContent('<p>Body text.</p>');
+    const b = hashPartAudioContent('<p>Body   text.</p>');
+    expect(a).toBe(b);
+    expect(a).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it('differs from title-inclusive part content hash', () => {
+    expect(hashPartAudioContent('<p>One.</p>')).not.toBe(hashPartContent('Title', '<p>One.</p>'));
   });
 });
 

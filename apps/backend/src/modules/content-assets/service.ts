@@ -36,7 +36,7 @@ import { completeWorkflowStep } from '@/lib/workflow';
 import { deleteObject, objectExists, putObject } from '@/modules/oss';
 import { recordTtsInvocation } from '@/modules/tts/log';
 import { synthesizeTts } from '@/modules/tts/service';
-import { hashPartContent } from '@/modules/works/content-hash';
+import { hashPartAudioContent } from '@/modules/works/content-hash';
 
 /** Must match `JOB_PART_AUDIO_GENERATE` in jobs/part-audio-generate.ts */
 const PART_AUDIO_JOB = 'part-audio-generate';
@@ -203,7 +203,7 @@ function toTrack(role: TtsVoiceRole, currentContentHash: string, asset: AssetRow
 
 export async function getPartAudio(partId: string): Promise<PartAudioView> {
   const part = await loadPart(partId);
-  const currentContentHash = hashPartContent(part.title, part.body);
+  const currentContentHash = hashPartAudioContent(part.body);
   const metaRows = await db.select().from(contentAssetTable).where(eq(contentAssetTable.partId, partId));
   const metaByKind = new Map<string, AssetRow>();
   for (const row of metaRows) {
@@ -272,7 +272,7 @@ export async function getWorkAudio(workId: string, role: TtsVoiceRole): Promise<
   const byPart = new Map(assets.map((row) => [row.partId!, row]));
 
   const rows = parts.map((part) => {
-    const currentContentHash = hashPartContent(part.title, part.body);
+    const currentContentHash = hashPartAudioContent(part.body);
     return {
       partId: part.id,
       sortOrder: part.sortOrder,
@@ -376,12 +376,12 @@ async function markGenerating(input: {
 
 export async function enqueuePartAudio(partId: string, body: GeneratePartAudioBody): Promise<EnqueueAudioResult> {
   const part = await loadPart(partId);
-  const text = buildPartAudioText(part.title, htmlToPlainText(part.body));
+  const text = buildPartAudioText(htmlToPlainText(part.body));
   if (!text.trim()) {
     throw new AppError(HTTP_STATUS.BAD_REQUEST, 'Part has no text to synthesize');
   }
 
-  const contentHash = hashPartContent(part.title, part.body);
+  const contentHash = hashPartAudioContent(part.body);
   const force = body.force === true;
   const roles = resolveRoles(body.roles);
   const enqueued: EnqueueAudioResult['enqueued'] = [];
@@ -430,11 +430,11 @@ export async function enqueueWorkAudio(workId: string, body: GenerateWorkAudioBo
   const skipped: EnqueueAudioResult['skipped'] = [];
 
   for (const part of parts) {
-    const text = buildPartAudioText(part.title, htmlToPlainText(part.body));
+    const text = buildPartAudioText(htmlToPlainText(part.body));
     if (!text.trim()) {
       continue;
     }
-    const contentHash = hashPartContent(part.title, part.body);
+    const contentHash = hashPartAudioContent(part.body);
     for (const role of roles) {
       if (!force && !(await needsRegen(part.id, role, contentHash))) {
         skipped.push({ partId: part.id, role, reason: 'fresh' });
@@ -466,12 +466,12 @@ export async function runPartAudioGenerate(input: {
     throw new AppError(HTTP_STATUS.BAD_REQUEST, 'Part does not belong to work');
   }
 
-  const text = buildPartAudioText(part.title, htmlToPlainText(part.body));
+  const text = buildPartAudioText(htmlToPlainText(part.body));
   if (!text.trim()) {
     throw new AppError(HTTP_STATUS.BAD_REQUEST, 'Part has no text to synthesize');
   }
 
-  const contentHash = hashPartContent(part.title, part.body);
+  const contentHash = hashPartAudioContent(part.body);
   const kind = audioKindForRole(input.role);
   const segments = splitForTts(text);
   if (segments.length === 0) {
@@ -663,11 +663,11 @@ export async function tryAdvanceTtsWorkflow(workId: string): Promise<void> {
   }
 
   for (const part of parts) {
-    const text = buildPartAudioText(part.title, htmlToPlainText(part.body));
+    const text = buildPartAudioText(htmlToPlainText(part.body));
     if (!text.trim()) {
       continue;
     }
-    const contentHash = hashPartContent(part.title, part.body);
+    const contentHash = hashPartAudioContent(part.body);
     for (const role of ALL_ROLES) {
       if (await needsRegen(part.id, role, contentHash)) {
         return;
@@ -686,7 +686,7 @@ async function isTrackPlayable(
   partId: string,
   role: TtsVoiceRole,
 ): Promise<boolean> {
-  const sourceHash = hashPartContent(part.title, part.body);
+  const sourceHash = hashPartAudioContent(part.body);
   const kind = audioKindForRole(role);
   const [asset] = await db
     .select()
@@ -727,7 +727,7 @@ export async function getPublishedPartAudioTrack(partId: string, role: TtsVoiceR
     throw new NotFoundError('Part');
   }
 
-  const sourceHash = hashPartContent(part.title, part.body);
+  const sourceHash = hashPartAudioContent(part.body);
   const kind = audioKindForRole(role);
   const [asset] = await db
     .select()

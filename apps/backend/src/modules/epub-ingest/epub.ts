@@ -19,8 +19,16 @@ const IMAGE_MIME_BY_EXT: Record<string, string> = {
   '.avif': 'image/avif',
 };
 
+function decodePath(entry: string): string {
+  try {
+    return decodeURIComponent(entry);
+  } catch {
+    return entry;
+  }
+}
+
 function normalizeHref(href: string): string {
-  let result = href.trim();
+  let result = decodePath(href.trim());
   while (result.startsWith('../')) result = result.slice(3);
   while (result.startsWith('./')) result = result.slice(2);
   result = result.replace(/^\/+/, '');
@@ -34,12 +42,30 @@ function resolveHref(opfDir: string, href: string): string {
   return normalizeHref(`${opfDir}/${normalized}`);
 }
 
-function decodePath(entry: string): string {
-  try {
-    return decodeURIComponent(entry);
-  } catch {
-    return entry;
+/**
+ * Resolve a path relative to a zip directory (e.g. chapter folder), honoring
+ * `../` segments. Unlike {@link normalizeHref}, does not strip leading `../`
+ * before joining — needed for images referenced from nested spine files.
+ */
+function resolveAgainstBase(baseDir: string, href: string): string {
+  const raw = decodePath(href.trim()).split('#')[0]!.trim();
+  if (!raw) return '';
+  const joined = [...(baseDir ? baseDir.split('/') : []), ...raw.split('/')];
+  const stack: string[] = [];
+  for (const part of joined) {
+    if (!part || part === '.') continue;
+    if (part === '..') {
+      stack.pop();
+      continue;
+    }
+    stack.push(part);
   }
+  return stack.join('/');
+}
+
+function parentDir(path: string): string {
+  const idx = path.lastIndexOf('/');
+  return idx >= 0 ? path.slice(0, idx) : '';
 }
 
 /** Read every zip entry into memory (EPUBs are capped at 50MB on upload). */
@@ -413,9 +439,11 @@ function resolveCoverHref(
 }
 
 export {
+  parentDir as epubParentDir,
   findEntryCaseInsensitive as findEpubEntry,
   metadataByLocalName,
   normalizeHref as normalizeEpubHref,
+  resolveAgainstBase as resolveEpubAgainstBase,
   resolveHref as resolveEpubHref,
   textOfDeep,
 };

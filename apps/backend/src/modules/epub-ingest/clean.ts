@@ -1,6 +1,5 @@
 import * as cheerio from 'cheerio';
 
-import { normalizeEpubHref } from './epub';
 import { applyTextPipeline } from './text-pipeline';
 import type { ChapterImageRef } from './types';
 
@@ -16,6 +15,8 @@ import type { ChapterImageRef } from './types';
  * - `data-p` ordinals on block elements for reader paragraph anchoring.
  * - Removal of in-chapter table-of-contents blocks (the product has its own
  *   chapter navigation, so a duplicated contents page is dropped).
+ * - Removal of non-displayable figure stubs (Gutenberg `epub.noimages` spans,
+ *   empty imgs) so reading is not interrupted by caption-only placeholders.
  * - The text pipeline (whitespace / entities / empty tags).
  *
  * Local img srcs are placeholder-tokenized (rewritten to asset URLs by the
@@ -86,6 +87,11 @@ const VOID_TAGS = new Set([
 /** In-chapter contents headings whose following link list is dropped. */
 const CONTENTS_TITLES = new Set(['contents', 'table of contents']);
 
+/** Ingest placeholder token prefix — must match epub-ingest/parser. */
+export const IMAGE_PLACEHOLDER_PREFIX = '__GLOAMING_IMG__';
+
+const FIGURE_SHELL_SELECTOR = '.figcenter, .figleft, .figright, figure';
+
 export function isLocalImageHref(href: string): boolean {
   const trimmed = href.trim();
   if (!trimmed) return false;
@@ -107,6 +113,17 @@ function detectImageMime(src: string): string {
   if (lower.endsWith('.svg')) return 'image/svg+xml';
   if (lower.endsWith('.avif')) return 'image/avif';
   return 'image/jpeg';
+}
+
+/** Decode percent-encoding when present; keep `../` for chapter-relative resolve. */
+function softNormalizeLocalHref(href: string): string {
+  const noHash = href.trim().split('#')[0]!.trim();
+  if (!noHash) return '';
+  try {
+    return decodeURIComponent(noHash);
+  } catch {
+    return noHash;
+  }
 }
 
 /**
@@ -171,10 +188,24 @@ function removeDangerousTags($: cheerio.CheerioAPI): void {
   $([...DANGEROUS_TAGS].join(',')).remove();
 }
 
+/** Remove an img (or its empty figure shell) so reading is not interrupted. */
+function removeImgOrFigureShell($: cheerio.CheerioAPI, $img: cheerio.Cheerio<never>): void {
+  const $shell = $img.closest(FIGURE_SHELL_SELECTOR);
+  if ($shell.length) {
+    $shell.remove();
+    return;
+  }
+  $img.remove();
+}
+
 /**
  * Rewrite/collect local images (placeholder token), keep external and
  * data:image srcs as-is (textstack behavior), drop srcset (single src wins —
  * local srcset entries cannot be proxied).
+ *
+ * `rewriteImageSrc` receives a soft-normalized local href (percent-decoded,
+ * hash stripped, `../` preserved) so the caller can resolve against the
+ * chapter directory.
  */
 function collectImages(
   $: cheerio.CheerioAPI,
@@ -189,7 +220,7 @@ function collectImages(
     if (!isLocalImageHref(src)) {
       return;
     }
-    const normalized = normalizeEpubHref(src);
+    const normalized = softNormalizeLocalHref(src);
     if (!normalized) {
       $img.remove();
       return;
@@ -200,6 +231,36 @@ function collectImages(
       images.push({ href: normalized, mime: detectImageMime(normalized) });
     }
     $img.attr('src', rewriteImageSrc(normalized));
+  });
+}
+
+/**
+ * Drop Gutenberg noimages stubs and empty image shells. Ebookmaker converts
+ * missing `<img>` into `<span id="img_{src}">alt</span>`; leaving those as
+ * linked captions looks like a product bug during immersive reading.
+ */
+function removeNonDisplayableFigures($: cheerio.CheerioAPI): void {
+  $('span[id^="img_"]').each((_, el) => {
+    const $span = $(el);
+    const $shell = $span.closest(FIGURE_SHELL_SELECTOR);
+    if ($shell.length) {
+      $shell.remove();
+      return;
+    }
+    const $parent = $span.parent();
+    if ($parent.is('a') && !$parent.attr('href') && $parent.children().length === 1) {
+      $parent.remove();
+      return;
+    }
+    $span.remove();
+  });
+
+  $('img').each((_, el) => {
+    const $img = $(el);
+    const src = ($img.attr('src') ?? '').trim();
+    if (!src) {
+      removeImgOrFigureShell($, $img as cheerio.Cheerio<never>);
+    }
   });
 }
 
@@ -278,8 +339,8 @@ function injectParagraphOrdinals($: cheerio.CheerioAPI): void {
 
 /**
  * Clean one XHTML document into normalized reading HTML.
- * `rewriteImageSrc` maps a normalized local href to its final URL (e.g. the
- * proxy asset path). Returns the cleaned fragment plus collected image refs.
+ * `rewriteImageSrc` maps a soft-normalized local href to its final URL (e.g.
+ * the proxy asset path). Returns the cleaned fragment plus collected image refs.
  */
 export function cleanXhtml(html: string, rewriteImageSrc: (href: string) => string): CleanResult {
   // Document mode (not fragment): lets $('body').html() exclude the XML
@@ -293,6 +354,7 @@ export function cleanXhtml(html: string, rewriteImageSrc: (href: string) => stri
   const images: ChapterImageRef[] = [];
   const seenImages = new Set<string>();
   collectImages($, rewriteImageSrc, images, seenImages);
+  removeNonDisplayableFigures($);
 
   removeContentsBlocks($);
   injectParagraphOrdinals($);
@@ -300,4 +362,23 @@ export function cleanXhtml(html: string, rewriteImageSrc: (href: string) => stri
   const htmlOut = applyTextPipeline($('body').html() ?? $.root().html() ?? '');
 
   return { html: htmlOut.trim(), images };
+}
+
+/**
+ * Drop `<img>` whose src is an unresolved ingest placeholder (zip miss).
+ * `keepTokens` are placeholders that successfully resolved to package bytes.
+ */
+export function stripOrphanImagePlaceholders(html: string, keepTokens: ReadonlySet<string>): string {
+  if (!html.includes(IMAGE_PLACEHOLDER_PREFIX)) {
+    return html;
+  }
+  const $ = cheerio.load(html, null, false);
+  $('img').each((_, el) => {
+    const $img = $(el);
+    const src = $img.attr('src') ?? '';
+    if (!src.includes(IMAGE_PLACEHOLDER_PREFIX)) return;
+    if (keepTokens.has(src)) return;
+    removeImgOrFigureShell($, $img as cheerio.Cheerio<never>);
+  });
+  return ($.root().html() ?? html).trim();
 }

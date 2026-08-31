@@ -150,6 +150,9 @@ describe('Gutenberg EPUB regression (fixtures/pg11339.epub)', () => {
     expect(chapters[0]!.html).not.toContain('pginternal');
     // Blacklist cleaning preserves structural tags like div/table.
     expect(all).toContain('<div');
+    // Gutenberg noimages stubs (span#img_*) are stripped for immersive reading.
+    expect(all).not.toContain('img_images_');
+    expect(all).not.toContain('id="img_');
   });
 });
 
@@ -196,6 +199,10 @@ describe('EPUB ingest pipeline with real Gutenberg book (integration)', () => {
       .where(eq(readingPartTable.workId, created.id))
       .orderBy(readingPartTable.sortOrder);
     expect(parts.map((p) => p.title)[0]).toBe("AESOP'S FABLES");
+    // Noimages caption stubs must not survive into stored chapter bodies.
+    const allBodies = parts.map((p) => p.body).join('\n');
+    expect(allBodies).not.toContain('img_images_');
+    expect(allBodies).not.toContain('__GLOAMING_IMG__');
     // Author info page preserved in the first chapter; every other chapter
     // must be free of head leaks and the XML declaration.
     expect(parts[0]!.body).toContain('pg-header');
@@ -272,7 +279,38 @@ describe('EPUB cleaning & chaptering fixes (builder fixtures)', () => {
     expect(part!.body).not.toContain('<img src="">');
   });
 
-  it('drops a cover wrapper page (no text, no title) instead of a "Section 1"', async () => {
+  it('resolves chapter-relative ../ image paths from nested spine files', async () => {
+    const bytes = await buildEpubBytes({
+      title: 'Nested Images',
+      language: 'en',
+      chapters: [
+        {
+          href: 'Text/chapter-1.xhtml',
+          tocLabel: 'Chapter 1',
+          content: `<?xml version="1.0"?>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter 1</title></head>
+<body><h1>Chapter 1</h1><p><img src="../Images/fig1.png" alt="fig"/></p></body></html>`,
+        },
+      ],
+      extraEntries: { 'Images/fig1.png': Buffer.from([0x89, 0x50, 0x4e, 0x47]) },
+    });
+    const workId = await runEpub(bytes);
+
+    const bodyImages = (await db.select().from(contentAssetTable).where(eq(contentAssetTable.workId, workId))).filter(
+      (a) => a.kind === 'image',
+    );
+    expect(bodyImages).toHaveLength(1);
+    expect(bodyImages[0]!.meta?.originalPath).toBe('OEBPS/Images/fig1.png');
+
+    const [part] = await db
+      .select({ body: readingPartTable.body })
+      .from(readingPartTable)
+      .where(eq(readingPartTable.workId, workId));
+    expect(part!.body).toContain(`/api/assets/${bodyImages[0]!.id}`);
+    expect(part!.body).not.toContain('__GLOAMING_IMG__');
+  });
+
+  it('drops cover wrapper page (no text, no title) instead of a "Section 1"', async () => {
     const bytes = await buildEpubBytes({
       title: 'Covered Book',
       language: 'en',

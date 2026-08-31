@@ -1,16 +1,20 @@
 import { registerParser } from '@/modules/content-parser/registry';
 import type { ContentParser, ParsedContent } from '@/modules/content-parser/types';
 import { planChapters } from '@/modules/epub-ingest/chapters';
-import { cleanXhtml } from '@/modules/epub-ingest/clean';
-import { mimeForHref, parseEpub, resolveEpubHref } from '@/modules/epub-ingest/epub';
-
-const IMAGE_PLACEHOLDER_PREFIX = '__GLOAMING_IMG__';
+import { cleanXhtml, IMAGE_PLACEHOLDER_PREFIX, stripOrphanImagePlaceholders } from '@/modules/epub-ingest/clean';
+import {
+  epubParentDir,
+  findEpubEntry,
+  mimeForHref,
+  parseEpub,
+  resolveEpubAgainstBase,
+} from '@/modules/epub-ingest/epub';
 
 /** Max HTML chars per chapter (abuse / runaway protection). */
 const MAX_CHAPTER_HTML_CHARS = 1_500_000;
 
-function imagePlaceholder(href: string): string {
-  return `${IMAGE_PLACEHOLDER_PREFIX}${Buffer.from(href).toString('base64url')}__`;
+function imagePlaceholder(resolvedHref: string): string {
+  return `${IMAGE_PLACEHOLDER_PREFIX}${Buffer.from(resolvedHref).toString('base64url')}__`;
 }
 
 /**
@@ -24,17 +28,14 @@ export const epubContentParser: ContentParser = {
   async parse(bytes: Buffer): Promise<ParsedContent> {
     const book = await parseEpub(bytes);
 
-    // Spine/image hrefs are relative to the OPF directory — resolve before
-    // matching zip entries (without it every img src lookup misses and images
-    // are silently dropped, leaving empty src attributes).
-    const opfDir = book.opfPath.includes('/') ? book.opfPath.slice(0, book.opfPath.lastIndexOf('/')) : '';
-
     const placeholderToHref = new Map<string, string>();
     const chapters = planChapters(book, (href, rawHtml) => {
+      const chapterDir = epubParentDir(href);
       const cleaned = cleanXhtml(rawHtml, (src) => {
-        const token = imagePlaceholder(src);
+        const resolved = resolveEpubAgainstBase(chapterDir, src);
+        const token = imagePlaceholder(resolved);
         if (!placeholderToHref.has(token)) {
-          placeholderToHref.set(token, resolveEpubHref(opfDir, src));
+          placeholderToHref.set(token, resolved);
         }
         return token;
       });
@@ -50,14 +51,20 @@ export const epubContentParser: ContentParser = {
 
     const images: ParsedContent['images'] = [];
     for (const [token, href] of placeholderToHref) {
-      const imageBytes = book.entries.get(href);
+      const imageBytes = findEpubEntry(book.entries, href);
       if (!imageBytes) continue;
       images.push({ token, href, mime: mimeForHref(href), bytes: imageBytes });
     }
 
+    const keepTokens = new Set(images.map((image) => image.token));
+    const resolvedChapters = chapters.map((chapter) => ({
+      title: chapter.title,
+      html: stripOrphanImagePlaceholders(chapter.html, keepTokens),
+    }));
+
     let cover: ParsedContent['cover'] = null;
     if (book.coverHref) {
-      const coverBytes = book.entries.get(book.coverHref);
+      const coverBytes = findEpubEntry(book.entries, book.coverHref);
       if (coverBytes) {
         cover = { bytes: coverBytes, mime: mimeForHref(book.coverHref), originalPath: book.coverHref };
       }
@@ -72,13 +79,13 @@ export const epubContentParser: ContentParser = {
         subjects: book.subjects,
         sourceRaw: book.sourceRaw,
       },
-      chapters: chapters.map((chapter) => ({ title: chapter.title, html: chapter.html })),
+      chapters: resolvedChapters,
       images,
       cover,
       stats: {
         spineCount: book.spine.length,
         navCount: book.nav.length,
-        chapterCount: chapters.length,
+        chapterCount: resolvedChapters.length,
       },
     };
   },

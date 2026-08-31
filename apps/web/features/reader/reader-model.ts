@@ -72,22 +72,26 @@ export function adjacentPart(parts: PartSummary[], partId: string, direction: 'p
   return ordered[nextIndex] ?? null;
 }
 
-export function chapterStatusForPart(
-  part: PartSummary,
-  state: ReaderProgressState | null,
-  currentPartId: string,
-): 'read' | 'current' | 'unread' {
-  if (!state) {
-    return part.id === currentPartId ? 'current' : 'unread';
+/** Viewport highlight only — never bind to reading progress. */
+export function isCurrentChapter(partId: string, currentPartId: string): boolean {
+  return partId === currentPartId;
+}
+
+export type ReaderAudioRole = 'us' | 'uk';
+
+/** Prefer `preferred` when available; else us → uk. */
+export function resolveAudioRole(
+  available: ReaderAudioAvailability,
+  preferred: ReaderAudioRole | null = null,
+): ReaderAudioRole | null {
+  if (preferred && available[preferred]) {
+    return preferred;
   }
-  if (state.status === 'completed') {
-    return 'read';
+  if (available.us) {
+    return 'us';
   }
-  if (part.sortOrder <= state.completedThroughSortOrder) {
-    return 'read';
+  if (available.uk) {
+    return 'uk';
   }
-  if (part.id === currentPartId) {
-    return 'current';
-  }
-  return 'unread';
+  return null;
 }

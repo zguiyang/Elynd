@@ -8,7 +8,7 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { AUTH_ROUTES } from '@/constants';
 import { BookDetailCover } from '@/features/book-detail/book-detail-cover';
 import { coverUrlFromAssetId } from '@/features/book-detail/book-detail-model';
-import { chapterStatusForPart, type ReaderViewModel, sortedParts } from '@/features/reader/reader-model';
+import { isCurrentChapter, type ReaderViewModel, sortedParts } from '@/features/reader/reader-model';
 import { cn } from '@/lib/utils';
 
 type ReaderTocSidebarProps = {
@@ -68,14 +68,14 @@ export function ReaderTocSidebar({
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-4">
-        <ul className="space-y-0.5 pr-2">
+      <nav className="flex-1 overflow-y-auto py-4 pr-2">
+        <ul className="space-y-1">
           {parts.map((part, index) => (
             <TocRow
               key={part.id}
               index={index + 1}
               title={part.title || `第 ${index + 1} 章`}
-              status={chapterStatusForPart(part, reader.state, currentPartId)}
+              isCurrent={isCurrentChapter(part.id, currentPartId)}
               onClick={() => {
                 onSelectChapter(part.id);
                 onOpenChange(false);
@@ -122,28 +122,35 @@ export function ReaderTocSidebar({
 function TocRow({
   index,
   title,
-  status,
+  isCurrent,
   onClick,
 }: {
   index: number;
   title: string;
-  status: 'read' | 'current' | 'unread';
+  isCurrent: boolean;
   onClick: () => void;
 }) {
-  const isCurrent = status === 'current';
   return (
     <li>
       <button
         type="button"
         onClick={onClick}
+        aria-current={isCurrent ? 'page' : undefined}
         className={cn(
-          'flex w-full items-center gap-3 px-6 py-3 text-left text-sm transition-colors',
+          'flex w-full items-center gap-3 py-3 pr-6 pl-5 text-left text-sm transition-colors duration-200 ease-out-soft',
           isCurrent
-            ? 'border-l-4 border-primary bg-secondary/60 font-medium text-foreground'
-            : 'border-l-4 border-transparent text-muted-foreground hover:bg-surface-container-high/80 hover:text-foreground',
+            ? 'rounded-r-full border-l-4 border-primary bg-secondary font-bold text-foreground'
+            : 'rounded-r-full border-l-4 border-transparent text-muted-foreground hover:bg-secondary/30 hover:text-foreground',
         )}
       >
-        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{index}</span>
+        <span
+          className={cn(
+            'shrink-0 text-xs tabular-nums',
+            isCurrent ? 'font-semibold text-primary' : 'text-muted-foreground',
+          )}
+        >
+          {index}
+        </span>
         <span className="truncate">{title}</span>
       </button>
     </li>

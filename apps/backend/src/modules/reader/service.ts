@@ -63,6 +63,7 @@ function buildSession(
       title: work.title,
       description: work.description,
       tags,
+      coverAssetId: work.coverAssetId,
       publishedAt: work.publishedAt ? toIso(work.publishedAt) : null,
     },
     parts: parts.map((part) => ({
@@ -114,6 +115,7 @@ export async function getPublicReaderSession(
       title: work.title,
       description: work.description,
       tags,
+      coverAssetId: work.coverAssetId,
       publishedAt: work.publishedAt ? toIso(work.publishedAt) : null,
     },
     parts: parts.map((part) => ({

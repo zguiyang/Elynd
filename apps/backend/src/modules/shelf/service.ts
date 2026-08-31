@@ -20,6 +20,7 @@ function toWorkSummary(row: WorkRow, tags: string[]) {
     title: row.title,
     description: row.description,
     tags,
+    coverAssetId: row.coverAssetId,
     publishedAt: row.publishedAt ? toIso(row.publishedAt) : null,
   };
 }

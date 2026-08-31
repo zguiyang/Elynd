@@ -17,6 +17,8 @@ import type { ChapterImageRef } from './types';
  *   chapter navigation, so a duplicated contents page is dropped).
  * - Removal of non-displayable figure stubs (Gutenberg `epub.noimages` spans,
  *   empty imgs) so reading is not interrupted by caption-only placeholders.
+ * - Removal of empty reading chrome (br-only wrappers, leading decorative hrs)
+ *   left behind after stub stripping.
  * - The text pipeline (whitespace / entities / empty tags).
  *
  * Local img srcs are placeholder-tokenized (rewritten to asset URLs by the
@@ -264,6 +266,88 @@ function removeNonDisplayableFigures($: cheerio.CheerioAPI): void {
   });
 }
 
+/** True when an element carries no readable text and no images. */
+function hasNoReadingContent($el: cheerio.Cheerio<never>): boolean {
+  if ($el.find('img').length > 0) return false;
+  return !$el
+    .text()
+    .replace(/\u00a0/g, ' ')
+    .trim();
+}
+
+/**
+ * Gutenberg spacer: `pg_body_wrapper` (and similar) that only holds `<br>` /
+ * whitespace after figure stubs were removed.
+ */
+function isSpacerShell($el: cheerio.Cheerio<never>): boolean {
+  const el = $el.get(0) as DomNode | undefined;
+  if (!el || el.type !== 'tag') return false;
+  const tag = (el.tagName ?? '').toLowerCase();
+  if (tag !== 'div' && tag !== 'span' && tag !== 'p' && tag !== 'section') return false;
+  if (!hasNoReadingContent($el)) return false;
+  const cls = String($el.attr('class') ?? '').toLowerCase();
+  if (cls.includes('pg_body_wrapper') || cls.includes('pg-body-wrapper')) return true;
+  // Generic empty shell whose only element children are br/hr.
+  let onlyBreaks = true;
+  $el.contents().each((_, child) => {
+    const node = child as DomNode;
+    if (node.type === 'text') {
+      if ((node.data ?? '').trim()) onlyBreaks = false;
+      return;
+    }
+    if (node.type === 'tag') {
+      const childTag = (node.tagName ?? '').toLowerCase();
+      if (childTag !== 'br' && childTag !== 'hr') onlyBreaks = false;
+    }
+  });
+  return onlyBreaks;
+}
+
+/**
+ * Strip empty reading chrome left after figure-stub removal: br-only wrappers
+ * anywhere, plus leading decorative `<hr>` / spacers before the first real
+ * heading or paragraph so chapters do not open with a blank band.
+ */
+function removeEmptyReadingChrome($: cheerio.CheerioAPI): void {
+  $('div.pg_body_wrapper, div.pg-body-wrapper').each((_, el) => {
+    const $el = $(el) as cheerio.Cheerio<never>;
+    if (isSpacerShell($el)) $el.remove();
+  });
+
+  // Second pass: any remaining br-only div/p shells (no class required).
+  $('div, p').each((_, el) => {
+    const $el = $(el) as cheerio.Cheerio<never>;
+    if (!$el.parent().length) return;
+    if (isSpacerShell($el)) $el.remove();
+  });
+
+  const children = $('body').length > 0 ? $('body').children().toArray() : $.root().children().toArray();
+  for (const child of children) {
+    const $child = $(child) as cheerio.Cheerio<never>;
+    const tag = (((child as DomNode).tagName ?? '') as string).toLowerCase();
+
+    if (tag === 'hr') {
+      $child.remove();
+      continue;
+    }
+    if (isSpacerShell($child) || isEmptyPlaceholder($child)) {
+      $child.remove();
+      continue;
+    }
+    // Nested title wrappers (Hoosier): keep — they have heading text.
+    if (tag === 'h1' || tag === 'h2' || tag === 'h3') break;
+    if (tag === 'p' && $child.text().trim()) break;
+    if ($child.find('h1, h2, h3, img').length > 0) break;
+    if ($child.text().trim() && !isSpacerShell($child)) break;
+    // Unknown empty-ish node at start — drop if no reading content.
+    if (hasNoReadingContent($child)) {
+      $child.remove();
+      continue;
+    }
+    break;
+  }
+}
+
 /** Minimal structural shape of parsed DOM nodes (domhandler-compatible). */
 type DomNode = {
   type: string;
@@ -355,6 +439,7 @@ export function cleanXhtml(html: string, rewriteImageSrc: (href: string) => stri
   const seenImages = new Set<string>();
   collectImages($, rewriteImageSrc, images, seenImages);
   removeNonDisplayableFigures($);
+  removeEmptyReadingChrome($);
 
   removeContentsBlocks($);
   injectParagraphOrdinals($);

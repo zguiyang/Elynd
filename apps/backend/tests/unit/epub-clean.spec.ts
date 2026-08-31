@@ -90,6 +90,26 @@ describe('cleanXhtml', () => {
     expect(html).toContain('A Wolf resolved.');
   });
 
+  it('strips leading empty wrappers and decorative hr before the chapter title', () => {
+    const { html } = cleanXhtml(
+      `<html><body>
+        <div class="pg_body_wrapper"><br/></div>
+        <div class="pg_body_wrapper"><br/></div>
+        <hr/>
+        <div class="pg_body_wrapper"><br/></div>
+        <h2>LIST OF ILLUSTRATIONS</h2>
+        <p class="toc"><a href="#x">Item</a></p>
+        <hr class="major"/>
+        <p>Later section.</p>
+      </body></html>`,
+      () => '',
+    );
+    expect(html).toMatch(/^<h2/);
+    expect(html).not.toContain('pg_body_wrapper');
+    expect(html.indexOf('LIST OF ILLUSTRATIONS')).toBeLessThan(html.indexOf('<hr'));
+    expect(html).toContain('Later section.');
+  });
+
   it('keeps real local images while dropping empty-src imgs', () => {
     const { html, images } = cleanXhtml(
       `<p><img src="a.png" alt="ok"/><img src="" alt="gone"/><img alt="also-gone"/></p>`,

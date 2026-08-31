@@ -7,7 +7,6 @@ import type { ReaderFontSize } from '@/features/reader/reader-model';
 import { cn } from '@/lib/utils';
 
 type ReaderPartProps = {
-  title: string;
   partId: string;
   html: string;
   fontSize: ReaderFontSize;
@@ -29,7 +28,6 @@ function paragraphIdFromElement(el: HTMLElement | null, partId: string, fallback
 }
 
 export function ReaderPart({
-  title,
   partId,
   html,
   fontSize,
@@ -84,7 +82,7 @@ export function ReaderPart({
       onScroll={onScroll}
       onClick={handleContentClick}
     >
-      <ReadingPartView title={title} html={html} fontSize={fontSize} onArticleMouseUp={handleMouseUp} footer={footer} />
+      <ReadingPartView html={html} fontSize={fontSize} onArticleMouseUp={handleMouseUp} footer={footer} />
     </div>
   );
 }
@@ -92,8 +90,6 @@ export function ReaderPart({
 export function ReaderPartSkeleton() {
   return (
     <div className="mx-auto flex w-full max-w-reading-column flex-col gap-8 px-6 py-24 md:px-8">
-      <div className="mx-auto h-10 w-3/4 max-w-md animate-pulse rounded-lg bg-surface-container-high" />
-      <div className="mx-auto mt-4 h-px w-12 bg-border/60" />
       <div className="mt-8 space-y-4">
         {Array.from({ length: 6 }).map((_, i) => (
           <div

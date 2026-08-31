@@ -14,7 +14,6 @@ const FONT_CLASS: Record<ReadingPartFontSize, string> = {
 };
 
 type ReadingPartViewProps = {
-  title: string;
   html: string;
   fontSize?: ReadingPartFontSize;
   className?: string;
@@ -27,15 +26,9 @@ type ReadingPartViewProps = {
 /**
  * Pure reading typography shared by the learner Reader and the admin preview —
  * the single place that renders normalized reading HTML in a reading column.
+ * Chapter title lives in chrome/TOC metadata; the body HTML is the reading surface SSOT.
  */
-export function ReadingPartView({
-  title,
-  html,
-  fontSize = 'md',
-  className,
-  onArticleMouseUp,
-  footer,
-}: ReadingPartViewProps) {
+export function ReadingPartView({ html, fontSize = 'md', className, onArticleMouseUp, footer }: ReadingPartViewProps) {
   const sanitizedHtml = DOMPurify.sanitize(html);
 
   return (
@@ -47,13 +40,6 @@ export function ReadingPartView({
         className,
       )}
     >
-      <header className="mb-12 flex flex-col items-center text-center md:mb-16">
-        <h1 className="font-heading text-3xl font-semibold tracking-tight text-foreground md:text-5xl md:leading-[1.15]">
-          {title}
-        </h1>
-        <div className="mt-8 h-px w-12 bg-outline/50" aria-hidden />
-      </header>
-
       <div
         className="reading-body font-reading flex flex-col gap-8 text-foreground/90 text-pretty selection:bg-accent selection:text-brand-deep"
         dangerouslySetInnerHTML={{ __html: sanitizedHtml }}

@@ -435,7 +435,6 @@ export function ReaderPage({ workId }: ReaderPageProps) {
       />
 
       <ReaderPart
-        title={reader.partTitle}
         partId={reader.partId}
         html={reader.html}
         fontSize={fontSize}

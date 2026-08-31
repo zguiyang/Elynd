@@ -118,7 +118,7 @@ export function WorksPreviewPartPage({ workId, partId }: WorksPreviewPartPagePro
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto pt-14">
-        <ReadingPartView title={current.title || work.title} html={current.body} />
+        <ReadingPartView html={current.body} />
       </div>
     </div>
   );

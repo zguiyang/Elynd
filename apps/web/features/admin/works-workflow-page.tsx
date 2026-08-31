@@ -338,6 +338,7 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
   const invalidate = useInvalidateAdminWorks();
   const isEpub = work.originKind === 'admin_epub';
   const states = stepStates(work);
+  const [actingStep, setActingStep] = useState<WorkflowStep | 'retry' | null>(null);
 
   // Poll while any pipeline step is running.
   useEffect(() => {
@@ -353,6 +354,7 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
   async function handleRetry(step?: WorkflowStep, confirmText?: string) {
     if (confirmText && !window.confirm(confirmText)) return;
     const isStartingIdle = work.status === 'uploaded' || work.status === 'parsed';
+    setActingStep(step ?? 'retry');
     try {
       await retryAdminWorkflow(workId, step);
       await invalidate(workId);
@@ -365,6 +367,8 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
       );
     } catch (error) {
       toast.error(formatWorksApiError(error));
+    } finally {
+      setActingStep(null);
     }
   }
 
@@ -407,7 +411,8 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
     parts: work.parts.map((part) => ({ body: part.body })),
   });
   const isRunning = work.status === 'processing' || work.status === 'metadata' || work.status === 'tts';
-  const canRerun = isEpub && work.status !== 'published' && !isRunning;
+  const isActing = actingStep !== null;
+  const canRerun = isEpub && work.status !== 'published' && !isRunning && !isActing;
   const hasParts = work.parts.length > 0;
 
   return (
@@ -511,13 +516,13 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
             <div className="mt-4 space-y-4">
               <p className="text-sm text-muted-foreground">文件已就绪，点击开始解析章节内容。</p>
               <Button type="button" size="sm" onClick={() => void handleRetry('parse')} disabled={!canRerun}>
-                开始解析
+                {isActing ? '排队中…' : '开始解析'}
               </Button>
             </div>
-          ) : work.status === 'processing' ? (
+          ) : work.status === 'processing' || actingStep === 'parse' ? (
             <div className="mt-4 flex items-center gap-3 text-sm text-muted-foreground">
               <Spinner className="size-4 text-brand" />
-              正在解析章节内容…
+              {work.status === 'processing' ? '正在解析章节内容…' : '已提交解析任务…'}
             </div>
           ) : work.status === 'failed' ? (
             <div className="mt-4 space-y-4">
@@ -529,8 +534,8 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
                 </p>
               </div>
               {work.failedStep === 'parse' || !parsed ? (
-                <Button type="button" size="sm" onClick={() => void handleRetry()}>
-                  重试
+                <Button type="button" size="sm" onClick={() => void handleRetry()} disabled={isActing}>
+                  {isActing ? '排队中…' : '重试'}
                 </Button>
               ) : null}
               {parsed ? (
@@ -590,7 +595,7 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
                     }
                     disabled={!canRerun}
                   >
-                    重新解析
+                    {isActing ? '排队中…' : '重新解析'}
                   </Button>
                   <Button
                     type="button"

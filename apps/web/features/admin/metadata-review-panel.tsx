@@ -272,8 +272,8 @@ type MetadataReviewPanelProps = {
 
 /**
  * "原数据完善" step status line + start / retry actions.
- * Busy (`metadata`), idle wait (`parsed` when auto-chain is off), failure, and
- * completion drive what is shown.
+ * Busy (`metadata`), idle wait (`parsed` when auto-chain is off), failure,
+ * partial gaps, and completion drive what is shown.
  */
 export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
   const invalidate = useInvalidateAdminWorks();
@@ -281,10 +281,19 @@ export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
   const { status, failedStep } = work;
 
   const metadataAt = typeof work.originMeta.metadataAt === 'string' ? work.originMeta.metadataAt : null;
-  const isBusy = status === 'processing' || status === 'metadata';
+  const enrichError =
+    typeof work.originMeta.metadataEnrichError === 'string' ? work.originMeta.metadataEnrichError : null;
+  const enrichGaps = Array.isArray(work.originMeta.metadataEnrichGaps)
+    ? work.originMeta.metadataEnrichGaps.filter((item): item is string => typeof item === 'string')
+    : [];
+  const isBusy = status === 'processing' || status === 'metadata' || isActing;
   const isAwaitingStart = status === 'parsed';
   const isFailedHere = status === 'failed' && failedStep === 'metadata';
-  const isDone = status === 'ready' || status === 'published' || status === 'tts' || Boolean(metadataAt);
+  const isPartial = (status === 'ready' || status === 'tts') && enrichGaps.length > 0;
+  const isDone =
+    (status === 'ready' || status === 'published' || status === 'tts') &&
+    enrichGaps.length === 0 &&
+    Boolean(metadataAt);
 
   async function handleRetry(step: WorkflowStep, confirmText?: string) {
     if (confirmText && !window.confirm(confirmText)) return;
@@ -301,13 +310,12 @@ export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
   }
 
   let hint = '';
-  if (isBusy) {
-    hint =
-      status === 'processing'
-        ? WORKFLOW_AUTO_CHAIN
-          ? '等待内容解析完成后自动完善…'
-          : '等待内容解析完成后再开始完善。'
-        : '正在根据正文内容补全信息，完成后即可逐项核对。';
+  if (isBusy && status === 'metadata') {
+    hint = '正在根据正文内容补全信息，完成后即可逐项核对。';
+  } else if (isBusy && status === 'processing') {
+    hint = WORKFLOW_AUTO_CHAIN ? '等待内容解析完成后自动完善…' : '等待内容解析完成后再开始完善。';
+  } else if (isBusy) {
+    hint = '已提交任务，正在排队…';
   } else if (isAwaitingStart) {
     hint = '内容已解析。核对预览无误后，点击开始完善原数据（规则填充 + AI 补全）。';
   } else if (isFailedHere) {
@@ -316,8 +324,12 @@ export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
     hint = `「${STEP_LABEL[failedStep]}」步骤失败：${String(work.originMeta.lastError ?? '未知错误')}，可在对应步骤重试。`;
   } else if (status === 'failed') {
     hint = '处理失败：' + String(work.originMeta.lastError ?? '未知错误');
+  } else if (isPartial) {
+    hint = `${enrichError ?? '部分字段未补全'}。可重新执行或手工编辑；发布时以当前内容为准。`;
   } else if (isDone) {
     hint = 'AI 已自动补全缺失信息，可逐项核对编辑；发布时以当前内容为准。';
+  } else if (status === 'ready' || status === 'published' || status === 'tts') {
+    hint = '规则层已写入可用字段；可逐项核对编辑。';
   } else {
     hint = WORKFLOW_AUTO_CHAIN
       ? '解析完成后，AI 将自动补全缺失的简介、标签与分类。'
@@ -327,12 +339,12 @@ export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2">
-        {status === 'metadata' ? <Spinner className="size-4 text-brand" /> : null}
+        {status === 'metadata' || isActing ? <Spinner className="size-4 text-brand" /> : null}
         <Badge
           variant={
-            status === 'failed'
+            status === 'failed' || isPartial
               ? 'destructive'
-              : status === 'ready' || status === 'published' || status === 'tts'
+              : isDone || status === 'published'
                 ? 'secondary'
                 : 'outline'
           }
@@ -345,23 +357,27 @@ export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
               ? '待完善'
               : status === 'parsed'
                 ? '待开始'
-                : status === 'metadata'
+                : status === 'metadata' || isActing
                   ? '完善中'
-                  : status === 'published'
-                    ? '已完成（已发布）'
-                    : isDone
-                      ? '已完成'
-                      : '待完善'}
+                  : isPartial
+                    ? '部分完成'
+                    : status === 'published'
+                      ? '已完成（已发布）'
+                      : isDone
+                        ? '已完成'
+                        : '待完善'}
         </Badge>
-        {isDone && metadataAt ? (
+        {metadataAt && (isDone || isPartial) ? (
           <span className="text-xs text-muted-foreground">完善于 {new Date(metadataAt).toLocaleString('zh-CN')}</span>
         ) : null}
       </div>
-      <p className={cn('mt-2 text-sm text-muted-foreground', isFailedHere && 'text-destructive')}>{hint}</p>
+      <p className={cn('mt-2 text-sm text-muted-foreground', (isFailedHere || isPartial) && 'text-destructive')}>
+        {hint}
+      </p>
       <div className="mt-3 flex flex-wrap gap-2">
         {isAwaitingStart ? (
           <Button type="button" size="sm" onClick={() => void handleRetry('metadata')} disabled={isActing}>
-            {isActing ? '处理中…' : '开始完善原数据'}
+            {isActing ? '排队中…' : '开始完善原数据'}
           </Button>
         ) : null}
         {isFailedHere ? (
@@ -371,10 +387,10 @@ export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
             onClick={() => void handleRetry('metadata', '将重新运行原数据完善（规则填充 + AI 补全），确定继续？')}
             disabled={isActing}
           >
-            {isActing ? '处理中…' : '重试'}
+            {isActing ? '排队中…' : '重试'}
           </Button>
         ) : null}
-        {status === 'ready' ? (
+        {status === 'ready' || isPartial ? (
           <Button
             type="button"
             size="sm"
@@ -384,7 +400,7 @@ export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
             }
             disabled={isActing}
           >
-            {isActing ? '处理中…' : '重新执行'}
+            {isActing ? '排队中…' : '重新执行'}
           </Button>
         ) : null}
         {status === 'published' ? (

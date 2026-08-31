@@ -21,7 +21,7 @@ export function ReaderUnavailable({ onRetry, message }: ReaderUnavailableProps) 
 
       <main
         className={cn(
-          'mx-auto flex w-full max-w-reading-column flex-1 flex-col items-center px-6 pt-24 pb-16 text-center md:pt-32',
+          'mx-auto flex w-full max-w-reading-column flex-1 flex-col items-center px-4 pt-24 pb-16 text-center md:px-5 md:pt-32',
           'motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500',
         )}
       >

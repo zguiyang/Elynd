@@ -26,7 +26,8 @@ type ReadingPartViewProps = {
 /**
  * Pure reading typography shared by the learner Reader and the admin preview —
  * the single place that renders normalized reading HTML in a reading column.
- * Chapter title lives in chrome/TOC metadata; the body HTML is the reading surface SSOT.
+ * Outer article is chrome (column width + padding); `.reading-body` is a
+ * scoped document-flow surface — spacing comes from content tags, not flex gap.
  */
 export function ReadingPartView({ html, fontSize = 'md', className, onArticleMouseUp, footer }: ReadingPartViewProps) {
   const sanitizedHtml = DOMPurify.sanitize(html);
@@ -35,13 +36,14 @@ export function ReadingPartView({ html, fontSize = 'md', className, onArticleMou
     <article
       onMouseUp={onArticleMouseUp}
       className={cn(
-        'mx-auto flex w-full max-w-reading-column flex-col px-6 pb-32 pt-20 md:px-8 md:pt-28',
+        // Readest-aligned page insets: 16/20 L-R, compact top; large pb clears TTS/chrome.
+        'mx-auto w-full max-w-reading-column px-4 pb-24 pt-6 md:px-5 md:pt-8',
         FONT_CLASS[fontSize],
         className,
       )}
     >
       <div
-        className="reading-body font-reading flex flex-col gap-8 text-foreground/90 text-pretty selection:bg-accent selection:text-brand-deep"
+        className="reading-body font-reading text-foreground/90 text-pretty selection:bg-accent selection:text-brand-deep"
         dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
       />
 

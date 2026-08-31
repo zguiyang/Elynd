@@ -327,10 +327,10 @@
 }
 
 /* Reading content — normalized HTML from the ingest pipeline.
-   Scoped typography: paragraphs, headings, lists, quotes, images, ruby. */
+   Scoped typography only: document flow owns spacing (no flex-gap stacking). */
 @layer components {
   .reading-body p {
-    margin: 0;
+    margin: 0 0 0.95em;
     text-align: justify;
   }
 
@@ -344,8 +344,9 @@
     text-align: left;
   }
 
-  /* Opening chapter heading — replaces the former UI-injected title hero. */
-  .reading-body > :is(h1, h2):first-of-type {
+  /* Opening chapter heading — direct child or first nested title wrapper. */
+  .reading-body > :is(h1, h2):first-of-type,
+  .reading-body > div:first-child > :is(h1, h2):first-of-type {
     margin-top: 0;
     text-align: center;
     font-size: 1.75em;
@@ -355,24 +356,24 @@
   .reading-body h1 {
     font-size: 1.6em;
     line-height: 1.3;
-    margin: 1.4em 0 0.6em;
+    margin: 1.4em 0 0.55em;
   }
 
   .reading-body h2 {
     font-size: 1.35em;
     line-height: 1.35;
-    margin: 1.3em 0 0.5em;
+    margin: 1.25em 0 0.45em;
   }
 
   .reading-body h3 {
     font-size: 1.15em;
     line-height: 1.4;
-    margin: 1.2em 0 0.5em;
+    margin: 1.1em 0 0.4em;
   }
 
   .reading-body ul,
   .reading-body ol {
-    margin: 0;
+    margin: 0 0 0.95em;
     padding-left: 1.5em;
   }
 
@@ -382,7 +383,7 @@
   }
 
   .reading-body blockquote {
-    margin: 0;
+    margin: 0 0 0.95em;
     padding-left: 1em;
     border-left: 2px solid var(--outline);
     color: var(--muted-foreground);
@@ -394,7 +395,7 @@
     height: auto;
     border-radius: 0.75rem;
     display: block;
-    margin: 0 auto;
+    margin: 0.85em auto;
   }
 
   .reading-body a {
@@ -404,7 +405,7 @@
   }
 
   .reading-body hr {
-    margin: 2em auto;
+    margin: 1.75em auto;
     border: none;
     border-top: 1px solid var(--outline);
     width: 4rem;

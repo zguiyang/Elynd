@@ -118,7 +118,8 @@ export function WorksPreviewPartPage({ workId, partId }: WorksPreviewPartPagePro
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto pt-14">
-        <ReadingPartView html={current.body} />
+        {/* Header already clears 56px; keep body top inset compact. */}
+        <ReadingPartView html={current.body} className="pt-4 md:pt-6" />
       </div>
     </div>
   );

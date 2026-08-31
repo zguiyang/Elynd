@@ -89,8 +89,8 @@ export function ReaderPart({
 
 export function ReaderPartSkeleton() {
   return (
-    <div className="mx-auto flex w-full max-w-reading-column flex-col gap-8 px-6 py-24 md:px-8">
-      <div className="mt-8 space-y-4">
+    <div className="mx-auto flex w-full max-w-reading-column flex-col gap-6 px-4 py-16 md:px-5 md:py-20">
+      <div className="mt-2 space-y-4">
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}

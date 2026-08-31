@@ -1,11 +1,11 @@
 import { and, desc, eq, ne } from 'drizzle-orm';
 
 import { readingState as readingStateTable, readingWork as readingWorkTable } from '@gloaming/db';
-import { computeProgressRatio } from '@gloaming/shared/api/reader';
+import { computeChapterProgress, NO_CHAPTERS_COMPLETED, type ReadingState } from '@gloaming/shared/api/reader';
 import { SHELF_ITEMS_LIMIT, type ShelfData } from '@gloaming/shared/api/shelf';
 
 import { db } from '@/db';
-import { loadTagsByWorkIds } from '@/modules/works/service';
+import { loadPartSortOrdersByWorkIds, loadTagsByWorkIds } from '@/modules/works/service';
 
 type WorkRow = typeof readingWorkTable.$inferSelect;
 type StateRow = typeof readingStateTable.$inferSelect;
@@ -25,15 +25,18 @@ function toWorkSummary(row: WorkRow, tags: string[]) {
   };
 }
 
-function toState(row: StateRow) {
+function toState(row: StateRow, parts: { sortOrder: number }[]): ReadingState {
+  const completedThrough = row.completedThroughSortOrder ?? NO_CHAPTERS_COMPLETED;
   return {
-    status: row.status as 'in_progress' | 'completed',
+    status: row.status as ReadingState['status'],
     currentPartId: row.currentPartId,
-    progressRatio: computeProgressRatio({
-      status: row.status as 'in_progress' | 'completed',
-      anchorKind: row.anchorKind,
-      anchorValue: row.anchorValue,
+    completedThroughSortOrder: completedThrough,
+    progressRatio: computeChapterProgress({
+      status: row.status as ReadingState['status'],
+      completedThroughSortOrder: completedThrough,
+      parts,
     }),
+    totalPartCount: parts.length,
     lastReadAt: toIso(row.lastReadAt),
     completedAt: row.completedAt ? toIso(row.completedAt) : null,
   };
@@ -77,17 +80,18 @@ export async function getShelf(userId: string): Promise<ShelfData> {
 
   const workIds = [...(currentRow ? [currentRow.work.id] : []), ...itemRows.map((row) => row.work.id)];
   const tagsByWork = await loadTagsByWorkIds(workIds);
+  const partsByWork = await loadPartSortOrdersByWorkIds(workIds);
 
   return {
     current: currentRow
       ? {
           work: toWorkSummary(currentRow.work, tagsByWork.get(currentRow.work.id) ?? []),
-          state: toState(currentRow.state),
+          state: toState(currentRow.state, partsByWork.get(currentRow.work.id) ?? []),
         }
       : null,
     items: itemRows.map((row) => ({
       work: toWorkSummary(row.work, tagsByWork.get(row.work.id) ?? []),
-      state: toState(row.state),
+      state: toState(row.state, partsByWork.get(row.work.id) ?? []),
     })),
   };
 }

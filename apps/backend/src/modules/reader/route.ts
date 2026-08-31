@@ -8,19 +8,26 @@ import { validateUpdateReadingState } from '@/modules/reader/validator';
 
 export const readerRoutes = new Hono<{ Variables: AuthVariables }>();
 
-readerRoutes.get('/api/reader/works/:workId', async (c) => {
-  const user = c.get('user');
-  const preferredPartId = c.req.query('partId')?.trim() || null;
-  const data = user
-    ? await readerService.getReaderSession(user.id, c.req.param('workId'), preferredPartId)
-    : await readerService.getPublicReaderSession(c.req.param('workId'), preferredPartId);
+readerRoutes.get('/api/reader/works/:workId/parts', async (c) => {
+  const data = await readerService.getReaderParts(c.req.param('workId'));
   return c.json(data);
+});
+
+readerRoutes.get('/api/reader/works/:workId/state', requireAuth, async (c) => {
+  const user = c.get('user')!;
+  const state = await readerService.getReadingState(user.id, c.req.param('workId'));
+  return c.json({ state });
 });
 
 readerRoutes.patch('/api/reader/works/:workId/state', requireAuth, validateUpdateReadingState, async (c) => {
   const user = c.get('user')!;
   const state = await readerService.updateReadingState(user.id, c.req.param('workId'), c.req.valid('json'));
   return c.json(state);
+});
+
+readerRoutes.get('/api/reader/parts/:partId', async (c) => {
+  const data = await readerService.getReaderPart(c.req.param('partId'));
+  return c.json(data);
 });
 
 readerRoutes.get('/api/reader/parts/:partId/audio', async (c) => {

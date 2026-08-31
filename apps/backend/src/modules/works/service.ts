@@ -188,6 +188,25 @@ async function loadPartsForWork(workId: string): Promise<PartRow[]> {
     .orderBy(asc(readingPartTable.sortOrder), asc(readingPartTable.id));
 }
 
+/** Batch part sort orders for chapter progress on shelf/history surfaces. */
+export async function loadPartSortOrdersByWorkIds(workIds: string[]): Promise<Map<string, { sortOrder: number }[]>> {
+  if (workIds.length === 0) {
+    return new Map();
+  }
+  const rows = await db
+    .select({ workId: readingPartTable.workId, sortOrder: readingPartTable.sortOrder })
+    .from(readingPartTable)
+    .where(inArray(readingPartTable.workId, workIds))
+    .orderBy(asc(readingPartTable.sortOrder), asc(readingPartTable.id));
+  const map = new Map<string, { sortOrder: number }[]>();
+  for (const row of rows) {
+    const list = map.get(row.workId) ?? [];
+    list.push({ sortOrder: row.sortOrder });
+    map.set(row.workId, list);
+  }
+  return map;
+}
+
 async function loadPrimaryPartForWork(workId: string): Promise<PartRow | null> {
   const [row] = await db
     .select()

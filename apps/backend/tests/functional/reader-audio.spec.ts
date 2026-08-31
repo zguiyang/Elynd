@@ -8,7 +8,7 @@ import {
   user as userTable,
 } from '@gloaming/db';
 import { audioKindForRole } from '@gloaming/shared/api/content-assets';
-import type { ReaderAudioTrack, ReaderSessionData } from '@gloaming/shared/api/reader';
+import type { ReaderAudioTrack, ReaderPartData } from '@gloaming/shared/api/reader';
 import type { AdminWork } from '@gloaming/shared/api/works';
 import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 
@@ -207,11 +207,15 @@ describe('learner part audio', () => {
       ).status,
     ).toBe(200);
 
-    const before = await app.request(`/api/reader/works/${work.id}`, {
-      headers: { Cookie: learner.cookie },
-    });
-    expect(before.status).toBe(200);
-    expect(((await before.json()) as ReaderSessionData).audioAvailable).toEqual({ us: false, uk: false });
+    async function partAudioAvail(): Promise<ReaderPartData['audioAvailable']> {
+      const res = await app.request(`/api/reader/parts/${partId}`, {
+        headers: { Cookie: learner.cookie },
+      });
+      expect(res.status).toBe(200);
+      return ((await res.json()) as ReaderPartData).audioAvailable;
+    }
+
+    expect(await partAudioAvail()).toEqual({ us: false, uk: false });
 
     expect(
       (
@@ -223,11 +227,7 @@ describe('learner part audio', () => {
       ).status,
     ).toBe(200);
 
-    const after = await app.request(`/api/reader/works/${work.id}`, {
-      headers: { Cookie: learner.cookie },
-    });
-    expect(after.status).toBe(200);
-    expect(((await after.json()) as ReaderSessionData).audioAvailable).toEqual({ us: true, uk: true });
+    expect(await partAudioAvail()).toEqual({ us: true, uk: true });
 
     const usTrack = await app.request(`/api/reader/parts/${partId}/audio?role=us`, {
       headers: { Cookie: learner.cookie },
@@ -250,10 +250,7 @@ describe('learner part audio', () => {
 
     // Segments are not required for playback — only storageKey (chapter) is streamed.
     objectStore.store.delete(partAudioSegmentKey(partId, audioKindForRole('us'), contentHash, 0));
-    const afterSegDelete = await app.request(`/api/reader/works/${work.id}`, {
-      headers: { Cookie: learner.cookie },
-    });
-    expect(((await afterSegDelete.json()) as ReaderSessionData).audioAvailable).toEqual({ us: true, uk: true });
+    expect(await partAudioAvail()).toEqual({ us: true, uk: true });
     expect((await app.request(`/api/assets/${usBody.assetId}`, { headers: { Cookie: learner.cookie } })).status).toBe(
       200,
     );
@@ -269,10 +266,7 @@ describe('learner part audio', () => {
     const ukTrackBody = (await ukTrackAfterDelete.json()) as ReaderAudioTrack;
     expect(ukTrackBody.assetId).toBeTruthy();
 
-    const avail = await app.request(`/api/reader/works/${work.id}`, {
-      headers: { Cookie: learner.cookie },
-    });
-    expect(((await avail.json()) as ReaderSessionData).audioAvailable).toEqual({ us: true, uk: true });
+    expect(await partAudioAvail()).toEqual({ us: true, uk: true });
 
     expect(
       (await app.request(`/api/assets/${ukTrackBody.assetId}`, { headers: { Cookie: learner.cookie } })).status,
@@ -292,10 +286,7 @@ describe('learner part audio', () => {
     // to verify audio invalidation (hash is based on extracted plain text).
     await db.update(readingPartTable).set({ body: 'Listen body changed.' }).where(eq(readingPartTable.id, partId));
 
-    const staleAvail = await app.request(`/api/reader/works/${work.id}`, {
-      headers: { Cookie: learner.cookie },
-    });
-    expect(((await staleAvail.json()) as ReaderSessionData).audioAvailable).toEqual({ us: false, uk: false });
+    expect(await partAudioAvail()).toEqual({ us: false, uk: false });
 
     const staleTrack = await app.request(`/api/reader/parts/${partId}/audio?role=us`, {
       headers: { Cookie: learner.cookie },

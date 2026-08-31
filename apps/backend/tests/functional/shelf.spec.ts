@@ -123,28 +123,31 @@ describe('Shelf HTTP', () => {
     const second = await createAndPublish('Shelf Second');
     createdWorkIds.push(first.id, second.id);
 
-    expect((await app.request(`/api/reader/works/${first.id}`, { headers: { cookie: learner.cookie } })).status).toBe(
-      200,
-    );
     expect(
       (
         await app.request(`/api/reader/works/${first.id}/state`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
-          body: JSON.stringify({ status: 'completed', progressRatio: 100 }),
+          body: JSON.stringify({ action: 'open' }),
+        })
+      ).status,
+    ).toBe(200);
+    expect(
+      (
+        await app.request(`/api/reader/works/${first.id}/state`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
+          body: JSON.stringify({ action: 'finish' }),
         })
       ).status,
     ).toBe(200);
 
-    expect((await app.request(`/api/reader/works/${second.id}`, { headers: { cookie: learner.cookie } })).status).toBe(
-      200,
-    );
     expect(
       (
         await app.request(`/api/reader/works/${second.id}/state`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
-          body: JSON.stringify({ progressRatio: 55 }),
+          body: JSON.stringify({ action: 'open' }),
         })
       ).status,
     ).toBe(200);
@@ -153,7 +156,7 @@ describe('Shelf HTTP', () => {
     expect(shelf.status).toBe(200);
     const shelfData = (await shelf.json()) as ShelfData;
     expect(shelfData.current?.work.id).toBe(second.id);
-    expect(shelfData.current?.state.progressRatio).toBe(55);
+    expect(shelfData.current?.state.progressRatio).toBe(0);
     expect(shelfData.items).toHaveLength(1);
     expect(shelfData.items[0]?.work.id).toBe(first.id);
     expect(shelfData.items[0]?.state.status).toBe('completed');

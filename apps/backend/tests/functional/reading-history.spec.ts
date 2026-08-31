@@ -173,13 +173,19 @@ describe('Reading history HTTP', () => {
     );
     expect(backfilled.activity.some((day) => day.date === calendarDateInTimeZone())).toBe(false);
 
-    expect((await app.request(`/api/reader/works/${work.id}`, { headers: { cookie: learner.cookie } })).status).toBe(
-      200,
-    );
+    expect(
+      (
+        await app.request(`/api/reader/works/${work.id}/state`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
+          body: JSON.stringify({ action: 'open' }),
+        })
+      ).status,
+    ).toBe(200);
     const complete = await app.request(`/api/reader/works/${work.id}/state`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
-      body: JSON.stringify({ status: 'completed' }),
+      body: JSON.stringify({ action: 'finish' }),
     });
     expect(complete.status).toBe(200);
 
@@ -198,9 +204,15 @@ describe('Reading history HTTP', () => {
     const work = await createPublishedWork(admin.cookie, 'History Lookups');
     createdWorkIds.push(work.id);
 
-    expect((await app.request(`/api/reader/works/${work.id}`, { headers: { cookie: learner.cookie } })).status).toBe(
-      200,
-    );
+    expect(
+      (
+        await app.request(`/api/reader/works/${work.id}/state`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
+          body: JSON.stringify({ action: 'open' }),
+        })
+      ).status,
+    ).toBe(200);
 
     await conversationsService.appendAssistTurn({
       userId: learner.userId,

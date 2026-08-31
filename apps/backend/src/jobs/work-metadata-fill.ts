@@ -1,3 +1,8 @@
+import { eq } from 'drizzle-orm';
+
+import { readingWork as readingWorkTable } from '@gloaming/db';
+
+import { db } from '@/db';
 import { JOB_METADATA_ENRICH } from '@/jobs/metadata-enrich';
 import { rootLogger } from '@/lib/logger';
 import { enqueue } from '@/lib/queue';
@@ -23,6 +28,11 @@ export async function processWorkMetadataFill(data: WorkMetadataFillJobData): Pr
     return { ok: true, workId: data.workId };
   }
   try {
+    const { resetMetadataAiOutputs } = await import('@/modules/works/service');
+    const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, data.workId)).limit(1);
+    if (work) {
+      await resetMetadataAiOutputs(work);
+    }
     await fillWorkMetadata(data.workId);
   } catch (error) {
     fillJobLogger.error({ err: error, workId: data.workId }, 'Metadata fill failed');

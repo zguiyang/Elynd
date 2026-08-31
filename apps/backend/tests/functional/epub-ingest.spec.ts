@@ -296,7 +296,6 @@ describe('POST /api/admin/works/:id/workflow/retry', () => {
     expect(((await retry.json()) as { status: string }).status).toBe('processing');
 
     const [mid] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
-    expect(mid!.title).toBe('');
     expect(mid!.status).toBe('processing');
 
     await processContentWork(workId);
@@ -320,6 +319,12 @@ describe('POST /api/admin/works/:id/workflow/retry', () => {
     const retry = await retryRequest(workId, { step: 'metadata' });
     expect(retry.status).toBe(200);
     expect(((await retry.json()) as { status: string }).status).toBe('metadata');
+
+    // HTTP only queues — AI field wipe runs inside the fill job.
+    const { resetMetadataAiOutputs } = await import('@/modules/works/service');
+    const [beforeReset] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
+    expect(beforeReset!.description).toBe('AI filled summary');
+    await resetMetadataAiOutputs(beforeReset!);
 
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
     expect(work!.description).toBe('');

@@ -813,9 +813,9 @@ const STEP_JOB: Record<Exclude<WorkflowStep, 'tts'>, string> = {
 
 /**
  * Workflow retry / re-run / manual next-step. Without `step` it resumes from
- * the failed step (originMeta.failedStep); with `step` it re-runs that step
- * (and clears later outputs). Also starts an idle wait state (`uploaded` →
- * parse, `parsed` → metadata) when auto-chain is off. Refused while a step is
+ * the failed step (originMeta.failedStep); with `step` it re-runs that step.
+ * Sets the running status and enqueues the job immediately — output reset runs
+ * inside the job so the admin click returns quickly. Refused while a step is
  * actively running or while published.
  */
 export async function retryWorkflow(id: string, input: RetryWorkflowBody = {}): Promise<AdminWork> {
@@ -858,14 +858,7 @@ export async function retryWorkflow(id: string, input: RetryWorkflowBody = {}): 
     return getAdminWork(id);
   }
 
-  // Overwrite semantics: clear this step's and later steps' outputs now.
-  if (step === 'parse') {
-    await clearParseOutputs(existing);
-  }
-  if (step === 'metadata') {
-    await clearAiOutputs(existing);
-  }
-
+  // Queue only — step output reset runs inside the job so HTTP returns quickly.
   await db
     .update(readingWorkTable)
     .set({
@@ -875,6 +868,10 @@ export async function retryWorkflow(id: string, input: RetryWorkflowBody = {}): 
         failedStep: undefined,
         lastError: undefined,
         failedAt: undefined,
+        ...(step === 'metadata'
+          ? { metadataAt: undefined, metadataEnrichGaps: undefined, metadataEnrichError: undefined }
+          : {}),
+        ...(step === 'parse' ? { parsed: undefined, metadataAt: undefined, metadataEnrichGaps: undefined } : {}),
       },
     })
     .where(eq(readingWorkTable.id, id));
@@ -884,10 +881,10 @@ export async function retryWorkflow(id: string, input: RetryWorkflowBody = {}): 
 }
 
 /** Re-parse reset: parts, derived assets, AI outputs, extracted junctions, and filled metadata fields. */
-async function clearParseOutputs(work: WorkRow): Promise<void> {
+export async function resetParseStepOutputs(work: WorkRow): Promise<void> {
   await clearDerivedAssets(work.id);
   await db.delete(readingPartTable).where(eq(readingPartTable.workId, work.id));
-  await clearAiOutputs(work);
+  await resetMetadataAiOutputs(work);
   await db
     .delete(readingWorkTagTable)
     .where(and(eq(readingWorkTagTable.workId, work.id), eq(readingWorkTagTable.provenance, 'extracted')));
@@ -907,7 +904,7 @@ async function clearParseOutputs(work: WorkRow): Promise<void> {
 }
 
 /** AI-output reset: ai-provenance tag/category associations and ai-filled fields. */
-async function clearAiOutputs(work: WorkRow): Promise<void> {
+export async function resetMetadataAiOutputs(work: WorkRow): Promise<void> {
   await db
     .delete(readingWorkTagTable)
     .where(and(eq(readingWorkTagTable.workId, work.id), eq(readingWorkTagTable.provenance, 'ai')));

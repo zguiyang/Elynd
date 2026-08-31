@@ -114,6 +114,10 @@ export async function processContentWork(workId: string): Promise<void> {
     return;
   }
 
+  // Reset previous parse outputs inside the job (HTTP retry only enqueues).
+  const { resetParseStepOutputs } = await import('@/modules/works/service');
+  await resetParseStepOutputs(work);
+
   try {
     const bytes = await loadOriginBytes(workId);
     const parser = parserFor(work.originKind);
@@ -122,8 +126,6 @@ export async function processContentWork(workId: string): Promise<void> {
     if (content.chapters.length === 0) {
       throw new Error(`${work.originKind} produced no readable chapters`);
     }
-
-    await clearDerivedAssets(workId);
 
     // Only store images referenced by chapters that survived planning — a
     // dropped cover page must not leak its image into the body image set.

@@ -5,7 +5,8 @@ import Link from 'next/link';
 import type { ShelfItem } from '@gloaming/shared/api/shelf';
 
 import { AUTH_ROUTES } from '@/constants';
-import { coverTintForVolume } from '@/features/content/content-model';
+import { BookDetailCover } from '@/features/book-detail/book-detail-cover';
+import { coverUrlFromAssetId } from '@/features/book-detail/book-detail-model';
 import { cn } from '@/lib/utils';
 
 function statusLabel(entry: ShelfItem): string {
@@ -20,45 +21,39 @@ function statusLabel(entry: ShelfItem): string {
 
 export function ShelfBookCard({ entry }: { entry: ShelfItem }) {
   const { work, state } = entry;
-  const tint = coverTintForVolume(work.tags, work.title);
+  const detailHref = AUTH_ROUTES.bookDetail(work.id);
   const tagLine = work.tags.slice(0, 2).join(' · ');
   const hasProgressBar = state.status === 'in_progress' && state.progressRatio > 0;
+  const coverImageUrl = coverUrlFromAssetId(work.coverAssetId);
 
   return (
-    <Link
-      href={AUTH_ROUTES.readBook(work.id)}
-      className={cn(
-        'group flex flex-col gap-3 outline-none',
-        'transition-transform duration-300 ease-out-soft',
-        'hover:-translate-y-0.5 focus-visible:ring-3 focus-visible:ring-ring/50',
-      )}
-    >
-      <div
+    <article className="group flex flex-col gap-3">
+      <Link
+        href={detailHref}
         className={cn(
-          'relative aspect-[2/3] overflow-hidden rounded-sm shadow-card ring-1 ring-foreground/5',
-          'transition-[box-shadow,transform] duration-300 ease-out-soft',
-          tint,
+          'outline-none',
+          'transition-transform duration-300 ease-out-soft',
+          'hover:-translate-y-0.5 focus-visible:ring-3 focus-visible:ring-ring/50',
         )}
+        aria-label={`查看《${work.title}》详情`}
       >
-        <div className="absolute inset-0 flex flex-col justify-between p-3 md:p-4">
-          <div className="flex justify-end">
-            <span className="rounded-sm border border-border/30 bg-background/95 px-1.5 py-0.5 text-[10px] font-semibold tracking-wider text-foreground shadow-sm">
-              官方
-            </span>
-          </div>
-          <p className="font-heading line-clamp-4 text-sm font-bold leading-snug text-foreground/85 md:text-base">
-            {work.title}
-          </p>
-        </div>
-      </div>
+        <BookDetailCover
+          title={work.title}
+          tags={work.tags}
+          coverImageUrl={coverImageUrl}
+          className="aspect-[2/3] rounded-sm"
+        />
+      </Link>
 
       <div className="min-w-0">
-        <h3
-          className="font-heading line-clamp-2 text-sm leading-snug font-medium text-foreground transition-colors duration-300 ease-out-soft group-hover:text-primary md:text-base"
-          title={work.title}
-        >
-          {work.title}
-        </h3>
+        <Link href={detailHref} className="outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+          <h3
+            className="font-heading line-clamp-2 text-sm leading-snug font-medium text-foreground transition-colors duration-300 ease-out-soft group-hover:text-primary md:text-base"
+            title={work.title}
+          >
+            {work.title}
+          </h3>
+        </Link>
         {tagLine ? <p className="mt-1.5 line-clamp-1 text-xs text-muted-foreground">{tagLine}</p> : null}
         <p className="mt-1 text-xs text-muted-foreground/90">{statusLabel(entry)}</p>
         {hasProgressBar ? (
@@ -70,6 +65,6 @@ export function ShelfBookCard({ entry }: { entry: ShelfItem }) {
           </div>
         ) : null}
       </div>
-    </Link>
+    </article>
   );
 }

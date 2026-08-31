@@ -7,7 +7,8 @@ import type { ShelfItem } from '@gloaming/shared/api/shelf';
 
 import { Button } from '@/components/ui/button';
 import { AUTH_ROUTES } from '@/constants';
-import { coverTintForVolume } from '@/features/content/content-model';
+import { BookDetailCover } from '@/features/book-detail/book-detail-cover';
+import { coverUrlFromAssetId } from '@/features/book-detail/book-detail-model';
 import { cn } from '@/lib/utils';
 
 function metaLine(entry: ShelfItem): string {
@@ -20,7 +21,9 @@ function metaLine(entry: ShelfItem): string {
 
 export function ShelfContinueHero({ entry }: { entry: ShelfItem }) {
   const ratio = entry.state.progressRatio;
-  const tint = coverTintForVolume(entry.work.tags, entry.work.title);
+  const detailHref = AUTH_ROUTES.bookDetail(entry.work.id);
+  const readHref = AUTH_ROUTES.readBook(entry.work.id, entry.state.currentPartId ?? undefined);
+  const coverImageUrl = coverUrlFromAssetId(entry.work.coverAssetId);
 
   return (
     <section className="mb-10 w-full md:mb-14">
@@ -32,26 +35,28 @@ export function ShelfContinueHero({ entry }: { entry: ShelfItem }) {
           'group relative flex flex-col gap-6 overflow-hidden rounded-2xl bg-paper p-6 md:flex-row md:items-center md:gap-10 md:p-8',
         )}
       >
-        <div
-          className={cn(
-            'relative mx-auto aspect-[2/3] w-32 shrink-0 overflow-hidden rounded-sm shadow-card ring-1 ring-foreground/5 md:mx-0 md:w-36',
-            tint,
-          )}
+        <Link
+          href={detailHref}
+          className="mx-auto shrink-0 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 md:mx-0"
+          aria-label={`查看《${entry.work.title}》详情`}
         >
-          <div className="absolute inset-0 flex flex-col justify-end p-3">
-            <p className="font-heading line-clamp-3 text-xs font-bold leading-snug text-foreground/85">
-              {entry.work.title}
-            </p>
-          </div>
-        </div>
+          <BookDetailCover
+            title={entry.work.title}
+            tags={entry.work.tags}
+            coverImageUrl={coverImageUrl}
+            className="aspect-[2/3] w-32 md:w-36"
+          />
+        </Link>
 
         <div className="min-w-0 flex-1 text-center md:text-left">
           <p className="mb-2 text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
             {metaLine(entry) || '阅读中'}
           </p>
-          <h2 className="font-heading mb-4 text-2xl leading-tight font-semibold text-foreground md:text-3xl">
-            {entry.work.title}
-          </h2>
+          <Link href={detailHref} className="outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+            <h2 className="font-heading mb-4 text-2xl leading-tight font-semibold text-foreground transition-colors duration-300 ease-out-soft hover:text-primary md:text-3xl">
+              {entry.work.title}
+            </h2>
+          </Link>
           <div className="mx-auto mb-5 max-w-md md:mx-0">
             <div className="mb-2 flex justify-between text-sm text-muted-foreground">
               <span className="font-medium text-primary">已读 {ratio}%</span>
@@ -66,7 +71,7 @@ export function ShelfContinueHero({ entry }: { entry: ShelfItem }) {
           <Button
             nativeButton={false}
             className="h-11 rounded-xl px-8 shadow-sm hover:bg-brand-deep active:scale-[0.98]"
-            render={<Link href={AUTH_ROUTES.readBook(entry.work.id)} />}
+            render={<Link href={readHref} />}
           >
             <BookOpenIcon className="size-4" strokeWidth={1.5} aria-hidden />
             继续阅读

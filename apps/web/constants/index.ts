@@ -8,7 +8,7 @@ export const AUTH_ROUTES = {
   shelf: '/my-shelf',
   /** Discover catalog. */
   discover: '/discover',
-  /** Discover book detail (mock UI; future catalog item). */
+  /** Discover book detail (catalog + shelf hybrid). */
   bookDetail: (id: string) => `/discover/${id}` as const,
   history: '/reading-history',
   /** Immersive reader (mock UI; future book/chapter API). */

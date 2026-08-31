@@ -12,6 +12,7 @@ describe('shelf api contracts', () => {
           title: 'Ocean Quiet',
           description: '',
           tags: ['science'],
+          coverAssetId: null,
           publishedAt: '2026-08-21T00:00:00.000Z',
         },
         state: {

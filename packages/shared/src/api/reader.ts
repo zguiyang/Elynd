@@ -40,6 +40,7 @@ export const readerWorkSummarySchema = workSchema.pick({
   title: true,
   description: true,
   tags: true,
+  coverAssetId: true,
   publishedAt: true,
 });
 

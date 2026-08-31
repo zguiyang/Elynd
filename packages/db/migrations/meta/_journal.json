@@ -190,6 +190,13 @@
       "when": 1788000000000,
       "tag": "0026_taxonomy_ssot",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1788100000000,
+      "tag": "0027_chapter_reading_progress",
+      "breakpoints": true
     }
   ]
 }

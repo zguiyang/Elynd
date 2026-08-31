@@ -297,6 +297,8 @@ export const readingState = pgTable(
       .notNull()
       .references(() => readingWork.id, { onDelete: 'cascade' }),
     currentPartId: text('current_part_id').references(() => readingPart.id, { onDelete: 'set null' }),
+    /** Highest sortOrder among fully read parts; -1 = none. Replaces scroll anchor for progress. */
+    completedThroughSortOrder: integer('completed_through_sort_order').notNull().default(-1),
     anchorKind: text('anchor_kind'),
     anchorValue: text('anchor_value'),
     status: text('status').notNull().default('in_progress'),

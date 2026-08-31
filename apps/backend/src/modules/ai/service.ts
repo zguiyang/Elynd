@@ -246,7 +246,13 @@ export async function invokeAi<TSchema extends ZodTypeAny | undefined = undefine
     let content: ContentOut;
 
     if (options.outputSchema) {
-      const structured = chat.withStructuredOutput(options.outputSchema);
+      // After tool rounds the model may emit prose; force a structured turn.
+      conversation.push(
+        new HumanMessage(
+          'Respond now with the required structured fields only (valid JSON matching the schema). Do not write free-form prose.',
+        ),
+      );
+      const structured = chat.withStructuredOutput(options.outputSchema, { method: 'jsonSchema', strict: true });
       content = (await structured.invoke(conversation)) as ContentOut;
     } else if (lastAi) {
       content = messageContentToString(lastAi.content) as ContentOut;
@@ -317,7 +323,8 @@ export async function invokeAi<TSchema extends ZodTypeAny | undefined = undefine
     if (error instanceof AppError) {
       throw error;
     }
-    throw new AppError(HTTP_STATUS.SERVICE_UNAVAILABLE, 'AI unavailable');
+    // Keep the upstream message (e.g. JSON parse / timeout) for workflow lastError.
+    throw new AppError(HTTP_STATUS.SERVICE_UNAVAILABLE, message);
   }
 }
 

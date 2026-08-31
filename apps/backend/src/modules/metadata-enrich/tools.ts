@@ -12,7 +12,7 @@ const MAX_TOOL_RESULTS = 20;
 /**
  * Global tag catalog on demand — the full tag table never enters the prompt.
  * No query → top-N by association count; with query → fuzzy (normalized) match.
- * Returns ids so the model can declare `kind:"existing"` reuse decisions.
+ * Returns ids so the model can set `{ id, name }` for reuse (or `id: null` to create).
  */
 export function listExistingTagsTool() {
   return tool(
@@ -50,7 +50,7 @@ export function listExistingTagsTool() {
     {
       name: 'list_existing_tags',
       description:
-        'List existing tags. Use without query to see the most used tags, or with query to search tags that already exist. Prefer reusing these tags — return kind:"existing" with the returned id.',
+        'List existing tags. Prefer { id, name } with a returned id; use id:null with a short English name when nothing fits.',
       schema: z.object({
         query: z.string().optional().describe('Optional search term for existing tags'),
         limit: z.number().int().min(1).max(MAX_TOOL_RESULTS).optional().describe('Max results'),
@@ -59,7 +59,7 @@ export function listExistingTagsTool() {
   );
 }
 
-/** Admin-controlled category enumeration — always complete, always fresh, ids included. */
+/** Category catalog on demand — same reuse-or-create contract as tags. */
 export function listCategoriesTool() {
   return tool(
     async () => {
@@ -72,7 +72,7 @@ export function listCategoriesTool() {
     {
       name: 'list_categories',
       description:
-        'List all available categories. Prefer reusing one — return kind:"existing" with the returned id; only propose a new category if none fits.',
+        'List existing categories. Prefer { id, name } with a returned id; use id:null with a short English name when nothing fits (server creates it). Always call before choosing a category.',
       schema: z.object({}),
     },
   );

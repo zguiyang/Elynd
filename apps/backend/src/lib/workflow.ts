@@ -58,6 +58,10 @@ export async function failWorkflowStep(workId: string, step: WorkflowStep, error
         failedStep: step,
         lastError: message,
         failedAt: new Date().toISOString(),
+        // Drop prior success markers so the UI cannot keep showing "done".
+        metadataAt: undefined,
+        metadataEnrichGaps: undefined,
+        metadataEnrichError: undefined,
       },
     })
     .where(eq(readingWorkTable.id, workId));

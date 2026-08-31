@@ -28,20 +28,27 @@ export type MetadataFieldDef = {
 };
 
 /**
- * Taxonomy decision output — the model declares reuse (with the id from the
- * tools) or creation. The server treats this as intent only: existing ids are
- * validated, and names always fall back to normalized reuse-first upserts.
+ * Taxonomy decision — flat shape for OpenAI strict JSON Schema (no oneOf).
+ * `id` from list_* tools to reuse; `null` to create by `name`.
+ * Server validates ids and always falls back to normalized reuse-first upserts.
  */
-export const taxonomyRefSchema = z.discriminatedUnion('kind', [
-  z.object({
-    kind: z.literal('existing'),
-    id: z.string().min(1).describe('id returned by list_existing_tags / list_categories'),
-    name: z.string().min(1).max(100),
-  }),
-  z.object({ kind: z.literal('new'), name: z.string().min(1).max(100) }),
-]);
+export const taxonomyRefSchema = z.object({
+  id: z.string().min(1).nullable().describe('Existing id from list_existing_tags / list_categories, or null to create'),
+  name: z.string().min(1).max(100),
+});
 
 export type TaxonomyRef = z.infer<typeof taxonomyRefSchema>;
+
+/** Resolve reuse id from flat `{ id }` or legacy `{ kind:"existing", id }`. */
+function existingIdFromRef(ref: Record<string, unknown>): string | undefined {
+  if (typeof ref.id === 'string' && ref.id) {
+    // Flat schema: null means create; non-empty string means reuse.
+    // Legacy discriminated: only trust id when kind is existing (or kind absent with id).
+    if (ref.kind === 'new') return undefined;
+    return ref.id;
+  }
+  return undefined;
+}
 
 /** Clean, dedupe and cap an array of taxonomy refs; returns name + existingId. */
 export function cleanTagRefs(value: unknown): Array<{ name: string; existingId?: string }> | undefined {
@@ -50,28 +57,28 @@ export function cleanTagRefs(value: unknown): Array<{ name: string; existingId?:
   const out: Array<{ name: string; existingId?: string }> = [];
   for (const raw of value) {
     if (!raw || typeof raw !== 'object') continue;
-    const ref = raw as Partial<TaxonomyRef>;
+    const ref = raw as Record<string, unknown>;
     const name = typeof ref.name === 'string' ? ref.name.trim().slice(0, 100) : '';
     if (!name || seen.has(name.toLowerCase()) || isStopwordTag(name)) continue;
     seen.add(name.toLowerCase());
-    out.push({
-      name: name.slice(0, 40),
-      ...(ref.kind === 'existing' && typeof ref.id === 'string' && ref.id ? { existingId: ref.id } : {}),
-    });
+    const existingId = existingIdFromRef(ref);
+    out.push({ name: name.slice(0, 40), ...(existingId ? { existingId } : {}) });
     if (out.length >= AI_TAG_MAX_ITEMS) break;
   }
   return out.length > 0 ? out : undefined;
 }
 
 export function cleanCategoryRef(value: unknown): { name: string; existingId?: string } | undefined {
+  if (typeof value === 'string') {
+    const name = value.trim().slice(0, 100);
+    return name ? { name } : undefined;
+  }
   if (!value || typeof value !== 'object') return undefined;
-  const ref = value as Partial<TaxonomyRef>;
+  const ref = value as Record<string, unknown>;
   const name = typeof ref.name === 'string' ? ref.name.trim().slice(0, 100) : '';
   if (!name) return undefined;
-  return {
-    name,
-    ...(ref.kind === 'existing' && typeof ref.id === 'string' && ref.id ? { existingId: ref.id } : {}),
-  };
+  const existingId = existingIdFromRef(ref);
+  return { name, ...(existingId ? { existingId } : {}) };
 }
 
 export const metadataFieldRegistry: Record<MetadataFieldId, MetadataFieldDef> = {
@@ -91,7 +98,7 @@ export const metadataFieldRegistry: Record<MetadataFieldId, MetadataFieldDef> = 
   tags: {
     id: 'tags',
     aiFillable: true,
-    promptSection: 'tags: noun phrases, prefer existing tags from list_existing_tags',
+    promptSection: 'tags: noun phrases — id from list_existing_tags or null to create',
     outputKey: 'tags',
     schema: z.array(taxonomyRefSchema).max(AI_TAG_MAX_ITEMS).optional(),
     /** Prefer `areProductTagsWeak(names[])` in orchestration — joined string is best-effort. */
@@ -103,9 +110,10 @@ export const metadataFieldRegistry: Record<MetadataFieldId, MetadataFieldDef> = 
   category: {
     id: 'category',
     aiFillable: true,
-    promptSection: 'category: one category, prefer existing from list_categories',
+    promptSection: 'category: one label — id from list_categories or null to create',
     outputKey: 'category',
-    schema: z.union([taxonomyRefSchema, z.null()]).optional(),
+    // Same as tags: required runs disallow null; reuse id or create via upsert.
+    schema: taxonomyRefSchema.optional(),
     isWeak(value) {
       return !value || !value.trim();
     },

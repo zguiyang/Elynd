@@ -87,8 +87,8 @@ describe('metadata-enrich prompt (single-book context only)', () => {
     const system = messages.find((m) => m.role === 'system')!.content;
     expect(system).toContain('Required fields to fill: category.');
     expect(system).toContain('Already complete, do not output: description, tags.');
-    expect(system).toContain('kind:"existing"');
-    expect(system).toContain('kind:"new"');
+    expect(system).toContain('id');
+    expect(system).toContain('null');
   });
 
   it('caps the excerpt and TOC titles', () => {
@@ -108,6 +108,24 @@ describe('metadata-enrich prompt (single-book context only)', () => {
     expect(tocLine).toBe('Chapter 1');
     expect(user).not.toContain('Chapter 16');
   });
+  it('mentions reuse-or-create for both tags and category', () => {
+    const messages = buildEnrichMessages({
+      title: 'T',
+      author: '',
+      language: 'en',
+      existingTags: [],
+      ruleDescription: '',
+      excerpt: 'x'.repeat(200),
+      tocTitles: [],
+      requiredFields: ['tags', 'category'],
+    });
+    const system = messages.find((m) => m.role === 'system')!.content;
+    expect(system).toContain('list_existing_tags');
+    expect(system).toContain('list_categories');
+    expect(system).toContain('id');
+    expect(system).toContain('null');
+    expect(system).toMatch(/reuse|create|list_categories/i);
+  });
 });
 
 describe('metadata-enrich taxonomy refs and dynamic schema', () => {
@@ -116,21 +134,28 @@ describe('metadata-enrich taxonomy refs and dynamic schema', () => {
     const shape = schema.shape as Record<string, unknown>;
     expect(Object.keys(shape)).toEqual(['category']);
     expect(schema.safeParse({}).success).toBe(false);
-    expect(schema.safeParse({ category: { kind: 'new', name: 'Fables' } }).success).toBe(true);
-    expect(schema.safeParse({ category: null }).success).toBe(true);
+    expect(schema.safeParse({ category: { id: null, name: 'Fables' } }).success).toBe(true);
+    expect(schema.safeParse({ category: null }).success).toBe(false);
 
     const full = buildMetadataOutputSchema(['description', 'tags', 'category']);
     expect(Object.keys(full.shape as Record<string, unknown>).sort()).toEqual(['category', 'description', 'tags']);
-    expect(full.safeParse({ description: 'd', tags: [], category: null }).success).toBe(true);
+    expect(full.safeParse({ description: 'd', tags: [], category: null }).success).toBe(false);
+    expect(
+      full.safeParse({
+        description: 'd',
+        tags: [{ id: null, name: 'Adventure' }],
+        category: { id: null, name: 'Fiction' },
+      }).success,
+    ).toBe(true);
     expect(full.safeParse({ description: 'd' }).success).toBe(false);
   });
 
   it('cleanTagRefs keeps reuse ids and drops junk', () => {
     expect(
       cleanTagRefs([
-        { kind: 'existing', id: 'tag-1', name: 'Fables' },
-        { kind: 'new', name: 'Morality' },
-        { kind: 'existing', id: 'tag-2', name: ' ' },
+        { id: 'tag-1', name: 'Fables' },
+        { id: null, name: 'Morality' },
+        { id: 'tag-2', name: ' ' },
         'not-an-object',
       ]),
     ).toEqual([{ name: 'Fables', existingId: 'tag-1' }, { name: 'Morality' }]);
@@ -138,10 +163,11 @@ describe('metadata-enrich taxonomy refs and dynamic schema', () => {
 
   it('cleanCategoryRef returns undefined for null/empty', () => {
     expect(cleanCategoryRef(null)).toBeUndefined();
-    expect(cleanCategoryRef({ kind: 'existing', id: 'cat-1', name: 'Classic' })).toEqual({
+    expect(cleanCategoryRef({ id: 'cat-1', name: 'Classic' })).toEqual({
       name: 'Classic',
       existingId: 'cat-1',
     });
-    expect(cleanCategoryRef({ kind: 'new', name: '  ' })).toBeUndefined();
+    expect(cleanCategoryRef({ id: null, name: '  ' })).toBeUndefined();
+    expect(cleanCategoryRef('Children Fiction')).toEqual({ name: 'Children Fiction' });
   });
 });

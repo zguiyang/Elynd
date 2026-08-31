@@ -82,17 +82,34 @@ function loadCatalogSubjects(work: typeof readingWorkTable.$inferSelect): string
   return subjects.filter((s): s is string => typeof s === 'string' && s.trim().length > 0);
 }
 
+/** Only true model-missing 503s degrade; other 503s (timeout, bad JSON) must fail the step. */
 function isModelNotConfigured(error: unknown): boolean {
-  return error instanceof AppError && error.statusCode === HTTP_STATUS.SERVICE_UNAVAILABLE;
+  return (
+    error instanceof AppError &&
+    error.statusCode === HTTP_STATUS.SERVICE_UNAVAILABLE &&
+    /not configured/i.test(error.message)
+  );
 }
+
+const FIELD_GAP_LABEL: Partial<Record<MetadataFieldId, string>> = {
+  description: '简介',
+  tags: '标签',
+  category: '分类',
+};
 
 /**
  * Complete the `metadata` step. Default (`TTS_STEP_ENABLED=false`): → `ready`.
  * When the TTS pipeline flag is on: → `tts` and auto-enqueue dual-accent audio.
+ * `gaps` records AI targets that stayed empty/weak so the admin UI can show
+ * partial completion instead of a false "done".
  */
-async function completeMetadataStep(workId: string): Promise<void> {
+async function completeMetadataStep(workId: string, gaps: MetadataFieldId[] = []): Promise<void> {
+  const uniqueGaps = [...new Set(gaps)];
   await completeWorkflowStep(workId, TTS_STEP_ENABLED ? 'tts' : 'ready', {
     metadataAt: new Date().toISOString(),
+    metadataEnrichGaps: uniqueGaps.length > 0 ? uniqueGaps : undefined,
+    metadataEnrichError:
+      uniqueGaps.length > 0 ? `未补全：${uniqueGaps.map((id) => FIELD_GAP_LABEL[id] ?? id).join('、')}` : undefined,
   });
   if (TTS_STEP_ENABLED) {
     const { enqueueWorkAudio } = await import('@/modules/content-assets/service');
@@ -167,7 +184,8 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
     });
   } catch (error) {
     if (isModelNotConfigured(error)) {
-      await completeMetadataStep(workId);
+      // Rules already landed; surface remaining AI targets as gaps.
+      await completeMetadataStep(workId, [...needed]);
       return;
     }
     throw error;
@@ -182,10 +200,10 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
       patch.descriptionProvenance = 'ai';
     }
 
-    // Tags — the model declares reuse (kind:"existing" + id from tools) or
-    // creation. Intent is advisory: ids are validated, and names always fall
-    // back to normalized reuse-first upserts (never duplicate dimensions).
-    // When AI fills weak tags, replace extracted+ai associations (keep manual).
+    // Tags — model returns { id, name } (id null = create). Intent is advisory:
+    // ids are validated, and names always fall back to normalized reuse-first upserts
+    // (never duplicate dimensions). When AI fills weak tags, replace extracted+ai
+    // associations (keep manual).
     const aiTags = metadataFieldRegistry.tags.normalize(result.content.tags) as
       Array<{ name: string; existingId?: string }> | undefined;
     if (needed.has('tags') && Array.isArray(aiTags)) {
@@ -206,7 +224,7 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
       }
     }
 
-    // Category — single-select; null means "no category". Same adjudication.
+    // Category — single-select. Same adjudication as tags.
     const aiCategory = metadataFieldRegistry.category.normalize(result.content.category) as
       { name: string; existingId?: string } | undefined;
     if (needed.has('category') && aiCategory) {
@@ -214,7 +232,12 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
       if (categoryId) {
         await tx
           .delete(readingWorkCategoryTable)
-          .where(and(eq(readingWorkCategoryTable.workId, workId), eq(readingWorkCategoryTable.provenance, 'ai')));
+          .where(
+            and(
+              eq(readingWorkCategoryTable.workId, workId),
+              inArray(readingWorkCategoryTable.provenance, ['extracted', 'ai']),
+            ),
+          );
         await tx
           .insert(readingWorkCategoryTable)
           .values({ workId, categoryId, provenance: 'ai' })
@@ -227,15 +250,23 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
     }
   });
 
-  await completeMetadataStep(workId);
+  // Re-read after apply — still-weak required fields are partial completion.
+  const [after] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId)).limit(1);
+  const [afterTags, afterCategory] = await Promise.all([loadCurrentTags(workId), loadCurrentCategory(workId)]);
+  const gaps: MetadataFieldId[] = [];
+  for (const id of needed) {
+    if (id === 'tags') {
+      if (areProductTagsWeak(afterTags)) gaps.push(id);
+      continue;
+    }
+    const def = metadataFieldRegistry[id];
+    const current = id === 'description' ? (after?.description ?? '') : (afterCategory ?? '');
+    if (def.isWeak(current)) gaps.push(id);
+  }
 
-  // Observation point: required fields that the model skipped entirely.
-  const missing: MetadataFieldId[] = [];
-  if (needed.has('description') && !result.content.description) missing.push('description');
-  if (needed.has('tags') && !Array.isArray(result.content.tags)) missing.push('tags');
-  if (needed.has('category') && result.content.category === undefined) missing.push('category');
-  if (missing.length > 0) {
-    enrichLogger.warn({ workId, missingFields: missing }, 'Metadata enrich completed with fields left unfilled');
+  await completeMetadataStep(workId, gaps);
+  if (gaps.length > 0) {
+    enrichLogger.warn({ workId, missingFields: gaps }, 'Metadata enrich completed with fields left unfilled');
   }
 }
 

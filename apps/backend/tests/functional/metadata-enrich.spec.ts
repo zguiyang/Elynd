@@ -142,6 +142,8 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
     const created = (await response.json()) as { id: string };
     createdWorkIds.push(created.id);
     await processContentWork(created.id);
+    // Manual pipeline leaves `parsed`; enrich requires the `metadata` running status.
+    await db.update(readingWorkTable).set({ status: 'metadata' }).where(eq(readingWorkTable.id, created.id));
     await fillWorkMetadata(created.id);
     return created.id;
   }
@@ -443,6 +445,21 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
 
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
     expect(work!.status).toBe('ready');
+  });
+
+  it('does not degrade generic AI 503s (e.g. bad JSON) into a successful ready step', async () => {
+    const workId = await createParsedWork({ title: 'Bad Json Book' });
+
+    invokeAiMock.mockRejectedValueOnce(
+      new AppError(HTTP_STATUS.SERVICE_UNAVAILABLE, 'Unexpected token \'d\', "descriptio"... is not valid JSON'),
+    );
+
+    await expect(enrichWorkMetadata(workId)).rejects.toMatchObject({
+      statusCode: HTTP_STATUS.SERVICE_UNAVAILABLE,
+    });
+
+    const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
+    expect(work!.status).toBe('metadata');
   });
 
   it('restores the failed step so the bounded retry can re-claim (at-least-once)', async () => {

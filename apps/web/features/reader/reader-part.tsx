@@ -1,6 +1,6 @@
 'use client';
 
-import type { MouseEvent, UIEvent } from 'react';
+import type { MouseEvent, ReactNode, UIEvent } from 'react';
 
 import { ReadingPartView } from '@/features/content/reading-part-view';
 import type { ReaderFontSize } from '@/features/reader/reader-model';
@@ -12,10 +12,11 @@ type ReaderPartProps = {
   html: string;
   fontSize: ReaderFontSize;
   aiDrawerOpen: boolean;
+  tocOpen?: boolean;
   onSelectText: (payload: { quote: string; paragraphId: string; top: number; left: number }) => void;
   onCenterTap: () => void;
   onScroll: (event: UIEvent<HTMLElement>) => void;
-  onFinish: () => void;
+  footer?: ReactNode;
 };
 
 /** Paragraph id from the server-injected data-p ordinal. */
@@ -33,10 +34,11 @@ export function ReaderPart({
   html,
   fontSize,
   aiDrawerOpen,
+  tocOpen = false,
   onSelectText,
   onCenterTap,
   onScroll,
-  onFinish,
+  footer,
 }: ReaderPartProps) {
   function handleMouseUp(event: MouseEvent<HTMLElement>) {
     const selection = window.getSelection();
@@ -77,35 +79,12 @@ export function ReaderPart({
       className={cn(
         'relative h-full flex-1 overflow-y-auto transition-[margin,padding] duration-300 ease-out-soft',
         aiDrawerOpen && 'md:pr-96',
+        tocOpen && 'md:ml-80',
       )}
       onScroll={onScroll}
       onClick={handleContentClick}
     >
-      <ReadingPartView
-        title={title}
-        html={html}
-        fontSize={fontSize}
-        onArticleMouseUp={handleMouseUp}
-        footer={
-          <section
-            data-reader-ui
-            className="mt-16 flex flex-col items-center justify-center border-t border-border/40 pt-16 pb-8 text-center md:mt-32"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="mb-4 text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">读完了？</p>
-            <button
-              type="button"
-              className="group flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-brand-deep"
-              onClick={onFinish}
-            >
-              返回书架
-              <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
-                →
-              </span>
-            </button>
-          </section>
-        }
-      />
+      <ReadingPartView title={title} html={html} fontSize={fontSize} onArticleMouseUp={handleMouseUp} footer={footer} />
     </div>
   );
 }

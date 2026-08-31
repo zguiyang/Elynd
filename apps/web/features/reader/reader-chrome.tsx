@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeftIcon, HeadphonesIcon, SparklesIcon, TypeIcon } from 'lucide-react';
+import { ArrowLeftIcon, HeadphonesIcon, MenuIcon, SparklesIcon, TypeIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
@@ -10,11 +10,15 @@ import { cn } from '@/lib/utils';
 
 type ReaderChromeProps = {
   visible: boolean;
-  title: string;
+  workTitle: string;
+  partTitle: string;
+  chapterLabel: string | null;
   progressRatio: number;
   fontSize: ReaderFontSize;
   aiOpen: boolean;
+  tocOpen: boolean;
   isListening: boolean;
+  onToggleToc: () => void;
   onToggleFontSize: () => void;
   onToggleAi: () => void;
   onToggleTts: () => void;
@@ -30,11 +34,15 @@ function navigateReaderBack(router: ReturnType<typeof useRouter>) {
 
 export function ReaderChrome({
   visible,
-  title,
+  workTitle,
+  partTitle,
+  chapterLabel,
   progressRatio,
   fontSize,
   aiOpen,
+  tocOpen,
   isListening,
+  onToggleToc,
   onToggleFontSize,
   onToggleAi,
   onToggleTts,
@@ -49,8 +57,8 @@ export function ReaderChrome({
         visible ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-2 opacity-0',
       )}
     >
-      <div className="flex h-14 items-center justify-between gap-3 px-4 md:px-8">
-        <div className="flex min-w-0 items-center gap-2">
+      <div className="flex h-14 items-center justify-between gap-2 px-3 md:gap-3 md:px-6">
+        <div className="flex min-w-0 flex-1 items-center gap-1 md:gap-2">
           <Button
             type="button"
             variant="ghost"
@@ -61,8 +69,27 @@ export function ReaderChrome({
           >
             <ArrowLeftIcon className="size-5" strokeWidth={1.5} />
           </Button>
-          <p className="hidden min-w-0 truncate font-heading text-sm text-foreground md:block md:text-base">{title}</p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={cn('size-10 shrink-0 text-muted-foreground hover:text-foreground', tocOpen && 'text-primary')}
+            aria-label="目录"
+            aria-pressed={tocOpen}
+            onClick={onToggleToc}
+          >
+            <MenuIcon className="size-5" strokeWidth={1.5} />
+          </Button>
+          <div className="min-w-0">
+            <p className="hidden truncate font-heading text-sm text-foreground md:block">{workTitle}</p>
+            <p className="truncate font-heading text-sm text-foreground md:hidden">{partTitle}</p>
+            <p className="hidden truncate text-xs text-muted-foreground md:block">{partTitle}</p>
+          </div>
         </div>
+
+        {chapterLabel ? (
+          <p className="hidden shrink-0 text-xs tabular-nums text-muted-foreground md:block">{chapterLabel}</p>
+        ) : null}
 
         <div className="flex shrink-0 items-center gap-1">
           <Button

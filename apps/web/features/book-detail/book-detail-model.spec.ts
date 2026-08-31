@@ -120,7 +120,9 @@ describe('chaptersFromParts', () => {
     const chapters = chaptersFromParts(parts, {
       status: 'in_progress',
       currentPartId: 'p2',
-      progressRatio: 40,
+      completedThroughSortOrder: 0,
+      progressRatio: 33,
+      totalPartCount: 3,
       lastReadAt: '2026-08-28T12:00:00.000Z',
       completedAt: null,
     });
@@ -131,7 +133,9 @@ describe('chaptersFromParts', () => {
     const chapters = chaptersFromParts(parts, {
       status: 'completed',
       currentPartId: 'p3',
+      completedThroughSortOrder: 2,
       progressRatio: 100,
+      totalPartCount: 3,
       lastReadAt: '2026-08-28T12:00:00.000Z',
       completedAt: '2026-08-28T12:00:00.000Z',
     });

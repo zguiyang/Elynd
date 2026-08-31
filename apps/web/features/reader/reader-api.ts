@@ -1,40 +1,61 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
-  type ReaderAudioTrack,
   readerAudioTrackSchema,
-  type ReaderSessionData,
-  readerSessionDataSchema,
+  type ReaderPartData,
+  readerPartDataSchema,
+  type ReaderPartsData,
+  readerPartsDataSchema,
+  type ReadingState,
+  type ReadingStateAction,
+  readingStateDataSchema,
   readingStateSchema,
   type UpdateReadingStateBody,
 } from '@gloaming/shared/api/reader';
+import type { PartSummary } from '@gloaming/shared/api/works';
 
-import type { ReaderSession } from '@/features/reader/reader-model';
+import type { ReaderViewModel } from '@/features/reader/reader-model';
 import { apiRequest, formatApiError } from '@/lib/api-request';
+import { authClient } from '@/lib/auth';
 
 export const readerQueryKey = {
   all: ['reader'] as const,
-  session: (workId: string, partId?: string | null) =>
-    [...readerQueryKey.all, 'session', workId, partId ?? ''] as const,
+  parts: (workId: string) => [...readerQueryKey.all, 'parts', workId] as const,
+  part: (partId: string) => [...readerQueryKey.all, 'part', partId] as const,
+  state: (workId: string) => [...readerQueryKey.all, 'state', workId] as const,
 };
 
-export async function getReaderSessionData(
-  workId: string,
-  init?: { signal?: AbortSignal; credentials?: RequestCredentials; partId?: string | null },
-): Promise<ReaderSessionData> {
-  const qs = init?.partId ? `?partId=${encodeURIComponent(init.partId)}` : '';
-  return apiRequest(`/api/reader/works/${encodeURIComponent(workId)}${qs}`, {
-    schema: readerSessionDataSchema,
+export async function getReaderParts(workId: string, init?: { signal?: AbortSignal }): Promise<ReaderPartsData> {
+  return apiRequest(`/api/reader/works/${encodeURIComponent(workId)}/parts`, {
+    schema: readerPartsDataSchema,
     signal: init?.signal,
-    credentials: init?.credentials,
   });
 }
 
-export async function updateReadingState(
+export async function getReaderPart(partId: string, init?: { signal?: AbortSignal }): Promise<ReaderPartData> {
+  return apiRequest(`/api/reader/parts/${encodeURIComponent(partId)}`, {
+    schema: readerPartDataSchema,
+    signal: init?.signal,
+  });
+}
+
+export async function getReadingState(workId: string, init?: { signal?: AbortSignal }): Promise<ReadingState | null> {
+  try {
+    const data = await apiRequest(`/api/reader/works/${encodeURIComponent(workId)}/state`, {
+      schema: readingStateDataSchema,
+      signal: init?.signal,
+    });
+    return data.state;
+  } catch {
+    return null;
+  }
+}
+
+export async function patchReadingState(
   workId: string,
   body: UpdateReadingStateBody,
   init?: { signal?: AbortSignal },
-) {
+): Promise<ReadingState> {
   return apiRequest(`/api/reader/works/${encodeURIComponent(workId)}/state`, {
     method: 'PATCH',
     schema: readingStateSchema,
@@ -45,14 +66,10 @@ export async function updateReadingState(
 
 /** Silent shelf add — creates 0% state without opening reader. */
 export async function addWorkToShelf(workId: string): Promise<void> {
-  await updateReadingState(workId, { progressRatio: 0 });
+  await patchReadingState(workId, { action: 'add_to_shelf' });
 }
 
-export async function getReaderAudioTrack(
-  partId: string,
-  role: 'us' | 'uk',
-  init?: { signal?: AbortSignal },
-): Promise<ReaderAudioTrack> {
+export async function getReaderAudioTrack(partId: string, role: 'us' | 'uk', init?: { signal?: AbortSignal }) {
   const qs = new URLSearchParams({ role });
   return apiRequest(`/api/reader/parts/${encodeURIComponent(partId)}/audio?${qs}`, {
     schema: readerAudioTrackSchema,
@@ -60,46 +77,92 @@ export async function getReaderAudioTrack(
   });
 }
 
-export function toReaderSession(data: ReaderSessionData): ReaderSession {
+export function resolvePartId(
+  parts: PartSummary[],
+  state: ReadingState | null,
+  preferredPartId: string | null,
+): string {
+  const sorted = [...parts].sort((a, b) => a.sortOrder - b.sortOrder);
+  if (preferredPartId && sorted.some((part) => part.id === preferredPartId)) {
+    return preferredPartId;
+  }
+  if (state?.currentPartId && sorted.some((part) => part.id === state.currentPartId)) {
+    return state.currentPartId;
+  }
+  return sorted[0]!.id;
+}
+
+export function toReaderViewModel(
+  partsData: ReaderPartsData,
+  partData: ReaderPartData,
+  state: ReadingState | null,
+): ReaderViewModel {
   return {
-    workId: data.work.id,
-    partId: data.currentPart.id,
-    title: data.work.title,
-    tags: data.work.tags,
-    html: data.currentPart.body,
-    state: {
-      status: data.state.status,
-      progressRatio: data.state.progressRatio,
-      lastReadAt:
-        typeof data.state.lastReadAt === 'string' ? data.state.lastReadAt : data.state.lastReadAt.toISOString(),
-      completedAt: data.state.completedAt
-        ? typeof data.state.completedAt === 'string'
-          ? data.state.completedAt
-          : data.state.completedAt.toISOString()
-        : null,
-    },
-    audioAvailable: data.audioAvailable,
+    workId: partsData.work.id,
+    workTitle: partsData.work.title,
+    coverAssetId: partsData.work.coverAssetId,
+    tags: partsData.work.tags,
+    parts: partsData.parts,
+    partId: partData.part.id,
+    partTitle: partData.part.title,
+    sortOrder: partData.part.sortOrder,
+    html: partData.part.body,
+    state: state
+      ? {
+          status: state.status,
+          progressRatio: state.progressRatio,
+          completedThroughSortOrder: state.completedThroughSortOrder,
+          totalPartCount: state.totalPartCount,
+          lastReadAt: typeof state.lastReadAt === 'string' ? state.lastReadAt : state.lastReadAt.toISOString(),
+          completedAt: state.completedAt
+            ? typeof state.completedAt === 'string'
+              ? state.completedAt
+              : state.completedAt.toISOString()
+            : null,
+        }
+      : null,
+    audioAvailable: partData.audioAvailable,
   };
 }
 
-export function useReaderSessionQuery(workId: string, options?: { enabled?: boolean; partId?: string | null }) {
-  const partId = options?.partId ?? null;
+export function useReaderPartsQuery(workId: string, options?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: readerQueryKey.session(workId, partId),
-    queryFn: ({ signal }) => getReaderSessionData(workId, { signal, partId }).then(toReaderSession),
+    queryKey: readerQueryKey.parts(workId),
+    queryFn: ({ signal }) => getReaderParts(workId, { signal }),
     enabled: options?.enabled ?? Boolean(workId),
   });
 }
 
-export function useUpdateReadingStateMutation(workId: string) {
+export function useReaderPartQuery(partId: string | null, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: readerQueryKey.part(partId ?? ''),
+    queryFn: ({ signal }) => getReaderPart(partId!, { signal }),
+    enabled: (options?.enabled ?? true) && Boolean(partId),
+  });
+}
+
+export function useReadingStateQuery(workId: string, options?: { enabled?: boolean }) {
+  const { data: authData } = authClient.useSession();
+  const isAuthenticated = Boolean(authData?.user);
+  return useQuery({
+    queryKey: readerQueryKey.state(workId),
+    queryFn: ({ signal }) => getReadingState(workId, { signal }),
+    enabled: (options?.enabled ?? Boolean(workId)) && isAuthenticated,
+  });
+}
+
+export function useReaderStateMutation(workId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: UpdateReadingStateBody) => updateReadingState(workId, body),
+    mutationFn: (body: UpdateReadingStateBody) => patchReadingState(workId, body),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [...readerQueryKey.all, 'session', workId] });
+      void queryClient.invalidateQueries({ queryKey: readerQueryKey.state(workId) });
       void queryClient.invalidateQueries({ queryKey: ['shelf'] });
+      void queryClient.invalidateQueries({ queryKey: ['book-detail'] });
     },
   });
 }
+
+export type { ReadingStateAction };
 
 export const formatReaderApiError = formatApiError;

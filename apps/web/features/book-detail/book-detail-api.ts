@@ -19,7 +19,7 @@ import {
   teaserFromDescription,
 } from '@/features/book-detail/book-detail-model';
 import { buildShelfItemMap, listCatalogWorks } from '@/features/discover/discover-api';
-import { getReaderSessionData } from '@/features/reader/reader-api';
+import { getReaderParts } from '@/features/reader/reader-api';
 import { getShelf } from '@/features/shelf/shelf-api';
 import { apiRequest, ApiRequestError, formatApiError } from '@/lib/api-request';
 
@@ -79,14 +79,12 @@ export function chaptersFromParts(parts: PartSummary[], state: ReadingState | nu
   }
 
   const currentId = state?.currentPartId;
-  const currentIndex = currentId ? sorted.findIndex((p) => p.id === currentId) : 0;
-  const activeIndex = currentIndex >= 0 ? currentIndex : 0;
 
   return sorted.map((part, i) => {
     let status: BookChapter['status'] = 'unread';
-    if (i < activeIndex) {
+    if (part.sortOrder <= (state?.completedThroughSortOrder ?? -1)) {
       status = 'read';
-    } else if (i === activeIndex) {
+    } else if (part.id === currentId) {
       status = 'current';
     }
     return {
@@ -168,7 +166,7 @@ export type BookDetailQueryResult = {
 };
 
 export async function fetchBookDetail(workId: string, init?: { signal?: AbortSignal }): Promise<BookDetailQueryResult> {
-  const [work, shelfData, session, catalog] = await Promise.all([
+  const [work, shelfData, partsData, catalog] = await Promise.all([
     getPublishedWork(workId, init),
     getShelf(init).catch((error: unknown) => {
       if (error instanceof ApiRequestError && error.status === 401) {
@@ -176,14 +174,13 @@ export async function fetchBookDetail(workId: string, init?: { signal?: AbortSig
       }
       throw error;
     }),
-    // omit credentials → public reader session (parts only; no reading_state insert)
-    getReaderSessionData(workId, { signal: init?.signal, credentials: 'omit' }),
+    getReaderParts(workId, init),
     listCatalogWorks({ page: 1, pageSize: 12 }, init).catch(() => null),
   ]);
 
   const shelfMap = shelfData ? buildShelfItemMap(shelfData) : new Map<string, ShelfItem>();
   const relatedWorks = (catalog?.items ?? []).filter((item) => item.id !== workId).slice(0, RELATED_LIMIT);
-  const book = toBookDetail(work, session.parts, shelfMap.get(workId), relatedWorks);
+  const book = toBookDetail(work, partsData.parts, shelfMap.get(workId), relatedWorks);
   const related = relatedWorks.map(workToRelatedStub);
   return { book, related };
 }

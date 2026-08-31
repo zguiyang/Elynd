@@ -1,6 +1,7 @@
-/** Reader UI types — aligned with ReaderSessionData after API adapter. */
+/** Reader UI types — aligned with split reader APIs. */
 
 import type { ReaderAudioAvailability, ReadingStateStatus } from '@gloaming/shared/api/reader';
+import type { PartSummary } from '@gloaming/shared/api/works';
 
 export type ReaderFontSize = 'sm' | 'md' | 'lg';
 
@@ -18,20 +19,32 @@ export type ReaderAiMessage = {
   anchor?: { paragraphId: string; selectedText: string };
 };
 
-export type ReaderSession = {
+export type ReaderProgressState = {
+  status: ReadingStateStatus;
+  progressRatio: number;
+  completedThroughSortOrder: number;
+  totalPartCount: number;
+  lastReadAt: string;
+  completedAt: string | null;
+};
+
+export type ReaderViewModel = {
   workId: string;
-  partId: string;
-  title: string;
+  workTitle: string;
+  coverAssetId: string | null;
   tags: string[];
-  /** Normalized reading HTML for the current part (sanitized on render). */
+  parts: PartSummary[];
+  partId: string;
+  partTitle: string;
+  sortOrder: number;
   html: string;
-  state: {
-    status: ReadingStateStatus;
-    progressRatio: number;
-    lastReadAt: string;
-    completedAt: string | null;
-  };
+  state: ReaderProgressState | null;
   audioAvailable: ReaderAudioAvailability;
+};
+
+/** @deprecated Use ReaderViewModel */
+export type ReaderSession = ReaderViewModel & {
+  title: string;
 };
 
 export type ReaderSelection = {
@@ -40,3 +53,41 @@ export type ReaderSelection = {
   top: number;
   left: number;
 };
+
+export function sortedParts(parts: PartSummary[]): PartSummary[] {
+  return [...parts].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
+}
+
+export function partIndex(parts: PartSummary[], partId: string): number {
+  return sortedParts(parts).findIndex((part) => part.id === partId);
+}
+
+export function adjacentPart(parts: PartSummary[], partId: string, direction: 'prev' | 'next'): PartSummary | null {
+  const ordered = sortedParts(parts);
+  const index = ordered.findIndex((part) => part.id === partId);
+  if (index < 0) {
+    return null;
+  }
+  const nextIndex = direction === 'prev' ? index - 1 : index + 1;
+  return ordered[nextIndex] ?? null;
+}
+
+export function chapterStatusForPart(
+  part: PartSummary,
+  state: ReaderProgressState | null,
+  currentPartId: string,
+): 'read' | 'current' | 'unread' {
+  if (!state) {
+    return part.id === currentPartId ? 'current' : 'unread';
+  }
+  if (state.status === 'completed') {
+    return 'read';
+  }
+  if (part.sortOrder <= state.completedThroughSortOrder) {
+    return 'read';
+  }
+  if (part.id === currentPartId) {
+    return 'current';
+  }
+  return 'unread';
+}

@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { READING_STATE_STATUSES } from '@gloaming/shared/api/reader';
+
 /** Calendar day for reading activity (history heatmap). */
 export const READING_DAY_TIME_ZONE = 'Asia/Shanghai';
 
@@ -24,13 +26,18 @@ export const readingHistoryActivityDaySchema = z.object({
 
 export type ReadingHistoryActivityDay = z.infer<typeof readingHistoryActivityDaySchema>;
 
-export const readingHistoryCompletionSchema = z.object({
-  date: calendarDateSchema,
-  title: z.string().min(1),
+/** Works the user has opened (in progress) or finished — history list rows. */
+export const readingHistoryWorkSchema = z.object({
   workId: z.string().min(1),
+  title: z.string().min(1),
+  author: z.string(),
+  coverAssetId: z.string().nullable(),
+  status: z.enum(READING_STATE_STATUSES),
+  /** Shanghai calendar day: completedAt when finished, else lastReadAt. */
+  date: calendarDateSchema,
 });
 
-export type ReadingHistoryCompletion = z.infer<typeof readingHistoryCompletionSchema>;
+export type ReadingHistoryWork = z.infer<typeof readingHistoryWorkSchema>;
 
 export const readingHistorySummarySchema = z.object({
   consecutiveDays: z.number().int().min(0),
@@ -44,8 +51,33 @@ export type ReadingHistorySummary = z.infer<typeof readingHistorySummarySchema>;
 export const readingHistoryDataSchema = z.object({
   today: calendarDateSchema,
   activity: z.array(readingHistoryActivityDaySchema),
-  completions: z.array(readingHistoryCompletionSchema),
+  works: z.array(readingHistoryWorkSchema),
   portrait: readingHistorySummarySchema,
 });
 
 export type ReadingHistoryData = z.infer<typeof readingHistoryDataSchema>;
+
+/** Reader engaged-time heartbeat interval (client). */
+export const READING_HEARTBEAT_INTERVAL_MS = 30_000 as const;
+
+/**
+ * Max seconds credited per heartbeat request (interval + unload remainder jitter).
+ * Client should not send more; server clamps.
+ */
+export const READING_HEARTBEAT_MAX_CREDIT_SECONDS = 45 as const;
+
+/** Soft daily ceiling for engaged seconds (8h) — anti-runaway. */
+export const READING_DAY_ENGAGED_SECONDS_CAP = 8 * 60 * 60;
+
+export const readingHeartbeatBodySchema = z.object({
+  seconds: z.number().int().positive().max(READING_HEARTBEAT_MAX_CREDIT_SECONDS),
+});
+
+export type ReadingHeartbeatBody = z.infer<typeof readingHeartbeatBodySchema>;
+
+export const readingHeartbeatResultSchema = z.object({
+  localDate: calendarDateSchema,
+  engagedSeconds: z.number().int().min(0).max(READING_DAY_ENGAGED_SECONDS_CAP),
+});
+
+export type ReadingHeartbeatResult = z.infer<typeof readingHeartbeatResultSchema>;

@@ -172,7 +172,7 @@ AI-generated article library as main shelf filler
 A catalog work is publishable only if:
 
 1. A reader might **want to keep reading it**
-2. Source/rights are clear (`source_note`, licensed EPUB)
+2. Source/rights are clear (structured `sources` channel, licensed EPUB)
 3. It does not push Gloaming toward **course pack**, **vocab deck**, **chatbot**, or **AI-generated library**
 
 ---

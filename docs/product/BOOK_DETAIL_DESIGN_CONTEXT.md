@@ -143,7 +143,7 @@ ReadingWork {                     # reading_work — catalog / shelf / AI thread
   visibility:       catalog | private
   owner_user_id:    null = official catalog
   origin_kind:      admin_epub | admin_text | (future user_* …)
-  origin_meta, tags, source_note, cover_asset_id,
+  origin_meta, tags, cover_asset_id,
   published_at, created_at, updated_at
   # No body, level, seriesId, estimatedMinutes
 }
@@ -379,7 +379,7 @@ Constraints for any Stitch / prototype pass (facts + Locked rules — still **no
    - Open / Continue → **Reader**  
      Resume-of-the-day remains owned by **我的书架**.
 
-3. **Metadata budget (Existing-safe):** title, level, themes, estimated minutes, sourceNote (provenance), progress if any.  
+3. **Metadata budget (Existing-safe):** title, level, themes, estimated minutes, channel sources, progress if any.  
    Mark author / real cover / TOC / description blurb as **Future or Open** unless product adds fields.
 
 4. **AI Companion / TTS on Detail:**

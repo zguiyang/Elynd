@@ -38,7 +38,7 @@ There are **no production users** and **no historical data compatibility** requi
 
 **Lifecycle:** `draft` → `processing` → `published` | `failed`.
 
-**Key fields:** `id`, `title`, `description`, `language`, `status`, `visibility`, `owner_user_id` (null = official catalog), `origin_kind`, `origin_meta`, `tags`, `source_note`, `cover_asset_id`, `published_at`, timestamps.
+**Key fields:** `id`, `title`, `description`, `language`, `status`, `visibility`, `owner_user_id` (null = official catalog), `origin_kind`, `origin_meta`, `tags`, `cover_asset_id`, `published_at`, timestamps. Channel providers live on the `source` dimension via `reading_work_source` (not a free-text note on the work).
 
 **Forbidden on Work:** `level`, `seriesId`, `estimatedMinutes`, `body`.
 

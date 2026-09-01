@@ -63,23 +63,54 @@ export const HISTORY_ACTIVITY_MAX_LEVEL = 4 as const;
 
 /** Fallback week-column count when measuring before paint (~1y, Sun week-start). */
 export const HISTORY_CALENDAR_WEEK_COLUMNS = 53 as const;
-/** Approximate weekday label column; refined by DOM measure after paint. */
-export const HISTORY_CALENDAR_WEEKDAY_GUTTER_PX = 28 as const;
+/** Matches react-activity-calendar LABEL_MARGIN. */
+export const HISTORY_CALENDAR_LABEL_MARGIN_PX = 8 as const;
 export const HISTORY_CALENDAR_BLOCK_MARGIN = 3 as const;
+export const HISTORY_CALENDAR_FONT_SIZE = 12 as const;
 /** Smallest readable cell; below this we keep size and allow horizontal scroll. */
 export const HISTORY_CALENDAR_MIN_BLOCK_SIZE = 8 as const;
 
+const DAY_MS = 86_400_000;
+
+function parseUtcDate(date: string): Date {
+  const [y, m, d] = date.split('-').map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d!));
+}
+
+function toCalendarKey(date: Date): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** Weekday-label gutter: one CJK glyph ≈ fontSize, plus library label margin + 1px slack. */
+export function historyCalendarWeekdayGutterPx(fontSize: number = HISTORY_CALENDAR_FONT_SIZE): number {
+  return Math.ceil(fontSize) + HISTORY_CALENDAR_LABEL_MARGIN_PX + 1;
+}
+
 /**
- * Block size so the year calendar spans the card width.
- * No upper clamp — grows with the container. Floor at min readable size
- * (narrow cards then scroll instead of becoming unreadable).
+ * Week columns for the same year window as `toHistoryActivityCalendarData`
+ * (Sun week-start), matching react-activity-calendar's padding rules.
+ */
+export function historyCalendarWeekColumns(today: string, weekStart = 0): number {
+  const end = parseUtcDate(today);
+  const start = new Date(end.getTime() - 364 * DAY_MS);
+  const startDay = start.getUTCDay();
+  const pad = (startDay - weekStart + 7) % 7;
+  return Math.ceil((365 + pad) / 7);
+}
+
+/**
+ * Largest block size that fits the card without horizontal overflow.
+ * Floors only — never grows into a scrollbar. At min size, caller may scroll.
  *
- * Library width: `weeks * (blockSize + margin) - margin` (+ weekday gutter).
+ * Library calendar width: `weeks * (blockSize + margin) - margin` (+ weekday gutter).
  */
 export function fitHistoryCalendarBlockSize(
   containerWidth: number,
   weekColumns: number = HISTORY_CALENDAR_WEEK_COLUMNS,
-  weekdayGutterPx: number = HISTORY_CALENDAR_WEEKDAY_GUTTER_PX,
+  weekdayGutterPx: number = historyCalendarWeekdayGutterPx(),
 ): number {
   if (containerWidth <= 0 || weekColumns <= 0) {
     return HISTORY_CALENDAR_MIN_BLOCK_SIZE;
@@ -91,8 +122,8 @@ export function fitHistoryCalendarBlockSize(
 }
 
 /**
- * Scale current block size so rendered calendar width matches the card.
- * Prefers filling the card (may overflow slightly → scroll) over leaving a gap.
+ * If rendered content still overflows, shrink block size (floor) until it fits
+ * or the readable minimum is reached. Never grows — avoids mid/large-screen scrollbars.
  */
 export function refineHistoryCalendarBlockSize(
   containerWidth: number,
@@ -102,13 +133,11 @@ export function refineHistoryCalendarBlockSize(
   if (containerWidth <= 0 || contentWidth <= 0 || currentBlockSize <= 0) {
     return Math.max(HISTORY_CALENDAR_MIN_BLOCK_SIZE, currentBlockSize);
   }
-  const ideal = currentBlockSize * (containerWidth / contentWidth);
-  let next = Math.max(HISTORY_CALENDAR_MIN_BLOCK_SIZE, Math.floor(ideal));
-  const predicted = contentWidth * (next / currentBlockSize);
-  if (predicted < containerWidth - 1) {
-    next += 1;
+  if (contentWidth <= containerWidth) {
+    return currentBlockSize;
   }
-  return Math.max(HISTORY_CALENDAR_MIN_BLOCK_SIZE, next);
+  const ideal = currentBlockSize * (containerWidth / contentWidth);
+  return Math.max(HISTORY_CALENDAR_MIN_BLOCK_SIZE, Math.floor(ideal));
 }
 
 const LEVEL_1_MAX_EXCLUSIVE = 5 * 60;
@@ -136,20 +165,6 @@ export function engagedSecondsToActivityLevel(engagedSeconds: number): number {
 export function formatEngagedMinutesLabel(engagedSeconds: number): string {
   const minutes = Math.max(1, Math.ceil(engagedSeconds / 60));
   return `约 ${minutes} 分钟`;
-}
-
-const DAY_MS = 86_400_000;
-
-function parseUtcDate(date: string): Date {
-  const [y, m, d] = date.split('-').map(Number);
-  return new Date(Date.UTC(y!, m! - 1, d!));
-}
-
-function toCalendarKey(date: Date): string {
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(date.getUTCDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
 }
 
 function activityPoint(date: string, engagedSeconds: number): HistoryActivityPoint {

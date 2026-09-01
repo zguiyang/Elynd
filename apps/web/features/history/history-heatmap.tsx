@@ -2,7 +2,8 @@
 
 import 'react-activity-calendar/tooltips.css';
 
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useTheme } from 'next-themes';
+import { useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { ActivityCalendar, type ThemeInput } from 'react-activity-calendar';
 
 import {
@@ -23,12 +24,20 @@ import {
   toHistoryActivityCalendarData,
 } from '@/features/history/history-model';
 
+/** Mix against theme surfaces — never literal white (breaks dark). */
 const HISTORY_CALENDAR_THEME: ThemeInput = {
   light: [
-    'color-mix(in oklab, var(--on-surface) 12%, white)',
-    'color-mix(in oklab, var(--primary) 35%, white)',
-    'color-mix(in oklab, var(--primary) 55%, white)',
-    'color-mix(in oklab, var(--primary) 75%, white)',
+    'color-mix(in oklab, var(--on-surface) 12%, var(--background))',
+    'color-mix(in oklab, var(--primary) 35%, var(--background))',
+    'color-mix(in oklab, var(--primary) 55%, var(--background))',
+    'color-mix(in oklab, var(--primary) 75%, var(--background))',
+    'var(--primary)',
+  ],
+  dark: [
+    'color-mix(in oklab, var(--foreground) 10%, var(--background))',
+    'color-mix(in oklab, var(--primary) 40%, var(--background))',
+    'color-mix(in oklab, var(--primary) 60%, var(--background))',
+    'color-mix(in oklab, var(--primary) 80%, var(--background))',
     'var(--primary)',
   ],
 };
@@ -56,6 +65,13 @@ export function HistoryHeatmap({ today, activity }: HistoryHeatmapProps) {
   const daysInWindow = countHistoryActivityDays(activity, today);
   const frameRef = useRef<HTMLDivElement>(null);
   const [blockSize, setBlockSize] = useState<number>(HISTORY_CALENDAR_MIN_BLOCK_SIZE);
+  const { resolvedTheme } = useTheme();
+  const isClient = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+  const colorScheme = isClient && resolvedTheme === 'dark' ? 'dark' : 'light';
 
   useLayoutEffect(() => {
     const frame = frameRef.current;
@@ -132,7 +148,7 @@ export function HistoryHeatmap({ today, activity }: HistoryHeatmapProps) {
         <div ref={frameRef} className="w-full">
           <ActivityCalendar
             data={data}
-            colorScheme="light"
+            colorScheme={colorScheme}
             theme={HISTORY_CALENDAR_THEME}
             maxLevel={HISTORY_ACTIVITY_MAX_LEVEL}
             blockSize={blockSize}

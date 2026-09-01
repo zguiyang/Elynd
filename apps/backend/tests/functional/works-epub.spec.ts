@@ -359,7 +359,7 @@ describe('publish / unpublish status guards', () => {
     await app.request(`/api/admin/works/${created.id}`, {
       method: 'PATCH',
       headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sourceNote: 'guard-test-source', tags: ['story'] }),
+      body: JSON.stringify({ sources: ['demo'], tags: ['story'] }),
     });
 
     const publish = await publishRequest(created.id);

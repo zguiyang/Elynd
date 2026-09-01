@@ -149,7 +149,7 @@ function buildMetadataProvenance(
   return map;
 }
 
-function toWork(row: WorkRow, tags: string[]): Work {
+function toWork(row: WorkRow, tags: string[], sources: string[]): Work {
   return {
     id: row.id,
     title: row.title,
@@ -160,7 +160,7 @@ function toWork(row: WorkRow, tags: string[]): Work {
     visibility: row.visibility as Work['visibility'],
     originKind: row.originKind as Work['originKind'],
     tags: shouldHideTagsDuringProcessing(row) ? [] : tags,
-    sourceNote: row.sourceNote,
+    sources,
     coverAssetId: row.coverAssetId,
     publishedAt: row.publishedAt ? toIso(row.publishedAt) : null,
     createdAt: toIso(row.createdAt),
@@ -247,6 +247,26 @@ async function loadOriginFileAsset(workId: string): Promise<AdminOriginAsset | n
   };
 }
 
+/** Batch source names keyed by work id. */
+async function loadSourcesByWorkIds(workIds: string[]): Promise<Map<string, string[]>> {
+  if (workIds.length === 0) {
+    return new Map();
+  }
+  const rows = await db
+    .select({ workId: readingWorkSourceTable.workId, name: sourceTable.name })
+    .from(readingWorkSourceTable)
+    .innerJoin(sourceTable, eq(readingWorkSourceTable.sourceId, sourceTable.id))
+    .where(inArray(readingWorkSourceTable.workId, workIds))
+    .orderBy(asc(sourceTable.name));
+  const map = new Map<string, string[]>();
+  for (const row of rows) {
+    const list = map.get(row.workId) ?? [];
+    list.push(row.name);
+    map.set(row.workId, list);
+  }
+  return map;
+}
+
 async function loadSourcesForWork(workId: string): Promise<string[]> {
   const rows = await db
     .select({ name: sourceTable.name })
@@ -277,19 +297,19 @@ async function toAdminWork(row: WorkRow, parts?: PartRow[]): Promise<AdminWork> 
         ])
       ).get(row.id)
     : { audio: 'missing' as const };
-  const [tags, tagProvenance, category, categoryProvenance] = await Promise.all([
+  const [tags, tagProvenance, category, categoryProvenance, sources] = await Promise.all([
     loadTagsForWork(row.id),
     loadTagProvenanceForWork(row.id),
     loadCategoryForWork(row.id),
     loadCategoryProvenanceForWork(row.id),
+    loadSourcesForWork(row.id),
   ]);
   return {
-    ...toWork(row, tags),
+    ...toWork(row, tags, sources),
     derivedFreshness: freshness ?? { audio: 'missing' },
     originMeta: row.originMeta,
     originAsset: await loadOriginFileAsset(row.id),
     parts: partRows.map(toPart),
-    sources: await loadSourcesForWork(row.id),
     category,
     failedStep: failedStepOf(row),
     metadataProvenance: buildMetadataProvenance(row, { tagProvenance, categoryProvenance }),
@@ -307,14 +327,15 @@ async function toAdminWorkSummary(row: WorkRow): Promise<AdminWorkSummary> {
       ).get(row.id)
     : { audio: 'missing' as const };
   const partCount = await countPartsForWork(row.id);
-  const [tags, tagProvenance, category, categoryProvenance] = await Promise.all([
+  const [tags, tagProvenance, category, categoryProvenance, sources] = await Promise.all([
     loadTagsForWork(row.id),
     loadTagProvenanceForWork(row.id),
     loadCategoryForWork(row.id),
     loadCategoryProvenanceForWork(row.id),
+    loadSourcesForWork(row.id),
   ]);
   return {
-    ...toWork(row, tags),
+    ...toWork(row, tags, sources),
     derivedFreshness: freshness ?? { audio: 'missing' },
     originMeta: row.originMeta,
     originAsset: await loadOriginFileAsset(row.id),
@@ -426,7 +447,6 @@ export async function createAdminTextWork(input: CreateAdminTextWorkBody): Promi
       description: '',
       status: 'ready',
       originKind: 'admin_text',
-      sourceNote: '',
       publishedAt: null,
     })
     .returning();
@@ -489,7 +509,6 @@ async function insertEpubWorkAndAsset(input: {
       status: WORKFLOW_AUTO_CHAIN ? 'processing' : 'uploaded',
       originKind: 'admin_epub',
       originMeta: { originalFileName: input.fileName, reused: input.reused },
-      sourceNote: '',
       publishedAt: null,
     });
 
@@ -672,7 +691,6 @@ export async function updateWork(id: string, input: UpdateWorkBody): Promise<Adm
     patch.description = input.description;
     patch.descriptionProvenance = 'manual';
   }
-  if (input.sourceNote !== undefined) patch.sourceNote = input.sourceNote;
 
   if (
     input.tags === undefined &&
@@ -763,9 +781,10 @@ export async function publishWork(id: string): Promise<AdminWork> {
 
   const parts = await loadPartsForWork(id);
   const tags = await loadTagsForWork(id);
+  const sources = await loadSourcesForWork(id);
   const issues = getPublishWorkIssues({
     title: existing.title,
-    sourceNote: existing.sourceNote,
+    sources,
     tags,
     parts: parts.map((part) => ({ body: part.body })),
   });
@@ -982,6 +1001,7 @@ export async function listCatalogWorks(query: CatalogListQuery): Promise<Catalog
     .offset(offset);
 
   const tagsByWork = await loadTagsByWorkIds(rows.map((row) => row.id));
+  const sourcesByWork = await loadSourcesByWorkIds(rows.map((row) => row.id));
 
   const tagRows = await db
     .selectDistinct({ name: tagTable.name })
@@ -992,7 +1012,7 @@ export async function listCatalogWorks(query: CatalogListQuery): Promise<Catalog
     .orderBy(asc(tagTable.name));
 
   return {
-    items: rows.map((row) => toWork(row, tagsByWork.get(row.id) ?? [])),
+    items: rows.map((row) => toWork(row, tagsByWork.get(row.id) ?? [], sourcesByWork.get(row.id) ?? [])),
     pagination: buildPaginationMeta({
       page: query.page,
       pageSize: query.pageSize,
@@ -1015,7 +1035,8 @@ export async function getPublishedWork(id: string): Promise<Work> {
     throw new NotFoundError('Work');
   }
   const tags = await loadTagsForWork(id);
-  return toWork(row, tags);
+  const sources = await loadSourcesForWork(id);
+  return toWork(row, tags, sources);
 }
 
 export async function requirePublishedWorkWithParts(workId: string): Promise<{ work: WorkRow; parts: PartRow[] }> {

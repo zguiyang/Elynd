@@ -87,7 +87,7 @@ async function createPublishedWork(adminCookie: string, title: string, body: str
       await app.request(`/api/admin/works/${work.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', cookie: adminCookie },
-        body: JSON.stringify({ sourceNote: 'demo', tags: ['test'] }),
+        body: JSON.stringify({ sources: ['demo'], tags: ['test'] }),
       })
     ).status,
   ).toBe(200);

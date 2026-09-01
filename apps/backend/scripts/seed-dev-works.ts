@@ -9,7 +9,6 @@ import { readingWork as readingWorkTable } from '@gloaming/db';
 import { db } from '../src/db/index.ts';
 import { createAdminTextWork, publishWork, updateWork } from '../src/modules/works/service.ts';
 
-const SEED_SOURCE_NOTE = 'dev-seed:v1';
 const SEED_TITLE = '[dev-seed] Morning Light';
 
 const SEED_BODY = `The first light touched the water before anyone else was awake.
@@ -26,7 +25,7 @@ async function main() {
   const [existing] = await db
     .select({ id: readingWorkTable.id, status: readingWorkTable.status })
     .from(readingWorkTable)
-    .where(eq(readingWorkTable.sourceNote, SEED_SOURCE_NOTE))
+    .where(eq(readingWorkTable.title, SEED_TITLE))
     .limit(1);
 
   if (existing?.status === 'published') {
@@ -45,7 +44,7 @@ async function main() {
   }
 
   await updateWork(workId, {
-    sourceNote: SEED_SOURCE_NOTE,
+    sources: ['Dev Seed'],
     tags: ['story', 'daily-life'],
   });
 

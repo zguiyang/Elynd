@@ -263,7 +263,7 @@ describe('POST /api/admin/works/:id/workflow/retry', () => {
     await app.request(`/api/admin/works/${workId}`, {
       method: 'PATCH',
       headers: { Cookie: adminCookie, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sourceNote: 'test-source', tags: ['story'] }),
+      body: JSON.stringify({ sources: ['demo'], tags: ['story'] }),
     });
     await app.request(`/api/admin/works/${workId}/publish`, { method: 'POST', headers: { Cookie: adminCookie } });
 

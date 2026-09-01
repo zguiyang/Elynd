@@ -98,7 +98,7 @@ describe('Reader HTTP', () => {
     await app.request(`/api/admin/works/${work.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
-      body: JSON.stringify({ sourceNote: 'demo', tags: ['science'] }),
+      body: JSON.stringify({ sources: ['demo'], tags: ['science'] }),
     });
 
     const publish = await app.request(`/api/admin/works/${work.id}/publish`, {

@@ -100,7 +100,7 @@ describe('Shelf HTTP', () => {
           await app.request(`/api/admin/works/${work.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
-            body: JSON.stringify({ sourceNote: 'demo', tags: ['story'] }),
+            body: JSON.stringify({ sources: ['demo'], tags: ['story'] }),
           })
         ).status,
       ).toBe(200);

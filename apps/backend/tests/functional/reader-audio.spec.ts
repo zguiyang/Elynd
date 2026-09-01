@@ -171,7 +171,7 @@ describe('learner part audio', () => {
         await app.request(`/api/admin/works/${work.id}`, {
           method: 'PATCH',
           headers: { Cookie: admin.cookie, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sourceNote: 'demo', tags: ['daily'] }),
+          body: JSON.stringify({ sources: ['demo'], tags: ['daily'] }),
         })
       ).status,
     ).toBe(200);

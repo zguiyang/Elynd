@@ -55,7 +55,6 @@ export type PartKind = (typeof PART_KINDS)[number];
 export const WORK_TITLE_MAX = 200 as const;
 export const WORK_AUTHOR_MAX = 200 as const;
 export const WORK_DESCRIPTION_MAX = 2000 as const;
-export const WORK_SOURCE_NOTE_MAX = 500 as const;
 export const WORK_TAG_MAX_ITEMS = 10 as const;
 export const WORK_TAG_MAX_LEN = 40 as const;
 /** Max structured source names on a work (manual fill). */
@@ -87,7 +86,8 @@ export const workSchema = z.object({
   visibility: z.enum(WORK_VISIBILITIES),
   originKind: z.enum(WORK_ORIGIN_KINDS),
   tags: z.array(z.string()),
-  sourceNote: z.string(),
+  /** Channel providers (e.g. Project Gutenberg) — auto-filled from EPUB / taxonomy. */
+  sources: z.array(z.string()),
   coverAssetId: z.string().nullable(),
   publishedAt: z.union([z.string(), z.date()]).nullable(),
   createdAt: z.union([z.string(), z.date()]),
@@ -143,7 +143,6 @@ export const adminWorkSchema = workSchema.extend({
   originMeta: z.record(z.string(), z.unknown()).default({}),
   originAsset: adminOriginAssetSchema.nullable(),
   parts: z.array(partSchema),
-  sources: z.array(z.string()),
   category: z.string().nullable(),
   /** Step that failed when status is `failed` (from originMeta.failedStep). */
   failedStep: z.enum(WORKFLOW_STEPS).nullable(),
@@ -217,7 +216,6 @@ export const updateWorkBodySchema = z.object({
   description: z.string().max(WORK_DESCRIPTION_MAX).optional(),
   tags: tagsSchema.optional(),
   sources: sourcesSchema.optional(),
-  sourceNote: z.string().max(WORK_SOURCE_NOTE_MAX).optional(),
   category: z.string().max(WORK_CATEGORY_MAX).optional(),
 });
 
@@ -294,7 +292,7 @@ export type PublishWorkIssue = { path: string; message: string };
 
 export function getPublishWorkIssues(work: {
   title: string;
-  sourceNote: string;
+  sources: string[];
   tags: string[];
   parts: Array<{ body: string }>;
 }): PublishWorkIssue[] {
@@ -303,8 +301,8 @@ export function getPublishWorkIssues(work: {
   if (!work.title.trim()) {
     issues.push({ path: 'title', message: '发布前请填写标题' });
   }
-  if (!work.sourceNote.trim()) {
-    issues.push({ path: 'sourceNote', message: '发布前请填写来源说明' });
+  if (work.sources.length < 1) {
+    issues.push({ path: 'sources', message: '发布前请至少关联一个来源' });
   }
   if (work.tags.length < 1) {
     issues.push({ path: 'tags', message: '发布前请至少添加一个标签' });

@@ -6,6 +6,7 @@ import { ActivityCalendar, type ThemeInput } from 'react-activity-calendar';
 
 import {
   countHistoryActivityDays,
+  formatEngagedMinutesLabel,
   formatHistoryCalendarDate,
   HISTORY_ACTIVITY_MAX_LEVEL,
   HISTORY_MONTH_LABELS,
@@ -79,7 +80,7 @@ export function HistoryHeatmap({ today, activity }: HistoryHeatmapProps) {
               activity: {
                 text: (day) =>
                   day.level > 0
-                    ? `${formatHistoryCalendarDate(day.date)} · 读过`
+                    ? `${formatHistoryCalendarDate(day.date)} · ${formatEngagedMinutesLabel(day.count)}`
                     : `${formatHistoryCalendarDate(day.date)} · 未阅读`,
               },
             }}

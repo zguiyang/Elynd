@@ -1,4 +1,8 @@
-import type { ReadingHistoryData, ReadingHistoryWork } from '@gloaming/shared/api/reading-history';
+import type {
+  ReadingHistoryActivityDay,
+  ReadingHistoryData,
+  ReadingHistoryWork,
+} from '@gloaming/shared/api/reading-history';
 
 export type HistoryViewModel = {
   today: string;
@@ -8,7 +12,7 @@ export type HistoryViewModel = {
     completedWorks: number;
     lookedUpWords: number;
   };
-  activity: Array<{ date: string; level: 1 }>;
+  activity: ReadingHistoryActivityDay[];
   works: ReadingHistoryWork[];
 };
 
@@ -54,8 +58,35 @@ export const HISTORY_MONTH_LABELS = [
 /** Weekday labels Sun→Sat for react-activity-calendar. */
 export const HISTORY_WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'] as const;
 
-/** Binary activity calendar uses full intensity when a day was read. */
+/** Deepest heatmap cell: ≥ 15 minutes engaged. */
 export const HISTORY_ACTIVITY_MAX_LEVEL = 4 as const;
+
+const LEVEL_1_MAX_EXCLUSIVE = 5 * 60;
+const LEVEL_2_MAX_EXCLUSIVE = 10 * 60;
+const LEVEL_3_MAX_EXCLUSIVE = 15 * 60;
+
+/** Map engaged seconds → calendar color level (0–4). Max depth at ≥15 minutes. */
+export function engagedSecondsToActivityLevel(engagedSeconds: number): number {
+  if (engagedSeconds <= 0) {
+    return 0;
+  }
+  if (engagedSeconds < LEVEL_1_MAX_EXCLUSIVE) {
+    return 1;
+  }
+  if (engagedSeconds < LEVEL_2_MAX_EXCLUSIVE) {
+    return 2;
+  }
+  if (engagedSeconds < LEVEL_3_MAX_EXCLUSIVE) {
+    return 3;
+  }
+  return HISTORY_ACTIVITY_MAX_LEVEL;
+}
+
+/** Whole minutes for tooltips (ceil so 30s still shows as 1 minute). */
+export function formatEngagedMinutesLabel(engagedSeconds: number): string {
+  const minutes = Math.max(1, Math.ceil(engagedSeconds / 60));
+  return `约 ${minutes} 分钟`;
+}
 
 const DAY_MS = 86_400_000;
 
@@ -71,11 +102,12 @@ function toCalendarKey(date: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-function activityPoint(date: string, active: boolean): HistoryActivityPoint {
+function activityPoint(date: string, engagedSeconds: number): HistoryActivityPoint {
+  const level = engagedSecondsToActivityLevel(engagedSeconds);
   return {
     date,
-    count: active ? 1 : 0,
-    level: active ? HISTORY_ACTIVITY_MAX_LEVEL : 0,
+    count: Math.max(0, engagedSeconds),
+    level,
   };
 }
 
@@ -85,24 +117,34 @@ function activityPoint(date: string, active: boolean): HistoryActivityPoint {
  */
 export function toHistoryActivityCalendarData(
   today: string,
-  activity: ReadonlyArray<{ date: string }>,
+  activity: ReadonlyArray<Pick<ReadingHistoryActivityDay, 'date' | 'engagedSeconds'>>,
 ): HistoryActivityPoint[] {
   const end = parseUtcDate(today);
   const startKey = toCalendarKey(new Date(end.getTime() - 364 * DAY_MS));
-  const activeDates = new Set(activity.map((day) => day.date).filter((date) => date >= startKey && date <= today));
+  const byDate = new Map(
+    activity
+      .filter((day) => day.date >= startKey && day.date <= today && day.engagedSeconds > 0)
+      .map((day) => [day.date, day.engagedSeconds] as const),
+  );
 
   const points = new Map<string, HistoryActivityPoint>();
-  points.set(startKey, activityPoint(startKey, activeDates.has(startKey)));
-  for (const date of activeDates) {
-    points.set(date, activityPoint(date, true));
+  points.set(startKey, activityPoint(startKey, byDate.get(startKey) ?? 0));
+  for (const [date, seconds] of byDate) {
+    points.set(date, activityPoint(date, seconds));
   }
-  points.set(today, activityPoint(today, activeDates.has(today)));
+  points.set(today, activityPoint(today, byDate.get(today) ?? 0));
 
   return [...points.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
-export function countHistoryActivityDays(activity: ReadonlyArray<{ date: string }>, today: string): number {
+export function countHistoryActivityDays(
+  activity: ReadonlyArray<Pick<ReadingHistoryActivityDay, 'date' | 'engagedSeconds'>>,
+  today: string,
+): number {
   const end = parseUtcDate(today);
   const startKey = toCalendarKey(new Date(end.getTime() - 364 * DAY_MS));
-  return activity.reduce((count, day) => count + (day.date >= startKey && day.date <= today ? 1 : 0), 0);
+  return activity.reduce(
+    (count, day) => count + (day.engagedSeconds > 0 && day.date >= startKey && day.date <= today ? 1 : 0),
+    0,
+  );
 }

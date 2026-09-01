@@ -10,7 +10,6 @@ export const NAV_COPY = {
   historyShort: '历史',
   more: '更多',
   signIn: '登录',
-  searchPlaceholder: '搜索…',
   account: '账户菜单',
   signOut: '退出登录',
   admin: '管理后台',

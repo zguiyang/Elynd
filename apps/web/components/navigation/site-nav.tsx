@@ -1,37 +1,14 @@
 'use client';
 
-import { SearchIcon } from 'lucide-react';
 import { useState } from 'react';
 
 import { BrandMark } from '@/components/brand-mark';
 import { AccountMenu, useNavAccount } from '@/components/navigation/account-menu';
 import { DesktopNav } from '@/components/navigation/desktop-nav';
 import { NAV_COPY } from '@/components/navigation/nav-config';
-import { Input } from '@/components/ui/input';
+import { ThemeModeNavButton } from '@/components/navigation/theme-mode-control';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuthDialog } from '@/features/auth';
-import { cn } from '@/lib/utils';
-
-function SearchPlaceholder({ className }: { className?: string }) {
-  return (
-    <div className={cn('relative', className)}>
-      <SearchIcon
-        className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-        strokeWidth={1.5}
-        aria-hidden
-      />
-      <Input
-        type="search"
-        readOnly
-        tabIndex={-1}
-        placeholder={NAV_COPY.searchPlaceholder}
-        aria-label={NAV_COPY.searchPlaceholder}
-        className="h-9 w-48 cursor-default rounded-md border-border bg-card pl-9 text-sm shadow-none focus-visible:border-border focus-visible:ring-0"
-        onFocus={(event) => event.currentTarget.blur()}
-      />
-    </div>
-  );
-}
 
 /**
  * Top site chrome for Landing + AppShell.
@@ -52,12 +29,12 @@ export function SiteNav() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 md:gap-6">
+        <div className="flex items-center gap-2 md:gap-3">
           {isPending ? (
-            <Skeleton className="size-9 rounded-full md:h-9 md:w-40 md:rounded-md" />
+            <Skeleton className="size-9 rounded-full" />
           ) : user ? (
             <>
-              <SearchPlaceholder className="hidden md:block" />
+              <ThemeModeNavButton />
               <AccountMenu
                 username={username}
                 email={email}

@@ -12,7 +12,6 @@ import {
   NAV_COPY,
   type PrimaryNavId,
 } from '@/components/navigation/nav-config';
-import { ThemeModeSheetSection } from '@/components/navigation/theme-mode-control';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 
@@ -31,8 +30,6 @@ function MoreSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open:
           <SheetDescription>{NAV_COPY.moreSheetDescription}</SheetDescription>
         </SheetHeader>
         <div className="flex flex-col gap-3 px-3 py-4">
-          <ThemeModeSheetSection />
-          <div className="mx-2.5 h-px bg-border" role="separator" />
           <MorePlaceholderRow label={NAV_COPY.morePlaceholderAccount} />
           <p className="px-2.5 text-xs leading-5 text-muted-foreground">{NAV_COPY.moreFutureHint}</p>
         </div>

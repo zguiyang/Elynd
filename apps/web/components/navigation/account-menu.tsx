@@ -5,7 +5,6 @@ import { LogOutIcon, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { NAV_COPY } from '@/components/navigation/nav-config';
-import { ThemeModeMenuItems } from '@/components/navigation/theme-mode-control';
 import { ADMIN_ROUTES, AUTH_ADMIN_ROLE } from '@/constants';
 import { authClient } from '@/lib/auth';
 import { cn } from '@/lib/utils';
@@ -126,8 +125,6 @@ export function AccountMenu({
                 <div className="truncate text-xs text-muted-foreground">{email}</div>
               </div>
             </div>
-            <div className="mx-1 my-1 h-px bg-border" role="separator" />
-            <ThemeModeMenuItems />
             <div className="mx-1 my-1 h-px bg-border" role="separator" />
             {isAdmin ? (
               <Menu.Item

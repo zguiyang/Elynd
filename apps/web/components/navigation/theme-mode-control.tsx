@@ -1,7 +1,7 @@
 'use client';
 
 import { Menu } from '@base-ui/react/menu';
-import { CheckIcon } from 'lucide-react';
+import { CheckIcon, MoonIcon, SunIcon } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useSyncExternalStore } from 'react';
 
@@ -44,72 +44,65 @@ const menuItemClass = cn(
   'data-highlighted:bg-muted',
 );
 
-/** AccountMenu — Base UI Menu radio group for theme mode. */
-export function ThemeModeMenuItems() {
-  const { theme, setTheme } = useTheme();
+/** SiteNav — icon button left of avatar; menu for light / dark / system. */
+export function ThemeModeNavButton() {
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const isClient = useIsClient();
   const current = resolveThemeMode(theme, isClient);
+  const Icon = isClient && resolvedTheme === 'dark' ? SunIcon : MoonIcon;
 
   return (
-    <Menu.Group>
-      <Menu.GroupLabel className="px-2.5 pt-1.5 pb-1 text-xs font-medium text-muted-foreground">
-        {NAV_COPY.themeAppearance}
-      </Menu.GroupLabel>
-      <Menu.RadioGroup
-        value={current}
-        onValueChange={(value) => {
-          if (value === 'light' || value === 'dark' || value === 'system') {
-            setTheme(value);
-          }
-        }}
+    <Menu.Root>
+      <Menu.Trigger
+        className={cn(
+          'flex size-9 items-center justify-center rounded-full text-muted-foreground',
+          'outline-none transition-opacity duration-300 ease-out-soft hover:opacity-80',
+          'focus-visible:ring-3 focus-visible:ring-ring/50',
+        )}
+        aria-label={NAV_COPY.themeAppearance}
       >
-        {THEME_MODE_OPTIONS.map((option) => (
-          <Menu.RadioItem
-            key={option.value}
-            value={option.value}
-            label={option.label}
-            aria-label={option.label}
-            className={menuItemClass}
-          >
-            {option.label}
-            <Menu.RadioItemIndicator className="flex size-4 items-center justify-center text-primary">
-              <CheckIcon className="size-4" strokeWidth={2} aria-hidden />
-            </Menu.RadioItemIndicator>
-          </Menu.RadioItem>
-        ))}
-      </Menu.RadioGroup>
-    </Menu.Group>
-  );
-}
-
-/** Mobile More Sheet — compact theme mode list. */
-export function ThemeModeSheetSection() {
-  const { theme, setTheme } = useTheme();
-  const isClient = useIsClient();
-  const current = resolveThemeMode(theme, isClient);
-
-  return (
-    <div className="flex flex-col gap-1">
-      <p className="px-2.5 pt-1 text-xs font-medium tracking-wide text-muted-foreground">{NAV_COPY.themeAppearance}</p>
-      {THEME_MODE_OPTIONS.map((option) => {
-        const isSelected = current === option.value;
-        return (
-          <button
-            key={option.value}
-            type="button"
+        <Icon className="size-5" strokeWidth={1.5} aria-hidden />
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Positioner className="z-50 outline-none" sideOffset={8} align="end">
+          <Menu.Popup
             className={cn(
-              'flex items-center justify-between rounded-xl px-2.5 py-3 text-sm transition-colors duration-200 ease-out-soft',
-              isSelected ? 'bg-muted text-foreground' : 'text-foreground hover:bg-muted/60',
+              'min-w-44 rounded-xl bg-card p-1 shadow-card ring-1 ring-foreground/5 outline-none',
+              'transition-opacity duration-200 ease-out-soft',
+              'data-starting-style:opacity-0 data-ending-style:opacity-0',
             )}
-            aria-label={option.label}
-            aria-pressed={isSelected}
-            onClick={() => setTheme(option.value)}
           >
-            {option.label}
-            {isSelected ? <CheckIcon className="size-4 text-primary" strokeWidth={2} aria-hidden /> : null}
-          </button>
-        );
-      })}
-    </div>
+            <Menu.Group>
+              <Menu.GroupLabel className="px-2.5 pt-1.5 pb-1 text-xs font-medium text-muted-foreground">
+                {NAV_COPY.themeAppearance}
+              </Menu.GroupLabel>
+              <Menu.RadioGroup
+                value={current}
+                onValueChange={(value) => {
+                  if (value === 'light' || value === 'dark' || value === 'system') {
+                    setTheme(value);
+                  }
+                }}
+              >
+                {THEME_MODE_OPTIONS.map((option) => (
+                  <Menu.RadioItem
+                    key={option.value}
+                    value={option.value}
+                    label={option.label}
+                    aria-label={option.label}
+                    className={menuItemClass}
+                  >
+                    {option.label}
+                    <Menu.RadioItemIndicator className="flex size-4 items-center justify-center text-primary">
+                      <CheckIcon className="size-4" strokeWidth={2} aria-hidden />
+                    </Menu.RadioItemIndicator>
+                  </Menu.RadioItem>
+                ))}
+              </Menu.RadioGroup>
+            </Menu.Group>
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
   );
 }

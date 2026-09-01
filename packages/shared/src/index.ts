@@ -7,6 +7,7 @@ export * from './api/llm-config-keys.ts';
 export * from './api/pagination.ts';
 export * from './api/reader.ts';
 export * from './api/reading-history.ts';
+export * from './api/reading-stats.ts';
 export * from './api/shelf.ts';
 export * from './api/translate.ts';
 export * from './api/tts.ts';

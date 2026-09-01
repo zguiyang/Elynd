@@ -40,7 +40,9 @@ There are **no production users** and **no historical data compatibility** requi
 
 **Key fields:** `id`, `title`, `description`, `language`, `status`, `visibility`, `owner_user_id` (null = official catalog), `origin_kind`, `origin_meta`, `tags`, `cover_asset_id`, `published_at`, timestamps. Channel providers live on the `source` dimension via `reading_work_source` (not a free-text note on the work).
 
-**Forbidden on Work:** `level`, `seriesId`, `estimatedMinutes`, `body`.
+**Forbidden on Work:** `level`, `seriesId`, `body` (legacy Article concepts).
+
+**Derived stats (allowed):** `wordCount`, `estimatedMinutes`, `suggestedVocabSize`, `difficultyScore`, `statsProvenance` — computed at parse time or set manually by admin; not CEFR/Article `level`.
 
 ### ReadingPart (`reading_part`)
 

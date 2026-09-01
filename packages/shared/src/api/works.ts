@@ -7,6 +7,7 @@ import {
   paginationMetaSchema,
   paginationQuerySchema,
 } from '@gloaming/shared/api/pagination';
+import { DIFFICULTY_SCORE_MAX, DIFFICULTY_SCORE_MIN, WORK_STATS_PROVENANCES } from '@gloaming/shared/api/reading-stats';
 
 /**
  * Work lifecycle statuses.
@@ -89,6 +90,11 @@ export const workSchema = z.object({
   /** Channel providers (e.g. Project Gutenberg) — auto-filled from EPUB / taxonomy. */
   sources: z.array(z.string()),
   coverAssetId: z.string().nullable(),
+  wordCount: z.number().int().nonnegative().nullable(),
+  estimatedMinutes: z.number().int().nonnegative().nullable(),
+  suggestedVocabSize: z.number().int().positive().nullable(),
+  difficultyScore: z.number().int().min(DIFFICULTY_SCORE_MIN).max(DIFFICULTY_SCORE_MAX).nullable(),
+  statsProvenance: z.enum(WORK_STATS_PROVENANCES).nullable(),
   publishedAt: z.union([z.string(), z.date()]).nullable(),
   createdAt: z.union([z.string(), z.date()]),
   updatedAt: z.union([z.string(), z.date()]),
@@ -110,7 +116,10 @@ export const partSchema = z.object({
 export type Part = z.infer<typeof partSchema>;
 
 /** Compact part summary (no body) for reader navigation. */
-export const partSummarySchema = partSchema.omit({ body: true });
+export const partSummarySchema = partSchema.omit({ body: true }).extend({
+  wordCount: z.number().int().nonnegative().nullable(),
+  estimatedMinutes: z.number().int().nonnegative().nullable(),
+});
 
 export type PartSummary = z.infer<typeof partSummarySchema>;
 
@@ -217,6 +226,8 @@ export const updateWorkBodySchema = z.object({
   tags: tagsSchema.optional(),
   sources: sourcesSchema.optional(),
   category: z.string().max(WORK_CATEGORY_MAX).optional(),
+  suggestedVocabSize: z.number().int().positive().nullable().optional(),
+  difficultyScore: z.number().int().min(DIFFICULTY_SCORE_MIN).max(DIFFICULTY_SCORE_MAX).nullable().optional(),
 });
 
 export type UpdateWorkBody = z.infer<typeof updateWorkBodySchema>;

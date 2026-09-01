@@ -289,8 +289,18 @@ export const catalogListQuerySchema = paginationQuerySchema.extend({
 
 export type CatalogListQuery = z.infer<typeof catalogListQuerySchema>;
 
+/**
+ * Catalog list row — includes `partCount` so discover cards can show chapter
+ * counts without shipping part bodies.
+ */
+export const catalogWorkSchema = workSchema.extend({
+  partCount: z.number().int().nonnegative(),
+});
+
+export type CatalogWork = z.infer<typeof catalogWorkSchema>;
+
 export const catalogListDataSchema = z.object({
-  items: z.array(workSchema),
+  items: z.array(catalogWorkSchema),
   pagination: paginationMetaSchema,
   tags: z.array(z.string()),
 });

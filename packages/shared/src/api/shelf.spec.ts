@@ -19,6 +19,8 @@ describe('shelf api contracts', () => {
           status: 'in_progress',
           currentPartId: 'p1',
           progressRatio: 40,
+          completedThroughSortOrder: 0,
+          totalPartCount: 3,
           lastReadAt: '2026-08-21T00:00:00.000Z',
           completedAt: null,
         },

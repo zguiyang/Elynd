@@ -406,7 +406,7 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
   const parsed = isEpub ? (work.originMeta.parsed as Record<string, unknown> | undefined) : undefined;
   const publishIssues = getPublishWorkIssues({
     title: work.title,
-    sourceNote: work.sourceNote,
+    sources: work.sources,
     tags: work.tags,
     parts: work.parts.map((part) => ({ body: part.body })),
   });
@@ -668,7 +668,7 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
             <ul className="space-y-2 text-sm">
               {[
                 { ok: Boolean(work.title.trim()), label: '标题已填写' },
-                { ok: Boolean(work.sourceNote.trim()), label: '来源说明已填写' },
+                { ok: work.sources.length >= 1, label: '至少一个来源' },
                 { ok: work.tags.length >= 1, label: '至少一个标签' },
                 { ok: work.parts.some((part) => part.body.trim()), label: '正文内容存在' },
               ].map((item) => (

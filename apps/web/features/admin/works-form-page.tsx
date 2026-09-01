@@ -36,7 +36,6 @@ function WorksFormEditor({ workId, work }: { workId: string; work: AdminWorkView
   const [title, setTitle] = useState(work.title);
   const [author, setAuthor] = useState(work.author);
   const [description, setDescription] = useState(work.description);
-  const [sourceNote, setSourceNote] = useState(work.sourceNote);
   const [tags, setTags] = useState<string[]>(work.tags);
   const [sources, setSources] = useState<string[]>(work.sources);
   const [category, setCategory] = useState<string | null>(work.category);
@@ -50,7 +49,6 @@ function WorksFormEditor({ workId, work }: { workId: string; work: AdminWorkView
         tags,
         sources,
         category: category ?? '',
-        sourceNote: sourceNote.trim(),
       });
       await invalidate(workId);
       toast.success('已保存');
@@ -106,10 +104,6 @@ function WorksFormEditor({ workId, work }: { workId: string; work: AdminWorkView
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="sourceNote">来源说明（发布必填）</Label>
-          <Input id="sourceNote" value={sourceNote} onChange={(e) => setSourceNote(e.target.value)} />
-        </div>
-        <div className="space-y-2">
           <Label htmlFor="tags">标签（发布至少一个）</Label>
           <TaxonomyMultiPicker kind="tag" value={tags} onChange={setTags} placeholder="搜索选择标签…" />
         </div>
@@ -118,7 +112,7 @@ function WorksFormEditor({ workId, work }: { workId: string; work: AdminWorkView
           <TaxonomySelect value={category} onChange={setCategory} placeholder="选择分类…（留空则不分类）" allowClear />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="sources">来源（可选，留空表示未知）</Label>
+          <Label htmlFor="sources">来源（发布至少一个）</Label>
           <TaxonomyMultiPicker kind="source" value={sources} onChange={setSources} placeholder="搜索选择来源…" />
         </div>
 

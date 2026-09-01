@@ -34,8 +34,6 @@ export type BookDetail = {
   teaser: string;
   sourceLabel: '官方';
   languageLabel: string;
-  /** Free-text provenance from catalog `sourceNote`. */
-  sourceNote: string;
   /** Cover URL (`/api/assets/:id`) or mock external URL. */
   coverImageUrl: string | null;
   shelfStatus: BookDetailShelfStatus;

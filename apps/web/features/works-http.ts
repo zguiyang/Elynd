@@ -11,7 +11,7 @@ export type WorkView = {
   visibility: Work['visibility'];
   originKind: Work['originKind'];
   tags: string[];
-  sourceNote: string;
+  sources: string[];
   coverAssetId: string | null;
   publishedAt: string | null;
   createdAt: string;
@@ -23,7 +23,6 @@ export type AdminWorkView = WorkView & {
   originMeta: AdminWork['originMeta'];
   originAsset: AdminOriginAsset | null;
   parts: AdminWork['parts'];
-  sources: AdminWork['sources'];
   category: AdminWork['category'];
   failedStep: AdminWork['failedStep'];
   metadataProvenance: AdminWork['metadataProvenance'];
@@ -54,7 +53,7 @@ export function normalizeWork(raw: Work): WorkView {
     visibility: raw.visibility,
     originKind: raw.originKind,
     tags: raw.tags,
-    sourceNote: raw.sourceNote,
+    sources: raw.sources,
     coverAssetId: raw.coverAssetId,
     publishedAt: raw.publishedAt == null ? null : toIso(raw.publishedAt),
     createdAt: toIso(raw.createdAt),
@@ -69,7 +68,6 @@ export function normalizeAdminWork(raw: AdminWork): AdminWorkView {
     originMeta: raw.originMeta,
     originAsset: raw.originAsset,
     parts: raw.parts,
-    sources: raw.sources,
     category: raw.category,
     failedStep: raw.failedStep,
     metadataProvenance: raw.metadataProvenance,

@@ -22,7 +22,7 @@ const SUMMARY_ITEMS: ReadonlyArray<{
 export function HistorySummary({ portrait }: { portrait: HistoryViewModel['portrait'] }) {
   return (
     <>
-      <section className="mx-auto hidden w-full max-w-reading-column items-center justify-center gap-10 border-b border-border/50 py-8 md:flex">
+      <section className="hidden w-full items-center justify-center gap-10 border-b border-border/50 py-8 md:flex">
         {SUMMARY_ITEMS.map((item) => (
           <div key={item.key} className="flex flex-col items-center gap-1">
             <span className="text-[11px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">

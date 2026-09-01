@@ -23,7 +23,7 @@ export function HistoryPage() {
 
   if (historyQuery.isPending) {
     return (
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-10">
+      <div className="flex w-full flex-col gap-10">
         <HistoryHeader />
         <HistorySkeleton />
       </div>
@@ -32,7 +32,7 @@ export function HistoryPage() {
 
   if (historyQuery.isError) {
     return (
-      <div className="mx-auto flex w-full max-w-5xl flex-col items-center py-16 text-center">
+      <div className="flex w-full flex-col items-center py-16 text-center">
         <HistoryHeader />
         <h2 className="font-heading text-2xl font-semibold">无法加载阅读历史</h2>
         <p className="mt-4 text-muted-foreground">{formatHistoryApiError(historyQuery.error)}</p>
@@ -50,7 +50,7 @@ export function HistoryPage() {
     <div
       className={cn(
         'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700',
-        'mx-auto flex w-full max-w-5xl flex-col',
+        'flex w-full flex-col',
         isEmpty ? 'min-h-[70dvh] justify-center' : '',
       )}
     >

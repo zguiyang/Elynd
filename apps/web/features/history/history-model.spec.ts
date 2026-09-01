@@ -3,9 +3,12 @@ import { describe, expect, it } from 'vitest';
 import {
   countHistoryActivityDays,
   engagedSecondsToActivityLevel,
+  fitHistoryCalendarBlockSize,
   formatEngagedMinutesLabel,
   formatHistoryCalendarDate,
   HISTORY_ACTIVITY_MAX_LEVEL,
+  HISTORY_CALENDAR_MIN_BLOCK_SIZE,
+  refineHistoryCalendarBlockSize,
   toHistoryActivityCalendarData,
 } from './history-model';
 
@@ -29,6 +32,19 @@ describe('history-model activity calendar', () => {
   it('formats engaged minutes for tooltips', () => {
     expect(formatEngagedMinutesLabel(30)).toBe('约 1 分钟');
     expect(formatEngagedMinutesLabel(900)).toBe('约 15 分钟');
+  });
+
+  it('grows calendar block size with container width and only clamps the minimum', () => {
+    expect(fitHistoryCalendarBlockSize(400)).toBe(HISTORY_CALENDAR_MIN_BLOCK_SIZE);
+    expect(fitHistoryCalendarBlockSize(800)).toBeGreaterThan(HISTORY_CALENDAR_MIN_BLOCK_SIZE);
+    expect(fitHistoryCalendarBlockSize(1200)).toBeGreaterThan(fitHistoryCalendarBlockSize(800));
+  });
+
+  it('refines block size so rendered width tracks the card', () => {
+    expect(refineHistoryCalendarBlockSize(1000, 800, 12)).toBe(15);
+    expect(refineHistoryCalendarBlockSize(400, 800, 12)).toBe(HISTORY_CALENDAR_MIN_BLOCK_SIZE);
+    // Prefer bumping one step over leaving a visible gap.
+    expect(refineHistoryCalendarBlockSize(1000, 990, 15)).toBe(16);
   });
 
   it('anchors a year window and colors cells by engaged duration', () => {

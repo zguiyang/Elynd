@@ -61,6 +61,56 @@ export const HISTORY_WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五',
 /** Deepest heatmap cell: ≥ 15 minutes engaged. */
 export const HISTORY_ACTIVITY_MAX_LEVEL = 4 as const;
 
+/** Fallback week-column count when measuring before paint (~1y, Sun week-start). */
+export const HISTORY_CALENDAR_WEEK_COLUMNS = 53 as const;
+/** Approximate weekday label column; refined by DOM measure after paint. */
+export const HISTORY_CALENDAR_WEEKDAY_GUTTER_PX = 28 as const;
+export const HISTORY_CALENDAR_BLOCK_MARGIN = 3 as const;
+/** Smallest readable cell; below this we keep size and allow horizontal scroll. */
+export const HISTORY_CALENDAR_MIN_BLOCK_SIZE = 8 as const;
+
+/**
+ * Block size so the year calendar spans the card width.
+ * No upper clamp — grows with the container. Floor at min readable size
+ * (narrow cards then scroll instead of becoming unreadable).
+ *
+ * Library width: `weeks * (blockSize + margin) - margin` (+ weekday gutter).
+ */
+export function fitHistoryCalendarBlockSize(
+  containerWidth: number,
+  weekColumns: number = HISTORY_CALENDAR_WEEK_COLUMNS,
+  weekdayGutterPx: number = HISTORY_CALENDAR_WEEKDAY_GUTTER_PX,
+): number {
+  if (containerWidth <= 0 || weekColumns <= 0) {
+    return HISTORY_CALENDAR_MIN_BLOCK_SIZE;
+  }
+  const margin = HISTORY_CALENDAR_BLOCK_MARGIN;
+  const usable = Math.max(0, containerWidth - weekdayGutterPx);
+  const block = Math.floor((usable - margin * (weekColumns - 1)) / weekColumns);
+  return Math.max(HISTORY_CALENDAR_MIN_BLOCK_SIZE, block);
+}
+
+/**
+ * Scale current block size so rendered calendar width matches the card.
+ * Prefers filling the card (may overflow slightly → scroll) over leaving a gap.
+ */
+export function refineHistoryCalendarBlockSize(
+  containerWidth: number,
+  contentWidth: number,
+  currentBlockSize: number,
+): number {
+  if (containerWidth <= 0 || contentWidth <= 0 || currentBlockSize <= 0) {
+    return Math.max(HISTORY_CALENDAR_MIN_BLOCK_SIZE, currentBlockSize);
+  }
+  const ideal = currentBlockSize * (containerWidth / contentWidth);
+  let next = Math.max(HISTORY_CALENDAR_MIN_BLOCK_SIZE, Math.floor(ideal));
+  const predicted = contentWidth * (next / currentBlockSize);
+  if (predicted < containerWidth - 1) {
+    next += 1;
+  }
+  return Math.max(HISTORY_CALENDAR_MIN_BLOCK_SIZE, next);
+}
+
 const LEVEL_1_MAX_EXCLUSIVE = 5 * 60;
 const LEVEL_2_MAX_EXCLUSIVE = 10 * 60;
 const LEVEL_3_MAX_EXCLUSIVE = 15 * 60;

@@ -39,7 +39,7 @@ export function HistoryWorks({ works }: { works: HistoryViewModel['works'] }) {
   const sorted = [...works].sort((a, b) => b.date.localeCompare(a.date) || a.title.localeCompare(b.title));
 
   return (
-    <section className="mx-auto w-full max-w-reading-column space-y-4 md:space-y-6">
+    <section className="w-full space-y-4 md:space-y-6">
       <h2 className="font-heading text-xl font-semibold text-foreground md:text-2xl">读过的作品</h2>
       <ul>
         {sorted.map((item) => {

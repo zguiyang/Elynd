@@ -11,7 +11,7 @@ export const AUTH_ROUTES = {
   /** Discover book detail (catalog + shelf hybrid). */
   bookDetail: (id: string) => `/discover/${id}` as const,
   history: '/reading-history',
-  /** Immersive reader (mock UI; future book/chapter API). */
+  /** Immersive reader. */
   read: '/read',
   readBook: (id: string, partId?: string) =>
     partId ? (`/read/${id}?part=${encodeURIComponent(partId)}` as const) : (`/read/${id}` as const),

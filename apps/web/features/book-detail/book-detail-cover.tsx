@@ -31,8 +31,8 @@ export function BookDetailCover({ title, tags, coverImageUrl, className }: BookD
         aria-hidden
       />
       {canShowImage ? (
-        // External Stitch mock URLs — plain img avoids next/image remote config for prototype phase.
-        // eslint-disable-next-line @next/next/no-img-element -- mock cover URLs from temp prototypes
+        // Asset URLs may be same-origin `/api/assets/:id` — plain img avoids next/image remote config.
+        // eslint-disable-next-line @next/next/no-img-element -- cover assets served via API proxy
         <img
           src={coverImageUrl!}
           alt=""

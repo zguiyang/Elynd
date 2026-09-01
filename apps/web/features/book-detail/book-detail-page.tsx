@@ -3,7 +3,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowLeftIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { AUTH_ROUTES } from '@/constants';
@@ -13,12 +12,6 @@ import {
   useBookDetailQuery,
 } from '@/features/book-detail/book-detail-api';
 import { BookDetailHero, BookDetailMobileProgress, BookDetailStickyCta } from '@/features/book-detail/book-detail-hero';
-import {
-  BOOK_DETAIL_DEMO_IDS,
-  getRelatedBooks,
-  isBookDetailDemoId,
-  resolveBookDetail,
-} from '@/features/book-detail/book-detail-mock';
 import type { BookDetail } from '@/features/book-detail/book-detail-model';
 import { BookDetailRelated } from '@/features/book-detail/book-detail-related';
 import { BookDetailStats } from '@/features/book-detail/book-detail-stats';
@@ -42,28 +35,12 @@ function BookDetailSkeleton() {
   );
 }
 
-function BookDetailView({
-  book,
-  related,
-  showDemoChrome,
-}: {
-  book: BookDetail;
-  related: BookDetail[];
-  showDemoChrome: boolean;
-}) {
+function BookDetailView({ book, related }: { book: BookDetail; related: BookDetail[] }) {
   const queryClient = useQueryClient();
   const addToShelf = useAddToShelfMutation();
-  const [hasDemoShelfOverride, setHasDemoShelfOverride] = useState(false);
-  const isOnShelf = showDemoChrome
-    ? hasDemoShelfOverride || book.shelfStatus === 'on_shelf'
-    : book.shelfStatus === 'on_shelf';
+  const isOnShelf = book.shelfStatus === 'on_shelf';
 
   function handleAddToShelf() {
-    if (showDemoChrome) {
-      setHasDemoShelfOverride(true);
-      toast.success('已加入书架（界面预览）');
-      return;
-    }
     addToShelf.mutate(book.id, {
       onSuccess: async () => {
         toast.success('已加入书架');
@@ -80,39 +57,6 @@ function BookDetailView({
         'mx-auto flex w-full max-w-5xl flex-col gap-8 pb-36 md:gap-14 md:pb-8',
       )}
     >
-      {showDemoChrome ? (
-        <p className="text-center text-xs text-muted-foreground">
-          界面预览（假数据）· 状态示例：
-          <Link
-            href={AUTH_ROUTES.bookDetail(BOOK_DETAIL_DEMO_IDS.unread)}
-            className="mx-1 underline-offset-2 hover:text-primary hover:underline"
-          >
-            未读
-          </Link>
-          /
-          <Link
-            href={AUTH_ROUTES.bookDetail(BOOK_DETAIL_DEMO_IDS.inProgress)}
-            className="mx-1 underline-offset-2 hover:text-primary hover:underline"
-          >
-            有进度
-          </Link>
-          /
-          <Link
-            href={AUTH_ROUTES.bookDetail(BOOK_DETAIL_DEMO_IDS.completed)}
-            className="mx-1 underline-offset-2 hover:text-primary hover:underline"
-          >
-            已读完
-          </Link>
-          /
-          <Link
-            href={AUTH_ROUTES.bookDetail(BOOK_DETAIL_DEMO_IDS.unavailable)}
-            className="mx-1 underline-offset-2 hover:text-primary hover:underline"
-          >
-            无法打开
-          </Link>
-        </p>
-      ) : null}
-
       <div className="md:hidden">
         <Link
           href={AUTH_ROUTES.discover}
@@ -127,7 +71,7 @@ function BookDetailView({
         book={book}
         onShelf={isOnShelf}
         onAddToShelf={handleAddToShelf}
-        isAddingToShelf={!showDemoChrome && addToShelf.isPending}
+        isAddingToShelf={addToShelf.isPending}
       />
       <BookDetailMobileProgress book={book} />
 
@@ -144,28 +88,22 @@ function BookDetailView({
         )}
       >
         <p className="mb-1">Gloaming — The Quiet Art of Slow Reading.</p>
-        {showDemoChrome ? <p className="text-xs tracking-wide uppercase opacity-70">Editorial Preview</p> : null}
       </footer>
 
       <BookDetailStickyCta
         book={book}
         onShelf={isOnShelf}
         onAddToShelf={handleAddToShelf}
-        isAddingToShelf={!showDemoChrome && addToShelf.isPending}
+        isAddingToShelf={addToShelf.isPending}
       />
     </div>
   );
 }
 
-function BookDetailMockPage({ workId }: { workId: string }) {
-  const book = resolveBookDetail(workId);
-  if (!book) {
-    return <BookDetailUnavailable />;
-  }
-  return <BookDetailView book={book} related={getRelatedBooks(book)} showDemoChrome />;
-}
-
-function BookDetailLivePage({ workId }: { workId: string }) {
+/**
+ * Book detail for published work UUIDs — catalog / shelf / parts hybrid.
+ */
+export function BookDetailPage({ workId }: { workId: string }) {
   const detailQuery = useBookDetailQuery(workId);
 
   if (detailQuery.isPending) {
@@ -176,15 +114,5 @@ function BookDetailLivePage({ workId }: { workId: string }) {
     return <BookDetailUnavailable message={formatBookDetailApiError(detailQuery.error)} />;
   }
 
-  return <BookDetailView book={detailQuery.data.book} related={detailQuery.data.related} showDemoChrome={false} />;
-}
-
-/**
- * Book detail: demo ids → Mock UI; published work UUIDs → catalog/shelf/parts hybrid.
- */
-export function BookDetailPage({ workId }: { workId: string }) {
-  if (isBookDetailDemoId(workId)) {
-    return <BookDetailMockPage workId={workId} />;
-  }
-  return <BookDetailLivePage workId={workId} />;
+  return <BookDetailView book={detailQuery.data.book} related={detailQuery.data.related} />;
 }

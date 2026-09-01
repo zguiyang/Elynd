@@ -6,28 +6,20 @@ import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { AUTH_ROUTES } from '@/constants';
-import { getUnavailableSuggestions } from '@/features/book-detail/book-detail-mock';
-import { BookDetailRelated } from '@/features/book-detail/book-detail-related';
 import { cn } from '@/lib/utils';
 
-/**
- * Content unavailable / load-failure state (Mock UI).
- * Visual reference: temp/gloaming_content_unavailable_refined
- */
+/** Content unavailable / load-failure state for live book detail. */
 export function BookDetailUnavailable({ message }: { message?: string }) {
   const router = useRouter();
-  const suggestions = getUnavailableSuggestions();
 
   return (
     <div
       className={cn(
         'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700',
-        'mx-auto flex w-full max-w-5xl flex-col gap-12 md:gap-16',
+        'mx-auto flex w-full max-w-5xl flex-col',
       )}
     >
-      <p className="text-center text-xs text-muted-foreground">界面预览（假数据）· 无法打开状态</p>
-
-      <div className="flex flex-col items-center justify-center px-2 pt-8 text-center md:pt-16">
+      <div className="flex flex-col items-center justify-center px-2 pt-8 pb-16 text-center md:pt-16 md:pb-24">
         <BookOpenIcon className="mb-6 size-20 text-muted-foreground/50 md:size-24" strokeWidth={1} aria-hidden />
         <h1 className="font-heading text-2xl font-semibold text-foreground md:text-[32px] md:leading-10">
           无法打开这本书
@@ -54,8 +46,6 @@ export function BookDetailUnavailable({ message }: { message?: string }) {
           </Button>
         </div>
       </div>
-
-      <BookDetailRelated books={suggestions} title="你也可以阅读这些内容" showDivider={false} />
     </div>
   );
 }

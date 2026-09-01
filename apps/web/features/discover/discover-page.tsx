@@ -1,16 +1,9 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
-import { useRequireAuth } from '@/features/auth';
-import {
-  formatDiscoverApiError,
-  tagFilterParam,
-  useAddToShelfMutation,
-  useDiscoverCatalogQuery,
-} from '@/features/discover/discover-api';
+import { formatDiscoverApiError, tagFilterParam, useDiscoverCatalogQuery } from '@/features/discover/discover-api';
 import { DiscoverEmptyState } from '@/features/discover/discover-empty-state';
 import { DiscoverFilters } from '@/features/discover/discover-filters';
 import { DiscoverGrid } from '@/features/discover/discover-grid';
@@ -21,9 +14,13 @@ import { cn } from '@/lib/utils';
 
 function DiscoverSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-3" aria-hidden>
+    <div className="grid grid-cols-2 gap-x-5 gap-y-8 md:grid-cols-4 md:gap-x-8 md:gap-y-12 lg:grid-cols-5" aria-hidden>
       {Array.from({ length: DISCOVER_PAGE_SIZE }, (_, i) => (
-        <div key={i} className="h-48 animate-pulse rounded-2xl bg-surface-container-high md:h-96" />
+        <div key={i} className="flex flex-col gap-3">
+          <div className="aspect-[2/3] animate-pulse rounded-sm bg-surface-container-high" />
+          <div className="h-4 w-3/4 animate-pulse rounded bg-surface-container-high" />
+          <div className="h-3 w-1/2 animate-pulse rounded bg-surface-container-high" />
+        </div>
       ))}
     </div>
   );
@@ -44,8 +41,6 @@ export function DiscoverPage() {
   );
 
   const catalogQuery = useDiscoverCatalogQuery(listParams);
-  const addToShelf = useAddToShelfMutation();
-  const requireAuth = useRequireAuth();
 
   if (catalogQuery.isPending) {
     return (
@@ -91,16 +86,6 @@ export function DiscoverPage() {
     setMobileVisible(DISCOVER_PAGE_SIZE);
   }
 
-  function handleAddToShelf(id: string) {
-    if (!requireAuth({ reason: 'bookmark' })) {
-      return;
-    }
-    addToShelf.mutate(id, {
-      onSuccess: () => toast.success('已加入书架'),
-      onError: (error) => toast.error(formatDiscoverApiError(error)),
-    });
-  }
-
   return (
     <div
       className={cn(
@@ -124,14 +109,10 @@ export function DiscoverPage() {
           ) : (
             <>
               <div className="md:hidden">
-                <DiscoverGrid items={mobileItems} onAddToShelf={handleAddToShelf} addingId={addToShelf.variables} />
+                <DiscoverGrid items={mobileItems} />
               </div>
               <div className="hidden md:block">
-                <DiscoverGrid
-                  items={desktopPageItems}
-                  onAddToShelf={handleAddToShelf}
-                  addingId={addToShelf.variables}
-                />
+                <DiscoverGrid items={desktopPageItems} />
               </div>
               <DiscoverPagination
                 page={safePage}

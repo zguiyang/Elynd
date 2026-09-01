@@ -1,17 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
 import type { ShelfItem } from '@gloaming/shared/api/shelf';
-import type { Work } from '@gloaming/shared/api/works';
+import type { CatalogWork } from '@gloaming/shared/api/works';
 
 import { resolveShelfStatus, toDiscoverItem } from '@/features/discover/discover-api';
 
-function sampleWork(overrides: Partial<Work> = {}): Work {
+function sampleWork(overrides: Partial<CatalogWork> = {}): CatalogWork {
   return {
     id: 'work-1',
     title: 'Sample Title',
     author: '  Jane Austen  ',
-    description:
-      'A long enough description that should be trimmed for the discover card teaser when it exceeds the list limit used on the discover catalog cards.',
+    description: 'A published catalog work used in discover card mapping tests.',
     language: 'en',
     status: 'published',
     visibility: 'catalog',
@@ -27,26 +26,25 @@ function sampleWork(overrides: Partial<Work> = {}): Work {
     publishedAt: '2026-01-01T00:00:00.000Z',
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
+    partCount: 21,
     ...overrides,
   };
 }
 
 describe('toDiscoverItem', () => {
-  it('maps cover URL, author, and teaser from catalog work', () => {
+  it('maps cover URL, author, and chapter count from catalog work', () => {
     const item = toDiscoverItem(sampleWork());
     expect(item.coverImageUrl).toBe('/api/assets/asset-cover-1');
     expect(item.author).toBe('Jane Austen');
-    expect(item.teaser.length).toBeGreaterThan(0);
-    expect(item.teaser.length).toBeLessThanOrEqual(120);
-    expect(item.sourceLabel).toBe('官方');
+    expect(item.partCount).toBe(21);
     expect(item.shelfStatus).toBe('available');
   });
 
-  it('omits cover URL and trims empty description', () => {
-    const item = toDiscoverItem(sampleWork({ coverAssetId: null, description: '   ', author: '' }));
+  it('omits cover URL and trims empty author', () => {
+    const item = toDiscoverItem(sampleWork({ coverAssetId: null, author: '', partCount: 0 }));
     expect(item.coverImageUrl).toBeNull();
-    expect(item.teaser).toBe('');
     expect(item.author).toBe('');
+    expect(item.partCount).toBe(0);
   });
 });
 

@@ -5,11 +5,11 @@ import type { ShelfData, ShelfItem } from '@gloaming/shared/api/shelf';
 import {
   catalogListDataSchema,
   type CatalogListQuery,
+  type CatalogWork,
   DEFAULT_CATALOG_SORT_BY,
-  type Work,
 } from '@gloaming/shared/api/works';
 
-import { coverUrlFromAssetId, teaserFromDescription } from '@/features/book-detail/book-detail-model';
+import { coverUrlFromAssetId } from '@/features/book-detail/book-detail-model';
 import {
   DISCOVER_PAGE_SIZE,
   type DiscoverItem,
@@ -20,9 +20,6 @@ import { addWorkToShelf } from '@/features/reader/reader-api';
 import { getShelf, shelfQueryKey } from '@/features/shelf/shelf-api';
 import { apiRequest, ApiRequestError, formatApiError } from '@/lib/api-request';
 
-/** List-card teaser — shorter than book-detail hero blurb. */
-const DISCOVER_TEASER_MAX = 120;
-
 export type DiscoverListParams = Partial<Pick<CatalogListQuery, 'page' | 'pageSize' | 'tag' | 'q'>>;
 
 export type DiscoverCatalogResult = {
@@ -32,7 +29,7 @@ export type DiscoverCatalogResult = {
 };
 
 type CatalogListData = {
-  items: Work[];
+  items: CatalogWork[];
   tags: string[];
   pagination: { page: number; pageSize: number; total: number; totalPages: number };
 };
@@ -96,19 +93,18 @@ export function resolveShelfStatus(item?: ShelfItem): DiscoverShelfStatus {
   return 'on_shelf';
 }
 
-export function toDiscoverItem(work: Work, shelfItem?: ShelfItem): DiscoverItem {
+export function toDiscoverItem(work: CatalogWork, shelfItem?: ShelfItem): DiscoverItem {
   const shelfStatus = resolveShelfStatus(shelfItem);
   return {
     id: work.id,
     title: work.title,
     author: work.author.trim(),
-    teaser: teaserFromDescription(work.description, DISCOVER_TEASER_MAX),
+    partCount: work.partCount,
     tags: work.tags,
     coverImageUrl: coverUrlFromAssetId(work.coverAssetId),
     publishedAt: toIsoString(work.publishedAt) || toIsoString(work.createdAt),
     shelfStatus,
     progressRatio: shelfItem?.state.progressRatio ?? null,
-    sourceLabel: '官方',
   };
 }
 

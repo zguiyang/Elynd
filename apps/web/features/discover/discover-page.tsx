@@ -2,15 +2,30 @@
 
 import { useMemo, useState } from 'react';
 
+import { LoadingOverlay } from '@/components/loading-overlay';
 import { Button } from '@/components/ui/button';
-import { formatDiscoverApiError, tagFilterParam, useDiscoverCatalogQuery } from '@/features/discover/discover-api';
+import {
+  type DiscoverCatalogResult,
+  discoverQueryKey,
+  fetchDiscoverCatalog,
+  formatDiscoverApiError,
+  tagFilterParam,
+} from '@/features/discover/discover-api';
 import { DiscoverEmptyState } from '@/features/discover/discover-empty-state';
 import { DiscoverFilters } from '@/features/discover/discover-filters';
 import { DiscoverGrid } from '@/features/discover/discover-grid';
 import { DiscoverHeader } from '@/features/discover/discover-header';
-import { DISCOVER_ALL_TAG, DISCOVER_PAGE_SIZE, type DiscoverTagFilter } from '@/features/discover/discover-model';
+import {
+  DISCOVER_ALL_TAG,
+  DISCOVER_PAGE_SIZE,
+  type DiscoverItem,
+  type DiscoverTagFilter,
+} from '@/features/discover/discover-model';
 import { DiscoverPagination } from '@/features/discover/discover-pagination';
+import { usePaginatedQuery } from '@/lib/query';
 import { cn } from '@/lib/utils';
+
+const LIST_REFRESH_MIN_MS = 300;
 
 function DiscoverSkeleton() {
   return (
@@ -40,39 +55,25 @@ export function DiscoverPage() {
     [page, tag],
   );
 
-  const catalogQuery = useDiscoverCatalogQuery(listParams);
+  const list = usePaginatedQuery<DiscoverItem, DiscoverCatalogResult>({
+    queryKey: discoverQueryKey.list(listParams),
+    queryFn: ({ signal }) => fetchDiscoverCatalog(listParams, { signal }),
+    page,
+    onPageChange: (next) => {
+      setPage(next);
+      setMobileVisible(DISCOVER_PAGE_SIZE);
+    },
+    softRefreshMinMs: LIST_REFRESH_MIN_MS,
+  });
 
-  if (catalogQuery.isPending) {
-    return (
-      <div className="flex w-full flex-col">
-        <DiscoverHeader />
-        <DiscoverSkeleton />
-      </div>
-    );
-  }
-
-  if (catalogQuery.isError) {
-    return (
-      <div className="flex w-full flex-col items-center py-16 text-center">
-        <DiscoverHeader />
-        <h2 className="font-heading text-2xl font-semibold">无法加载目录</h2>
-        <p className="mt-4 text-muted-foreground">{formatDiscoverApiError(catalogQuery.error)}</p>
-        <Button className="mt-8 rounded-full px-10" onClick={() => void catalogQuery.refetch()}>
-          重试
-        </Button>
-      </div>
-    );
-  }
-
-  const catalog = catalogQuery.data;
-  const items = catalog.items;
-  const tags = catalog.tags;
-  const totalPages = catalog.pagination.totalPages;
-  const safePage = Math.min(page, Math.max(1, totalPages));
-  const desktopPageItems = items;
+  const items = list.items;
+  const tags = list.data?.tags ?? [];
+  const totalPages = list.totalPages;
+  const safePage = list.page;
   const mobileItems = items.slice(0, mobileVisible);
   const hasMoreMobile = mobileVisible < items.length;
-  const isCatalogEmpty = items.length === 0 && tag === DISCOVER_ALL_TAG;
+  const isCatalogEmpty = !list.isInitialLoading && items.length === 0 && tag === DISCOVER_ALL_TAG;
+  const shouldShowFilters = !list.isInitialLoading && !isCatalogEmpty;
 
   function resetFilters() {
     setTag(DISCOVER_ALL_TAG);
@@ -86,6 +87,11 @@ export function DiscoverPage() {
     setMobileVisible(DISCOVER_PAGE_SIZE);
   }
 
+  function handlePageChange(next: number) {
+    setPage(next);
+    setMobileVisible(DISCOVER_PAGE_SIZE);
+  }
+
   return (
     <div
       className={cn(
@@ -94,17 +100,25 @@ export function DiscoverPage() {
         isCatalogEmpty ? 'min-h-[70dvh] justify-center' : '',
       )}
     >
-      {isCatalogEmpty ? (
-        <>
-          <DiscoverHeader />
-          <DiscoverEmptyState />
-        </>
-      ) : (
-        <>
-          <DiscoverHeader />
-          <DiscoverFilters tag={tag} tags={tags} onTagChange={handleTagChange} />
+      <DiscoverHeader />
 
-          {items.length === 0 ? (
+      {shouldShowFilters ? <DiscoverFilters tag={tag} tags={tags} onTagChange={handleTagChange} /> : null}
+
+      {list.isInitialLoading ? (
+        <DiscoverSkeleton />
+      ) : list.isError && !list.data ? (
+        <div className="flex flex-col items-center py-16 text-center">
+          <h2 className="font-heading text-2xl font-semibold">无法加载目录</h2>
+          <p className="mt-4 text-muted-foreground">{formatDiscoverApiError(list.error)}</p>
+          <Button className="mt-8 rounded-full px-10" onClick={() => void list.query.refetch()}>
+            重试
+          </Button>
+        </div>
+      ) : (
+        <LoadingOverlay active={list.isSoftRefreshing} label="书目更新中…">
+          {isCatalogEmpty ? (
+            <DiscoverEmptyState />
+          ) : items.length === 0 ? (
             <DiscoverEmptyState onResetFilters={resetFilters} />
           ) : (
             <>
@@ -112,18 +126,18 @@ export function DiscoverPage() {
                 <DiscoverGrid items={mobileItems} />
               </div>
               <div className="hidden md:block">
-                <DiscoverGrid items={desktopPageItems} />
+                <DiscoverGrid items={items} />
               </div>
               <DiscoverPagination
                 page={safePage}
                 totalPages={totalPages}
-                onPageChange={setPage}
+                onPageChange={handlePageChange}
                 hasMoreMobile={hasMoreMobile}
                 onLoadMore={() => setMobileVisible((n) => n + DISCOVER_PAGE_SIZE)}
               />
             </>
           )}
-        </>
+        </LoadingOverlay>
       )}
     </div>
   );

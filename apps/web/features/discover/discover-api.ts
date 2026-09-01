@@ -1,8 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { DEFAULT_PAGE, DEFAULT_SORT_ORDER } from '@gloaming/shared/api/pagination';
 import type { ShelfData, ShelfItem } from '@gloaming/shared/api/shelf';
 import {
+  type CatalogListData,
   catalogListDataSchema,
   type CatalogListQuery,
   type CatalogWork,
@@ -26,12 +27,6 @@ export type DiscoverCatalogResult = {
   items: DiscoverItem[];
   tags: string[];
   pagination: CatalogListData['pagination'];
-};
-
-type CatalogListData = {
-  items: CatalogWork[];
-  tags: string[];
-  pagination: { page: number; pageSize: number; total: number; totalPages: number };
 };
 
 export const discoverQueryKey = {
@@ -133,6 +128,7 @@ export function useDiscoverCatalogQuery(params: DiscoverListParams, options?: { 
   return useQuery({
     queryKey: discoverQueryKey.list(params),
     queryFn: ({ signal }) => fetchDiscoverCatalog(params, { signal }),
+    placeholderData: keepPreviousData,
     enabled: options?.enabled ?? true,
   });
 }

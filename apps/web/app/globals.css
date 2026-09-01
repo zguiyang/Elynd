@@ -99,11 +99,13 @@
 }
 
 /*
-  Light theme tokens — SSOT: /DESIGN.md (MVP Stitch palette)
-  Dark / night-reading theme is deferred; do not invent .dark values here.
-  Hex literals are allowed only in this :root primitive block.
+  Theme tokens — SSOT: /DESIGN.md
+  Light: :root · Dark: .dark (next-themes sets class on <html>)
+  Hex literals are allowed only in these primitive theme blocks.
 */
 :root {
+  color-scheme: light;
+
   /* --- MD3 / design primitives (hex only here) --- */
   --surface: #fff8f5;
   --surface-dim: #e0d8d5;
@@ -235,6 +237,123 @@
   --gloaming-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
+/*
+  Dark — warm paper-at-night. SSOT: DESIGN.md colorsDark.
+  next-themes sets class="dark" on <html>; matches @custom-variant dark (&:is(.dark *)).
+*/
+.dark {
+  color-scheme: dark;
+
+  --surface: #1c1816;
+  --surface-dim: #141210;
+  --surface-bright: #241f1c;
+  --surface-container-lowest: #2a2522;
+  --surface-container-low: #231f1c;
+  --surface-container: #2e2926;
+  --surface-container-high: #38322e;
+  --surface-container-highest: #423c37;
+  --surface-variant: #423c37;
+  --on-surface: #f0e8e3;
+  --on-surface-variant: #c4b0a7;
+  --inverse-surface: #f0e8e3;
+  --inverse-on-surface: #2a2522;
+  --outline: #9a8176;
+  --outline-variant: #5c4a42;
+  --surface-tint: #ff8a65;
+
+  --md-primary: #9b2f00;
+  --on-primary: #ffffff;
+  --primary-container: #d4541c;
+  --on-primary-container: #fff0eb;
+  --inverse-primary: #ffb59d;
+
+  --md-secondary: #cac6bb;
+  --on-secondary: #1d1c15;
+  --secondary-container: #2f2b26;
+  --on-secondary-container: #c4b0a7;
+
+  --tertiary: #c7c6c4;
+  --on-tertiary: #1a1c1a;
+  --tertiary-container: #3a3a38;
+  --on-tertiary-container: #e3e2e0;
+
+  --error: #ff8a80;
+  --on-error: #1c1816;
+  --error-container: #5c1818;
+  --on-error-container: #ffdad6;
+
+  --primary-fixed: #3d261c;
+  --primary-fixed-dim: #5a3224;
+  --on-primary-fixed: #ffdbd0;
+  --on-primary-fixed-variant: #ffb59d;
+  --secondary-fixed: #2f2b26;
+  --secondary-fixed-dim: #3a3530;
+  --on-secondary-fixed: #f0e8e3;
+  --on-secondary-fixed-variant: #c4b0a7;
+  --tertiary-fixed: #3a3a38;
+  --tertiary-fixed-dim: #464745;
+  --on-tertiary-fixed: #f0e8e3;
+  --on-tertiary-fixed-variant: #c7c6c4;
+
+  --md-background: #1c1816;
+  --on-background: #f0e8e3;
+
+  /* Compat aliases — same wiring as light except accent-foreground remap */
+  --canvas: var(--md-background);
+  --paper: var(--secondary-container);
+  --sidebar-wash: var(--surface-container-low);
+  --ink: var(--on-surface);
+  --brand: var(--primary-container);
+  --brand-soft: var(--primary-fixed);
+  --brand-deep: var(--md-primary);
+  --muted-wash: var(--surface-container);
+  --muted-ink: var(--on-surface-variant);
+  --border-warm: var(--outline-variant);
+
+  --background: var(--md-background);
+  --foreground: var(--on-surface);
+  --card: var(--surface-container-lowest);
+  --card-foreground: var(--on-surface);
+  --popover: var(--surface-container-lowest);
+  --popover-foreground: var(--on-surface);
+  --primary: var(--primary-container);
+  --primary-foreground: var(--on-primary);
+  --secondary: var(--secondary-container);
+  --secondary-foreground: var(--on-surface);
+  --muted: var(--muted-wash);
+  --muted-foreground: var(--muted-ink);
+  --accent: var(--brand-soft);
+  /* DESIGN.md: chip labels use light ember on deep wash */
+  --accent-foreground: var(--inverse-primary);
+  --destructive: var(--error);
+  --border: var(--border-warm);
+  --input: var(--border-warm);
+  --ring: var(--primary-container);
+
+  --selection: color-mix(in oklab, var(--primary-container) 28%, transparent);
+  --selection-foreground: var(--on-surface);
+
+  --chart-1: var(--primary-container);
+  --chart-2: var(--md-primary);
+  --chart-3: var(--md-secondary);
+  --chart-4: var(--secondary-fixed-dim);
+  --chart-5: var(--on-secondary-fixed-variant);
+
+  --sidebar: var(--sidebar-wash);
+  --sidebar-foreground: var(--on-surface);
+  --sidebar-primary: var(--primary-container);
+  --sidebar-primary-foreground: var(--on-primary);
+  --sidebar-accent: var(--brand-soft);
+  --sidebar-accent-foreground: var(--inverse-primary);
+  --sidebar-border: var(--border-warm);
+  --sidebar-ring: var(--primary-container);
+
+  /* Shadows mix black — avoid pale glow from light on-surface */
+  --gloaming-shadow-card: 0 4px 20px color-mix(in oklab, black 45%, transparent);
+  --gloaming-shadow-float:
+    0 2px 6px color-mix(in oklab, black 35%, transparent), 0 14px 32px color-mix(in oklab, black 50%, transparent);
+}
+
 @utility font-reading {
   font-family: var(--font-reading);
 }
@@ -314,7 +433,7 @@
     color: var(--selection-foreground);
   }
 
-  /* Optional paper grain — DESIGN.md Elevation */
+  /* Optional paper grain — DESIGN.md Elevation (~3% light; ~1.2% dark) */
   body::before {
     content: '';
     position: fixed;
@@ -323,6 +442,10 @@
     z-index: 50;
     opacity: 0.03;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .dark body::before {
+    opacity: 0.012;
   }
 }
 

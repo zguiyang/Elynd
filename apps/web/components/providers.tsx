@@ -1,6 +1,7 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { ThemeProvider, useTheme } from 'next-themes';
+import { type ReactNode, useSyncExternalStore } from 'react';
 import { Toaster } from 'sonner';
 
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -11,15 +12,37 @@ type ProvidersProps = {
   children: ReactNode;
 };
 
+function subscribeNoop() {
+  return () => {};
+}
+
+function useIsClient() {
+  return useSyncExternalStore(
+    subscribeNoop,
+    () => true,
+    () => false,
+  );
+}
+
+function ThemedToaster() {
+  const { resolvedTheme } = useTheme();
+  const isClient = useIsClient();
+  const toastTheme = isClient && resolvedTheme === 'dark' ? 'dark' : 'light';
+
+  return <Toaster theme={toastTheme} richColors closeButton position="top-right" />;
+}
+
 export function Providers({ children }: ProvidersProps) {
   return (
-    <QueryProvider>
-      <TooltipProvider delay={300}>
-        <AuthDialogProvider>
-          {children}
-          <Toaster richColors closeButton position="top-right" />
-        </AuthDialogProvider>
-      </TooltipProvider>
-    </QueryProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <QueryProvider>
+        <TooltipProvider delay={300}>
+          <AuthDialogProvider>
+            {children}
+            <ThemedToaster />
+          </AuthDialogProvider>
+        </TooltipProvider>
+      </QueryProvider>
+    </ThemeProvider>
   );
 }

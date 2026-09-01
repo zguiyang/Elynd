@@ -51,6 +51,7 @@ import { completeWorkflowStep, stepRunningStatus } from '@/lib/workflow';
 import { clearDerivedAssets } from '@/modules/content-parser/service';
 import { getWorksDerivedFreshness } from '@/modules/derived-freshness';
 import { deleteObject } from '@/modules/oss';
+import { computePartReadingStats, computeWorkReadingStats } from '@/modules/reading-stats/service';
 import { deleteBilingualCacheForPart } from '@/modules/translate/service';
 import {
   acquireUploadedObject,
@@ -162,6 +163,11 @@ function toWork(row: WorkRow, tags: string[], sources: string[]): Work {
     tags: shouldHideTagsDuringProcessing(row) ? [] : tags,
     sources,
     coverAssetId: row.coverAssetId,
+    wordCount: row.wordCount,
+    estimatedMinutes: row.estimatedMinutes,
+    suggestedVocabSize: row.suggestedVocabSize,
+    difficultyScore: row.difficultyScore,
+    statsProvenance: row.statsProvenance,
     publishedAt: row.publishedAt ? toIso(row.publishedAt) : null,
     createdAt: toIso(row.createdAt),
     updatedAt: toIso(row.updatedAt),
@@ -455,6 +461,10 @@ export async function createAdminTextWork(input: CreateAdminTextWorkBody): Promi
     throw new AppError(500, 'Failed to create work');
   }
 
+  const bodyHtml = textToParagraphHtml(input.body);
+  const partStats = computePartReadingStats(bodyHtml);
+  const workStats = computeWorkReadingStats([{ body: bodyHtml }], workRow.language);
+
   const [partRow] = await db
     .insert(readingPartTable)
     .values({
@@ -463,7 +473,8 @@ export async function createAdminTextWork(input: CreateAdminTextWorkBody): Promi
       sortOrder: 0,
       kind: 'body',
       title: input.title,
-      body: textToParagraphHtml(input.body),
+      body: bodyHtml,
+      meta: { wordCount: partStats.wordCount },
     })
     .returning();
 
@@ -471,7 +482,19 @@ export async function createAdminTextWork(input: CreateAdminTextWorkBody): Promi
     throw new AppError(500, 'Failed to create part');
   }
 
-  return toAdminWork(workRow, [partRow]);
+  const [updatedWork] = await db
+    .update(readingWorkTable)
+    .set({
+      wordCount: workStats.wordCount,
+      estimatedMinutes: workStats.estimatedMinutes,
+      suggestedVocabSize: workStats.suggestedVocabSize,
+      difficultyScore: workStats.difficultyScore,
+      statsProvenance: workStats.statsProvenance,
+    })
+    .where(eq(readingWorkTable.id, workId))
+    .returning();
+
+  return toAdminWork(updatedWork ?? workRow, [partRow]);
 }
 
 /** EPUB upload spec — MVP only accepts EPUB files (UI advertises TXT/PDF but they are rejected). */
@@ -691,11 +714,21 @@ export async function updateWork(id: string, input: UpdateWorkBody): Promise<Adm
     patch.description = input.description;
     patch.descriptionProvenance = 'manual';
   }
+  if (input.suggestedVocabSize !== undefined) {
+    patch.suggestedVocabSize = input.suggestedVocabSize;
+    patch.statsProvenance = 'manual';
+  }
+  if (input.difficultyScore !== undefined) {
+    patch.difficultyScore = input.difficultyScore;
+    patch.statsProvenance = 'manual';
+  }
 
   if (
     input.tags === undefined &&
     input.sources === undefined &&
     input.category === undefined &&
+    input.suggestedVocabSize === undefined &&
+    input.difficultyScore === undefined &&
     Object.keys(patch).length === 0
   ) {
     return toAdminWork(existing);

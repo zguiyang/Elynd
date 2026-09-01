@@ -12,6 +12,7 @@ import {
   type ReadingState,
   type UpdateReadingStateBody,
 } from '@gloaming/shared/api/reader';
+import { estimatedMinutesFromWordCount } from '@gloaming/shared/api/reading-stats';
 
 import { db } from '@/db';
 import { AppError, NotFoundError } from '@/lib/errors';
@@ -31,12 +32,16 @@ function sortedParts(parts: PartRow[]): PartRow[] {
 }
 
 function toPartSummary(part: PartRow) {
+  const meta = part.meta as { wordCount?: unknown };
+  const wordCount = typeof meta.wordCount === 'number' ? meta.wordCount : null;
   return {
     id: part.id,
     workId: part.workId,
     sortOrder: part.sortOrder,
     kind: part.kind as ReaderPartsData['parts'][number]['kind'],
     title: part.title,
+    wordCount,
+    estimatedMinutes: wordCount != null ? estimatedMinutesFromWordCount(wordCount) : null,
     createdAt: toIso(part.createdAt),
     updatedAt: toIso(part.updatedAt),
   };

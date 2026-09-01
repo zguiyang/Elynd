@@ -15,6 +15,7 @@ import { claimWorkflowStep, failWorkflowStep } from '@/lib/workflow';
 import { parserFor } from '@/modules/content-parser/registry';
 import type { ParsedContent } from '@/modules/content-parser/types';
 import { deleteObject, getObject, putObject } from '@/modules/oss';
+import { computePartReadingStats, computeWorkReadingStats } from '@/modules/reading-stats/service';
 
 const ingestLogger = rootLogger.child({ module: 'ContentParser' });
 
@@ -175,17 +176,26 @@ export async function processContentWork(workId: string): Promise<void> {
 
     // Replace parts (idempotent re-parse).
     await db.delete(readingPartTable).where(eq(readingPartTable.workId, workId));
+    const partBodies: { body: string }[] = [];
     for (let i = 0; i < content.chapters.length; i += 1) {
       const chapter = content.chapters[i]!;
+      const body = rewriteImageSrcs(chapter.html, usedImages, hrefToAssetId);
+      const partStats = computePartReadingStats(body);
+      partBodies.push({ body });
       await db.insert(readingPartTable).values({
         id: randomUUID(),
         workId,
         sortOrder: i,
         kind: 'chapter',
         title: chapter.title.slice(0, 200),
-        body: rewriteImageSrcs(chapter.html, usedImages, hrefToAssetId),
+        body,
+        meta: { wordCount: partStats.wordCount },
       });
     }
+
+    const parsedLanguage = content.metadata.language ?? work.language;
+    const workStats = computeWorkReadingStats(partBodies, parsedLanguage);
+    const preserveManualStats = work.statsProvenance === 'manual';
 
     // Metadata: title/author/description/language land via the metadata-fill
     // job (rule layer). content-parse only decides first-parse vs re-parse:
@@ -201,6 +211,15 @@ export async function processContentWork(workId: string): Promise<void> {
         author: hasParsedBefore ? work.author : '',
         description: hasParsedBefore ? work.description : '',
         coverAssetId,
+        wordCount: workStats.wordCount,
+        estimatedMinutes: workStats.estimatedMinutes,
+        ...(preserveManualStats
+          ? {}
+          : {
+              suggestedVocabSize: workStats.suggestedVocabSize,
+              difficultyScore: workStats.difficultyScore,
+              statsProvenance: workStats.statsProvenance,
+            }),
         status: WORKFLOW_AUTO_CHAIN ? 'metadata' : 'parsed',
         publishedAt: null,
         originMeta: {

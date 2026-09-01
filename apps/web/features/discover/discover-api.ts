@@ -9,6 +9,7 @@ import {
   type Work,
 } from '@gloaming/shared/api/works';
 
+import { coverUrlFromAssetId, teaserFromDescription } from '@/features/book-detail/book-detail-model';
 import {
   DISCOVER_PAGE_SIZE,
   type DiscoverItem,
@@ -18,6 +19,9 @@ import {
 import { addWorkToShelf } from '@/features/reader/reader-api';
 import { getShelf, shelfQueryKey } from '@/features/shelf/shelf-api';
 import { apiRequest, ApiRequestError, formatApiError } from '@/lib/api-request';
+
+/** List-card teaser — shorter than book-detail hero blurb. */
+const DISCOVER_TEASER_MAX = 120;
 
 export type DiscoverListParams = Partial<Pick<CatalogListQuery, 'page' | 'pageSize' | 'tag' | 'q'>>;
 
@@ -97,7 +101,10 @@ export function toDiscoverItem(work: Work, shelfItem?: ShelfItem): DiscoverItem 
   return {
     id: work.id,
     title: work.title,
+    author: work.author.trim(),
+    teaser: teaserFromDescription(work.description, DISCOVER_TEASER_MAX),
     tags: work.tags,
+    coverImageUrl: coverUrlFromAssetId(work.coverAssetId),
     publishedAt: toIsoString(work.publishedAt) || toIsoString(work.createdAt),
     shelfStatus,
     progressRatio: shelfItem?.state.progressRatio ?? null,

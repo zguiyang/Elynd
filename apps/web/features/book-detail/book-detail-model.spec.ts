@@ -5,12 +5,11 @@ import {
   chapterOrdinalLabel,
   chapterStatusLabel,
   coverUrlFromAssetId,
+  difficultyStarCount,
   formatMinutes,
   formatRelativeReadTime,
-  formatWordCount,
+  formatSuggestedVocabSize,
   languageLabelFromCode,
-  levelMeta,
-  levelStarCount,
   primaryReadLabel,
   readingStatusFromProgress,
   teaserFromDescription,
@@ -30,21 +29,19 @@ describe('book-detail-model', () => {
     expect(formatRelativeReadTime(null, now)).toBeNull();
   });
 
-  it('formats minutes and word counts for stats', () => {
+  it('formats minutes and suggested vocab size for stats', () => {
     expect(formatMinutes(15)).toBe('15 分钟');
     expect(formatMinutes(90)).toBe('1 小时 30 分');
     expect(formatMinutes(450)).toBe('7 小时 30 分');
-    expect(formatWordCount(3200)).toBe('3.2k');
-    expect(formatWordCount(85000)).toBe('85k');
+    expect(formatMinutes(null)).toBeNull();
+    expect(formatSuggestedVocabSize(3200)).toBe('3.2k');
+    expect(formatSuggestedVocabSize(85000)).toBe('85k');
   });
 
-  it('maps levels to labels and star counts', () => {
-    expect(levelMeta('easy')).toBe('简单');
-    expect(levelMeta('mid')).toBe('中等');
-    expect(levelMeta('hard')).toBe('稍难');
-    expect(levelStarCount('easy')).toBe(2);
-    expect(levelStarCount('mid')).toBe(3);
-    expect(levelStarCount('hard')).toBe(4);
+  it('maps difficulty score to star counts', () => {
+    expect(difficultyStarCount(2)).toBe(2);
+    expect(difficultyStarCount(3)).toBe(3);
+    expect(difficultyStarCount(5)).toBe(5);
   });
 
   it('derives reading status from shelf/reader state', () => {
@@ -87,6 +84,8 @@ describe('chaptersFromParts', () => {
       sortOrder: 0,
       kind: 'chapter' as const,
       title: 'One',
+      wordCount: 100,
+      estimatedMinutes: 1,
       createdAt: '2026-01-01',
       updatedAt: '2026-01-01',
     },
@@ -96,6 +95,8 @@ describe('chaptersFromParts', () => {
       sortOrder: 1,
       kind: 'chapter' as const,
       title: 'Two',
+      wordCount: 200,
+      estimatedMinutes: 2,
       createdAt: '2026-01-01',
       updatedAt: '2026-01-01',
     },
@@ -105,6 +106,8 @@ describe('chaptersFromParts', () => {
       sortOrder: 2,
       kind: 'chapter' as const,
       title: 'Three',
+      wordCount: null,
+      estimatedMinutes: null,
       createdAt: '2026-01-01',
       updatedAt: '2026-01-01',
     },
@@ -113,7 +116,8 @@ describe('chaptersFromParts', () => {
   it('marks all unread without shelf state', () => {
     const chapters = chaptersFromParts(parts, null);
     expect(chapters.map((c) => c.status)).toEqual(['unread', 'unread', 'unread']);
-    expect(chapters[0]?.estimatedMinutes).toBeNull();
+    expect(chapters[0]?.estimatedMinutes).toBe(1);
+    expect(chapters[0]?.wordCount).toBe(100);
   });
 
   it('marks current and prior chapters from shelf progress', () => {

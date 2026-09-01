@@ -1,18 +1,18 @@
 /**
- * Book detail data layer — hybrid real catalog/shelf/parts + stats placeholders.
+ * Book detail data layer — catalog/shelf/parts + derived reading stats from API.
  * Reader parts fetch uses credentials: 'omit' so viewing detail does not create reading_state.
  */
 
 import { useQuery } from '@tanstack/react-query';
 
 import type { ReadingState } from '@gloaming/shared/api/reader';
+import { difficultyLabelFromScore } from '@gloaming/shared/api/reading-stats';
 import type { ShelfItem } from '@gloaming/shared/api/shelf';
 import { type PartSummary, type Work, workSchema } from '@gloaming/shared/api/works';
 
 import {
   type BookChapter,
   type BookDetail,
-  type BookDetailLevel,
   coverUrlFromAssetId,
   languageLabelFromCode,
   readingStatusFromProgress,
@@ -22,14 +22,6 @@ import { buildShelfItemMap, listCatalogWorks } from '@/features/discover/discove
 import { getReaderParts } from '@/features/reader/reader-api';
 import { getShelf } from '@/features/shelf/shelf-api';
 import { apiRequest, ApiRequestError, formatApiError } from '@/lib/api-request';
-
-/** Stats bar placeholders — no domain fields yet (ADR-001). */
-export const BOOK_DETAIL_STATS_PLACEHOLDER = {
-  level: 'mid' as BookDetailLevel,
-  cefrLabel: 'CEFR B2',
-  estimatedMinutes: 450,
-  wordCount: 85_000,
-} as const;
 
 const RELATED_LIMIT = 4;
 
@@ -52,6 +44,20 @@ function toIsoString(value: string | Date | null | undefined): string | null {
   return typeof value === 'string' ? value : value.toISOString();
 }
 
+function difficultyLabelFromWork(work: Work): string | null {
+  if (work.difficultyScore == null) {
+    return null;
+  }
+  return difficultyLabelFromScore(work.difficultyScore);
+}
+
+function partStatsFields(part: PartSummary): Pick<BookChapter, 'estimatedMinutes' | 'wordCount'> {
+  return {
+    estimatedMinutes: part.estimatedMinutes ?? null,
+    wordCount: part.wordCount ?? null,
+  };
+}
+
 export function chaptersFromParts(parts: PartSummary[], state: ReadingState | null): BookChapter[] {
   const sorted = [...parts].sort((a, b) => a.sortOrder - b.sortOrder);
   const readingStatus = state ? readingStatusFromProgress(state.status, state.progressRatio) : 'unread';
@@ -61,8 +67,7 @@ export function chaptersFromParts(parts: PartSummary[], state: ReadingState | nu
       id: part.id,
       index: i + 1,
       title: part.title || `第 ${i + 1} 章`,
-      estimatedMinutes: null,
-      wordCount: null,
+      ...partStatsFields(part),
       status: 'unread' as const,
     }));
   }
@@ -72,8 +77,7 @@ export function chaptersFromParts(parts: PartSummary[], state: ReadingState | nu
       id: part.id,
       index: i + 1,
       title: part.title || `第 ${i + 1} 章`,
-      estimatedMinutes: null,
-      wordCount: null,
+      ...partStatsFields(part),
       status: 'read' as const,
     }));
   }
@@ -91,8 +95,7 @@ export function chaptersFromParts(parts: PartSummary[], state: ReadingState | nu
       id: part.id,
       index: i + 1,
       title: part.title || `第 ${i + 1} 章`,
-      estimatedMinutes: null,
-      wordCount: null,
+      ...partStatsFields(part),
       status,
     };
   });
@@ -103,12 +106,12 @@ function workToRelatedStub(work: Work): BookDetail {
     id: work.id,
     title: work.title,
     author: work.author,
-    level: BOOK_DETAIL_STATS_PLACEHOLDER.level,
-    cefrLabel: BOOK_DETAIL_STATS_PLACEHOLDER.cefrLabel,
+    difficultyScore: work.difficultyScore,
+    difficultyLabel: difficultyLabelFromWork(work),
     category: work.tags[0] ?? '读物',
     tags: work.tags,
-    estimatedMinutes: BOOK_DETAIL_STATS_PLACEHOLDER.estimatedMinutes,
-    wordCount: BOOK_DETAIL_STATS_PLACEHOLDER.wordCount,
+    estimatedMinutes: work.estimatedMinutes,
+    suggestedVocabSize: work.suggestedVocabSize,
     teaser: teaserFromDescription(work.description),
     sourceLabel: '官方',
     languageLabel: languageLabelFromCode(work.language),
@@ -138,12 +141,12 @@ export function toBookDetail(
     id: work.id,
     title: work.title,
     author: work.author,
-    level: BOOK_DETAIL_STATS_PLACEHOLDER.level,
-    cefrLabel: BOOK_DETAIL_STATS_PLACEHOLDER.cefrLabel,
+    difficultyScore: work.difficultyScore,
+    difficultyLabel: difficultyLabelFromWork(work),
     category: work.tags[0] ?? '读物',
     tags: work.tags,
-    estimatedMinutes: BOOK_DETAIL_STATS_PLACEHOLDER.estimatedMinutes,
-    wordCount: BOOK_DETAIL_STATS_PLACEHOLDER.wordCount,
+    estimatedMinutes: work.estimatedMinutes,
+    suggestedVocabSize: work.suggestedVocabSize,
     teaser,
     sourceLabel: '官方',
     languageLabel: languageLabelFromCode(work.language),

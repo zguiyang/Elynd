@@ -4,6 +4,12 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
+import {
+  DIFFICULTY_SCORE_MAX,
+  DIFFICULTY_SCORE_MIN,
+  difficultyLabelFromScore,
+} from '@gloaming/shared/api/reading-stats';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,8 +45,31 @@ function WorksFormEditor({ workId, work }: { workId: string; work: AdminWorkView
   const [tags, setTags] = useState<string[]>(work.tags);
   const [sources, setSources] = useState<string[]>(work.sources);
   const [category, setCategory] = useState<string | null>(work.category);
+  const [suggestedVocabSize, setSuggestedVocabSize] = useState(
+    work.suggestedVocabSize != null ? String(work.suggestedVocabSize) : '',
+  );
+  const [difficultyScore, setDifficultyScore] = useState(
+    work.difficultyScore != null ? String(work.difficultyScore) : '',
+  );
 
   async function handleSave() {
+    const parsedVocab = suggestedVocabSize.trim() === '' ? null : Number.parseInt(suggestedVocabSize, 10);
+    const parsedDifficulty = difficultyScore.trim() === '' ? null : Number.parseInt(difficultyScore, 10);
+
+    if (parsedVocab != null && (!Number.isFinite(parsedVocab) || parsedVocab <= 0)) {
+      toast.error('建议词汇量须为正整数');
+      return;
+    }
+    if (
+      parsedDifficulty != null &&
+      (!Number.isFinite(parsedDifficulty) ||
+        parsedDifficulty < DIFFICULTY_SCORE_MIN ||
+        parsedDifficulty > DIFFICULTY_SCORE_MAX)
+    ) {
+      toast.error(`难度须为 ${DIFFICULTY_SCORE_MIN}–${DIFFICULTY_SCORE_MAX} 的整数`);
+      return;
+    }
+
     try {
       await updateAdminWork(workId, {
         title: title.trim(),
@@ -49,6 +78,8 @@ function WorksFormEditor({ workId, work }: { workId: string; work: AdminWorkView
         tags,
         sources,
         category: category ?? '',
+        suggestedVocabSize: parsedVocab,
+        difficultyScore: parsedDifficulty,
       });
       await invalidate(workId);
       toast.success('已保存');
@@ -114,6 +145,50 @@ function WorksFormEditor({ workId, work }: { workId: string; work: AdminWorkView
         <div className="space-y-2">
           <Label htmlFor="sources">来源（发布至少一个）</Label>
           <TaxonomyMultiPicker kind="source" value={sources} onChange={setSources} placeholder="搜索选择来源…" />
+        </div>
+
+        <div className="rounded-xl border border-border bg-secondary/40 px-4 py-4">
+          <p className="mb-4 text-sm font-medium text-foreground">阅读统计</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">总字数（解析自动计算）</p>
+              <p className="text-sm text-foreground">{work.wordCount?.toLocaleString('en-US') ?? '—'}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">预计阅读时间（解析自动计算）</p>
+              <p className="text-sm text-foreground">
+                {work.estimatedMinutes != null ? `${work.estimatedMinutes} 分钟` : '—'}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="suggestedVocabSize">建议词汇量（可手动覆盖）</Label>
+              <Input
+                id="suggestedVocabSize"
+                inputMode="numeric"
+                value={suggestedVocabSize}
+                onChange={(e) => setSuggestedVocabSize(e.target.value)}
+                placeholder="如 4000"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="difficultyScore">难度 1–5（可手动覆盖）</Label>
+              <Input
+                id="difficultyScore"
+                inputMode="numeric"
+                value={difficultyScore}
+                onChange={(e) => setDifficultyScore(e.target.value)}
+                placeholder={`${DIFFICULTY_SCORE_MIN}–${DIFFICULTY_SCORE_MAX}`}
+              />
+              {difficultyScore.trim() !== '' && Number.parseInt(difficultyScore, 10) >= DIFFICULTY_SCORE_MIN ? (
+                <p className="text-xs text-muted-foreground">
+                  {difficultyLabelFromScore(Number.parseInt(difficultyScore, 10))}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          {work.statsProvenance === 'manual' ? (
+            <p className="mt-3 text-xs text-muted-foreground">当前为手动覆盖；重新解析不会改写难度与建议词汇量。</p>
+          ) : null}
         </div>
 
         {work.originKind === 'admin_epub' ? (

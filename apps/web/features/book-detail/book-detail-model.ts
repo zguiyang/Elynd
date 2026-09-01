@@ -1,18 +1,13 @@
 /** Reading lifecycle for book detail CTA / progress chrome. */
 export type BookReadingStatus = 'unread' | 'in_progress' | 'completed';
 
-/** Mock / placeholder difficulty bands (not on ReadingWork — ADR-001). */
-export type BookDetailLevel = 'easy' | 'mid' | 'hard';
-
 export type BookChapterStatus = 'read' | 'current' | 'unread';
 
 export type BookChapter = {
   id: string;
   index: number;
   title: string;
-  /** Null when unknown — TOC hides the meta line. */
   estimatedMinutes: number | null;
-  /** Null when unknown — TOC hides the meta line. */
   wordCount: number | null;
   status: BookChapterStatus;
 };
@@ -23,18 +18,15 @@ export type BookDetail = {
   id: string;
   title: string;
   author: string;
-  level: BookDetailLevel;
-  /** Optional CEFR-style caption under difficulty stars (placeholder when not real). */
-  cefrLabel: string | null;
+  difficultyScore: number | null;
+  difficultyLabel: string | null;
   category: string;
   tags: string[];
-  estimatedMinutes: number;
-  wordCount: number;
-  /** Short hook under the title (serif italic). */
+  estimatedMinutes: number | null;
+  suggestedVocabSize: number | null;
   teaser: string;
   sourceLabel: '官方';
   languageLabel: string;
-  /** Cover URL (`/api/assets/:id`) or mock external URL. */
   coverImageUrl: string | null;
   shelfStatus: BookDetailShelfStatus;
   readingStatus: BookReadingStatus;
@@ -43,12 +35,6 @@ export type BookDetail = {
   completedAt: string | null;
   chapters: BookChapter[];
   relatedIds: string[];
-};
-
-const LEVEL_LABEL: Record<BookDetailLevel, string> = {
-  easy: '简单',
-  mid: '中等',
-  hard: '稍难',
 };
 
 export function primaryReadLabel(status: BookReadingStatus): string {
@@ -82,15 +68,10 @@ export function formatRelativeReadTime(iso: string | null, now = new Date()): st
   return then.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
 }
 
-export function formatWordCount(count: number): string {
-  if (count >= 1000) {
-    const k = count / 1000;
-    return Number.isInteger(k) ? `${k}k` : `${k.toFixed(1)}k`;
+export function formatMinutes(minutes: number | null): string | null {
+  if (minutes == null) {
+    return null;
   }
-  return String(count);
-}
-
-export function formatMinutes(minutes: number): string {
   if (minutes >= 60) {
     const hours = Math.floor(minutes / 60);
     const rest = minutes % 60;
@@ -99,19 +80,17 @@ export function formatMinutes(minutes: number): string {
   return `${minutes} 分钟`;
 }
 
-export function levelMeta(level: BookDetailLevel): string {
-  return LEVEL_LABEL[level];
+export function formatSuggestedVocabSize(size: number): string {
+  if (size >= 1000) {
+    const k = size / 1000;
+    return Number.isInteger(k) ? `${k}k` : `${k.toFixed(1)}k`;
+  }
+  return String(size);
 }
 
-/** Filled stars out of 5 — mirrors desktop detail prototype. */
-export function levelStarCount(level: BookDetailLevel): number {
-  if (level === 'easy') {
-    return 2;
-  }
-  if (level === 'hard') {
-    return 4;
-  }
-  return 3;
+/** Filled stars out of 5 from backend difficultyScore (1–5). */
+export function difficultyStarCount(score: number): number {
+  return Math.min(5, Math.max(1, Math.round(score)));
 }
 
 export function chapterStatusLabel(status: BookChapterStatus): string {

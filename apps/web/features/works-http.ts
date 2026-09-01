@@ -13,6 +13,11 @@ export type WorkView = {
   tags: string[];
   sources: string[];
   coverAssetId: string | null;
+  wordCount: number | null;
+  estimatedMinutes: number | null;
+  suggestedVocabSize: number | null;
+  difficultyScore: number | null;
+  statsProvenance: Work['statsProvenance'];
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -55,6 +60,11 @@ export function normalizeWork(raw: Work): WorkView {
     tags: raw.tags,
     sources: raw.sources,
     coverAssetId: raw.coverAssetId,
+    wordCount: raw.wordCount,
+    estimatedMinutes: raw.estimatedMinutes,
+    suggestedVocabSize: raw.suggestedVocabSize,
+    difficultyScore: raw.difficultyScore,
+    statsProvenance: raw.statsProvenance,
     publishedAt: raw.publishedAt == null ? null : toIso(raw.publishedAt),
     createdAt: toIso(raw.createdAt),
     updatedAt: toIso(raw.updatedAt),

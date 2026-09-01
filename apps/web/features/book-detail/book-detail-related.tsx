@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { AUTH_ROUTES } from '@/constants';
 import { BookDetailCover } from '@/features/book-detail/book-detail-cover';
 import type { BookDetail } from '@/features/book-detail/book-detail-model';
-import { formatMinutes, levelMeta } from '@/features/book-detail/book-detail-model';
+import { formatMinutes } from '@/features/book-detail/book-detail-model';
 import { cn } from '@/lib/utils';
 
 export function BookDetailRelated({
@@ -43,7 +43,9 @@ export function BookDetailRelated({
               {book.title}
             </h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              难度: {levelMeta(book.level)} · {formatMinutes(book.estimatedMinutes)}
+              {[book.difficultyLabel ? `难度: ${book.difficultyLabel}` : null, formatMinutes(book.estimatedMinutes)]
+                .filter(Boolean)
+                .join(' · ')}
             </p>
           </Link>
         ))}

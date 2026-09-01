@@ -165,7 +165,7 @@ function StepIndicator({ states, activeLabel }: { states: Record<WorkflowStepId,
                 className={cn(
                   'flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
                   isDone || isActive
-                    ? 'bg-brand-deep text-white'
+                    ? 'bg-brand-deep text-primary-foreground'
                     : isFailed
                       ? 'bg-destructive/15 text-destructive'
                       : 'bg-muted text-muted-foreground',

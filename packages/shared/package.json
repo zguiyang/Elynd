@@ -23,6 +23,7 @@
     "./api/tts": "./src/api/tts.ts",
     "./api/tts-invocations": "./src/api/tts-invocations.ts",
     "./api/reading-stats": "./src/api/reading-stats.ts",
+    "./api/recommendations": "./src/api/recommendations.ts",
     "./api/works": "./src/api/works.ts"
   },
   "scripts": {

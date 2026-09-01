@@ -2,6 +2,7 @@
 
 import { BookOpenIcon, CheckIcon, Loader2Icon } from 'lucide-react';
 import Link from 'next/link';
+import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { AUTH_ROUTES } from '@/constants';
@@ -15,10 +16,6 @@ type DiscoverBookCardProps = {
   addingId?: string;
 };
 
-function metaLine(item: DiscoverItem): string {
-  return item.tags.slice(0, 2).join(' · ');
-}
-
 function Cover({
   item,
   shelfStatus,
@@ -29,21 +26,42 @@ function Cover({
   className?: string;
 }) {
   const tint = coverTintForVolume(item.tags, item.title);
+  const [hasImageFailed, setHasImageFailed] = useState(false);
+  const canShowImage = Boolean(item.coverImageUrl) && !hasImageFailed;
   const progress =
     shelfStatus === 'in_progress' && item.progressRatio != null && item.progressRatio > 0 ? item.progressRatio : null;
 
   return (
-    <div className={cn('relative overflow-hidden', tint, className)}>
-      <div className="absolute inset-0 flex flex-col justify-between p-3 md:p-6">
-        <span className="self-end rounded-sm border border-border/30 bg-background/95 px-1.5 py-0.5 text-[10px] font-semibold tracking-wider text-foreground shadow-sm">
+    <div className={cn('relative overflow-hidden', !canShowImage && tint, className)}>
+      {canShowImage ? (
+        // eslint-disable-next-line @next/next/no-img-element -- same asset URL pattern as BookDetailCover
+        <img
+          src={item.coverImageUrl!}
+          alt=""
+          className="absolute inset-0 size-full object-cover"
+          onError={() => setHasImageFailed(true)}
+        />
+      ) : null}
+      <div
+        className={cn(
+          'absolute inset-0 flex flex-col justify-between p-3 md:p-6',
+          canShowImage && 'bg-gradient-to-t from-foreground/60 via-foreground/15 to-transparent',
+        )}
+      >
+        <span className="self-end rounded-sm border border-border/25 bg-background/90 px-1.5 py-0.5 text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase shadow-sm">
           {item.sourceLabel}
         </span>
-        <p className="font-heading line-clamp-4 text-sm font-bold leading-snug text-foreground/85 md:text-lg">
+        <p
+          className={cn(
+            'font-heading line-clamp-4 text-[13px] font-bold leading-snug tracking-tight md:text-xl md:leading-snug',
+            canShowImage ? 'text-background drop-shadow-sm' : 'text-foreground',
+          )}
+        >
           {item.title}
         </p>
       </div>
       {progress != null ? (
-        <div className="absolute inset-x-0 bottom-0 h-1 bg-muted">
+        <div className="absolute inset-x-0 bottom-0 z-10 h-1 bg-muted">
           <div
             className="h-full bg-primary transition-[width] duration-500 ease-out-soft"
             style={{ width: `${progress}%` }}
@@ -128,6 +146,7 @@ export function DiscoverBookCard({ item, onAddToShelf, addingId }: DiscoverBookC
   const detailHref = AUTH_ROUTES.bookDetail(item.id);
   const readHref = AUTH_ROUTES.readBook(item.id);
   const isAdding = addingId === item.id;
+  const hasCopy = Boolean(item.author || item.teaser);
 
   return (
     <article
@@ -150,16 +169,28 @@ export function DiscoverBookCard({ item, onAddToShelf, addingId }: DiscoverBookC
       </Link>
 
       <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5 md:flex-grow md:bg-paper md:p-6">
-        <Link href={detailHref} className="outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
-          <span className="mb-1 block text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase md:mb-2 md:text-xs md:tracking-[0.12em]">
-            {metaLine(item)}
-          </span>
-          <h2 className="font-heading text-lg leading-tight font-semibold text-foreground transition-colors duration-200 ease-out-soft group-hover:text-primary md:text-2xl md:leading-8">
-            {item.title}
-          </h2>
-        </Link>
+        {hasCopy ? (
+          <Link href={detailHref} className="group/copy outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+            {item.author ? (
+              <p className="font-heading text-[13px] leading-snug font-medium tracking-wide text-muted-foreground italic transition-colors duration-200 ease-out-soft group-hover/copy:text-primary md:text-[15px] md:leading-6">
+                {item.author}
+              </p>
+            ) : null}
+            {item.teaser ? (
+              <p
+                className={cn(
+                  'font-reading text-[13px] font-normal leading-5 text-foreground/65',
+                  'line-clamp-3 md:line-clamp-4 md:text-sm md:leading-6',
+                  item.author ? 'mt-2 md:mt-2.5' : '',
+                )}
+              >
+                {item.teaser}
+              </p>
+            ) : null}
+          </Link>
+        ) : null}
 
-        <div className="mt-3 flex items-center md:hidden">
+        <div className={cn('flex items-center md:hidden', hasCopy ? 'mt-3' : '')}>
           <ShelfAction
             status={item.shelfStatus}
             progressRatio={item.progressRatio}
@@ -173,7 +204,7 @@ export function DiscoverBookCard({ item, onAddToShelf, addingId }: DiscoverBookC
         <div className="mt-auto hidden items-center justify-between border-t border-border/30 pt-4 md:flex">
           <Link
             href={detailHref}
-            className="text-sm font-medium text-muted-foreground transition-colors duration-200 ease-out-soft hover:text-primary"
+            className="text-[13px] font-medium text-muted-foreground/70 transition-colors duration-200 ease-out-soft hover:text-primary"
           >
             查看详情
           </Link>

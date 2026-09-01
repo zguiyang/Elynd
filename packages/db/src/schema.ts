@@ -136,7 +136,6 @@ export const readingWork = pgTable(
     ownerUserId: text('owner_user_id').references(() => user.id, { onDelete: 'set null' }),
     originKind: text('origin_kind').notNull().default('admin_text'),
     originMeta: jsonb('origin_meta').$type<Record<string, unknown>>().notNull().default({}),
-    sourceNote: text('source_note').notNull().default(''),
     descriptionProvenance: text('description_provenance').$type<WorkMetadataProvenance | null>(),
     coverAssetId: text('cover_asset_id'),
     publishedAt: timestamp('published_at'),

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { and, asc, count, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, sql } from 'drizzle-orm';
 
 import {
   conversation as conversationTable,
@@ -158,13 +158,20 @@ async function countCompletedWorks(userId: string): Promise<number> {
   return Number(row?.value ?? 0);
 }
 
-async function listActivityDates(userId: string): Promise<string[]> {
+async function listEngagedActivity(userId: string): Promise<ReadingHistoryData['activity']> {
   const rows = await db
-    .select({ localDate: readingDayTable.localDate })
+    .select({
+      localDate: readingDayTable.localDate,
+      engagedSeconds: readingDayTable.engagedSeconds,
+    })
     .from(readingDayTable)
-    .where(eq(readingDayTable.userId, userId))
+    .where(and(eq(readingDayTable.userId, userId), gt(readingDayTable.engagedSeconds, 0)))
     .orderBy(asc(readingDayTable.localDate));
-  return rows.map((row) => row.localDate);
+
+  return rows.map((row) => ({
+    date: row.localDate,
+    engagedSeconds: Number(row.engagedSeconds),
+  }));
 }
 
 async function listWorks(userId: string): Promise<ReadingHistoryWork[]> {
@@ -208,19 +215,19 @@ export async function getReadingHistory(userId: string): Promise<ReadingHistoryD
   const today = calendarDateInTimeZone();
   await backfillReadingDays(userId);
 
-  const activityDates = await listActivityDates(userId);
-  const dateSet = new Set(activityDates);
+  const activity = await listEngagedActivity(userId);
+  const dateSet = new Set(activity.map((day) => day.date));
 
   const portrait: ReadingHistorySummary = {
     consecutiveDays: consecutiveReadingDays(today, dateSet),
-    readingDays: activityDates.length,
+    readingDays: activity.length,
     completedWorks: await countCompletedWorks(userId),
     lookedUpWords: await countLookedUpWords(userId),
   };
 
   return {
     today,
-    activity: activityDates.map((date) => ({ date, level: 1 as const })),
+    activity,
     works: await listWorks(userId),
     portrait,
   };

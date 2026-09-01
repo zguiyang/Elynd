@@ -168,10 +168,8 @@ describe('Reading history HTTP', () => {
     });
 
     const backfilled = await getReadingHistory(learner.cookie);
-    expect(backfilled.activity.map((day) => day.date)).toEqual(
-      expect.arrayContaining([calendarDateInTimeZone(createdAt), calendarDateInTimeZone(lastReadAt)]),
-    );
-    expect(backfilled.activity.some((day) => day.date === calendarDateInTimeZone())).toBe(false);
+    // Presence-only backfill days have no engaged seconds — heatmap stays empty.
+    expect(backfilled.activity).toEqual([]);
     expect(backfilled.works).toEqual([
       expect.objectContaining({
         workId: work.id,
@@ -201,9 +199,9 @@ describe('Reading history HTTP', () => {
 
     const today = calendarDateInTimeZone();
     const live = await getReadingHistory(learner.cookie);
-    expect(live.activity.some((day) => day.date === today && day.level === 1)).toBe(true);
+    expect(live.activity).toEqual([]);
     expect(live.portrait.completedWorks).toBe(1);
-    expect(live.portrait.readingDays).toBeGreaterThanOrEqual(2);
+    expect(live.portrait.readingDays).toBe(0);
     expect(live.works[0]).toMatchObject({
       title: 'History Sea',
       workId: work.id,
@@ -310,6 +308,8 @@ describe('Reading history HTTP', () => {
     });
 
     const history = await getReadingHistory(learner.cookie);
-    expect(history.activity.some((day) => day.date === calendarDateInTimeZone())).toBe(true);
+    expect(history.activity).toEqual([{ date: calendarDateInTimeZone(), engagedSeconds: 45 }]);
+    expect(history.portrait.readingDays).toBe(1);
+    expect(history.portrait.consecutiveDays).toBe(1);
   });
 });

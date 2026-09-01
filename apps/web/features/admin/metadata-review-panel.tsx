@@ -1,9 +1,15 @@
 'use client';
 
 import { Pencil } from 'lucide-react';
+import Link from 'next/link';
 import { type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 
+import {
+  DIFFICULTY_SCORE_MAX,
+  DIFFICULTY_SCORE_MIN,
+  difficultyLabelFromScore,
+} from '@gloaming/shared/api/reading-stats';
 import {
   type UpdateWorkBody,
   WORKFLOW_AUTO_CHAIN,
@@ -18,6 +24,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
+import { ADMIN_ROUTES } from '@/constants';
 import { TaxonomyMultiPicker, TaxonomySelect } from '@/features/admin/taxonomy-picker';
 import {
   formatWorksApiError,
@@ -265,6 +272,46 @@ function ReviewPickerRow({ label, displayValue, provenance, disabled, picker, on
   );
 }
 
+function MetadataReadOnlyRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="py-3.5">
+      <span className="text-sm font-medium text-muted-foreground">{label}</span>
+      <p className={cn('mt-1 text-sm', !value && 'text-muted-foreground')}>{value || '—'}</p>
+    </div>
+  );
+}
+
+function WorkBodySummary({ work }: { work: AdminWorkView }) {
+  const hasParts = work.parts.length > 0;
+  const isProcessing =
+    work.status === 'processing' || work.status === 'metadata' || work.status === 'tts' || work.status === 'uploaded';
+
+  if (isProcessing) {
+    return <p className="text-sm text-muted-foreground">作品处理中，正文即将更新…</p>;
+  }
+  if (work.status === 'failed') {
+    return (
+      <p className="text-sm text-muted-foreground">
+        处理失败：{String(work.originMeta.lastError ?? '未知错误')}。可在上方步骤重试解析。
+      </p>
+    );
+  }
+  if (hasParts) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        正文由解析生成，包含 {work.parts.length} 个章节，不可在此编辑。
+        <Link
+          href={ADMIN_ROUTES.workPreview(work.id)}
+          className="ml-1 font-medium text-primary underline-offset-4 hover:underline"
+        >
+          查看预览 →
+        </Link>
+      </p>
+    );
+  }
+  return <p className="text-sm text-muted-foreground">暂无正文内容。</p>;
+}
+
 type MetadataReviewPanelProps = {
   workId: string;
   work: AdminWorkView;
@@ -419,7 +466,9 @@ export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
 export function MetadataReviewPanel({ workId, work }: MetadataReviewPanelProps) {
   const invalidate = useInvalidateAdminWorks();
   const status = work.status;
-  const isBusy = status === 'processing' || status === 'metadata';
+  const isMetadataJobRunning = status === 'metadata';
+  const isEpub = work.originKind === 'admin_epub';
+  const hasMetadataSkeleton = isMetadataJobRunning;
 
   const [tagsDraft, setTagsDraft] = useState<string[]>(work.tags);
   const [sourcesDraft, setSourcesDraft] = useState<string[]>(work.sources);
@@ -431,11 +480,38 @@ export function MetadataReviewPanel({ workId, work }: MetadataReviewPanelProps) 
     toast.success('已保存');
   }
 
+  async function saveSuggestedVocabSize(raw: string) {
+    const trimmed = raw.trim();
+    const parsed = trimmed === '' ? null : Number.parseInt(trimmed, 10);
+    if (parsed != null && (!Number.isFinite(parsed) || parsed <= 0)) {
+      toast.error('建议词汇量须为正整数');
+      throw new Error('validation');
+    }
+    await saveField({ suggestedVocabSize: parsed });
+  }
+
+  async function saveDifficultyScore(raw: string) {
+    const trimmed = raw.trim();
+    const parsed = trimmed === '' ? null : Number.parseInt(trimmed, 10);
+    if (
+      parsed != null &&
+      (!Number.isFinite(parsed) || parsed < DIFFICULTY_SCORE_MIN || parsed > DIFFICULTY_SCORE_MAX)
+    ) {
+      toast.error(`难度须为 ${DIFFICULTY_SCORE_MIN}–${DIFFICULTY_SCORE_MAX} 的整数`);
+      throw new Error('validation');
+    }
+    await saveField({ difficultyScore: parsed });
+  }
+
+  const suggestedVocabDisplay = work.suggestedVocabSize != null ? String(work.suggestedVocabSize) : '';
+  const difficultyDisplay =
+    work.difficultyScore != null ? `${work.difficultyScore}（${difficultyLabelFromScore(work.difficultyScore)}）` : '';
+
   return (
     <div className="mt-4">
-      <MetadataStatusCard work={work} />
+      {isEpub ? <MetadataStatusCard work={work} /> : null}
 
-      {isBusy ? (
+      {hasMetadataSkeleton ? (
         <div className="mt-4 space-y-3" aria-busy="true">
           {[0, 1, 2, 3, 4].map((index) => (
             <Skeleton key={index} className="h-12 rounded-xl" />
@@ -448,7 +524,7 @@ export function MetadataReviewPanel({ workId, work }: MetadataReviewPanelProps) 
             value={work.title}
             required
             maxLength={200}
-            disabled={isBusy}
+            disabled={isMetadataJobRunning}
             onSave={(value) => saveField({ title: value })}
           />
           <MetadataFieldRow
@@ -456,7 +532,7 @@ export function MetadataReviewPanel({ workId, work }: MetadataReviewPanelProps) 
             value={work.author}
             maxLength={200}
             placeholder="可留空"
-            disabled={isBusy}
+            disabled={isMetadataJobRunning}
             onSave={(value) => saveField({ author: value })}
           />
           <MetadataFieldRow
@@ -466,21 +542,21 @@ export function MetadataReviewPanel({ workId, work }: MetadataReviewPanelProps) 
             maxLength={2000}
             placeholder="作品的简短介绍，展示在发现页"
             provenance={work.metadataProvenance.description}
-            disabled={isBusy}
+            disabled={isMetadataJobRunning}
             onSave={(value) => saveField({ description: value })}
           />
           <ReviewPickerRow
             label="标签"
             displayValue={work.tags.length > 0 ? work.tags.join(' · ') : ''}
             provenance={work.metadataProvenance.tags}
-            disabled={isBusy}
+            disabled={isMetadataJobRunning}
             picker={
               <TaxonomyMultiPicker
                 kind="tag"
                 value={tagsDraft}
                 onChange={setTagsDraft}
                 placeholder="搜索选择标签…"
-                disabled={isBusy}
+                disabled={isMetadataJobRunning}
               />
             }
             onSave={async () => saveField({ tags: tagsDraft })}
@@ -489,14 +565,14 @@ export function MetadataReviewPanel({ workId, work }: MetadataReviewPanelProps) 
             label="分类"
             displayValue={work.category ?? ''}
             provenance={work.metadataProvenance.category}
-            disabled={isBusy}
+            disabled={isMetadataJobRunning}
             picker={
               <TaxonomySelect
                 value={categoryDraft}
                 onChange={setCategoryDraft}
                 placeholder="选择分类…"
                 allowClear
-                disabled={isBusy}
+                disabled={isMetadataJobRunning}
               />
             }
             onSave={async () => saveField({ category: categoryDraft ?? '' })}
@@ -504,18 +580,51 @@ export function MetadataReviewPanel({ workId, work }: MetadataReviewPanelProps) 
           <ReviewPickerRow
             label="来源"
             displayValue={work.sources.length > 0 ? work.sources.join(' · ') : ''}
-            disabled={isBusy}
+            disabled={isMetadataJobRunning}
             picker={
               <TaxonomyMultiPicker
                 kind="source"
                 value={sourcesDraft}
                 onChange={setSourcesDraft}
                 placeholder="搜索选择来源…（留空表示未知）"
-                disabled={isBusy}
+                disabled={isMetadataJobRunning}
               />
             }
             onSave={async () => saveField({ sources: sourcesDraft })}
           />
+          <MetadataReadOnlyRow
+            label="总字数"
+            value={work.wordCount != null ? work.wordCount.toLocaleString('en-US') : ''}
+          />
+          <MetadataReadOnlyRow
+            label="预计阅读时间"
+            value={work.estimatedMinutes != null ? `${work.estimatedMinutes} 分钟` : ''}
+          />
+          <MetadataFieldRow
+            label="建议词汇量"
+            value={suggestedVocabDisplay}
+            editValue={work.suggestedVocabSize != null ? String(work.suggestedVocabSize) : ''}
+            placeholder="如 4000"
+            disabled={isMetadataJobRunning}
+            onSave={saveSuggestedVocabSize}
+          />
+          <MetadataFieldRow
+            label="难度（1–5）"
+            value={difficultyDisplay}
+            editValue={work.difficultyScore != null ? String(work.difficultyScore) : ''}
+            placeholder={`${DIFFICULTY_SCORE_MIN}–${DIFFICULTY_SCORE_MAX}`}
+            disabled={isMetadataJobRunning}
+            onSave={saveDifficultyScore}
+          />
+          {work.statsProvenance === 'manual' ? (
+            <p className="py-3 text-xs text-muted-foreground">难度与建议词汇量为手动覆盖；重新解析不会改写这两项。</p>
+          ) : null}
+          <div className="py-3.5">
+            <span className="text-sm font-medium text-muted-foreground">正文</span>
+            <div className="mt-1">
+              <WorkBodySummary work={work} />
+            </div>
+          </div>
         </div>
       )}
     </div>

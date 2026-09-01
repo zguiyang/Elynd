@@ -18,12 +18,10 @@ import {
   readingStatusFromProgress,
   teaserFromDescription,
 } from '@/features/book-detail/book-detail-model';
-import { buildShelfItemMap, listCatalogWorks } from '@/features/discover/discover-api';
+import { buildShelfItemMap } from '@/features/discover/discover-api';
 import { getReaderParts } from '@/features/reader/reader-api';
 import { getShelf } from '@/features/shelf/shelf-api';
 import { apiRequest, ApiRequestError, formatApiError } from '@/lib/api-request';
-
-const RELATED_LIMIT = 4;
 
 export const bookDetailQueryKey = {
   all: ['book-detail'] as const,
@@ -42,13 +40,6 @@ function toIsoString(value: string | Date | null | undefined): string | null {
     return null;
   }
   return typeof value === 'string' ? value : value.toISOString();
-}
-
-function difficultyLabelFromWork(work: Work): string | null {
-  if (work.difficultyScore == null) {
-    return null;
-  }
-  return difficultyLabelFromScore(work.difficultyScore);
 }
 
 function resolveWorkReadingStats(
@@ -125,37 +116,7 @@ export function chaptersFromParts(parts: PartSummary[], state: ReadingState | nu
   });
 }
 
-function workToRelatedStub(work: Work): BookDetail {
-  return {
-    id: work.id,
-    title: work.title,
-    author: work.author,
-    difficultyScore: work.difficultyScore,
-    difficultyLabel: difficultyLabelFromWork(work),
-    category: work.tags[0] ?? '读物',
-    tags: work.tags,
-    estimatedMinutes: work.estimatedMinutes,
-    suggestedVocabSize: work.suggestedVocabSize,
-    teaser: teaserFromDescription(work.description),
-    sourceLabel: '官方',
-    languageLabel: languageLabelFromCode(work.language),
-    coverImageUrl: coverUrlFromAssetId(work.coverAssetId),
-    shelfStatus: 'available',
-    readingStatus: 'unread',
-    progressRatio: null,
-    lastReadAt: null,
-    completedAt: null,
-    chapters: [],
-    relatedIds: [],
-  };
-}
-
-export function toBookDetail(
-  work: Work,
-  parts: PartSummary[],
-  shelfItem: ShelfItem | undefined,
-  relatedWorks: Work[],
-): BookDetail {
+export function toBookDetail(work: Work, parts: PartSummary[], shelfItem: ShelfItem | undefined): BookDetail {
   const state = shelfItem?.state ?? null;
   const progressRatio = state?.progressRatio ?? null;
   const readingStatus = state ? readingStatusFromProgress(state.status, progressRatio) : 'unread';
@@ -182,18 +143,17 @@ export function toBookDetail(
     lastReadAt: toIsoString(state?.lastReadAt),
     completedAt: toIsoString(state?.completedAt),
     chapters: chaptersFromParts(parts, state),
-    relatedIds: relatedWorks.map((w) => w.id),
+    relatedIds: [],
   };
 }
 
 export type BookDetailQueryResult = {
   book: BookDetail;
-  related: BookDetail[];
 };
 
 export async function fetchBookDetail(workId: string, init?: { signal?: AbortSignal }): Promise<BookDetailQueryResult> {
   const work = await getPublishedWork(workId, init);
-  const [shelfData, partsData, catalog] = await Promise.all([
+  const [shelfData, partsData] = await Promise.all([
     getShelf(init).catch((error: unknown) => {
       if (error instanceof ApiRequestError && error.status === 401) {
         return null;
@@ -201,14 +161,11 @@ export async function fetchBookDetail(workId: string, init?: { signal?: AbortSig
       throw error;
     }),
     getReaderParts(workId, init),
-    listCatalogWorks({ page: 1, pageSize: 12 }, init).catch(() => null),
   ]);
 
   const shelfMap = shelfData ? buildShelfItemMap(shelfData) : new Map<string, ShelfItem>();
-  const relatedWorks = (catalog?.items ?? []).filter((item) => item.id !== workId).slice(0, RELATED_LIMIT);
-  const book = toBookDetail(work, partsData.parts, shelfMap.get(workId), relatedWorks);
-  const related = relatedWorks.map(workToRelatedStub);
-  return { book, related };
+  const book = toBookDetail(work, partsData.parts, shelfMap.get(workId));
+  return { book };
 }
 
 export function useBookDetailQuery(workId: string, options?: { enabled?: boolean }) {

@@ -185,7 +185,7 @@ describe('toBookDetail', () => {
       },
     ];
 
-    const book = toBookDetail(work, parts, undefined, []);
+    const book = toBookDetail(work, parts, undefined);
     expect(book.estimatedMinutes).toBe(2);
     expect(book.suggestedVocabSize).toBeNull();
   });

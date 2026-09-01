@@ -13,7 +13,8 @@ import {
 } from '@/features/book-detail/book-detail-api';
 import { BookDetailHero, BookDetailMobileProgress, BookDetailStickyCta } from '@/features/book-detail/book-detail-hero';
 import type { BookDetail } from '@/features/book-detail/book-detail-model';
-import { BookDetailRelated } from '@/features/book-detail/book-detail-related';
+import { BookDetailRecommendations } from '@/features/book-detail/book-detail-recommendations';
+import { recommendationsQueryKey } from '@/features/book-detail/book-detail-recommendations-api';
 import { BookDetailStats } from '@/features/book-detail/book-detail-stats';
 import { BookDetailToc } from '@/features/book-detail/book-detail-toc';
 import { BookDetailUnavailable } from '@/features/book-detail/book-detail-unavailable';
@@ -35,7 +36,7 @@ function BookDetailSkeleton() {
   );
 }
 
-function BookDetailView({ book, related }: { book: BookDetail; related: BookDetail[] }) {
+function BookDetailView({ book }: { book: BookDetail }) {
   const queryClient = useQueryClient();
   const addToShelf = useAddToShelfMutation();
   const isOnShelf = book.shelfStatus === 'on_shelf';
@@ -44,7 +45,10 @@ function BookDetailView({ book, related }: { book: BookDetail; related: BookDeta
     addToShelf.mutate(book.id, {
       onSuccess: async () => {
         toast.success('已加入书架');
-        await queryClient.invalidateQueries({ queryKey: bookDetailQueryKey.detail(book.id) });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: bookDetailQueryKey.detail(book.id) }),
+          queryClient.invalidateQueries({ queryKey: recommendationsQueryKey.all }),
+        ]);
       },
       onError: (error) => toast.error(formatBookDetailApiError(error)),
     });
@@ -78,15 +82,10 @@ function BookDetailView({ book, related }: { book: BookDetail; related: BookDeta
       <div className="flex flex-col gap-8 md:gap-14">
         <BookDetailStats book={book} />
         <BookDetailToc book={book} />
-        <BookDetailRelated books={related} />
+        <BookDetailRecommendations excludeWorkId={book.id} />
       </div>
 
-      <footer
-        className={cn(
-          'text-center text-sm text-muted-foreground',
-          related.length > 0 ? 'pt-2 md:pt-0' : 'border-t border-border/50 pt-8',
-        )}
-      >
+      <footer className="border-t border-border/50 pt-8 text-center text-sm text-muted-foreground">
         <p className="mb-1">Gloaming — The Quiet Art of Slow Reading.</p>
       </footer>
 
@@ -111,8 +110,8 @@ export function BookDetailPage({ workId }: { workId: string }) {
   }
 
   if (detailQuery.isError) {
-    return <BookDetailUnavailable message={formatBookDetailApiError(detailQuery.error)} />;
+    return <BookDetailUnavailable workId={workId} message={formatBookDetailApiError(detailQuery.error)} />;
   }
 
-  return <BookDetailView book={detailQuery.data.book} related={detailQuery.data.related} />;
+  return <BookDetailView book={detailQuery.data.book} />;
 }

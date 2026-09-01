@@ -1,7 +1,5 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
-
 import { Button } from '@/components/ui/button';
 import { formatHistoryApiError, useReadingHistoryQuery } from '@/features/history/history-api';
 import { HistoryCompletions } from '@/features/history/history-completions';
@@ -21,23 +19,7 @@ function HistorySkeleton() {
 }
 
 export function HistoryPage() {
-  const searchParams = useSearchParams();
-  const isEmptyPreview = searchParams.get('empty') === '1';
-  const historyQuery = useReadingHistoryQuery({ enabled: !isEmptyPreview });
-
-  if (isEmptyPreview) {
-    return (
-      <div
-        className={cn(
-          'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700',
-          'mx-auto flex w-full max-w-5xl min-h-[70dvh] flex-col justify-center',
-        )}
-      >
-        <HistoryHeader />
-        <HistoryEmptyState />
-      </div>
-    );
-  }
+  const historyQuery = useReadingHistoryQuery();
 
   if (historyQuery.isPending) {
     return (

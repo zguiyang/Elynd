@@ -1,7 +1,6 @@
 'use client';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { formatShelfApiError, shelfQueryKey, useShelfQuery } from '@/features/shelf/shelf-api';
@@ -39,24 +38,8 @@ function ShelfErrorState({ message, onRetry }: { message: string; onRetry: () =>
 }
 
 export function ShelfPage() {
-  const searchParams = useSearchParams();
-  const isEmptyPreview = searchParams.get('empty') === '1';
   const queryClient = useQueryClient();
-  const shelfQuery = useShelfQuery({ enabled: !isEmptyPreview });
-
-  if (isEmptyPreview) {
-    return (
-      <div
-        className={cn(
-          'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700',
-          'mx-auto flex w-full max-w-5xl min-h-[70dvh] flex-col justify-center',
-        )}
-      >
-        <ShelfHeader hasResumeHint={false} />
-        <ShelfEmptyState />
-      </div>
-    );
-  }
+  const shelfQuery = useShelfQuery();
 
   if (shelfQuery.isPending) {
     return (

@@ -9,7 +9,7 @@ import {
 
 const valid = {
   today: '2026-08-19',
-  activity: [{ date: '2026-08-19', level: 1 as const }],
+  activity: [{ date: '2026-08-19', engagedSeconds: 900 }],
   works: [
     {
       workId: 'work_1',
@@ -41,15 +41,15 @@ describe('reading-history api contracts', () => {
     expect(calendarDateInTimeZone(new Date('2026-08-18T18:30:00.000Z'))).toBe('2026-08-19');
   });
 
-  it('accepts a sparse binary snapshot with in-progress and completed works', () => {
+  it('accepts a sparse duration snapshot with in-progress and completed works', () => {
     expect(readingHistoryDataSchema.parse(valid)).toEqual(valid);
   });
 
-  it('rejects intensity above 1 and malformed dates', () => {
+  it('rejects zero engaged seconds and malformed dates', () => {
     expect(
       readingHistoryDataSchema.safeParse({
         ...valid,
-        activity: [{ date: '2026-08-19', level: 2 }],
+        activity: [{ date: '2026-08-19', engagedSeconds: 0 }],
       }).success,
     ).toBe(false);
     expect(

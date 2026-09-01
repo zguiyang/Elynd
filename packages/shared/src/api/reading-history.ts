@@ -16,12 +16,13 @@ export function calendarDateInTimeZone(now = new Date(), timeZone = READING_DAY_
 
 const calendarDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Expected YYYY-MM-DD');
 
-export const readingHistoryActivityLevelSchema = z.literal(1);
-export type ReadingHistoryActivityLevel = z.infer<typeof readingHistoryActivityLevelSchema>;
+/** Soft daily ceiling for engaged seconds (8h) — anti-runaway. */
+export const READING_DAY_ENGAGED_SECONDS_CAP = 8 * 60 * 60;
 
+/** One Shanghai day with engaged reading time (heatmap source). */
 export const readingHistoryActivityDaySchema = z.object({
   date: calendarDateSchema,
-  level: readingHistoryActivityLevelSchema,
+  engagedSeconds: z.number().int().positive().max(READING_DAY_ENGAGED_SECONDS_CAP),
 });
 
 export type ReadingHistoryActivityDay = z.infer<typeof readingHistoryActivityDaySchema>;
@@ -65,9 +66,6 @@ export const READING_HEARTBEAT_INTERVAL_MS = 30_000 as const;
  * Client should not send more; server clamps.
  */
 export const READING_HEARTBEAT_MAX_CREDIT_SECONDS = 45 as const;
-
-/** Soft daily ceiling for engaged seconds (8h) — anti-runaway. */
-export const READING_DAY_ENGAGED_SECONDS_CAP = 8 * 60 * 60;
 
 export const readingHeartbeatBodySchema = z.object({
   seconds: z.number().int().positive().max(READING_HEARTBEAT_MAX_CREDIT_SECONDS),

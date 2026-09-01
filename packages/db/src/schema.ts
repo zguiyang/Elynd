@@ -692,6 +692,8 @@ export const readingDay = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
     localDate: date('local_date', { mode: 'string' }).notNull(),
+    /** Accumulated engaged reading seconds for this Shanghai calendar day (reader heartbeat). */
+    engagedSeconds: integer('engaged_seconds').notNull().default(0),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (table) => [unique('reading_day_user_date_uidx').on(table.userId, table.localDate)],

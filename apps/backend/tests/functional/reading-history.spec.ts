@@ -135,7 +135,7 @@ describe('Reading history HTTP', () => {
     const empty = await getReadingHistory(learner.cookie);
     expect(empty.today).toBe(calendarDateInTimeZone());
     expect(empty.activity).toEqual([]);
-    expect(empty.completions).toEqual([]);
+    expect(empty.works).toEqual([]);
     expect(empty.portrait).toEqual({
       consecutiveDays: 0,
       readingDays: 0,
@@ -144,7 +144,7 @@ describe('Reading history HTTP', () => {
     });
   });
 
-  it('records reader opens, backfills recoverable dates, and lists completions', async () => {
+  it('records reader opens, backfills recoverable dates, and lists in-progress plus completed works', async () => {
     const admin = await createSession('admin');
     const learner = await createSession('user');
     createdEmails.push(admin.email, learner.email);
@@ -172,6 +172,16 @@ describe('Reading history HTTP', () => {
       expect.arrayContaining([calendarDateInTimeZone(createdAt), calendarDateInTimeZone(lastReadAt)]),
     );
     expect(backfilled.activity.some((day) => day.date === calendarDateInTimeZone())).toBe(false);
+    expect(backfilled.works).toEqual([
+      expect.objectContaining({
+        workId: work.id,
+        title: 'History Sea',
+        status: 'in_progress',
+        date: calendarDateInTimeZone(lastReadAt),
+        author: expect.any(String),
+        coverAssetId: null,
+      }),
+    ]);
 
     expect(
       (
@@ -194,7 +204,14 @@ describe('Reading history HTTP', () => {
     expect(live.activity.some((day) => day.date === today && day.level === 1)).toBe(true);
     expect(live.portrait.completedWorks).toBe(1);
     expect(live.portrait.readingDays).toBeGreaterThanOrEqual(2);
-    expect(live.completions[0]).toMatchObject({ title: 'History Sea', workId: work.id, date: today });
+    expect(live.works[0]).toMatchObject({
+      title: 'History Sea',
+      workId: work.id,
+      status: 'completed',
+      date: today,
+      author: expect.any(String),
+      coverAssetId: null,
+    });
   });
 
   it('counts distinct lookup selections', async () => {
@@ -257,5 +274,42 @@ describe('Reading history HTTP', () => {
 
     const snapshot = await getReadingHistory(learner.cookie);
     expect(snapshot.portrait.lookedUpWords).toBe(2);
+  });
+
+  it('accumulates engaged seconds from reading heartbeats', async () => {
+    const learner = await createSession('user');
+    createdEmails.push(learner.email);
+
+    const unauthorized = await app.request('/api/reading-heartbeat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ seconds: 30 }),
+    });
+    expect(unauthorized.status).toBe(HTTP_STATUS.UNAUTHORIZED);
+
+    const first = await app.request('/api/reading-heartbeat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
+      body: JSON.stringify({ seconds: 30 }),
+    });
+    expect(first.status).toBe(200);
+    expect(await first.json()).toEqual({
+      localDate: calendarDateInTimeZone(),
+      engagedSeconds: 30,
+    });
+
+    const second = await app.request('/api/reading-heartbeat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
+      body: JSON.stringify({ seconds: 15 }),
+    });
+    expect(second.status).toBe(200);
+    expect(await second.json()).toEqual({
+      localDate: calendarDateInTimeZone(),
+      engagedSeconds: 45,
+    });
+
+    const history = await getReadingHistory(learner.cookie);
+    expect(history.activity.some((day) => day.date === calendarDateInTimeZone())).toBe(true);
   });
 });

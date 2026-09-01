@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { and, asc, count, desc, eq, isNotNull, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, sql } from 'drizzle-orm';
 
 import {
   conversation as conversationTable,
@@ -9,12 +9,18 @@ import {
   readingState as readingStateTable,
   readingWork as readingWorkTable,
 } from '@gloaming/db';
+import type { ReadingStateStatus } from '@gloaming/shared/api/reader';
 import type {
-  ReadingHistoryCompletion,
+  ReadingHeartbeatResult,
   ReadingHistoryData,
   ReadingHistorySummary,
+  ReadingHistoryWork,
 } from '@gloaming/shared/api/reading-history';
-import { calendarDateInTimeZone } from '@gloaming/shared/api/reading-history';
+import {
+  calendarDateInTimeZone,
+  READING_DAY_ENGAGED_SECONDS_CAP,
+  READING_HEARTBEAT_MAX_CREDIT_SECONDS,
+} from '@gloaming/shared/api/reading-history';
 
 import { db } from '@/db';
 
@@ -53,6 +59,51 @@ async function insertReadingDays(userId: string, dates: Iterable<string>): Promi
 
 export async function touchReadingDay(userId: string, now = new Date()): Promise<void> {
   await insertReadingDays(userId, [calendarDateInTimeZone(now)]);
+}
+
+/** Credit engaged reading seconds for the Shanghai calendar day (reader heartbeat). */
+export async function recordReadingHeartbeat(
+  userId: string,
+  seconds: number,
+  now = new Date(),
+): Promise<ReadingHeartbeatResult> {
+  const credit = Math.min(Math.max(0, Math.floor(seconds)), READING_HEARTBEAT_MAX_CREDIT_SECONDS);
+  if (credit <= 0) {
+    const localDate = calendarDateInTimeZone(now);
+    const [row] = await db
+      .select({ engagedSeconds: readingDayTable.engagedSeconds })
+      .from(readingDayTable)
+      .where(and(eq(readingDayTable.userId, userId), eq(readingDayTable.localDate, localDate)))
+      .limit(1);
+    return { localDate, engagedSeconds: Number(row?.engagedSeconds ?? 0) };
+  }
+
+  const localDate = calendarDateInTimeZone(now);
+  await db
+    .insert(readingDayTable)
+    .values({
+      id: randomUUID(),
+      userId,
+      localDate,
+      engagedSeconds: credit,
+    })
+    .onConflictDoUpdate({
+      target: [readingDayTable.userId, readingDayTable.localDate],
+      set: {
+        engagedSeconds: sql`least(${READING_DAY_ENGAGED_SECONDS_CAP}, ${readingDayTable.engagedSeconds} + ${credit})`,
+      },
+    });
+
+  const [row] = await db
+    .select({ engagedSeconds: readingDayTable.engagedSeconds })
+    .from(readingDayTable)
+    .where(and(eq(readingDayTable.userId, userId), eq(readingDayTable.localDate, localDate)))
+    .limit(1);
+
+  return {
+    localDate,
+    engagedSeconds: Number(row?.engagedSeconds ?? credit),
+  };
 }
 
 function pushShanghaiDates(target: Set<string>, ...values: Array<Date | null | undefined>): void {
@@ -116,36 +167,41 @@ async function listActivityDates(userId: string): Promise<string[]> {
   return rows.map((row) => row.localDate);
 }
 
-async function listCompletions(userId: string): Promise<ReadingHistoryCompletion[]> {
+async function listWorks(userId: string): Promise<ReadingHistoryWork[]> {
   const rows = await db
     .select({
+      status: readingStateTable.status,
       completedAt: readingStateTable.completedAt,
+      lastReadAt: readingStateTable.lastReadAt,
       title: readingWorkTable.title,
+      author: readingWorkTable.author,
+      coverAssetId: readingWorkTable.coverAssetId,
       workId: readingWorkTable.id,
     })
     .from(readingStateTable)
     .innerJoin(readingWorkTable, eq(readingWorkTable.id, readingStateTable.workId))
-    .where(
-      and(
-        eq(readingStateTable.userId, userId),
-        eq(readingStateTable.status, 'completed'),
-        isNotNull(readingStateTable.completedAt),
-      ),
-    )
-    .orderBy(desc(readingStateTable.completedAt), asc(readingWorkTable.title));
+    .where(eq(readingStateTable.userId, userId))
+    .orderBy(desc(readingStateTable.lastReadAt), asc(readingWorkTable.title));
 
-  return rows.flatMap((row) => {
-    if (!row.completedAt) {
+  const works = rows.flatMap((row): ReadingHistoryWork[] => {
+    const status = row.status as ReadingStateStatus;
+    if (status !== 'in_progress' && status !== 'completed') {
       return [];
     }
+    const activityAt = status === 'completed' ? (row.completedAt ?? row.lastReadAt) : row.lastReadAt;
     return [
       {
-        date: calendarDateInTimeZone(row.completedAt),
-        title: row.title,
         workId: row.workId,
+        title: row.title,
+        author: row.author,
+        coverAssetId: row.coverAssetId,
+        status,
+        date: calendarDateInTimeZone(activityAt),
       },
     ];
   });
+
+  return works.sort((a, b) => b.date.localeCompare(a.date) || a.title.localeCompare(b.title));
 }
 
 export async function getReadingHistory(userId: string): Promise<ReadingHistoryData> {
@@ -165,7 +221,7 @@ export async function getReadingHistory(userId: string): Promise<ReadingHistoryD
   return {
     today,
     activity: activityDates.map((date) => ({ date, level: 1 as const })),
-    completions: await listCompletions(userId),
+    works: await listWorks(userId),
     portrait,
   };
 }

@@ -150,6 +150,56 @@ function buildMetadataProvenance(
   return map;
 }
 
+/** Backfill stats for works parsed before reading_work stats columns existed. */
+async function ensureWorkReadingStatsIfMissing(row: WorkRow): Promise<WorkRow> {
+  if (row.wordCount != null) {
+    return row;
+  }
+
+  const parts = await loadPartsForWork(row.id);
+  if (parts.length === 0) {
+    return row;
+  }
+
+  const preserveManualStats = row.statsProvenance === 'manual';
+  const workStats = computeWorkReadingStats(
+    parts.map((part) => ({ body: part.body })),
+    row.language,
+  );
+
+  await db.transaction(async (tx) => {
+    for (const part of parts) {
+      const meta = part.meta as { wordCount?: unknown };
+      if (typeof meta.wordCount === 'number') {
+        continue;
+      }
+      const partStats = computePartReadingStats(part.body);
+      await tx
+        .update(readingPartTable)
+        .set({ meta: { wordCount: partStats.wordCount } })
+        .where(eq(readingPartTable.id, part.id));
+    }
+
+    await tx
+      .update(readingWorkTable)
+      .set({
+        wordCount: workStats.wordCount,
+        estimatedMinutes: workStats.estimatedMinutes,
+        ...(preserveManualStats
+          ? {}
+          : {
+              suggestedVocabSize: workStats.suggestedVocabSize,
+              difficultyScore: workStats.difficultyScore,
+              statsProvenance: workStats.statsProvenance,
+            }),
+      })
+      .where(eq(readingWorkTable.id, row.id));
+  });
+
+  const [updated] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, row.id)).limit(1);
+  return updated ?? row;
+}
+
 function toWork(row: WorkRow, tags: string[], sources: string[]): Work {
   return {
     id: row.id,
@@ -1067,9 +1117,10 @@ export async function getPublishedWork(id: string): Promise<Work> {
   if (!row) {
     throw new NotFoundError('Work');
   }
+  const hydrated = await ensureWorkReadingStatsIfMissing(row);
   const tags = await loadTagsForWork(id);
   const sources = await loadSourcesForWork(id);
-  return toWork(row, tags, sources);
+  return toWork(hydrated, tags, sources);
 }
 
 export async function requirePublishedWorkWithParts(workId: string): Promise<{ work: WorkRow; parts: PartRow[] }> {
@@ -1081,11 +1132,12 @@ export async function requirePublishedWorkWithParts(workId: string): Promise<{ w
   if (!work) {
     throw new NotFoundError('Work');
   }
+  const hydrated = await ensureWorkReadingStatsIfMissing(work);
   const parts = await loadPartsForWork(workId);
   if (parts.length === 0) {
     throw new NotFoundError('Part');
   }
-  return { work, parts };
+  return { work: hydrated, parts };
 }
 
 export async function getPartById(partId: string): Promise<PartRow> {

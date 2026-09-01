@@ -23,7 +23,9 @@ export function BookDetailStats({ book }: { book: BookDetail }) {
 
   return (
     <section className="border-b border-border/50 pb-6 md:pb-8">
-      <h2 className="font-heading mb-4 text-left text-xl font-semibold text-foreground md:hidden">阅读信息</h2>
+      <h2 className="font-heading mb-4 text-left text-xl font-semibold text-foreground md:mb-5 md:text-2xl">
+        阅读信息
+      </h2>
       <div className={cn('grid w-full divide-x divide-border/50 text-center', gridClass)}>
         {hasDifficulty ? (
           <div className="px-2 md:px-4">

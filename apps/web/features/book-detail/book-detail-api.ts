@@ -6,7 +6,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import type { ReadingState } from '@gloaming/shared/api/reader';
-import { difficultyLabelFromScore } from '@gloaming/shared/api/reading-stats';
+import { difficultyLabelFromScore, estimatedMinutesFromWordCount } from '@gloaming/shared/api/reading-stats';
 import type { ShelfItem } from '@gloaming/shared/api/shelf';
 import { type PartSummary, type Work, workSchema } from '@gloaming/shared/api/works';
 
@@ -49,6 +49,30 @@ function difficultyLabelFromWork(work: Work): string | null {
     return null;
   }
   return difficultyLabelFromScore(work.difficultyScore);
+}
+
+function resolveWorkReadingStats(
+  work: Work,
+  parts: PartSummary[],
+): Pick<BookDetail, 'estimatedMinutes' | 'suggestedVocabSize' | 'difficultyScore' | 'difficultyLabel'> {
+  let estimatedMinutes = work.estimatedMinutes;
+  const suggestedVocabSize = work.suggestedVocabSize;
+  const difficultyScore = work.difficultyScore;
+
+  if (estimatedMinutes == null) {
+    const partWordCounts = parts.map((part) => part.wordCount).filter((count): count is number => count != null);
+    if (partWordCounts.length > 0) {
+      const totalWords = partWordCounts.reduce((sum, count) => sum + count, 0);
+      estimatedMinutes = estimatedMinutesFromWordCount(totalWords);
+    }
+  }
+
+  return {
+    estimatedMinutes,
+    suggestedVocabSize,
+    difficultyScore,
+    difficultyLabel: difficultyScore != null ? difficultyLabelFromScore(difficultyScore) : null,
+  };
 }
 
 function partStatsFields(part: PartSummary): Pick<BookChapter, 'estimatedMinutes' | 'wordCount'> {
@@ -136,17 +160,18 @@ export function toBookDetail(
   const progressRatio = state?.progressRatio ?? null;
   const readingStatus = state ? readingStatusFromProgress(state.status, progressRatio) : 'unread';
   const teaser = teaserFromDescription(work.description);
+  const readingStats = resolveWorkReadingStats(work, parts);
 
   return {
     id: work.id,
     title: work.title,
     author: work.author,
-    difficultyScore: work.difficultyScore,
-    difficultyLabel: difficultyLabelFromWork(work),
+    difficultyScore: readingStats.difficultyScore,
+    difficultyLabel: readingStats.difficultyLabel,
     category: work.tags[0] ?? '读物',
     tags: work.tags,
-    estimatedMinutes: work.estimatedMinutes,
-    suggestedVocabSize: work.suggestedVocabSize,
+    estimatedMinutes: readingStats.estimatedMinutes,
+    suggestedVocabSize: readingStats.suggestedVocabSize,
     teaser,
     sourceLabel: '官方',
     languageLabel: languageLabelFromCode(work.language),
@@ -167,8 +192,8 @@ export type BookDetailQueryResult = {
 };
 
 export async function fetchBookDetail(workId: string, init?: { signal?: AbortSignal }): Promise<BookDetailQueryResult> {
-  const [work, shelfData, partsData, catalog] = await Promise.all([
-    getPublishedWork(workId, init),
+  const work = await getPublishedWork(workId, init);
+  const [shelfData, partsData, catalog] = await Promise.all([
     getShelf(init).catch((error: unknown) => {
       if (error instanceof ApiRequestError && error.status === 401) {
         return null;

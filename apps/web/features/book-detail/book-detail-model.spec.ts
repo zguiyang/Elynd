@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { chaptersFromParts } from '@/features/book-detail/book-detail-api';
+import { chaptersFromParts, toBookDetail } from '@/features/book-detail/book-detail-api';
 import {
   chapterOrdinalLabel,
   chapterStatusLabel,
@@ -144,5 +144,49 @@ describe('chaptersFromParts', () => {
       completedAt: '2026-08-28T12:00:00.000Z',
     });
     expect(chapters.every((c) => c.status === 'read')).toBe(true);
+  });
+});
+
+describe('toBookDetail', () => {
+  const work = {
+    id: 'w1',
+    title: 'Test Book',
+    author: 'Author',
+    description: 'Desc',
+    language: 'en',
+    status: 'published' as const,
+    visibility: 'catalog' as const,
+    originKind: 'admin_epub' as const,
+    tags: ['Fiction'],
+    sources: ['Gutenberg'],
+    coverAssetId: null,
+    wordCount: null,
+    estimatedMinutes: null,
+    suggestedVocabSize: null,
+    difficultyScore: null,
+    statsProvenance: null,
+    publishedAt: '2026-01-01T00:00:00.000Z',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  };
+
+  it('derives estimated minutes from part word counts when work stats are missing', () => {
+    const parts = [
+      {
+        id: 'p1',
+        workId: 'w1',
+        sortOrder: 0,
+        kind: 'chapter' as const,
+        title: 'One',
+        wordCount: 400,
+        estimatedMinutes: 2,
+        createdAt: '2026-01-01',
+        updatedAt: '2026-01-01',
+      },
+    ];
+
+    const book = toBookDetail(work, parts, undefined, []);
+    expect(book.estimatedMinutes).toBe(2);
+    expect(book.suggestedVocabSize).toBeNull();
   });
 });

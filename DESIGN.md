@@ -271,9 +271,9 @@ html.dark  →  Dark CSS variables
 
 | Surface           | Entry                                                                                            |
 | ----------------- | ------------------------------------------------------------------------------------------------ |
-| Desktop           | `AccountMenu` (signed-in avatar menu in `SiteNav`)                                               |
-| Mobile (AppShell) | `MobileBottomNav` → **更多** Sheet                                                               |
-| Landing           | Same `SiteNav` / `AccountMenu` when signed in                                                    |
+| Desktop           | `SiteNav` icon button left of avatar (`ThemeModeNavButton`)                                      |
+| Mobile (AppShell) | Same `SiteNav` icon button left of avatar (top chrome)                                           |
+| Landing           | Same `SiteNav` control when signed in                                                            |
 | Reader            | No dedicated theme control in Reader chrome — inherits global theme                              |
 | Admin             | No Admin-specific theme control — inherits global theme                                          |
 | Auth / guest      | No dedicated control required in MVP; System default applies until signed-in chrome is available |
@@ -540,13 +540,13 @@ Depth from **tonal layering** and hairline outlines — not heavy drop shadows.
   - **Primary links (desktop `md+`):** `body-ui` scale — **16px / 24 line-height**, weight **500** idle → **700** active. Not `label-ui` (14px); that token is for denser chrome (footer, meta, compact controls).
   - **Idle color:** `muted-foreground` / on-surface-variant; **hover / active:** `primary` (ember).
   - **Active indicator:** **2px** bottom underline in `primary`, with **4px** gap under the glyphs (`padding-bottom: 0.25rem`). Every link keeps a transparent 2px underline slot so the row does not jump. Do not use 1px hairlines for nav active — too weak on 2K/3K next to the 36px avatar.
-  - **Row:** desktop height **64–80px**; link cluster `gap-8`; trailing Search (placeholder) + **36px** avatar when signed in, or Sign In text when guest.
-  - **Account / appearance:** Account menu holds account actions and **theme mode** (浅色 / 深色 / 跟随系统). No separate Settings product page required in MVP 1 for theme alone.
-  - **Mobile (`< md`) top chrome:** Brand + Avatar (or Sign In) only — **no** hamburger / Sheet for primary destinations.
+  - **Row:** desktop height **64–80px**; link cluster `gap-8`; trailing **theme icon** (36px hit target) + **36px** avatar when signed in, or Sign In text when guest. **No** search field/icon in learner SiteNav until product search ships.
+  - **Account:** Account menu holds account actions only (admin entry when applicable, sign out). **Theme mode** lives in the dedicated `ThemeModeNavButton` left of the avatar — not inside the account menu. No separate Settings product page required in MVP 1 for theme alone.
+  - **Mobile (`< md`) top chrome:** Brand + theme icon + Avatar (or Sign In) — **no** hamburger / Sheet for primary destinations.
   - Temp Stitch HTML may disagree (14px / 1px underline on some screens) — **this contract wins**.
 - **App bottom nav (mobile learner shell) — locked:** Only inside `AppShell` (`MobileBottomNav`). Not on Landing, Auth, Reader, or Admin.
   - **Tabs:** 书架 → 发现 → 历史 → 更多 (labels from `nav-config`; hrefs shared with desktop primary links).
-  - **更多:** opens a bottom Sheet for extensions — **no** `/more` route. Hosts **theme mode** control (and future account/settings rows). Placeholder-only rows may remain for not-yet-shipped items.
+  - **更多:** opens a bottom Sheet for extensions — **no** `/more` route. Future account/settings rows. Theme mode is **not** hosted here (top `SiteNav` icon). Placeholder-only rows may remain for not-yet-shipped items.
   - **Height:** **56px** tab row + `env(safe-area-inset-bottom)`.
   - **AppShell** exposes `--app-shell-bottom` so page sticky CTAs (e.g. book detail) sit above the tab bar; `md+` sets it to `0`.
   - **Active:** `primary` icon + label; idle `muted-foreground`. Quiet — no floating island / glow.

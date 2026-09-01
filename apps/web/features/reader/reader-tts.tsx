@@ -5,35 +5,43 @@ import { Loader2Icon, PauseIcon, PlayIcon } from 'lucide-react';
 import type { ReaderAudioAvailability } from '@gloaming/shared/api/reader';
 
 import { Button } from '@/components/ui/button';
-import type { ReaderAudioRole, ReaderAudioStatus } from '@/features/reader/reader-model';
+import {
+  formatPlaybackRate,
+  type ReaderAudioRole,
+  type ReaderAudioStatus,
+  type ReaderPlaybackRate,
+} from '@/features/reader/reader-model';
 import { cn } from '@/lib/utils';
 
 type ReaderTtsProps = {
   status: ReaderAudioStatus;
-  label: string;
+  playbackRate: ReaderPlaybackRate;
   tocOpen: boolean;
   aiDrawerOpen: boolean;
   audioRole: ReaderAudioRole;
   audioAvailable: ReaderAudioAvailability;
   onToggle: () => void;
+  onCyclePlaybackRate: () => void;
   onSelectRole: (role: ReaderAudioRole) => void;
 };
 
 /** Mini player only — idle entry lives in reader chrome (headphones). */
 export function ReaderTts({
   status,
-  label,
+  playbackRate,
   tocOpen,
   aiDrawerOpen,
   audioRole,
   audioAvailable,
   onToggle,
+  onCyclePlaybackRate,
   onSelectRole,
 }: ReaderTtsProps) {
   const isActive = status === 'playing' || status === 'paused' || status === 'loading';
   if (!isActive) return null;
 
   const hasBothAccents = audioAvailable.us && audioAvailable.uk;
+  const rateLabel = formatPlaybackRate(playbackRate);
 
   return (
     <div
@@ -64,7 +72,19 @@ export function ReaderTts({
             <PlayIcon className="size-4" />
           )}
         </Button>
-        <p className="hidden max-w-[9rem] truncate text-xs text-muted-foreground sm:block">{label}</p>
+        <button
+          type="button"
+          disabled={status === 'loading'}
+          aria-label={`播放速度 ${rateLabel}，点击切换`}
+          onClick={onCyclePlaybackRate}
+          className={cn(
+            'min-w-10 shrink-0 rounded-full px-2.5 py-1 text-xs font-medium tabular-nums transition-colors duration-200 ease-out-soft',
+            'text-muted-foreground hover:text-foreground',
+            'disabled:cursor-not-allowed disabled:opacity-50',
+          )}
+        >
+          {rateLabel}
+        </button>
         {hasBothAccents ? (
           <AccentSegment
             role={audioRole}

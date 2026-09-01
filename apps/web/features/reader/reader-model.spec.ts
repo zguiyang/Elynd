@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { isCurrentChapter, resolveAudioRole } from '@/features/reader/reader-model';
+import {
+  DEFAULT_READER_PLAYBACK_RATE,
+  formatPlaybackRate,
+  isCurrentChapter,
+  nextPlaybackRate,
+  READER_PLAYBACK_RATES,
+  resolveAudioRole,
+} from '@/features/reader/reader-model';
 
 describe('isCurrentChapter', () => {
   it('matches only the open part id', () => {
@@ -19,5 +26,31 @@ describe('resolveAudioRole', () => {
   it('honors preference when available, otherwise falls back', () => {
     expect(resolveAudioRole({ us: true, uk: true }, 'uk')).toBe('uk');
     expect(resolveAudioRole({ us: true, uk: false }, 'uk')).toBe('us');
+  });
+});
+
+describe('playback rate', () => {
+  it('defaults to 1×', () => {
+    expect(DEFAULT_READER_PLAYBACK_RATE).toBe(1);
+    expect(formatPlaybackRate(DEFAULT_READER_PLAYBACK_RATE)).toBe('1×');
+  });
+
+  it('cycles 0.5 → 1 → 1.5 → 2 → 0.5', () => {
+    let rate = READER_PLAYBACK_RATES[0];
+    expect(rate).toBe(0.5);
+    rate = nextPlaybackRate(rate);
+    expect(rate).toBe(1);
+    rate = nextPlaybackRate(rate);
+    expect(rate).toBe(1.5);
+    rate = nextPlaybackRate(rate);
+    expect(rate).toBe(2);
+    rate = nextPlaybackRate(rate);
+    expect(rate).toBe(0.5);
+  });
+
+  it('formats rates with ×', () => {
+    expect(formatPlaybackRate(0.5)).toBe('0.5×');
+    expect(formatPlaybackRate(1.5)).toBe('1.5×');
+    expect(formatPlaybackRate(2)).toBe('2×');
   });
 });

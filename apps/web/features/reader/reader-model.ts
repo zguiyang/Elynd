@@ -95,3 +95,17 @@ export function resolveAudioRole(
   }
   return null;
 }
+
+/** TTS mini-player playback rates — click cycles in this order. */
+export const READER_PLAYBACK_RATES = [0.5, 1, 1.5, 2] as const;
+export type ReaderPlaybackRate = (typeof READER_PLAYBACK_RATES)[number];
+export const DEFAULT_READER_PLAYBACK_RATE: ReaderPlaybackRate = 1;
+
+export function nextPlaybackRate(current: ReaderPlaybackRate): ReaderPlaybackRate {
+  const index = READER_PLAYBACK_RATES.indexOf(current);
+  return READER_PLAYBACK_RATES[(index + 1) % READER_PLAYBACK_RATES.length]!;
+}
+
+export function formatPlaybackRate(rate: ReaderPlaybackRate): string {
+  return `${rate}×`;
+}

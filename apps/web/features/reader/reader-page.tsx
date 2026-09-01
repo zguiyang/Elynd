@@ -27,10 +27,17 @@ import type {
   ReaderAudioRole,
   ReaderAudioStatus,
   ReaderFontSize,
+  ReaderPlaybackRate,
   ReaderSelection,
   ReaderViewModel,
 } from '@/features/reader/reader-model';
-import { adjacentPart, partIndex, resolveAudioRole } from '@/features/reader/reader-model';
+import {
+  adjacentPart,
+  DEFAULT_READER_PLAYBACK_RATE,
+  nextPlaybackRate,
+  partIndex,
+  resolveAudioRole,
+} from '@/features/reader/reader-model';
 import { ReaderPart, ReaderPartSkeleton } from '@/features/reader/reader-part';
 import { ReaderSelectionToolbar } from '@/features/reader/reader-selection-toolbar';
 import { ReaderTocSidebar } from '@/features/reader/reader-toc-sidebar';
@@ -89,7 +96,7 @@ export function ReaderPage({ workId }: ReaderPageProps) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [audioStatus, setAudioStatus] = useState<ReaderAudioStatus>('idle');
-  const [audioLabel, setAudioLabel] = useState('听读');
+  const [playbackRate, setPlaybackRate] = useState<ReaderPlaybackRate>(DEFAULT_READER_PLAYBACK_RATE);
   const [preferredAudioRole, setPreferredAudioRole] = useState<ReaderAudioRole | null>(null);
   const [isTapHintVisible, setIsTapHintVisible] = useState(true);
 
@@ -157,7 +164,6 @@ export function ReaderPage({ workId }: ReaderPageProps) {
     audioRef.current?.pause();
     audioRef.current = null;
     setAudioStatus('idle');
-    setAudioLabel('听读');
   }
 
   const navigateToPart = useCallback(
@@ -297,8 +303,8 @@ export function ReaderPage({ workId }: ReaderPageProps) {
       const track = await getReaderAudioTrack(reader.partId, role);
       audioRef.current?.pause();
       const audio = new Audio(track.audioUrl);
+      audio.playbackRate = playbackRate;
       audioRef.current = audio;
-      setAudioLabel(`${track.voice} · ${role === 'us' ? '美音' : '英音'}`);
       audio.onended = () => setAudioStatus('ready');
       audio.onerror = () => setAudioStatus('failed');
       await audio.play();
@@ -306,6 +312,14 @@ export function ReaderPage({ workId }: ReaderPageProps) {
     } catch (error) {
       setAudioStatus('failed');
       toast.error(formatReaderApiError(error));
+    }
+  }
+
+  function handleCyclePlaybackRate() {
+    const next = nextPlaybackRate(playbackRate);
+    setPlaybackRate(next);
+    if (audioRef.current) {
+      audioRef.current.playbackRate = next;
     }
   }
 
@@ -508,12 +522,13 @@ export function ReaderPage({ workId }: ReaderPageProps) {
 
       <ReaderTts
         status={audioStatus}
-        label={audioLabel}
+        playbackRate={playbackRate}
         tocOpen={isTocOpen}
         aiDrawerOpen={isDrawerOpen}
         audioRole={audioRole}
         audioAvailable={reader.audioAvailable}
         onToggle={() => void handleTtsToggle()}
+        onCyclePlaybackRate={handleCyclePlaybackRate}
         onSelectRole={(role) => void handleAccentSelect(role)}
       />
 

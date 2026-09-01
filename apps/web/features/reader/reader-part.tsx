@@ -1,6 +1,6 @@
 'use client';
 
-import type { MouseEvent, ReactNode, UIEvent } from 'react';
+import type { MouseEvent, ReactNode, Ref, UIEvent } from 'react';
 
 import { ReadingPartView } from '@/features/content/reading-part-view';
 import type { ReaderFontSize } from '@/features/reader/reader-model';
@@ -12,6 +12,8 @@ type ReaderPartProps = {
   fontSize: ReaderFontSize;
   aiDrawerOpen: boolean;
   tocOpen?: boolean;
+  /** Scroll container — parent queries `.reading-body` for listen highlight. */
+  contentRef?: Ref<HTMLDivElement | null>;
   onSelectText: (payload: { quote: string; paragraphId: string; top: number; left: number }) => void;
   onCenterTap: () => void;
   onScroll: (event: UIEvent<HTMLElement>) => void;
@@ -33,6 +35,7 @@ export function ReaderPart({
   fontSize,
   aiDrawerOpen,
   tocOpen = false,
+  contentRef,
   onSelectText,
   onCenterTap,
   onScroll,
@@ -74,6 +77,7 @@ export function ReaderPart({
 
   return (
     <div
+      ref={contentRef}
       className={cn(
         'relative h-full flex-1 overflow-y-auto transition-[margin,padding] duration-300 ease-out-soft',
         aiDrawerOpen && 'md:pr-96',

@@ -4,6 +4,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+import type { TtsWordTiming } from '@gloaming/shared/api/tts';
+
 import { useAuthDialog } from '@/features/auth';
 import { ReaderAiDrawer } from '@/features/reader/reader-ai-drawer';
 import { ReaderAiInline } from '@/features/reader/reader-ai-inline';
@@ -18,6 +20,7 @@ import {
   useReadingStateQuery,
 } from '@/features/reader/reader-api';
 import { streamAssistAsk } from '@/features/reader/reader-assist-api';
+import { useReaderListenHighlight } from '@/features/reader/reader-audio-highlight';
 import { ReaderChapterNav } from '@/features/reader/reader-chapter-nav';
 import { ReaderChrome } from '@/features/reader/reader-chrome';
 import { useReadingHeartbeat } from '@/features/reader/reader-heartbeat';
@@ -99,13 +102,28 @@ export function ReaderPage({ workId }: ReaderPageProps) {
   const [playbackRate, setPlaybackRate] = useState<ReaderPlaybackRate>(DEFAULT_READER_PLAYBACK_RATE);
   const [preferredAudioRole, setPreferredAudioRole] = useState<ReaderAudioRole | null>(null);
   const [isTapHintVisible, setIsTapHintVisible] = useState(true);
+  const [wordTimings, setWordTimings] = useState<TtsWordTiming[] | null>(null);
 
+  const contentRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const assistAbortRef = useRef<AbortController | null>(null);
 
   const partsData = partsQuery.data;
   const stateData = stateQuery.data ?? null;
+
+  const reader: ReaderViewModel | null =
+    partsData && partQuery.data ? toReaderViewModel(partsData, partQuery.data, stateQuery.data ?? null) : null;
+
+  const { clearListenHighlight } = useReaderListenHighlight({
+    contentRef,
+    partId: reader?.partId ?? null,
+    html: reader?.html ?? null,
+    wordTimings,
+    audioStatus,
+    selectionActive: Boolean(selection),
+    audioRef,
+  });
 
   useEffect(() => {
     if (!partsData || bootstrapStartedRef.current) return;
@@ -157,14 +175,13 @@ export function ReaderPage({ workId }: ReaderPageProps) {
     };
   }, []);
 
-  const reader: ReaderViewModel | null =
-    partsData && partQuery.data ? toReaderViewModel(partsData, partQuery.data, stateQuery.data ?? null) : null;
-
-  function resetAudioPlayback() {
+  const resetAudioPlayback = useCallback(() => {
     audioRef.current?.pause();
     audioRef.current = null;
+    setWordTimings(null);
+    clearListenHighlight();
     setAudioStatus('idle');
-  }
+  }, [clearListenHighlight]);
 
   const navigateToPart = useCallback(
     async (partId: string, mode: 'navigate' | 'complete_chapter', nextPartId?: string) => {
@@ -187,7 +204,7 @@ export function ReaderPage({ workId }: ReaderPageProps) {
         toast.error(formatReaderApiError(error));
       }
     },
-    [isAuthenticated, openLogin, router, stateMutation, workId],
+    [isAuthenticated, openLogin, router, stateMutation, workId, resetAudioPlayback],
   );
 
   function clearSelectionUi() {
@@ -305,11 +322,20 @@ export function ReaderPage({ workId }: ReaderPageProps) {
       const audio = new Audio(track.audioUrl);
       audio.playbackRate = playbackRate;
       audioRef.current = audio;
-      audio.onended = () => setAudioStatus('ready');
-      audio.onerror = () => setAudioStatus('failed');
+      setWordTimings(track.wordTimings.length > 0 ? track.wordTimings : null);
+      audio.onended = () => {
+        clearListenHighlight();
+        setAudioStatus('ready');
+      };
+      audio.onerror = () => {
+        clearListenHighlight();
+        setAudioStatus('failed');
+      };
       await audio.play();
       setAudioStatus('playing');
     } catch (error) {
+      setWordTimings(null);
+      clearListenHighlight();
       setAudioStatus('failed');
       toast.error(formatReaderApiError(error));
     }
@@ -457,6 +483,7 @@ export function ReaderPage({ workId }: ReaderPageProps) {
         fontSize={fontSize}
         aiDrawerOpen={isDrawerOpen}
         tocOpen={isTocOpen}
+        contentRef={contentRef}
         onSelectText={(payload) => {
           setSelection(payload);
           closeAiSurface();

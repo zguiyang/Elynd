@@ -1,52 +1,28 @@
 'use client';
 
-import type { HistoryViewModel } from '@/features/history/history-model';
-import { cn } from '@/lib/utils';
+import 'react-activity-calendar/tooltips.css';
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
+import { ActivityCalendar, type ThemeInput } from 'react-activity-calendar';
 
-function parseDate(date: string): Date {
-  const [y, m, d] = date.split('-').map(Number);
-  return new Date(Date.UTC(y!, m! - 1, d!));
-}
+import {
+  countHistoryActivityDays,
+  formatHistoryCalendarDate,
+  HISTORY_ACTIVITY_MAX_LEVEL,
+  HISTORY_MONTH_LABELS,
+  HISTORY_WEEKDAY_LABELS,
+  type HistoryViewModel,
+  toHistoryActivityCalendarData,
+} from '@/features/history/history-model';
 
-function formatDate(date: string): Date {
-  return parseDate(date);
-}
-
-/** Binary heatmap for the past 52 weeks ending at `today`. */
-function buildGrid(today: string, activity: HistoryViewModel['activity']): boolean[] {
-  const activeDates = new Set(activity.map((d) => d.date));
-  const end = parseDate(today);
-  const start = new Date(end.getTime() - (52 * 7 - 1) * 86_400_000);
-  const cells: boolean[] = [];
-
-  for (let i = 0; i < 52 * 7; i += 1) {
-    const d = new Date(start.getTime() + i * 86_400_000);
-    const y = d.getUTCFullYear();
-    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(d.getUTCDate()).padStart(2, '0');
-    cells.push(activeDates.has(`${y}-${m}-${day}`));
-  }
-  return cells;
-}
-
-function readingDaysInWindow(today: string, activity: HistoryViewModel['activity']): number {
-  const activeDates = new Set(activity.map((d) => d.date));
-  const end = parseDate(today);
-  const start = new Date(end.getTime() - (52 * 7 - 1) * 86_400_000);
-  let count = 0;
-  for (let i = 0; i < 52 * 7; i += 1) {
-    const d = new Date(start.getTime() + i * 86_400_000);
-    const y = d.getUTCFullYear();
-    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(d.getUTCDate()).padStart(2, '0');
-    if (activeDates.has(`${y}-${m}-${day}`)) {
-      count += 1;
-    }
-  }
-  return count;
-}
+const HISTORY_CALENDAR_THEME: ThemeInput = {
+  light: [
+    'color-mix(in oklab, var(--on-surface) 12%, white)',
+    'color-mix(in oklab, var(--primary) 35%, white)',
+    'color-mix(in oklab, var(--primary) 55%, white)',
+    'color-mix(in oklab, var(--primary) 75%, white)',
+    'var(--primary)',
+  ],
+};
 
 type HistoryHeatmapProps = {
   today: string;
@@ -54,9 +30,8 @@ type HistoryHeatmapProps = {
 };
 
 export function HistoryHeatmap({ today, activity }: HistoryHeatmapProps) {
-  const cells = buildGrid(today, activity);
-  const daysInWindow = readingDaysInWindow(today, activity);
-  const yearLabel = formatDate(today).getUTCFullYear();
+  const data = toHistoryActivityCalendarData(today, activity);
+  const daysInWindow = countHistoryActivityDays(activity, today);
 
   return (
     <section className="mx-auto w-full max-w-reading-column space-y-4 md:space-y-6">
@@ -74,34 +49,42 @@ export function HistoryHeatmap({ today, activity }: HistoryHeatmapProps) {
         </h2>
       </div>
 
-      <div className="rounded-2xl bg-paper p-4 md:p-8">
-        <div className="mb-3 flex items-end justify-between md:hidden">
-          <div>
-            <p className="text-sm text-foreground">阅读分布</p>
-            <p className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-              {daysInWindow} 个阅读日
-            </p>
-          </div>
-          <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">{yearLabel}</span>
+      <div className="rounded-2xl border border-border/50 bg-card p-4 md:p-6">
+        <div className="mb-4 md:hidden">
+          <p className="text-sm text-foreground">阅读分布</p>
+          <p className="text-[11px] font-medium text-muted-foreground">近一年 · {daysInWindow} 个阅读日</p>
         </div>
 
-        <div className="mb-2 hidden justify-between px-1 text-[10px] font-semibold tracking-wider text-muted-foreground/70 uppercase md:flex">
-          {MONTHS.map((m) => (
-            <span key={m}>{m}</span>
-          ))}
-        </div>
-
-        <div
-          className="grid h-28 grid-flow-col grid-rows-7 gap-1 overflow-x-auto md:h-32"
-          role="img"
-          aria-label="阅读日分布"
-        >
-          {cells.map((active, index) => (
-            <div
-              key={index}
-              className={cn('size-2.5 rounded-sm md:size-2', active ? 'bg-primary' : 'bg-surface-container-highest')}
-            />
-          ))}
+        <div className="overflow-x-auto">
+          <ActivityCalendar
+            data={data}
+            colorScheme="light"
+            theme={HISTORY_CALENDAR_THEME}
+            maxLevel={HISTORY_ACTIVITY_MAX_LEVEL}
+            blockSize={12}
+            blockMargin={3}
+            blockRadius={2}
+            fontSize={12}
+            weekStart={0}
+            showMonthLabels
+            showColorLegend
+            showTotalCount={false}
+            showWeekdayLabels={['mon', 'wed', 'fri']}
+            labels={{
+              months: [...HISTORY_MONTH_LABELS],
+              weekdays: [...HISTORY_WEEKDAY_LABELS],
+              legend: { less: '少', more: '多' },
+            }}
+            tooltips={{
+              activity: {
+                text: (day) =>
+                  day.level > 0
+                    ? `${formatHistoryCalendarDate(day.date)} · 读过`
+                    : `${formatHistoryCalendarDate(day.date)} · 未阅读`,
+              },
+            }}
+            style={{ maxWidth: '100%' }}
+          />
         </div>
       </div>
     </section>

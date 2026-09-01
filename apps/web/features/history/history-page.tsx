@@ -2,11 +2,11 @@
 
 import { Button } from '@/components/ui/button';
 import { formatHistoryApiError, useReadingHistoryQuery } from '@/features/history/history-api';
-import { HistoryCompletions } from '@/features/history/history-completions';
 import { HistoryEmptyState } from '@/features/history/history-empty-state';
 import { HistoryHeader } from '@/features/history/history-header';
 import { HistoryHeatmap } from '@/features/history/history-heatmap';
 import { HistorySummary } from '@/features/history/history-summary';
+import { HistoryWorks } from '@/features/history/history-works';
 import { cn } from '@/lib/utils';
 
 function HistorySkeleton() {
@@ -44,7 +44,7 @@ export function HistoryPage() {
   }
 
   const data = historyQuery.data;
-  const isEmpty = data.portrait.readingDays === 0 && data.completions.length === 0;
+  const isEmpty = data.portrait.readingDays === 0 && data.works.length === 0;
 
   return (
     <div
@@ -64,7 +64,7 @@ export function HistoryPage() {
           <HistoryHeader />
           <HistorySummary portrait={data.portrait} />
           <HistoryHeatmap today={data.today} activity={data.activity} />
-          <HistoryCompletions completions={data.completions} />
+          <HistoryWorks works={data.works} />
         </div>
       )}
     </div>

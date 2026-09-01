@@ -20,6 +20,7 @@ import {
 import { streamAssistAsk } from '@/features/reader/reader-assist-api';
 import { ReaderChapterNav } from '@/features/reader/reader-chapter-nav';
 import { ReaderChrome } from '@/features/reader/reader-chrome';
+import { useReadingHeartbeat } from '@/features/reader/reader-heartbeat';
 import type {
   ReaderAiMessage,
   ReaderAiMode,
@@ -74,6 +75,8 @@ export function ReaderPage({ workId }: ReaderPageProps) {
   const partQuery = useReaderPartQuery(activePartId);
   const [localProgressRatio, setLocalProgressRatio] = useState<number | null>(null);
   const bootstrapStartedRef = useRef(false);
+
+  useReadingHeartbeat(isAuthenticated && Boolean(activePartId));
 
   const [isChromeVisible, setIsChromeVisible] = useState(false);
   const [isTocOpen, setIsTocOpen] = useState(false);

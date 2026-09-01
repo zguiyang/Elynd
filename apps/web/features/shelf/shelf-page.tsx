@@ -46,7 +46,7 @@ export function ShelfPage() {
       <div
         className={cn(
           'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700',
-          'mx-auto flex w-full max-w-5xl flex-col',
+          'flex w-full flex-col',
         )}
       >
         <ShelfHeader hasResumeHint={false} />
@@ -60,7 +60,7 @@ export function ShelfPage() {
       <div
         className={cn(
           'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700',
-          'mx-auto flex w-full max-w-5xl flex-col',
+          'flex w-full flex-col',
         )}
       >
         <ShelfHeader hasResumeHint={false} />
@@ -81,7 +81,7 @@ export function ShelfPage() {
     <div
       className={cn(
         'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700',
-        'mx-auto flex w-full max-w-5xl flex-col',
+        'flex w-full flex-col',
         isEmpty ? 'min-h-[70dvh] justify-center' : '',
       )}
     >

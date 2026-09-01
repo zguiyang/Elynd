@@ -11,8 +11,8 @@ type AuthLayoutProps = {
 export function AuthLayout({ children }: AuthLayoutProps) {
   return (
     <div className="relative z-10 flex min-h-full flex-1 flex-col">
-      <header className="px-6 pt-7 md:px-10">
-        <div className="mx-auto flex max-w-5xl items-center justify-between">
+      <header className="pt-7">
+        <div className="container flex items-center justify-between">
           <BrandMark />
         </div>
       </header>

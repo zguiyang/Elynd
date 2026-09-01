@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 
 function BookDetailSkeleton() {
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 py-8" aria-hidden>
+    <div className="flex w-full flex-col gap-8 py-8" aria-hidden>
       <div className="h-8 w-32 animate-pulse rounded bg-surface-container-high" />
       <div className="grid grid-cols-1 gap-8 md:grid-cols-12">
         <div className="mx-auto aspect-[2/3] w-48 animate-pulse rounded-sm bg-surface-container-high md:col-span-4" />
@@ -58,7 +58,7 @@ function BookDetailView({ book }: { book: BookDetail }) {
     <div
       className={cn(
         'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700',
-        'mx-auto flex w-full max-w-5xl flex-col gap-8 pb-36 md:gap-14 md:pb-8',
+        'flex w-full flex-col gap-8 pb-36 md:gap-14 md:pb-8',
       )}
     >
       <div className="md:hidden">

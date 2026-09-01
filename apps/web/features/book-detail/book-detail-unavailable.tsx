@@ -17,7 +17,7 @@ export function BookDetailUnavailable({ workId, message }: { workId?: string; me
     <div
       className={cn(
         'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700',
-        'mx-auto flex w-full max-w-5xl flex-col gap-12 md:gap-16',
+        'flex w-full flex-col gap-12 md:gap-16',
       )}
     >
       <div className="flex flex-col items-center justify-center px-2 pt-8 text-center md:pt-16">

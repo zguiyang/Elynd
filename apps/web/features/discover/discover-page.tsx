@@ -49,7 +49,7 @@ export function DiscoverPage() {
 
   if (catalogQuery.isPending) {
     return (
-      <div className="mx-auto flex w-full max-w-5xl flex-col">
+      <div className="flex w-full flex-col">
         <DiscoverHeader />
         <DiscoverSkeleton />
       </div>
@@ -58,7 +58,7 @@ export function DiscoverPage() {
 
   if (catalogQuery.isError) {
     return (
-      <div className="mx-auto flex w-full max-w-5xl flex-col items-center py-16 text-center">
+      <div className="flex w-full flex-col items-center py-16 text-center">
         <DiscoverHeader />
         <h2 className="font-heading text-2xl font-semibold">无法加载目录</h2>
         <p className="mt-4 text-muted-foreground">{formatDiscoverApiError(catalogQuery.error)}</p>
@@ -105,7 +105,7 @@ export function DiscoverPage() {
     <div
       className={cn(
         'motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-700',
-        'mx-auto flex w-full max-w-5xl flex-col',
+        'flex w-full flex-col',
         isCatalogEmpty ? 'min-h-[70dvh] justify-center' : '',
       )}
     >

@@ -1,6 +1,6 @@
 'use client';
 
-import { Eye, FileText, MoreHorizontal, PencilLine, Play, Trash2 } from 'lucide-react';
+import { Eye, FileText, MoreHorizontal, PencilLine, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -109,22 +109,16 @@ function WorkRowActions({ work, onPublish, onUnpublish, onRetry, onDelete }: Wor
           更多
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-44">
-          {work.status !== 'published' ? (
-            <DropdownMenuItem onClick={() => router.push(ADMIN_ROUTES.workDetail(work.id))}>
-              <Play />
-              查看进度
-            </DropdownMenuItem>
-          ) : null}
+          <DropdownMenuItem onClick={() => router.push(ADMIN_ROUTES.workDetail(work.id))}>
+            <PencilLine />
+            编辑作品
+          </DropdownMenuItem>
           {canPreview ? (
             <DropdownMenuItem onClick={() => router.push(ADMIN_ROUTES.workPreview(work.id))}>
               <Eye />
               预览
             </DropdownMenuItem>
           ) : null}
-          <DropdownMenuItem onClick={() => router.push(ADMIN_ROUTES.workEdit(work.id))}>
-            <PencilLine />
-            编辑
-          </DropdownMenuItem>
           {work.status !== 'published' ? (
             <>
               <DropdownMenuSeparator />

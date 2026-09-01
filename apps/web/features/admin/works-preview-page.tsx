@@ -83,15 +83,7 @@ export function WorksPreviewPage({ workId }: { workId: string }) {
           nativeButton={false}
           render={<Link href={ADMIN_ROUTES.workDetail(work.id)} />}
         >
-          返回流程
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          nativeButton={false}
-          render={<Link href={ADMIN_ROUTES.workEdit(work.id)} />}
-        >
-          编辑元数据
+          返回编辑
         </Button>
       </div>
 
@@ -128,9 +120,9 @@ export function WorksPreviewPage({ workId }: { workId: string }) {
       ) : work.status === 'uploaded' || work.status === 'processing' ? (
         <div className="mt-10 rounded-2xl border border-border bg-card px-6 py-12 text-center">
           <p className="text-sm text-muted-foreground">
-            {work.status === 'uploaded' ? '文件已上传，请在流程页点击「开始解析」。' : '作品解析中，章节即将生成…'}
+            {work.status === 'uploaded' ? '文件已上传，请在编辑页点击「开始解析」。' : '作品解析中，章节即将生成…'}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">可返回流程查看进度。</p>
+          <p className="mt-1 text-xs text-muted-foreground">可返回编辑页查看进度。</p>
         </div>
       ) : work.status === 'failed' ? (
         <div className="mt-10 rounded-2xl border border-destructive/30 bg-destructive/5 px-6 py-10 text-center">
@@ -145,7 +137,7 @@ export function WorksPreviewPage({ workId }: { workId: string }) {
             nativeButton={false}
             render={<Link href={ADMIN_ROUTES.workDetail(work.id)} />}
           >
-            返回流程重新解析
+            返回编辑重新解析
           </Button>
         </div>
       ) : !hasParts ? (

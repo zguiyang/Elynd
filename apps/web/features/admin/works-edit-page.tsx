@@ -95,7 +95,7 @@ function stepStates(work: AdminWorkView | null): Record<WorkflowStepId, StepStat
     return {
       upload: 'na',
       parse: 'na',
-      metadata: 'na',
+      metadata: work.status === 'published' ? 'done' : 'active',
       audio: 'na',
       publish: work.status === 'published' ? 'done' : 'active',
     };
@@ -140,7 +140,7 @@ function stepStates(work: AdminWorkView | null): Record<WorkflowStepId, StepStat
 
 function StepIndicator({ states, activeLabel }: { states: Record<WorkflowStepId, StepState>; activeLabel?: string }) {
   return (
-    <nav aria-label="作品处理流程" className="mb-8 flex items-center gap-1 overflow-x-auto pb-1">
+    <nav aria-label="作品编辑步骤" className="mb-8 flex items-center gap-1 overflow-x-auto pb-1">
       {WORKFLOW_STEPS.map((step, index) => {
         const state = states[step.id];
         const isDone = state === 'done';
@@ -333,7 +333,7 @@ type WorkflowModeProps = {
   work: AdminWorkView;
 };
 
-function WorkflowMode({ workId, work }: WorkflowModeProps) {
+function WorkEditMode({ workId, work }: WorkflowModeProps) {
   const router = useRouter();
   const invalidate = useInvalidateAdminWorks();
   const isEpub = work.originKind === 'admin_epub';
@@ -419,26 +419,17 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
     <div>
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="font-heading text-3xl font-bold tracking-tight">{work.title}</h1>
+          <h1 className="font-heading text-3xl font-bold tracking-tight">编辑作品</h1>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <Badge
               variant={work.status === 'published' ? 'secondary' : work.status === 'failed' ? 'destructive' : 'outline'}
             >
               {STATUS_LABEL[work.status]}
             </Badge>
-            {work.author ? <span className="text-sm text-muted-foreground">{work.author}</span> : null}
+            <span className="text-sm text-muted-foreground">{work.title}</span>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            nativeButton={false}
-            render={<Link href={ADMIN_ROUTES.workEdit(work.id)} />}
-          >
-            编辑元数据
-          </Button>
           {hasParts ? (
             <Button
               type="button"
@@ -624,17 +615,7 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
             原数据完善
             {states.metadata === 'done' ? <Check className="size-4 text-brand-deep" /> : null}
           </h2>
-          {!isEpub ? (
-            <p className="mt-4 text-sm text-muted-foreground">文本作品不参与原数据完善流程。</p>
-          ) : work.status === 'uploaded' ||
-            work.status === 'processing' ||
-            (work.status === 'failed' && work.failedStep === 'parse') ? (
-            <p className="mt-4 text-sm text-muted-foreground">
-              {WORKFLOW_AUTO_CHAIN ? '等待内容解析完成后自动完善…' : '等待内容解析完成后再开始完善。'}
-            </p>
-          ) : (
-            <MetadataReviewPanel workId={work.id} work={work} />
-          )}
+          <MetadataReviewPanel workId={work.id} work={work} />
         </section>
 
         {/* Step 4 — audio */}
@@ -712,11 +693,11 @@ function WorkflowMode({ workId, work }: WorkflowModeProps) {
   );
 }
 
-type WorksWorkflowPageProps = {
+type WorksEditPageProps = {
   workId?: string;
 };
 
-export function WorksWorkflowPage({ workId }: WorksWorkflowPageProps) {
+export function WorksEditPage({ workId }: WorksEditPageProps) {
   const router = useRouter();
   const detailQuery = useAdminWorkQuery(workId ?? '', { enabled: Boolean(workId) });
 
@@ -762,14 +743,14 @@ export function WorksWorkflowPage({ workId }: WorksWorkflowPageProps) {
         <>
           <StepIndicator states={stepStates(null)} />
           <p className="-mt-4 mb-6 text-sm text-muted-foreground">
-            上传 EPUB 后将自动解析为章节，可在流程中审查内容并发布到发现。
+            上传 EPUB 后将自动解析为章节，可在编辑页审查内容并发布到发现。
           </p>
           <div className="rounded-2xl border border-border bg-card px-6 py-8">
             <UploadMode onCreated={handleCreated} />
           </div>
         </>
       ) : (
-        <WorkflowMode workId={work.id} work={work} />
+        <WorkEditMode workId={work.id} work={work} />
       )}
     </div>
   );

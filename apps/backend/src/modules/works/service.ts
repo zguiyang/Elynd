@@ -304,7 +304,7 @@ async function loadOriginFileAsset(workId: string): Promise<AdminOriginAsset | n
 }
 
 /** Batch source names keyed by work id. */
-async function loadSourcesByWorkIds(workIds: string[]): Promise<Map<string, string[]>> {
+export async function loadSourcesByWorkIds(workIds: string[]): Promise<Map<string, string[]>> {
   if (workIds.length === 0) {
     return new Map();
   }

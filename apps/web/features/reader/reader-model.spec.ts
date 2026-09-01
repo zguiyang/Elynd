@@ -6,6 +6,7 @@ import {
   isCurrentChapter,
   nextPlaybackRate,
   READER_PLAYBACK_RATES,
+  type ReaderPlaybackRate,
   resolveAudioRole,
 } from '@/features/reader/reader-model';
 
@@ -36,7 +37,7 @@ describe('playback rate', () => {
   });
 
   it('cycles 0.5 → 1 → 1.5 → 2 → 0.5', () => {
-    let rate = READER_PLAYBACK_RATES[0];
+    let rate: ReaderPlaybackRate = READER_PLAYBACK_RATES[0];
     expect(rate).toBe(0.5);
     rate = nextPlaybackRate(rate);
     expect(rate).toBe(1);

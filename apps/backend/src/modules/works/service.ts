@@ -279,6 +279,26 @@ async function countPartsForWork(workId: string): Promise<number> {
   return Number(row?.value ?? 0);
 }
 
+/** Batch chapter counts for catalog / discover cards. */
+async function loadPartCountsByWorkIds(workIds: string[]): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  for (const id of workIds) {
+    map.set(id, 0);
+  }
+  if (workIds.length === 0) {
+    return map;
+  }
+  const rows = await db
+    .select({ workId: readingPartTable.workId, value: count() })
+    .from(readingPartTable)
+    .where(inArray(readingPartTable.workId, workIds))
+    .groupBy(readingPartTable.workId);
+  for (const row of rows) {
+    map.set(row.workId, Number(row.value));
+  }
+  return map;
+}
+
 async function loadOriginFileAsset(workId: string): Promise<AdminOriginAsset | null> {
   const [row] = await db
     .select({
@@ -1083,8 +1103,12 @@ export async function listCatalogWorks(query: CatalogListQuery): Promise<Catalog
     .limit(query.pageSize)
     .offset(offset);
 
-  const tagsByWork = await loadTagsByWorkIds(rows.map((row) => row.id));
-  const sourcesByWork = await loadSourcesByWorkIds(rows.map((row) => row.id));
+  const workIds = rows.map((row) => row.id);
+  const [tagsByWork, sourcesByWork, partCountsByWork] = await Promise.all([
+    loadTagsByWorkIds(workIds),
+    loadSourcesByWorkIds(workIds),
+    loadPartCountsByWorkIds(workIds),
+  ]);
 
   const tagRows = await db
     .selectDistinct({ name: tagTable.name })
@@ -1095,7 +1119,10 @@ export async function listCatalogWorks(query: CatalogListQuery): Promise<Catalog
     .orderBy(asc(tagTable.name));
 
   return {
-    items: rows.map((row) => toWork(row, tagsByWork.get(row.id) ?? [], sourcesByWork.get(row.id) ?? [])),
+    items: rows.map((row) => ({
+      ...toWork(row, tagsByWork.get(row.id) ?? [], sourcesByWork.get(row.id) ?? []),
+      partCount: partCountsByWork.get(row.id) ?? 0,
+    })),
     pagination: buildPaginationMeta({
       page: query.page,
       pageSize: query.pageSize,

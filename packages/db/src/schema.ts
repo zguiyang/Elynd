@@ -115,6 +115,9 @@ export const accountRelations = relations(account, ({ one }) => ({
 /** Provenance of a work-dimension association (rules / AI / manual). */
 export type WorkMetadataProvenance = 'extracted' | 'ai' | 'manual';
 
+/** Work-level reading stats provenance — algorithm from parse vs admin manual override. */
+export type WorkStatsProvenance = 'algorithm' | 'manual';
+
 /** Runtime-derived admin API projection — not persisted on reading_work. */
 export type WorkMetadataProvenanceMap = {
   description?: WorkMetadataProvenance;
@@ -138,6 +141,13 @@ export const readingWork = pgTable(
     originMeta: jsonb('origin_meta').$type<Record<string, unknown>>().notNull().default({}),
     descriptionProvenance: text('description_provenance').$type<WorkMetadataProvenance | null>(),
     coverAssetId: text('cover_asset_id'),
+    /** Running word tokens (not unique lemmas) — set on content parse. */
+    wordCount: integer('word_count'),
+    estimatedMinutes: integer('estimated_minutes'),
+    /** Minimum lemma vocabulary for ~95% lexical coverage (English works). */
+    suggestedVocabSize: integer('suggested_vocab_size'),
+    difficultyScore: integer('difficulty_score'),
+    statsProvenance: text('stats_provenance').$type<WorkStatsProvenance | null>(),
     publishedAt: timestamp('published_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')

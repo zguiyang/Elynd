@@ -16,10 +16,13 @@ export const NAV_COPY = {
   admin: '管理后台',
   moreSheetTitle: '更多',
   moreSheetDescription: '账户与扩展入口',
-  morePlaceholderSettings: '设置',
   morePlaceholderAccount: '账户',
   morePlaceholderHint: '即将开放',
   moreFutureHint: '后续模块入口将出现在这里。',
+  themeAppearance: '外观',
+  themeLight: '浅色',
+  themeDark: '深色',
+  themeSystem: '跟随系统',
 } as const;
 
 export type PrimaryNavId = 'shelf' | 'discover' | 'history';

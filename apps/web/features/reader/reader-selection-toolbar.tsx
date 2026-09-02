@@ -9,6 +9,7 @@ type ReaderSelectionToolbarProps = {
   left: number;
   onExplain: () => void;
   onAskAi: () => void;
+  onLookup: () => void;
   onTranslate: () => void;
 };
 
@@ -18,6 +19,7 @@ export function ReaderSelectionToolbar({
   left,
   onExplain,
   onAskAi,
+  onLookup,
   onTranslate,
 }: ReaderSelectionToolbarProps) {
   if (!visible) return null;
@@ -38,6 +40,9 @@ export function ReaderSelectionToolbar({
       </Button>
       <Button type="button" size="sm" className="h-8 rounded-lg px-2.5 text-xs hover:bg-brand-deep" onClick={onAskAi}>
         问 AI
+      </Button>
+      <Button type="button" variant="ghost" size="sm" className="h-8 rounded-lg px-2.5 text-xs" onClick={onLookup}>
+        查词
       </Button>
       <Button type="button" variant="ghost" size="sm" className="h-8 rounded-lg px-2.5 text-xs" onClick={onTranslate}>
         翻译

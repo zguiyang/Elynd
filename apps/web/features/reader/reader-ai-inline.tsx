@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ReaderMarkdown } from '@/features/reader/reader-markdown';
 import type { ReaderSelectionRect } from '@/features/reader/reader-model';
 import { cn } from '@/lib/utils';
 
@@ -142,10 +143,9 @@ export function ReaderAiInline({
               </form>
             ) : (
               <>
-                <p className="mt-3 min-h-5 text-sm leading-relaxed text-foreground">
-                  {answer}
-                  {streaming ? <span className="ml-0.5 inline-block animate-pulse">▍</span> : null}
-                </p>
+                <div className="mt-3 min-h-5">
+                  <ReaderMarkdown content={answer} streaming={streaming} />
+                </div>
                 {error ? <p className="mt-2 text-xs text-destructive">{error}</p> : null}
                 <div className="mt-4 flex items-center justify-between gap-2">
                   <Button type="button" variant="ghost" size="sm" className="h-8 text-xs" onClick={onClose}>

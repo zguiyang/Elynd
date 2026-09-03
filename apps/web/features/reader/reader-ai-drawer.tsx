@@ -8,6 +8,7 @@ import type { ConversationSummary } from '@gloaming/shared/api/conversations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { ReaderMarkdown } from '@/features/reader/reader-markdown';
 import type { ReaderAiMessage } from '@/features/reader/reader-model';
 import { cn } from '@/lib/utils';
 
@@ -158,22 +159,26 @@ function AiThread({
             </p>
           </div>
         ) : (
-          messages.map((m) => (
-            <div
-              key={m.id}
-              className={cn(
-                'text-sm leading-[1.65]',
-                m.role === 'user'
-                  ? 'ml-auto max-w-[85%] rounded-2xl rounded-tr-xs border border-border/40 bg-surface-container-high px-3.5 py-2.5 text-foreground shadow-2xs'
-                  : 'mr-auto max-w-full text-foreground/95',
-              )}
-            >
-              {m.content}
-              {m.role === 'assistant' && isSending ? (
-                <span className="ml-1 inline-block h-3.5 w-1.5 animate-pulse rounded-xs bg-primary/70 align-middle" />
-              ) : null}
-            </div>
-          ))
+          messages.map((m, index) => {
+            const isLastAssistantMessage = m.role === 'assistant' && index === messages.length - 1;
+            return (
+              <div
+                key={m.id}
+                className={cn(
+                  'text-sm leading-[1.65]',
+                  m.role === 'user'
+                    ? 'ml-auto max-w-[85%] rounded-2xl rounded-tr-xs border border-border/40 bg-surface-container-high px-3.5 py-2.5 text-foreground shadow-2xs whitespace-pre-wrap break-words'
+                    : 'mr-auto max-w-full text-foreground/95',
+                )}
+              >
+                {m.role === 'user' ? (
+                  m.content
+                ) : (
+                  <ReaderMarkdown content={m.content} streaming={isLastAssistantMessage && isSending} />
+                )}
+              </div>
+            );
+          })
         )}
         {suggestions.length > 0 ? (
           <div className="flex flex-wrap gap-1.5 pt-2">

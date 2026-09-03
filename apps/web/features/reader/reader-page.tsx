@@ -412,6 +412,7 @@ export function ReaderPage({ workId }: ReaderPageProps) {
 
       <ReaderSelectionToolbar
         visible={Boolean(selection) && assist.aiMode === 'closed'}
+        rect={selection?.rect}
         top={selection?.top ?? 0}
         left={selection?.left ?? 0}
         onExplain={() => requestInlineAssist('explain')}
@@ -430,6 +431,7 @@ export function ReaderPage({ workId }: ReaderPageProps) {
         mode={assist.inlineSession?.mode ?? 'answer'}
         canOpenDrawer={Boolean(assist.inlineSession?.conversationId)}
         error={assist.error}
+        rect={selection?.rect}
         top={(selection?.top ?? 0) + 48}
         left={selection?.left ?? 0}
         onSubmitQuestion={(question) => {

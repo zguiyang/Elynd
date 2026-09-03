@@ -3,7 +3,7 @@
 import type { MouseEvent, ReactNode, Ref, UIEvent } from 'react';
 
 import { ReadingPartView } from '@/features/content/reading-part-view';
-import type { ReaderFontSize } from '@/features/reader/reader-model';
+import type { ReaderFontSize, ReaderSelectionRect } from '@/features/reader/reader-model';
 import { cn } from '@/lib/utils';
 
 type ReaderPartProps = {
@@ -14,7 +14,13 @@ type ReaderPartProps = {
   tocOpen?: boolean;
   /** Scroll container — parent queries `.reading-body` for listen highlight. */
   contentRef?: Ref<HTMLDivElement | null>;
-  onSelectText: (payload: { quote: string; paragraphId: string; top: number; left: number }) => void;
+  onSelectText: (payload: {
+    quote: string;
+    paragraphId: string;
+    rect?: ReaderSelectionRect;
+    top: number;
+    left: number;
+  }) => void;
   onCenterTap: () => void;
   onScroll: (event: UIEvent<HTMLElement>) => void;
   footer?: ReactNode;
@@ -57,6 +63,14 @@ export function ReaderPart({
     onSelectText({
       quote,
       paragraphId,
+      rect: {
+        top: rect.top,
+        left: rect.left,
+        bottom: rect.bottom,
+        right: rect.right,
+        width: rect.width,
+        height: rect.height,
+      },
       top: rect.bottom + 8,
       left: Math.min(Math.max(16, rect.left + rect.width / 2), window.innerWidth - 16),
     });

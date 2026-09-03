@@ -47,9 +47,19 @@ export type ReaderSession = ReaderViewModel & {
   title: string;
 };
 
+export type ReaderSelectionRect = {
+  top: number;
+  left: number;
+  bottom: number;
+  right: number;
+  width: number;
+  height: number;
+};
+
 export type ReaderSelection = {
   quote: string;
   paragraphId: string;
+  rect?: ReaderSelectionRect;
   top: number;
   left: number;
 };

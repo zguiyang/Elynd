@@ -11,6 +11,7 @@
     "./api/assist": "./src/api/assist.ts",
     "./api/content-assets": "./src/api/content-assets.ts",
     "./api/conversations": "./src/api/conversations.ts",
+    "./api/dictionary": "./src/api/dictionary.ts",
     "./api/reader": "./src/api/reader.ts",
     "./api/reading-history": "./src/api/reading-history.ts",
     "./api/shelf": "./src/api/shelf.ts",

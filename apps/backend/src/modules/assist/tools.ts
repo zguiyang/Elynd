@@ -4,9 +4,41 @@ import { z } from 'zod';
 
 import { type AssistAskBody } from '@gloaming/shared/api/assist';
 
+import { lookupWord } from '@/modules/dictionary/service';
+
 const SLICE_MAX = 2000;
 
-type PartRef = { title: string; body: string };
+type PartRef = { title: string; body: string; workId?: string; partId?: string };
+
+function createDictionaryLookupTool(part?: PartRef) {
+  return tool(
+    async ({ word, contextSentence }: { word: string; contextSentence?: string }) => {
+      try {
+        const entry = await lookupWord({
+          word,
+          contextSentence,
+          workId: part?.workId,
+          partId: part?.partId,
+        });
+        if (!entry) {
+          return JSON.stringify({ found: false, message: `No dictionary entry found for "${word}"` });
+        }
+        return JSON.stringify({ found: true, entry });
+      } catch (err) {
+        return JSON.stringify({ found: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    },
+    {
+      name: 'dictionary_lookup',
+      description:
+        'Lookup standard definitions, phonetics, parts of speech, and contextual examples for an English word.',
+      schema: z.object({
+        word: z.string().min(1).max(100).describe('The English word to lookup'),
+        contextSentence: z.string().optional().describe('The sentence where the word appears for contextual meaning'),
+      }),
+    },
+  );
+}
 
 function createGetPartSliceTool(part: PartRef) {
   return tool(
@@ -64,7 +96,7 @@ function createSearchPartTool(part: PartRef) {
 }
 
 export function createPartAssistTools(part: PartRef): StructuredToolInterface[] {
-  return [createGetPartSliceTool(part), createSearchPartTool(part)];
+  return [createGetPartSliceTool(part), createSearchPartTool(part), createDictionaryLookupTool(part)];
 }
 
 export function resolveAssistToolsForAction(

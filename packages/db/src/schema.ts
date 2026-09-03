@@ -436,6 +436,74 @@ export const ttsConfig = pgTable('tts_config', {
     .notNull(),
 });
 
+/** Singleton Dictionary configuration + provider settings. */
+export const dictionaryConfig = pgTable('dictionary_config', {
+  id: text('id').primaryKey(),
+  provider: text('provider').notNull().default('free_dictionary'),
+  isEnabled: boolean('is_enabled').default(true).notNull(),
+  enableAiEnrichment: boolean('enable_ai_enrichment').default(true).notNull(),
+  customEndpoint: text('custom_endpoint'),
+  apiKeyCiphertext: text('api_key_ciphertext'),
+  timeoutMs: integer('timeout_ms').default(5000).notNull(),
+  cacheTtlDays: integer('cache_ttl_days').default(30).notNull(),
+  updatedAt: timestamp('updated_at')
+    .defaultNow()
+    .$onUpdate(() => /* @__PURE__ */ new Date())
+    .notNull(),
+});
+
+export type DictionaryPhoneticItem = {
+  text?: string;
+  audio?: string;
+  sourceUrl?: string;
+  role?: 'us' | 'uk' | 'general';
+};
+
+export type DictionaryDefinitionItem = {
+  definition: string;
+  definitionZh?: string;
+  example?: string;
+  exampleZh?: string;
+  synonyms?: string[];
+  antonyms?: string[];
+};
+
+export type DictionaryMeaningItem = {
+  partOfSpeech: string;
+  definitions: DictionaryDefinitionItem[];
+  synonyms?: string[];
+  antonyms?: string[];
+};
+
+export type DictionaryContextExampleItem = {
+  sentence: string;
+  sentenceZh?: string;
+  note?: string;
+  workId?: string;
+  partId?: string;
+  workTitle?: string;
+};
+
+/** Persisted dictionary words with phonetic, meanings, and contextual examples (L2 Cache). */
+export const dictionaryEntry = pgTable(
+  'dictionary_entry',
+  {
+    id: text('id').primaryKey(),
+    word: text('word').notNull(),
+    phonetics: jsonb('phonetics').$type<DictionaryPhoneticItem[]>().notNull().default([]),
+    meanings: jsonb('meanings').$type<DictionaryMeaningItem[]>().notNull().default([]),
+    contextExamples: jsonb('context_examples').$type<DictionaryContextExampleItem[]>().notNull().default([]),
+    rawProviderData: jsonb('raw_provider_data'),
+    source: text('source').notNull().default('free_dictionary'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [unique('dictionary_entry_word_uidx').on(table.word), index('dictionary_entry_word_idx').on(table.word)],
+);
+
 /** Word boundary timings for part audio (mirrors TTS wordTimings). */
 export type ContentAssetWordTiming = {
   text: string;

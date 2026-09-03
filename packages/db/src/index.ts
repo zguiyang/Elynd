@@ -18,6 +18,8 @@ export {
   conversationMessage,
   conversationMessageRelations,
   conversationRelations,
+  dictionaryConfig,
+  dictionaryEntry,
   llmAppSetting,
   llmModel,
   llmModelRelations,

@@ -199,6 +199,13 @@
       "breakpoints": true
     },
     {
+      "idx": 28,
+      "version": "7",
+      "when": 1788200000000,
+      "tag": "0028_drop_source_note",
+      "breakpoints": true
+    },
+    {
       "idx": 29,
       "version": "7",
       "when": 1788300000000,
@@ -210,6 +217,13 @@
       "version": "7",
       "when": 1788400000000,
       "tag": "0030_reading_day_engaged_seconds",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1788500000000,
+      "tag": "0031_dictionary_config_and_entry",
       "breakpoints": true
     }
   ]

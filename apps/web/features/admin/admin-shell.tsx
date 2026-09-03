@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, AudioLines, FileText, Menu, ScrollText, Sparkles, Tags, Volume2 } from 'lucide-react';
+import { ArrowLeft, AudioLines, BookA, FileText, Menu, ScrollText, Sparkles, Tags, Volume2 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { type ReactNode, useState } from 'react';
@@ -58,6 +58,12 @@ function adminNavItems(pathname: string): AdminNavItem[] {
       label: '语音配置',
       icon: Volume2,
       isActive: pathname === ADMIN_ROUTES.tts || pathname.startsWith(`${ADMIN_ROUTES.tts}/`),
+    },
+    {
+      href: ADMIN_ROUTES.dictionary,
+      label: '词典配置',
+      icon: BookA,
+      isActive: pathname === ADMIN_ROUTES.dictionary || pathname.startsWith(`${ADMIN_ROUTES.dictionary}/`),
     },
     {
       href: ADMIN_ROUTES.ttsLogs,

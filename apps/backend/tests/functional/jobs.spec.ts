@@ -104,6 +104,6 @@ describe('POST /api/admin/jobs/ping', () => {
 
     const job = await getQueue().getJob(body.id!);
     expect(job?.name).toBe(JOB_PING);
-    await job?.remove();
+    await job?.remove().catch(() => {});
   });
 });

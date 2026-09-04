@@ -133,3 +133,10 @@ export const lookupDictionaryQuerySchema = z.object({
 });
 
 export type LookupDictionaryQuery = z.infer<typeof lookupDictionaryQuerySchema>;
+
+export const lookupDictionaryResultSchema = z.object({
+  ok: z.literal(true),
+  entry: dictionaryEntrySchema,
+});
+
+export type LookupDictionaryResult = z.infer<typeof lookupDictionaryResultSchema>;

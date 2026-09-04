@@ -17,6 +17,7 @@ type ReaderPartProps = {
   onSelectText: (payload: {
     quote: string;
     paragraphId: string;
+    contextSentence?: string;
     rect?: ReaderSelectionRect;
     top: number;
     left: number;
@@ -25,6 +26,14 @@ type ReaderPartProps = {
   onScroll: (event: UIEvent<HTMLElement>) => void;
   footer?: ReactNode;
 };
+
+/** Extract the full sentence surrounding the selected quote from paragraph text. */
+function extractContextSentence(paragraphText: string, quote: string): string {
+  if (!paragraphText || !quote) return paragraphText;
+  const sentences = paragraphText.match(/[^.!?。！？]+[.!?。！？]*/g) || [paragraphText];
+  const matched = sentences.find((s) => s.toLowerCase().includes(quote.toLowerCase()));
+  return (matched || paragraphText).trim();
+}
 
 /** Paragraph id from the server-injected data-p ordinal. */
 function paragraphIdFromElement(el: HTMLElement | null, partId: string, fallback: string): string {
@@ -56,6 +65,8 @@ export function ReaderPart({
 
     const paragraphEl = (event.target as HTMLElement).closest('[data-p]') as HTMLElement | null;
     const paragraphId = paragraphIdFromElement(paragraphEl, partId, `${partId}-p1`);
+    const paragraphText = paragraphEl?.textContent?.trim() || '';
+    const contextSentence = extractContextSentence(paragraphText, quote);
     const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
     const rect = range?.getBoundingClientRect();
     if (!rect) return;
@@ -63,6 +74,7 @@ export function ReaderPart({
     onSelectText({
       quote,
       paragraphId,
+      contextSentence,
       rect: {
         top: rect.top,
         left: rect.left,

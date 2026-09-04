@@ -59,6 +59,7 @@ export type ReaderSelectionRect = {
 export type ReaderSelection = {
   quote: string;
   paragraphId: string;
+  contextSentence?: string;
   rect?: ReaderSelectionRect;
   top: number;
   left: number;

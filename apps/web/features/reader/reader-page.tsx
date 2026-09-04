@@ -22,6 +22,8 @@ import {
 import { useReaderListenHighlight } from '@/features/reader/reader-audio-highlight';
 import { ReaderChapterNav } from '@/features/reader/reader-chapter-nav';
 import { ReaderChrome } from '@/features/reader/reader-chrome';
+import { useDictionaryLookupQuery } from '@/features/reader/reader-dictionary-api';
+import { ReaderDictionaryView } from '@/features/reader/reader-dictionary-view';
 import { useReadingHeartbeat } from '@/features/reader/reader-heartbeat';
 import type {
   ReaderAudioRole,
@@ -29,6 +31,7 @@ import type {
   ReaderFontSize,
   ReaderPlaybackRate,
   ReaderSelection,
+  ReaderSelectionRect,
   ReaderViewModel,
 } from '@/features/reader/reader-model';
 import {
@@ -75,6 +78,13 @@ export function ReaderPage({ workId }: ReaderPageProps) {
   const [isTocOpen, setIsTocOpen] = useState(false);
   const [fontSize, setFontSize] = useState<ReaderFontSize>('md');
   const [selection, setSelection] = useState<ReaderSelection | null>(null);
+  const [dictionaryState, setDictionaryState] = useState<{
+    word: string;
+    contextSentence?: string;
+    rect?: ReaderSelectionRect;
+    top: number;
+    left: number;
+  } | null>(null);
   const [audioStatus, setAudioStatus] = useState<ReaderAudioStatus>('idle');
   const [playbackRate, setPlaybackRate] = useState<ReaderPlaybackRate>(DEFAULT_READER_PLAYBACK_RATE);
   const [preferredAudioRole, setPreferredAudioRole] = useState<ReaderAudioRole | null>(null);
@@ -93,6 +103,14 @@ export function ReaderPage({ workId }: ReaderPageProps) {
     partId: activePartId,
     isAuthenticated,
     openLogin,
+  });
+
+  const dictionaryQuery = useDictionaryLookupQuery({
+    word: dictionaryState?.word ?? null,
+    contextSentence: dictionaryState?.contextSentence,
+    workId,
+    partId: activePartId ?? undefined,
+    enabled: Boolean(dictionaryState?.word),
   });
 
   const reader: ReaderViewModel | null =
@@ -191,6 +209,7 @@ export function ReaderPage({ workId }: ReaderPageProps) {
 
   function clearSelectionUi() {
     setSelection(null);
+    setDictionaryState(null);
     window.getSelection()?.removeAllRanges();
   }
 
@@ -381,6 +400,7 @@ export function ReaderPage({ workId }: ReaderPageProps) {
         contentRef={contentRef}
         onSelectText={(payload) => {
           setSelection(payload);
+          setDictionaryState(null);
           assist.closeAiSurface();
           assist.resetInline();
         }}
@@ -411,7 +431,7 @@ export function ReaderPage({ workId }: ReaderPageProps) {
       />
 
       <ReaderSelectionToolbar
-        visible={Boolean(selection) && assist.aiMode === 'closed'}
+        visible={Boolean(selection) && assist.aiMode === 'closed' && !dictionaryState}
         rect={selection?.rect}
         top={selection?.top ?? 0}
         left={selection?.left ?? 0}
@@ -419,8 +439,48 @@ export function ReaderPage({ workId }: ReaderPageProps) {
         onAskAi={() => {
           if (selection) assist.openInlineQuestion(selection);
         }}
-        onLookup={() => toast.info('查词功能稍后接入')}
+        onLookup={() => {
+          if (!selection) return;
+          const clean = selection.quote.trim().replace(/^[^\w]+|[^\w]+$/g, '');
+          const targetWord = clean || selection.quote.trim();
+          if (!targetWord) return;
+
+          setDictionaryState({
+            word: targetWord,
+            contextSentence: selection.contextSentence,
+            rect: selection.rect,
+            top: selection.top,
+            left: selection.left,
+          });
+          assist.closeAiSurface();
+        }}
         onTranslate={() => requestInlineAssist('translate')}
+      />
+
+      <ReaderDictionaryView
+        open={Boolean(dictionaryState)}
+        word={dictionaryState?.word ?? ''}
+        entry={dictionaryQuery.data}
+        isLoading={dictionaryQuery.isPending}
+        contextSentence={dictionaryState?.contextSentence}
+        rect={dictionaryState?.rect}
+        top={dictionaryState?.top}
+        left={dictionaryState?.left}
+        onAskAi={(word, contextSentence) => {
+          const currentSelection = selection ?? {
+            quote: word,
+            paragraphId: `${activePartId}-p1`,
+            contextSentence,
+            top: dictionaryState?.top ?? 0,
+            left: dictionaryState?.left ?? 0,
+          };
+          setDictionaryState(null);
+          void assist.runInlineAssist('ask', currentSelection, `请结合当前语境深入讲解单词 “${word}” 的含义与用法。`);
+        }}
+        onClose={() => {
+          setDictionaryState(null);
+          clearSelectionUi();
+        }}
       />
 
       <ReaderAiInline

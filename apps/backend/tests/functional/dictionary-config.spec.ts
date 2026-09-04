@@ -201,16 +201,16 @@ describe('Dictionary config & lookup API', () => {
     expect(testData.entry.word).toBe('testword');
     expect(testData.entry.meanings[0]?.partOfSpeech).toBe('noun');
 
-    // Authenticated user lookup
-    const user = await createSession('user');
-    const lookupRes = await app.request('/api/dictionary/lookup?word=testword', {
-      headers: { Cookie: user.cookie },
-    });
-    expect(lookupRes.status).toBe(200);
-    const lookupData = (await lookupRes.json()) as { ok: boolean; entry: { word: string; fromCache?: boolean } };
-    expect(lookupData.ok).toBe(true);
-    expect(lookupData.entry.word).toBe('testword');
-    expect(lookupData.entry.fromCache).toBe(true);
+    // Guest user lookup without auth cookie
+    const guestLookupRes = await app.request('/api/dictionary/lookup?word=testword');
+    expect(guestLookupRes.status).toBe(200);
+    const guestLookupData = (await guestLookupRes.json()) as {
+      ok: boolean;
+      entry: { word: string; fromCache?: boolean };
+    };
+    expect(guestLookupData.ok).toBe(true);
+    expect(guestLookupData.entry.word).toBe('testword');
+    expect(guestLookupData.entry.fromCache).toBe(true);
   });
 
   it('supports Youdao dictionary provider parsing', async () => {

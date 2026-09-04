@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 
-import { type AuthVariables, requireAdmin, requireAuth } from '@/middleware/auth';
+import { type AuthVariables, requireAdmin } from '@/middleware/auth';
 import * as dictionaryService from '@/modules/dictionary/service';
 import {
   validateLookupDictionaryQuery,
@@ -23,8 +23,8 @@ dictionaryRoutes.post('/api/admin/dictionary/test', requireAdmin, validateTestDi
   return c.json(await dictionaryService.testDictionary(c.req.valid('json')));
 });
 
-// Public / Authenticated Reader Lookup
-dictionaryRoutes.get('/api/dictionary/lookup', requireAuth, validateLookupDictionaryQuery, async (c) => {
+// Public / Reader Lookup (open to guests and authenticated users)
+dictionaryRoutes.get('/api/dictionary/lookup', validateLookupDictionaryQuery, async (c) => {
   const query = c.req.valid('query');
   const entry = await dictionaryService.lookupWord({
     word: query.word,

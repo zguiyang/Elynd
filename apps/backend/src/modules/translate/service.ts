@@ -10,10 +10,10 @@ import {
 import { db } from '@/db';
 import { NotFoundError } from '@/lib/errors';
 import { rootLogger } from '@/lib/logger';
-import { htmlToPlainText } from '@/lib/part-text';
 import { composePromptMessages, PROMPT_ROLE, PROMPT_SCENE } from '@/lib/prompts';
 import { getRedis } from '@/lib/redis';
 import { streamAi } from '@/modules/ai';
+import { reindexLeafParagraphOrdinals } from '@/modules/epub-ingest/clean';
 import {
   createTranslateLineParser,
   formatSentenceListForPrompt,
@@ -58,11 +58,12 @@ export type StreamTranslatePartOptions = {
 };
 
 function cacheKey(partId: string, contentHash: string): string {
-  return `gloaming:bilingual:v2:${partId}:${contentHash}`;
+  return `gloaming:bilingual:v3:${partId}:${contentHash}`;
 }
 
 function bilingualCacheMatch(partId: string): string {
-  return `gloaming:bilingual:v2:${partId}:*`;
+  // Include legacy v2 keys so part updates invalidate stale bilingual caches.
+  return `gloaming:bilingual:*:${partId}:*`;
 }
 
 export async function deleteBilingualCacheForPart(partId: string): Promise<void> {
@@ -146,8 +147,9 @@ export async function* streamTranslatePart(
   options: StreamTranslatePartOptions = {},
 ): AsyncGenerator<TranslateStreamEvent> {
   const part = await loadPublishedPart(body.partId);
+  const readingBody = reindexLeafParagraphOrdinals(part.body);
   const contentHash = hashPartContent(part.title, part.body);
-  const sentences = splitPartSentences(htmlToPlainText(part.body));
+  const sentences = splitPartSentences(readingBody);
 
   const cached = await readCache(part.id, contentHash);
   if (cached) {

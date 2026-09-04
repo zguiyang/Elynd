@@ -40,6 +40,28 @@ describe('splitPartSentences', () => {
     ]);
   });
 
+  it('splits HTML paragraphs with data-p ordinals', () => {
+    const html = '<p data-p="0">Hello world. Next sentence.</p><p data-p="1">New paragraph!</p>';
+    const sentences = splitPartSentences(html);
+    expect(sentences).toEqual([
+      { index: 0, paragraphIndex: 0, en: 'Hello world.' },
+      { index: 1, paragraphIndex: 0, en: 'Next sentence.' },
+      { index: 2, paragraphIndex: 1, en: 'New paragraph!' },
+    ]);
+  });
+
+  it('keeps paragraphIndex aligned with leaf data-p after nested wrappers', () => {
+    const html =
+      '<h1 data-p="0">Title</h1><blockquote><div><p data-p="1">On this world. Ignored man.</p></div></blockquote><p data-p="2">Trudging homeward.</p>';
+    const sentences = splitPartSentences(html);
+    expect(sentences.map((s) => ({ p: s.paragraphIndex, en: s.en }))).toEqual([
+      { p: 0, en: 'Title' },
+      { p: 1, en: 'On this world.' },
+      { p: 1, en: 'Ignored man.' },
+      { p: 2, en: 'Trudging homeward.' },
+    ]);
+  });
+
   it('keeps Mr. from hard-splitting', () => {
     const sentences = splitPartSentences('Mr. Smith smiled. Then he left.');
     expect(sentences).toHaveLength(2);

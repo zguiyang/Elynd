@@ -17,6 +17,7 @@ import { estimatedMinutesFromWordCount } from '@gloaming/shared/api/reading-stat
 import { db } from '@/db';
 import { AppError, NotFoundError } from '@/lib/errors';
 import { getPartAudioAvailability, getPublishedPartAudioTrack } from '@/modules/content-assets/service';
+import { reindexLeafParagraphOrdinals } from '@/modules/epub-ingest/clean';
 import { touchReadingDay } from '@/modules/reading-history/service';
 import { getPartById, loadTagsForWork, requirePublishedWorkWithParts } from '@/modules/works/service';
 
@@ -130,7 +131,7 @@ export async function getReaderPart(partId: string): Promise<ReaderPartData> {
       sortOrder: part.sortOrder,
       kind: part.kind as ReaderPartData['part']['kind'],
       title: part.title,
-      body: part.body,
+      body: reindexLeafParagraphOrdinals(part.body),
     },
     audioAvailable,
   };

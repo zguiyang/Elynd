@@ -1,3 +1,5 @@
+import * as cheerio from 'cheerio';
+
 export type SplitSentence = {
   index: number;
   paragraphIndex: number;
@@ -6,7 +8,39 @@ export type SplitSentence = {
 
 export { hashPartContent, normalizePartContent } from '@/modules/works/content-hash';
 
-function paragraphsFromBody(body: string): string[] {
+function isHtmlBody(body: string): boolean {
+  return /<[a-z][\s\S]*>/i.test(body);
+}
+
+function paragraphsFromHtml(html: string): { paragraphIndex: number; text: string }[] {
+  const $ = cheerio.load(html, null, false);
+  const result: { paragraphIndex: number; text: string }[] = [];
+
+  const pElements = $('[data-p]');
+  if (pElements.length > 0) {
+    pElements.each((_, el) => {
+      const $el = $(el);
+      const pAttr = $el.attr('data-p');
+      const paragraphIndex = pAttr !== undefined ? Number(pAttr) : result.length;
+      const text = $el.text().replace(/\s+/g, ' ').trim();
+      if (text) {
+        result.push({ paragraphIndex, text });
+      }
+    });
+    return result;
+  }
+
+  $('p, div, blockquote, h1, h2, h3, h4, h5, h6, li, section').each((idx, el) => {
+    const text = $(el).text().replace(/\s+/g, ' ').trim();
+    if (text) {
+      result.push({ paragraphIndex: idx, text });
+    }
+  });
+
+  return result;
+}
+
+function paragraphsFromPlainText(body: string): { paragraphIndex: number; text: string }[] {
   const trimmed = body.replace(/\r\n/g, '\n').trim();
   if (!trimmed) {
     return [];
@@ -14,7 +48,8 @@ function paragraphsFromBody(body: string): string[] {
   return trimmed
     .split(/\n\s*\n/)
     .map((block) => block.replace(/\s+/g, ' ').trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .map((text, paragraphIndex) => ({ paragraphIndex, text }));
 }
 
 function splitParagraphSentences(paragraph: string): string[] {
@@ -36,12 +71,11 @@ function splitParagraphSentences(paragraph: string): string[] {
 
 /** Sentence-split part body; indices are global across paragraphs. */
 export function splitPartSentences(body: string): SplitSentence[] {
-  const paragraphs = paragraphsFromBody(body);
+  const paragraphs = isHtmlBody(body) ? paragraphsFromHtml(body) : paragraphsFromPlainText(body);
   const sentences: SplitSentence[] = [];
   let index = 0;
-  for (let paragraphIndex = 0; paragraphIndex < paragraphs.length; paragraphIndex += 1) {
-    const paragraph = paragraphs[paragraphIndex]!;
-    for (const en of splitParagraphSentences(paragraph)) {
+  for (const { paragraphIndex, text } of paragraphs) {
+    for (const en of splitParagraphSentences(text)) {
       sentences.push({ index, paragraphIndex, en });
       index += 1;
     }

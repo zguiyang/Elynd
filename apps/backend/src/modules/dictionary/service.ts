@@ -233,9 +233,10 @@ async function enrichEntryWithAi(
     });
 
     const parsed = aiResult.content;
+    const aiMeanings = Array.isArray(parsed?.meanings) ? parsed.meanings : [];
     const enrichedMeanings: DictionaryMeaning[] = entry.meanings.map((meaning) => {
-      const matchedAiMeaning = parsed.meanings.find(
-        (m) => m.partOfSpeech.toLowerCase() === meaning.partOfSpeech.toLowerCase(),
+      const matchedAiMeaning = aiMeanings.find(
+        (m) => m?.partOfSpeech?.toLowerCase() === meaning.partOfSpeech.toLowerCase(),
       );
       const enrichedDefinitions: DictionaryDefinition[] = meaning.definitions.map((def, idx) => {
         const zh = matchedAiMeaning?.definitionsZh?.[idx];
@@ -254,8 +255,8 @@ async function enrichEntryWithAi(
     if (context?.sentence?.trim()) {
       contextExamples.unshift({
         sentence: context.sentence.trim(),
-        sentenceZh: parsed.contextSentenceZh,
-        note: parsed.contextNote,
+        sentenceZh: parsed?.contextSentenceZh,
+        note: parsed?.contextNote,
         workId: context.workId,
         partId: context.partId,
         workTitle: context.workTitle,

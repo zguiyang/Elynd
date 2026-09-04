@@ -515,7 +515,16 @@ export function ReaderPage({ workId }: ReaderPageProps) {
         isSending={assist.isDrawerSending}
         error={assist.error}
         onOpenChange={(open) => (open ? assist.openDrawer() : assist.closeAiSurface())}
-        onSend={(text) => void assist.sendDrawerMessage(text, selection)}
+        onSend={(text) => {
+          const currentSelection = selection;
+          clearSelectionUi();
+          assist.clearActiveQuote();
+          void assist.sendDrawerMessage(text, currentSelection);
+        }}
+        onClearQuote={() => {
+          clearSelectionUi();
+          assist.clearActiveQuote();
+        }}
         onSelectConversation={(conversationId) => void assist.restoreConversation(conversationId)}
         onStartNewConversation={() => {
           assist.startNewDrawerConversation();

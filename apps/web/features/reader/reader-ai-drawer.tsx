@@ -1,6 +1,6 @@
 'use client';
 
-import { HistoryIcon, MessageSquarePlusIcon, XIcon } from 'lucide-react';
+import { HistoryIcon, MessageSquarePlusIcon, QuoteIcon, XIcon } from 'lucide-react';
 import { useState, useSyncExternalStore } from 'react';
 
 import type { ConversationSummary } from '@gloaming/shared/api/conversations';
@@ -38,6 +38,7 @@ type ReaderAiDrawerProps = {
   error?: string | null;
   onOpenChange: (open: boolean) => void;
   onSend: (text: string) => void;
+  onClearQuote?: () => void;
   onSelectConversation: (conversationId: string) => void;
   onStartNewConversation: () => void;
 };
@@ -122,6 +123,7 @@ function AiThread({
   isSending,
   error,
   onSend,
+  onClearQuote,
 }: {
   quote: string | null;
   messages: ReaderAiMessage[];
@@ -129,6 +131,7 @@ function AiThread({
   isSending?: boolean;
   error?: string | null;
   onSend: (text: string) => void;
+  onClearQuote?: () => void;
 }) {
   const [draft, setDraft] = useState('');
 
@@ -141,15 +144,6 @@ function AiThread({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {quote ? (
-        <div className="border-b border-border/30 bg-surface-container-low/60 px-4 py-3">
-          <div className="border-l-2 border-primary/60 pl-3">
-            <span className="text-[10px] font-medium tracking-wider text-muted-foreground uppercase">Selected</span>
-            <p className="mt-0.5 line-clamp-3 font-heading text-sm italic leading-snug text-foreground/90">“{quote}”</p>
-          </div>
-        </div>
-      ) : null}
-
       <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
@@ -209,11 +203,30 @@ function AiThread({
           submit(draft);
         }}
       >
+        {quote ? (
+          <div className="mb-2 flex items-start gap-2 rounded-xl border border-border/50 border-l-2 border-l-primary/70 bg-surface-container-high/80 p-2.5 transition-all duration-200 ease-out">
+            <QuoteIcon className="mt-0.5 size-3.5 shrink-0 text-primary/70" />
+            <p className="min-w-0 flex-1 font-serif text-xs italic leading-relaxed text-foreground/85 line-clamp-2">
+              {quote}
+            </p>
+            {onClearQuote ? (
+              <button
+                type="button"
+                aria-label="移除当前引用"
+                className="flex size-5 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-surface-container-highest hover:text-foreground"
+                onClick={onClearQuote}
+              >
+                <XIcon className="size-3" />
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-background/80 px-2 py-1 shadow-2xs focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15">
           <Input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="Ask about the text..."
+            placeholder={quote ? '针对引用文本提问...' : '关于正文提问...'}
             className="h-9 border-0 bg-transparent px-2 text-sm shadow-none focus-visible:ring-0"
             disabled={isSending}
           />
@@ -243,6 +256,7 @@ export function ReaderAiDrawer({
   error,
   onOpenChange,
   onSend,
+  onClearQuote,
   onSelectConversation,
   onStartNewConversation,
 }: ReaderAiDrawerProps) {
@@ -341,6 +355,7 @@ export function ReaderAiDrawer({
             isSending={isSending}
             error={error}
             onSend={onSend}
+            onClearQuote={onClearQuote}
           />
         )}
       </aside>
@@ -403,6 +418,7 @@ export function ReaderAiDrawer({
               isSending={isSending}
               error={error}
               onSend={onSend}
+              onClearQuote={onClearQuote}
             />
           )}
         </SheetContent>

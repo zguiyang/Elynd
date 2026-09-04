@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { cleanXhtml, stripOrphanImagePlaceholders } from '@/modules/epub-ingest/clean';
+import { cleanXhtml, reindexLeafParagraphOrdinals, stripOrphanImagePlaceholders } from '@/modules/epub-ingest/clean';
 
 describe('cleanXhtml', () => {
   it('keeps allowed tags and strips dangerous ones (blacklist)', () => {
@@ -52,11 +52,34 @@ describe('cleanXhtml', () => {
     expect(html).toContain('class="x"');
   });
 
-  it('injects data-p ordinals on block elements', () => {
+  it('injects data-p ordinals on leaf block elements only', () => {
     const { html } = cleanXhtml(`<p>One</p><blockquote>Two</blockquote><p>Three</p>`, () => '');
     expect(html).toContain('data-p="0"');
     expect(html).toContain('data-p="1"');
     expect(html).toContain('data-p="2"');
+  });
+
+  it('skips wrapper blocks so nested intro keeps a single data-p', () => {
+    const { html } = cleanXhtml(
+      `<blockquote><div><p><b>On this world ignored man....</b></p></div></blockquote><p>Trudging homeward.</p>`,
+      () => '',
+    );
+    expect(html).toContain('<p data-p="0">');
+    expect(html).toContain('<p data-p="1">');
+    expect(html).not.toMatch(/<(blockquote|div)[^>]*data-p=/);
+  });
+
+  it('reindexLeafParagraphOrdinals removes duplicates after spine-style merge', () => {
+    const a = cleanXhtml(`<h1>Title</h1><p>by Author</p>`, () => '').html;
+    const b = cleanXhtml(`<p>Trudging homeward.</p><p>He spent the day.</p>`, () => '').html;
+    const merged = `${a}\n${b}`;
+    expect([...merged.matchAll(/data-p="0"/g)]).toHaveLength(2);
+
+    const fixed = reindexLeafParagraphOrdinals(merged);
+    const ordinals = [...fixed.matchAll(/data-p="(\d+)"/g)].map((m) => m[1]);
+    expect(ordinals).toEqual(['0', '1', '2', '3']);
+    expect(fixed).toContain('Title');
+    expect(fixed).toContain('Trudging homeward.');
   });
 
   it('keeps footnote markers (sup) in HTML but drops empty paragraphs', () => {

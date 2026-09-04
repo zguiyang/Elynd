@@ -66,6 +66,8 @@ describe('planChapters', () => {
     const chapters = planChapters(b, clean);
     expect(chapters).toHaveLength(1);
     expect(chapters[0]!.html).toContain('Continues here.');
+    const ordinals = [...chapters[0]!.html.matchAll(/data-p="(\d+)"/g)].map((m) => m[1]);
+    expect(ordinals).toEqual(['0', '1', '2']);
   });
 
   it('merges bare chapter-number stubs with the following body', () => {

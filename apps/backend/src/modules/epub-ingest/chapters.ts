@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio';
 
+import { reindexLeafParagraphOrdinals } from './clean';
 import type { CleanedChapter, EpubBook, EpubNavItem } from './types';
 
 /**
@@ -313,7 +314,7 @@ export function planChapters(book: EpubBook, clean: (href: string, rawHtml: stri
           if (!hasReadableText(cleaned.html)) continue;
           chapters.push({ title: section.title ?? '', html: cleaned.html });
         }
-        return chapters;
+        return finalizeChapterParagraphOrdinals(chapters);
       }
     }
   }
@@ -355,5 +356,13 @@ export function planChapters(book: EpubBook, clean: (href: string, rawHtml: stri
     previous = chapter;
   }
 
-  return chapters;
+  return finalizeChapterParagraphOrdinals(chapters);
+}
+
+/** After spine merges, renumber leaf data-p so each chapter has unique ordinals. */
+function finalizeChapterParagraphOrdinals(chapters: ChapterPlan[]): ChapterPlan[] {
+  return chapters.map((chapter) => ({
+    ...chapter,
+    html: reindexLeafParagraphOrdinals(chapter.html),
+  }));
 }

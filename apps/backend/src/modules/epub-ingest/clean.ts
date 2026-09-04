@@ -12,7 +12,9 @@ import type { ChapterImageRef } from './types';
  * product. On top of that Gloaming adds:
  * - NFC normalization + self-closing tag repair (parse5 would swallow the rest
  *   of the document after a self-closing non-void tag like `<title/>`).
- * - `data-p` ordinals on block elements for reader paragraph anchoring.
+ * - `data-p` ordinals on *leaf* block elements for reader paragraph anchoring
+ *   (wrappers that only contain other blocks are skipped so bilingual / TTS
+ *   anchors stay 1:1 with readable paragraphs).
  * - Removal of in-chapter table-of-contents blocks (the product has its own
  *   chapter navigation, so a duplicated contents page is dropped).
  * - Removal of non-displayable figure stubs (Gutenberg `epub.noimages` spans,
@@ -407,18 +409,44 @@ function removeContentsBlocks($: cheerio.CheerioAPI): void {
   });
 }
 
-/** Inject data-p ordinals on block elements (document order). */
-function injectParagraphOrdinals($: cheerio.CheerioAPI): void {
+const BLOCK_SELECTOR = [...BLOCK_TAGS].join(',');
+
+/** True when this block has no nested block-level descendants (leaf reading unit). */
+function isLeafReadingBlock($el: cheerio.Cheerio<never>): boolean {
+  return $el.find(BLOCK_SELECTOR).length === 0;
+}
+
+function shouldSkipEmptyBlock($el: cheerio.Cheerio<never>): boolean {
+  return $el.children().length === 0 && !$el.text().trim() && !($el.is('img') || $el.is('br') || $el.is('hr'));
+}
+
+/** Inject unique data-p ordinals on leaf block elements (document order). */
+function injectLeafParagraphOrdinals($: cheerio.CheerioAPI): void {
   let paragraphIndex = 0;
-  const blockSelector = [...BLOCK_TAGS].join(',');
-  $(blockSelector).each((_, el) => {
-    const $el = $(el);
-    if ($el.children().length === 0 && !$el.text().trim() && !($el.is('img') || $el.is('br') || $el.is('hr'))) {
+  $(BLOCK_SELECTOR).each((_, el) => {
+    const $el = $(el) as cheerio.Cheerio<never>;
+    if (shouldSkipEmptyBlock($el) || !isLeafReadingBlock($el)) {
       return;
     }
     $el.attr('data-p', String(paragraphIndex));
     paragraphIndex += 1;
   });
+}
+
+/**
+ * Strip any existing data-p and assign unique leaf ordinals.
+ * SSOT for paragraph identity after spine merges and for stored bodies that
+ * still carry per-file / nested duplicate ordinals.
+ */
+export function reindexLeafParagraphOrdinals(html: string): string {
+  const trimmed = html.trim();
+  if (!trimmed) {
+    return html;
+  }
+  const $ = cheerio.load(trimmed, null, false);
+  $('[data-p]').removeAttr('data-p');
+  injectLeafParagraphOrdinals($);
+  return ($.root().html() ?? trimmed).trim();
 }
 
 /**
@@ -442,7 +470,7 @@ export function cleanXhtml(html: string, rewriteImageSrc: (href: string) => stri
   removeEmptyReadingChrome($);
 
   removeContentsBlocks($);
-  injectParagraphOrdinals($);
+  injectLeafParagraphOrdinals($);
 
   const htmlOut = applyTextPipeline($('body').html() ?? $.root().html() ?? '');
 

@@ -86,6 +86,26 @@ describe('reader assist request body builders', () => {
       question: 'Start fresh',
     });
   });
+
+  it('includes selection in drawer assist request when provided', () => {
+    expect(
+      buildDrawerAssistRequestBody({
+        workId: 'work-1',
+        partId: 'part-1',
+        kind: 'ask',
+        question: 'What does this paragraph mean?',
+        selection: 'Important quote from text',
+        conversationId: 'conversation-1',
+      }),
+    ).toEqual({
+      workId: 'work-1',
+      partId: 'part-1',
+      actionId: 'qa',
+      question: 'What does this paragraph mean?',
+      selection: 'Important quote from text',
+      conversationId: 'conversation-1',
+    });
+  });
 });
 
 describe('conversationDetailToReaderAiMessages', () => {

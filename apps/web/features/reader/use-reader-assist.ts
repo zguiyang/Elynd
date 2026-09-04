@@ -278,6 +278,8 @@ export function useReaderAssist({ workId, partId, isAuthenticated, openLogin }: 
     const question = text.trim();
     if (!question || !partId || isDrawerSending) return;
 
+    const quoteToUse = selection?.quote ?? activeQuote ?? undefined;
+
     assistAbortRef.current?.abort();
     const controller = new AbortController();
     assistAbortRef.current = controller;
@@ -286,7 +288,11 @@ export function useReaderAssist({ workId, partId, isAuthenticated, openLogin }: 
       role: 'user',
       content: question,
       source: 'drawer',
-      anchor: selection ? { paragraphId: selection.paragraphId, selectedText: selection.quote } : undefined,
+      anchor: selection
+        ? { paragraphId: selection.paragraphId, selectedText: selection.quote }
+        : activeQuote
+          ? { paragraphId: `${partId}-selection`, selectedText: activeQuote }
+          : undefined,
     };
     const assistantId = messageId('assistant');
     const assistantMessage: ReaderAiMessage = {
@@ -301,9 +307,7 @@ export function useReaderAssist({ workId, partId, isAuthenticated, openLogin }: 
     setAiMode('drawer');
     setIsDrawerSending(true);
     setMessages((prev) => [...prev, userMessage, assistantMessage]);
-    if (selection?.quote) {
-      setActiveQuote(selection.quote);
-    }
+    setActiveQuote(null);
 
     try {
       const done = await streamAssistAsk(
@@ -311,7 +315,7 @@ export function useReaderAssist({ workId, partId, isAuthenticated, openLogin }: 
           workId,
           partId,
           kind: 'ask',
-          selection: selection?.quote,
+          selection: quoteToUse,
           question,
           conversationId: activeConversationId,
         }),
@@ -361,6 +365,10 @@ export function useReaderAssist({ workId, partId, isAuthenticated, openLogin }: 
     openDrawer(inlineSession?.conversationId ?? activeConversationId);
   }
 
+  function clearActiveQuote() {
+    setActiveQuote(null);
+  }
+
   return {
     aiMode,
     setAiMode,
@@ -373,6 +381,7 @@ export function useReaderAssist({ workId, partId, isAuthenticated, openLogin }: 
     openInlineConversationInDrawer,
     activeConversationId,
     activeQuote,
+    clearActiveQuote,
     messages,
     suggestions,
     conversations,

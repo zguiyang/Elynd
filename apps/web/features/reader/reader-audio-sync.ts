@@ -47,7 +47,7 @@ const SKIP_ANCESTOR_TAGS = new Set(['SUP', 'SUB', 'SCRIPT', 'STYLE']);
 function isSkippedTextNode(node: Node): boolean {
   let el: Element | null = node.parentElement;
   while (el) {
-    if (SKIP_ANCESTOR_TAGS.has(el.tagName)) {
+    if (SKIP_ANCESTOR_TAGS.has(el.tagName) || el.hasAttribute('data-bilingual-translation')) {
       return true;
     }
     el = el.parentElement;
@@ -62,10 +62,12 @@ export function collectReadableTextNodes(root: ParentNode): Text[] {
   if (!doc?.createTreeWalker) {
     return nodes;
   }
-  const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const showTextFilter = typeof NodeFilter !== 'undefined' ? NodeFilter.SHOW_TEXT : 4;
+  const walker = doc.createTreeWalker(root, showTextFilter);
   let current = walker.nextNode();
   while (current) {
-    if (current.nodeType === Node.TEXT_NODE && !isSkippedTextNode(current)) {
+    const isText = current.nodeType === (typeof Node !== 'undefined' ? Node.TEXT_NODE : 3);
+    if (isText && !isSkippedTextNode(current)) {
       nodes.push(current as Text);
     }
     current = walker.nextNode();

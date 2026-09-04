@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeftIcon, HeadphonesIcon, MenuIcon, SparklesIcon, TypeIcon } from 'lucide-react';
+import { ArrowLeftIcon, HeadphonesIcon, LanguagesIcon, MenuIcon, SparklesIcon, TypeIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
@@ -18,10 +18,13 @@ type ReaderChromeProps = {
   aiOpen: boolean;
   tocOpen: boolean;
   isListening: boolean;
+  isBilingual: boolean;
+  isBilingualLoading?: boolean;
   onToggleToc: () => void;
   onToggleFontSize: () => void;
   onToggleAi: () => void;
   onToggleTts: () => void;
+  onToggleBilingual: () => void;
 };
 
 function navigateReaderBack(router: ReturnType<typeof useRouter>) {
@@ -42,10 +45,13 @@ export function ReaderChrome({
   aiOpen,
   tocOpen,
   isListening,
+  isBilingual,
+  isBilingualLoading = false,
   onToggleToc,
   onToggleFontSize,
   onToggleAi,
   onToggleTts,
+  onToggleBilingual,
 }: ReaderChromeProps) {
   const router = useRouter();
   const fill = Math.min(100, Math.max(0, Math.round(progressRatio)));
@@ -96,6 +102,21 @@ export function ReaderChrome({
             type="button"
             variant="ghost"
             size="icon"
+            className={cn(
+              'size-10 text-muted-foreground hover:text-foreground',
+              isBilingual && 'bg-accent text-brand-deep',
+            )}
+            aria-label="双语对照"
+            aria-pressed={isBilingual}
+            disabled={isBilingualLoading}
+            onClick={onToggleBilingual}
+          >
+            <LanguagesIcon className="size-5" strokeWidth={1.5} />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
             className="size-10 text-muted-foreground hover:text-foreground"
             aria-label={`字号：${fontSize}`}
             onClick={onToggleFontSize}
@@ -107,7 +128,7 @@ export function ReaderChrome({
             variant="ghost"
             size="icon"
             className={cn('size-10 text-muted-foreground hover:text-foreground', aiOpen && 'bg-accent text-brand-deep')}
-            aria-label="AI 辅助"
+            aria-label="AI 辅���"
             aria-pressed={aiOpen}
             onClick={onToggleAi}
           >

@@ -4,6 +4,7 @@ import type { MouseEvent, ReactNode, Ref, UIEvent } from 'react';
 
 import { ReadingPartView } from '@/features/content/reading-part-view';
 import type { ReaderFontSize, ReaderSelectionRect } from '@/features/reader/reader-model';
+import type { BilingualTranslationData } from '@/features/reader/use-reader-translate';
 import { cn } from '@/lib/utils';
 
 type ReaderPartProps = {
@@ -12,12 +13,17 @@ type ReaderPartProps = {
   fontSize: ReaderFontSize;
   aiDrawerOpen: boolean;
   tocOpen?: boolean;
+  isBilingual?: boolean;
+  bilingualData?: BilingualTranslationData | null;
+  focusedSentenceIndex?: number | null;
+  onSentenceClick?: (index: number) => void;
   /** Scroll container — parent queries `.reading-body` for listen highlight. */
   contentRef?: Ref<HTMLDivElement | null>;
   onSelectText: (payload: {
     quote: string;
     paragraphId: string;
     contextSentence?: string;
+    sentenceIndex?: number;
     rect?: ReaderSelectionRect;
     top: number;
     left: number;
@@ -50,6 +56,10 @@ export function ReaderPart({
   fontSize,
   aiDrawerOpen,
   tocOpen = false,
+  isBilingual = false,
+  bilingualData,
+  focusedSentenceIndex,
+  onSentenceClick,
   contentRef,
   onSelectText,
   onCenterTap,
@@ -67,6 +77,9 @@ export function ReaderPart({
     const paragraphId = paragraphIdFromElement(paragraphEl, partId, `${partId}-p1`);
     const paragraphText = paragraphEl?.textContent?.trim() || '';
     const contextSentence = extractContextSentence(paragraphText, quote);
+    const sentenceEl = (event.target as HTMLElement).closest('[data-sentence-index]') as HTMLElement | null;
+    const sentenceIndexAttr = sentenceEl?.getAttribute('data-sentence-index');
+    const sentenceIndex = sentenceIndexAttr ? Number(sentenceIndexAttr) : undefined;
     const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
     const rect = range?.getBoundingClientRect();
     if (!rect) return;
@@ -75,6 +88,7 @@ export function ReaderPart({
       quote,
       paragraphId,
       contextSentence,
+      sentenceIndex: sentenceIndex !== undefined && !Number.isNaN(sentenceIndex) ? sentenceIndex : undefined,
       rect: {
         top: rect.top,
         left: rect.left,
@@ -112,7 +126,16 @@ export function ReaderPart({
       onScroll={onScroll}
       onClick={handleContentClick}
     >
-      <ReadingPartView html={html} fontSize={fontSize} onArticleMouseUp={handleMouseUp} footer={footer} />
+      <ReadingPartView
+        html={html}
+        fontSize={fontSize}
+        isBilingual={isBilingual}
+        bilingualData={bilingualData}
+        focusedSentenceIndex={focusedSentenceIndex}
+        onSentenceClick={onSentenceClick}
+        onArticleMouseUp={handleMouseUp}
+        footer={footer}
+      />
     </div>
   );
 }

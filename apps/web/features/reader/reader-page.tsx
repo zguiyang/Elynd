@@ -47,6 +47,7 @@ import { ReaderTocSidebar } from '@/features/reader/reader-toc-sidebar';
 import { ReaderTts } from '@/features/reader/reader-tts';
 import { ReaderUnavailable } from '@/features/reader/reader-unavailable';
 import { useReaderAssist } from '@/features/reader/use-reader-assist';
+import { useReaderTranslate } from '@/features/reader/use-reader-translate';
 import { authClient } from '@/lib/auth';
 
 type ReaderPageProps = {
@@ -90,6 +91,9 @@ export function ReaderPage({ workId }: ReaderPageProps) {
   const [preferredAudioRole, setPreferredAudioRole] = useState<ReaderAudioRole | null>(null);
   const [isTapHintVisible, setIsTapHintVisible] = useState(true);
   const [wordTimings, setWordTimings] = useState<TtsWordTiming[] | null>(null);
+  const [listeningSentenceIndex, setListeningSentenceIndex] = useState<number | null>(null);
+  const [selectedSentenceIndex, setSelectedSentenceIndex] = useState<number | null>(null);
+  const [tappedSentenceIndex, setTappedSentenceIndex] = useState<number | null>(null);
 
   const contentRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLElement | null>(null);
@@ -100,6 +104,12 @@ export function ReaderPage({ workId }: ReaderPageProps) {
 
   const assist = useReaderAssist({
     workId,
+    partId: activePartId,
+    isAuthenticated,
+    openLogin,
+  });
+
+  const translate = useReaderTranslate({
     partId: activePartId,
     isAuthenticated,
     openLogin,
@@ -124,6 +134,7 @@ export function ReaderPage({ workId }: ReaderPageProps) {
     audioStatus,
     selectionActive: Boolean(selection),
     audioRef,
+    onActiveSentenceChange: setListeningSentenceIndex,
   });
 
   useEffect(() => {
@@ -179,6 +190,7 @@ export function ReaderPage({ workId }: ReaderPageProps) {
     audioRef.current?.pause();
     audioRef.current = null;
     setWordTimings(null);
+    setListeningSentenceIndex(null);
     clearListenHighlight();
     setAudioStatus('idle');
   }, [clearListenHighlight]);
@@ -209,6 +221,7 @@ export function ReaderPage({ workId }: ReaderPageProps) {
 
   function clearSelectionUi() {
     setSelection(null);
+    setSelectedSentenceIndex(null);
     setDictionaryState(null);
     window.getSelection()?.removeAllRanges();
   }
@@ -372,6 +385,8 @@ export function ReaderPage({ workId }: ReaderPageProps) {
         aiOpen={isDrawerOpen}
         tocOpen={isTocOpen}
         isListening={audioStatus === 'playing' || audioStatus === 'paused' || audioStatus === 'loading'}
+        isBilingual={translate.isActive}
+        isBilingualLoading={translate.isLoading}
         onToggleToc={() => {
           setIsTocOpen((v) => !v);
           setIsChromeVisible(true);
@@ -389,6 +404,10 @@ export function ReaderPage({ workId }: ReaderPageProps) {
           void handleTtsToggle();
           setIsChromeVisible(true);
         }}
+        onToggleBilingual={() => {
+          translate.toggleBilingual();
+          setIsChromeVisible(true);
+        }}
       />
 
       <ReaderPart
@@ -397,9 +416,26 @@ export function ReaderPage({ workId }: ReaderPageProps) {
         fontSize={fontSize}
         aiDrawerOpen={isDrawerOpen}
         tocOpen={isTocOpen}
+        isBilingual={translate.isActive}
+        bilingualData={
+          translate.isActive
+            ? {
+                sentences: translate.sentences,
+                translationsByIndex: translate.translationsByIndex,
+                titleZh: translate.titleZh,
+                isLoading: translate.isLoading,
+                isStreaming: translate.isStreaming,
+              }
+            : null
+        }
+        focusedSentenceIndex={selectedSentenceIndex ?? tappedSentenceIndex ?? listeningSentenceIndex}
+        onSentenceClick={(idx) => {
+          setTappedSentenceIndex((prev) => (prev === idx ? null : idx));
+        }}
         contentRef={contentRef}
         onSelectText={(payload) => {
           setSelection(payload);
+          setSelectedSentenceIndex(payload.sentenceIndex ?? null);
           setDictionaryState(null);
           assist.closeAiSurface();
           assist.resetInline();

@@ -170,6 +170,7 @@ export type UseReaderListenHighlightArgs = {
   /** When true, skip applying highlight (selection assist in progress). */
   selectionActive: boolean;
   audioRef: RefObject<HTMLAudioElement | null>;
+  onActiveSentenceChange?: (sentenceIndex: number | null) => void;
 };
 
 /**
@@ -184,12 +185,14 @@ export function useReaderListenHighlight({
   audioStatus,
   selectionActive,
   audioRef,
+  onActiveSentenceChange,
 }: UseReaderListenHighlightArgs): { clearListenHighlight: () => void } {
   const lastSyncKeyRef = useRef<string | null>(null);
   const clearListenHighlight = useCallback(() => {
     clearReaderAudioHighlight(readingBodyFromContainer(contentRef.current));
     lastSyncKeyRef.current = null;
-  }, [contentRef]);
+    onActiveSentenceChange?.(null);
+  }, [contentRef, onActiveSentenceChange]);
 
   useLayoutEffect(() => {
     clearListenHighlight();
@@ -223,11 +226,19 @@ export function useReaderListenHighlight({
       const body = readingBodyFromContainer(contentRef.current);
       clearReaderAudioHighlight(body);
       if (!active || !body) {
+        onActiveSentenceChange?.(null);
         return;
       }
       // Rebuild after clear — previous wraps invalidate Range boundaries.
       const range = buildTimingRanges(body, wordTimings).get(key) ?? null;
-      applyReaderAudioHighlight(body, range);
+      const highlightResult = applyReaderAudioHighlight(body, range);
+      if (highlightResult.applied && highlightResult.anchor) {
+        const sentenceEl = highlightResult.anchor.closest('[data-sentence-index]');
+        const idx = sentenceEl ? Number(sentenceEl.getAttribute('data-sentence-index')) : null;
+        onActiveSentenceChange?.(Number.isNaN(idx) ? null : idx);
+      } else {
+        onActiveSentenceChange?.(null);
+      }
     }
 
     paintFromAudio(true);
@@ -250,7 +261,7 @@ export function useReaderListenHighlight({
       audio.removeEventListener('timeupdate', onTimeUpdate);
       window.clearInterval(intervalId);
     };
-  }, [audioStatus, wordTimings, audioRef, contentRef, selectionActive, clearListenHighlight]);
+  }, [audioStatus, wordTimings, audioRef, contentRef, selectionActive, onActiveSentenceChange, clearListenHighlight]);
 
   return { clearListenHighlight };
 }

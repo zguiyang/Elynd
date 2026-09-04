@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   activeWordSyncKey,
   alignTimingsToStream,
+  collectReadableTextNodes,
   findActiveWordTiming,
   isPunctuationOnlyTimingText,
 } from '@/features/reader/reader-audio-sync';
@@ -76,5 +77,58 @@ describe('reader audio sync', () => {
     expect(mapped.has('0:0:Missing')).toBe(false);
     // Cursor stays at 0 after miss, so "here" can still match.
     expect(mapped.get('8:60:here')).toEqual({ start: 5, end: 9 });
+  });
+
+  it('collectReadableTextNodes filters out bilingual translation nodes and footnote tags', () => {
+    const enTextNode = {
+      nodeType: 3,
+      data: 'English sentence.',
+      parentElement: {
+        tagName: 'P',
+        hasAttribute: (attr: string) => attr === 'data-p',
+        parentElement: null,
+      },
+    };
+    const zhTextNode = {
+      nodeType: 3,
+      data: '中文句子。',
+      parentElement: {
+        tagName: 'DIV',
+        hasAttribute: (attr: string) => attr === 'data-bilingual-translation',
+        parentElement: null,
+      },
+    };
+    const supTextNode = {
+      nodeType: 3,
+      data: '1',
+      parentElement: {
+        tagName: 'SUP',
+        hasAttribute: () => false,
+        parentElement: null,
+      },
+    };
+
+    let idx = 0;
+    const allNodes = [enTextNode, zhTextNode, supTextNode];
+    const mockTreeWalker = {
+      nextNode: () => {
+        if (idx < allNodes.length) {
+          const node = allNodes[idx];
+          idx += 1;
+          return node;
+        }
+        return null;
+      },
+    };
+
+    const mockRoot = {
+      ownerDocument: {
+        createTreeWalker: () => mockTreeWalker,
+      },
+    } as unknown as ParentNode;
+
+    const collected = collectReadableTextNodes(mockRoot);
+    expect(collected.length).toBe(1);
+    expect(collected[0]?.data).toBe('English sentence.');
   });
 });

@@ -46,15 +46,17 @@ function consecutiveReadingDays(today: string, dates: ReadonlySet<string>): numb
   return countDays;
 }
 
-async function insertReadingDays(userId: string, dates: Iterable<string>): Promise<void> {
+async function insertReadingDays(userId: string, dates: Iterable<string>): Promise<number> {
   const unique = [...new Set(dates)];
   if (unique.length === 0) {
-    return;
+    return 0;
   }
-  await db
+  const inserted = await db
     .insert(readingDayTable)
     .values(unique.map((localDate) => ({ id: randomUUID(), userId, localDate })))
-    .onConflictDoNothing({ target: [readingDayTable.userId, readingDayTable.localDate] });
+    .onConflictDoNothing({ target: [readingDayTable.userId, readingDayTable.localDate] })
+    .returning({ localDate: readingDayTable.localDate });
+  return inserted.length;
 }
 
 export async function touchReadingDay(userId: string, now = new Date()): Promise<void> {
@@ -114,7 +116,7 @@ function pushShanghaiDates(target: Set<string>, ...values: Array<Date | null | u
   }
 }
 
-async function backfillReadingDays(userId: string): Promise<void> {
+export async function backfillReadingDays(userId: string): Promise<{ candidateDays: number; insertedDays: number }> {
   const dates = new Set<string>();
 
   const stateRows = await db
@@ -129,7 +131,10 @@ async function backfillReadingDays(userId: string): Promise<void> {
     pushShanghaiDates(dates, row.createdAt, row.lastReadAt, row.completedAt);
   }
 
-  await insertReadingDays(userId, dates);
+  return {
+    candidateDays: dates.size,
+    insertedDays: await insertReadingDays(userId, dates),
+  };
 }
 
 async function countLookedUpWords(userId: string): Promise<number> {
@@ -213,7 +218,6 @@ async function listWorks(userId: string): Promise<ReadingHistoryWork[]> {
 
 export async function getReadingHistory(userId: string): Promise<ReadingHistoryData> {
   const today = calendarDateInTimeZone();
-  await backfillReadingDays(userId);
 
   const activity = await listEngagedActivity(userId);
   const dateSet = new Set(activity.map((day) => day.date));

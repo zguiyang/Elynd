@@ -71,6 +71,13 @@ Design Skills may provide visual, layout, motion, image, or aesthetic methods on
 
 [`.cursor/rules/`](.cursor/rules/) holds Cursor-specific and path-scoped rule bodies. `AGENTS.md` holds cross-agent hard constraints, routing, and minimal shared contracts; it does not duplicate Cursor-specific implementation detail.
 
+### Skill lifecycle
+
+- Third-party project Skills are managed by the Skills CLI, with their sources recorded in `skills-lock.json`.
+- Install, update, and remove third-party Skills only with the corresponding `npx skills` command; updates and removals require explicit user authorization.
+- Gloaming-owned Skills are authoritative in repository Git, are not recorded in `skills-lock.json`, and are not managed by `npx skills update/remove`.
+- Global Skills stay outside the project directory and project lockfile.
+
 ### Loading
 
 | Mode                                   | Rules                                                                                                                       |

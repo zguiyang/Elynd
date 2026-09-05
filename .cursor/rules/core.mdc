@@ -90,6 +90,7 @@ English imperative; one logical change; prefer subject-only. Format via commitli
 | Package / schema ownership | `packages` + `layering` |
 | Add/delete/split/move files or dirs | `structure` |
 | Where does X belong? | `layering` |
+| Cross-module explore / impact / refactor / complex debug | `codebase-exploration` |
 | Product scope / build X? | `docs/product/` |
 
-Rule SoT: `.cursor/rules/`. Conflict order: tooling → `core` (Ask/Never/TDD/security) → `ponytail` (minimalism) → `layering` (placement) → `structure` (files) → glob rules → `DESIGN.md` (UI look) → skills → MCP → `docs/product/` → User Rules.
+Rule SoT: `.cursor/rules/`. Conflict order: tooling → `core` (Ask/Never/TDD/security) → `ponytail` (minimalism) → `layering` (placement) → `structure` (files) → `infrastructure-operations` → `codebase-exploration` → glob rules → `DESIGN.md` (UI look) → skills → MCP → `docs/product/` → User Rules.

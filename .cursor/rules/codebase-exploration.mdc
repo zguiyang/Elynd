@@ -1,0 +1,12 @@
+---
+description: Prefer GitNexus for cross-module exploration/impact; verify against source; skip for small local changes
+alwaysApply: true
+---
+
+# Codebase exploration
+
+For cross-module code exploration, architecture analysis, impact analysis, refactoring, and complex debugging, prefer GitNexus when its index is available to understand code relationships, dependency graphs, execution flows, and blast radius.
+
+Treat GitNexus as an architectural/navigation aid rather than the source of truth. Verify important conclusions against the actual source code, especially for dynamic routing, framework middleware, runtime registration, reflection, generated APIs, and other relationships that static analysis may not fully capture.
+
+For small, local changes, do not invoke GitNexus unnecessarily.

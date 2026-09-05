@@ -7,7 +7,7 @@ import { z } from 'zod';
 const envFilePath = resolve(dirname(fileURLToPath(import.meta.url)), '../../.env');
 const testEnvFilePath = resolve(dirname(fileURLToPath(import.meta.url)), '../../.env.test');
 
-const DEV_DATABASE_NAME = 'gloaming_backend';
+const TEST_DATABASE_NAME = 'gloaming_test';
 
 function databaseNameFromUrl(url: string): string {
   const parsed = new URL(url);
@@ -38,10 +38,10 @@ function applyTestDatabaseEnv(processEnv: NodeJS.ProcessEnv): void {
   }
 
   const dbName = databaseNameFromUrl(testUrl);
-  if (dbName === DEV_DATABASE_NAME) {
+  if (dbName !== TEST_DATABASE_NAME) {
     delete processEnv.DATABASE_URL;
     throw new Error(
-      `TEST_DATABASE_URL must not point at the development database "${DEV_DATABASE_NAME}". Use a dedicated test database (e.g. gloaming_test).`,
+      `TEST_DATABASE_URL must point exactly at the test database "${TEST_DATABASE_NAME}", got "${dbName}".`,
     );
   }
 

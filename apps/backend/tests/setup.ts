@@ -12,7 +12,7 @@ const backendRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 loadDotenv({ path: path.join(backendRoot, '.env'), override: false });
 loadDotenv({ path: path.join(backendRoot, '.env.test'), override: true });
 
-const DEV_DATABASE_NAME = 'gloaming_backend';
+const TEST_DATABASE_NAME = 'gloaming_test';
 
 function databaseNameFromUrl(url: string): string {
   const parsed = new URL(url);
@@ -38,10 +38,10 @@ function assertTestDatabaseIsolation(): void {
   process.env.DATABASE_URL = testUrl;
 
   const dbName = databaseNameFromUrl(testUrl);
-  if (dbName === DEV_DATABASE_NAME) {
+  if (dbName !== TEST_DATABASE_NAME) {
     delete process.env.DATABASE_URL;
     throw new Error(
-      `TEST_DATABASE_URL must not point at the development database "${DEV_DATABASE_NAME}". Use a dedicated test database (e.g. gloaming_test).`,
+      `TEST_DATABASE_URL must point exactly at the test database "${TEST_DATABASE_NAME}", got "${dbName}".`,
     );
   }
 }

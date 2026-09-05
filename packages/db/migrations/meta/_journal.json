@@ -225,6 +225,13 @@
       "when": 1788500000000,
       "tag": "0031_dictionary_config_and_entry",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1788649860000,
+      "tag": "0032_architecture_contract_facts",
+      "breakpoints": true
     }
   ]
 }

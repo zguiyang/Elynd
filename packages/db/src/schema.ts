@@ -1,6 +1,7 @@
 import { relations, sql } from 'drizzle-orm';
 import {
   boolean,
+  check,
   date,
   doublePrecision,
   index,
@@ -11,6 +12,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
 /** Better Auth core tables (PostgreSQL) + username plugin / product fields. */
@@ -308,6 +310,8 @@ export const readingState = pgTable(
     currentPartId: text('current_part_id').references(() => readingPart.id, { onDelete: 'set null' }),
     /** Highest sortOrder among fully read parts; -1 = none. Replaces scroll anchor for progress. */
     completedThroughSortOrder: integer('completed_through_sort_order').notNull().default(-1),
+    /** Monotonic row revision for compare-and-swap state updates. */
+    revision: integer('revision').notNull().default(0),
     anchorKind: text('anchor_kind'),
     anchorValue: text('anchor_value'),
     status: text('status').notNull().default('in_progress'),
@@ -322,6 +326,7 @@ export const readingState = pgTable(
   },
   (table) => [
     unique('reading_state_user_work_uidx').on(table.userId, table.workId),
+    check('reading_state_revision_nonnegative_chk', sql`${table.revision} >= 0`),
     index('reading_state_user_last_read_idx').on(table.userId, table.lastReadAt),
     index('reading_state_work_idx').on(table.workId),
   ],
@@ -550,6 +555,12 @@ export const contentAsset = pgTable(
     storageKey: text('storage_key').notNull(),
     mimeType: text('mime_type').notNull(),
     contentHash: text('content_hash').notNull(),
+    /** Stable part/kind/content identity used to claim one generation. */
+    generationKey: text('generation_key'),
+    /** Opaque backend-owned claim token; never expose through learner APIs. */
+    generationToken: text('generation_token'),
+    generationClaimedAt: timestamp('generation_claimed_at'),
+    generationLeaseExpiresAt: timestamp('generation_lease_expires_at'),
     meta: jsonb('meta').$type<ContentAssetMeta>().notNull().default({}),
     status: text('status').notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -560,8 +571,23 @@ export const contentAsset = pgTable(
   },
   (table) => [
     unique('content_asset_part_kind_uidx').on(table.partId, table.kind),
+    uniqueIndex('content_asset_generation_key_uidx')
+      .on(table.generationKey)
+      .where(sql`${table.generationKey} is not null`),
+    uniqueIndex('content_asset_generation_token_uidx')
+      .on(table.generationToken)
+      .where(sql`${table.generationToken} is not null`),
+    check(
+      'content_asset_generation_key_nonempty_chk',
+      sql`${table.generationKey} is null or length(${table.generationKey}) > 0`,
+    ),
+    check(
+      'content_asset_generation_token_nonempty_chk',
+      sql`${table.generationToken} is null or length(${table.generationToken}) > 0`,
+    ),
     index('content_asset_work_idx').on(table.workId),
     index('content_asset_part_idx').on(table.partId),
+    index('content_asset_generation_lease_idx').on(table.generationLeaseExpiresAt),
   ],
 );
 

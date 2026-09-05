@@ -25,6 +25,17 @@ export const WORK_STATUSES = [
   'published',
 ] as const;
 export type WorkStatus = (typeof WORK_STATUSES)[number];
+export const workStatusSchema = z.enum(WORK_STATUSES);
+export const WORK_STATUS_LABELS = {
+  uploaded: 'Uploaded',
+  processing: 'Processing',
+  parsed: 'Parsed',
+  metadata: 'Metadata',
+  tts: 'Audio',
+  ready: 'Ready',
+  failed: 'Failed',
+  published: 'Published',
+} as const satisfies Record<WorkStatus, string>;
 
 /** Linear generation steps of the EPUB work pipeline (retry/re-run target). */
 export const WORKFLOW_STEPS = ['parse', 'metadata', 'tts'] as const;
@@ -46,12 +57,29 @@ export const TTS_STEP_ENABLED = false;
 
 export const WORK_VISIBILITIES = ['catalog', 'private'] as const;
 export type WorkVisibility = (typeof WORK_VISIBILITIES)[number];
+export const workVisibilitySchema = z.enum(WORK_VISIBILITIES);
+export const WORK_VISIBILITY_LABELS = {
+  catalog: 'Catalog',
+  private: 'Private',
+} as const satisfies Record<WorkVisibility, string>;
 
 export const WORK_ORIGIN_KINDS = ['admin_text', 'admin_epub'] as const;
 export type WorkOriginKind = (typeof WORK_ORIGIN_KINDS)[number];
+export const workOriginKindSchema = z.enum(WORK_ORIGIN_KINDS);
+export const WORK_ORIGIN_KIND_LABELS = {
+  admin_text: 'Admin text',
+  admin_epub: 'Admin EPUB',
+} as const satisfies Record<WorkOriginKind, string>;
 
 export const PART_KINDS = ['chapter', 'body', 'section', 'segment'] as const;
 export type PartKind = (typeof PART_KINDS)[number];
+export const partKindSchema = z.enum(PART_KINDS);
+export const PART_KIND_LABELS = {
+  chapter: 'Chapter',
+  body: 'Body',
+  section: 'Section',
+  segment: 'Segment',
+} as const satisfies Record<PartKind, string>;
 
 export const WORK_TITLE_MAX = 200 as const;
 export const WORK_AUTHOR_MAX = 200 as const;
@@ -83,9 +111,9 @@ export const workSchema = z.object({
   author: z.string(),
   description: z.string(),
   language: z.string(),
-  status: z.enum(WORK_STATUSES),
-  visibility: z.enum(WORK_VISIBILITIES),
-  originKind: z.enum(WORK_ORIGIN_KINDS),
+  status: workStatusSchema,
+  visibility: workVisibilitySchema,
+  originKind: workOriginKindSchema,
   tags: z.array(z.string()),
   /** Channel providers (e.g. Project Gutenberg) — auto-filled from EPUB / taxonomy. */
   sources: z.array(z.string()),
@@ -106,7 +134,7 @@ export const partSchema = z.object({
   id: z.string(),
   workId: z.string(),
   sortOrder: z.number().int(),
-  kind: z.enum(PART_KINDS),
+  kind: partKindSchema,
   title: z.string(),
   body: z.string(),
   createdAt: z.union([z.string(), z.date()]),
@@ -190,8 +218,8 @@ export type CreateAdminTextWorkBody = z.infer<typeof createAdminTextWorkBodySche
 export const createEpubWorkResultSchema = z.object({
   id: z.string(),
   title: z.string(),
-  status: z.enum(WORK_STATUSES),
-  originKind: z.enum(WORK_ORIGIN_KINDS),
+  status: workStatusSchema,
+  originKind: workOriginKindSchema,
   originMeta: z.record(z.string(), z.unknown()).default({}),
   asset: z.object({
     storageKey: z.string(),

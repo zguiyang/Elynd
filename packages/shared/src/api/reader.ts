@@ -5,6 +5,18 @@ import { partSummarySchema, workSchema } from '@gloaming/shared/api/works';
 
 export const READING_STATE_STATUSES = ['in_progress', 'completed'] as const;
 export type ReadingStateStatus = (typeof READING_STATE_STATUSES)[number];
+export const readingStateStatusSchema = z.enum(READING_STATE_STATUSES);
+export const READING_STATE_STATUS_LABELS = {
+  in_progress: 'In progress',
+  completed: 'Completed',
+} as const satisfies Record<ReadingStateStatus, string>;
+
+/** Concurrent completion keeps the maximum; restart is the only reset operation. */
+export const READING_STATE_COMPLETION_RULE = 'monotonic_except_explicit_restart' as const;
+/** A valid incoming position replaces the current one; an absent position preserves it. */
+export const READING_STATE_POSITION_RULE = 'valid_incoming_wins_missing_preserves_current' as const;
+/** Concurrent first-create attempts keep the row that won the unique user/work constraint. */
+export const READING_STATE_CREATE_CONFLICT_RULE = 'existing_row_wins' as const;
 
 /** No chapters fully completed yet. */
 export const NO_CHAPTERS_COMPLETED = -1 as const;
@@ -20,9 +32,11 @@ export const READING_STATE_ACTIONS = [
 export type ReadingStateAction = (typeof READING_STATE_ACTIONS)[number];
 
 export const readingStateSchema = z.object({
-  status: z.enum(READING_STATE_STATUSES),
+  status: readingStateStatusSchema,
   currentPartId: z.string().nullable(),
   completedThroughSortOrder: z.number().int(),
+  /** DB revision for an optional compare-and-swap update; omitted by legacy responses. */
+  revision: z.number().int().nonnegative().optional(),
   /** Computed for UI — not persisted. */
   progressRatio: z.number().int().min(0).max(100),
   totalPartCount: z.number().int().nonnegative(),
@@ -33,6 +47,18 @@ export const readingStateSchema = z.object({
 export type ReadingState = z.infer<typeof readingStateSchema>;
 
 export type PartSortOrder = { sortOrder: number };
+
+export function mergeReadingPosition(input: {
+  action: ReadingStateAction;
+  currentPartId: string | null;
+  requestedPartId?: string;
+  restartPartId?: string;
+}): string | null {
+  if (input.action === 'restart') {
+    return input.restartPartId ?? input.currentPartId;
+  }
+  return input.requestedPartId ?? input.currentPartId;
+}
 
 /** Chapter-based progress: completed parts / total parts. */
 export function computeChapterProgress(input: {
@@ -129,6 +155,7 @@ export const updateReadingStateBodySchema = z
     action: z.enum(READING_STATE_ACTIONS),
     partId: z.string().min(1).optional(),
     nextPartId: z.string().min(1).optional(),
+    expectedRevision: z.number().int().nonnegative().optional(),
   })
   .superRefine((body, ctx) => {
     if ((body.action === 'navigate' || body.action === 'open') && !body.partId) {

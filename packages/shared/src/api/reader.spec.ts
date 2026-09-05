@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { computeChapterProgress, NO_CHAPTERS_COMPLETED, updateReadingStateBodySchema } from './reader.ts';
+import {
+  computeChapterProgress,
+  mergeReadingPosition,
+  NO_CHAPTERS_COMPLETED,
+  updateReadingStateBodySchema,
+} from './reader.ts';
 
 describe('computeChapterProgress', () => {
   const tenParts = Array.from({ length: 10 }, (_, i) => ({ sortOrder: i }));
@@ -81,5 +86,25 @@ describe('updateReadingStateBodySchema', () => {
       action: 'complete_chapter',
       nextPartId: 'p2',
     });
+  });
+
+  it('accepts an optional revision for compare-and-swap updates', () => {
+    expect(updateReadingStateBodySchema.parse({ action: 'navigate', partId: 'p2', expectedRevision: 3 })).toEqual({
+      action: 'navigate',
+      partId: 'p2',
+      expectedRevision: 3,
+    });
+  });
+});
+
+describe('mergeReadingPosition', () => {
+  it('uses a valid requested position and preserves it when absent', () => {
+    expect(mergeReadingPosition({ action: 'navigate', currentPartId: 'p1', requestedPartId: 'p2' })).toBe('p2');
+    expect(mergeReadingPosition({ action: 'open', currentPartId: 'p2' })).toBe('p2');
+  });
+
+  it('resets only when restart supplies the explicit first position', () => {
+    expect(mergeReadingPosition({ action: 'restart', currentPartId: 'p3', restartPartId: 'p1' })).toBe('p1');
+    expect(mergeReadingPosition({ action: 'restart', currentPartId: 'p3' })).toBe('p3');
   });
 });

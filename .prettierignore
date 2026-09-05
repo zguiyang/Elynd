@@ -8,6 +8,7 @@ pnpm-lock.yaml
 *.tsbuildinfo
 .pnpm-store
 .trellis
+.gitnexus
 .cursor/skills
 .cursor/agents
 .cursor/commands

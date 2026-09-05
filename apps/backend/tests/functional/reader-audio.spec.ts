@@ -178,9 +178,13 @@ describe('learner part audio', () => {
 
     const memoryRedis = createMemoryRedis();
     const objectStore = createMemoryObjectStore();
+    const audioJobs: Parameters<typeof processPartAudioGenerate>[0][] = [];
+    const audioJobIds: string[] = [];
+    let ttsCallCount = 0;
     setObjectStoreForTests(objectStore);
     const redisSpy = vi.spyOn(redisLib, 'getRedis').mockReturnValue(memoryRedis.client as never);
     vi.spyOn(azureTts, 'synthesizeAzureTts').mockImplementation(async (input) => {
+      ttsCallCount += 1;
       expect(input.text).toBe('Listen body here.');
       expect(input.text).not.toContain('Listen Title');
       return {
@@ -190,9 +194,12 @@ describe('learner part audio', () => {
       };
     });
     vi.spyOn(audioConcat, 'concatMp3Buffers').mockImplementation(async (parts) => Buffer.concat(parts));
-    vi.spyOn(queueLib, 'enqueue').mockImplementation(async (name, data) => {
+    vi.spyOn(queueLib, 'enqueue').mockImplementation(async (name, data, options) => {
       if (name === 'part-audio-generate') {
-        await processPartAudioGenerate(data as Parameters<typeof processPartAudioGenerate>[0]);
+        const job = data as Parameters<typeof processPartAudioGenerate>[0];
+        audioJobs.push(job);
+        audioJobIds.push((options as { jobId?: string } | undefined)?.jobId ?? '');
+        await processPartAudioGenerate(job);
       }
       return `job-${Date.now()}`;
     });
@@ -232,6 +239,38 @@ describe('learner part audio', () => {
     ).toBe(200);
 
     expect(await partAudioAvail()).toEqual({ us: true, uk: true });
+    expect(ttsCallCount).toBe(2);
+    expect(audioJobs).toHaveLength(2);
+    expect(audioJobIds.every((jobId) => jobId.startsWith('part-audio-generate:'))).toBe(true);
+
+    expect(
+      (
+        await app.request(`/api/admin/parts/${partId}/audio/generate`, {
+          method: 'POST',
+          headers: { Cookie: admin.cookie, 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        })
+      ).status,
+    ).toBe(200);
+    expect(ttsCallCount).toBe(2);
+    expect(audioJobs).toHaveLength(2);
+
+    const staleJob = audioJobs[0]!;
+    expect(
+      (
+        await app.request(`/api/admin/parts/${partId}/audio/generate`, {
+          method: 'POST',
+          headers: { Cookie: admin.cookie, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ force: true }),
+        })
+      ).status,
+    ).toBe(200);
+    expect(ttsCallCount).toBe(4);
+    expect(audioJobs).toHaveLength(4);
+    expect(audioJobIds[0]).not.toBe(audioJobIds[2]);
+
+    await processPartAudioGenerate(staleJob);
+    expect(ttsCallCount).toBe(4);
 
     const usTrack = await app.request(`/api/reader/parts/${partId}/audio?role=us`, {
       headers: { Cookie: learner.cookie },

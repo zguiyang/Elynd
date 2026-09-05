@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNull, lte, or, sql } from 'drizzle-orm';
 
 import {
   contentAsset as contentAssetTable,
@@ -10,6 +10,7 @@ import {
 } from '@gloaming/db';
 import {
   audioKindForRole,
+  buildContentAssetGenerationKey,
   buildPartAudioText,
   type ContentAssetTrack,
   type EnqueueAudioResult,
@@ -44,8 +45,25 @@ const partAudioLogger = rootLogger.child({ module: 'ContentAssets' });
 
 const ALL_ROLES: TtsVoiceRole[] = ['us', 'uk'];
 const AUDIO_MIME = 'audio/mpeg';
+const AUDIO_GENERATION_LEASE_MS = 15 * 60 * 1000;
 
 type AssetRow = typeof contentAssetTable.$inferSelect;
+
+type AudioGenerationClaim = {
+  generationKey: string;
+  generationToken: string;
+  generationClaimedAt: Date;
+  generationLeaseExpiresAt: Date;
+  assetId: string;
+  previousKeys: string[];
+};
+
+class GenerationOwnershipLostError extends Error {
+  constructor() {
+    super('Audio generation ownership was lost');
+    this.name = 'GenerationOwnershipLostError';
+  }
+}
 
 export function partAudioChapterKey(partId: string, kind: string, contentHash: string): string {
   return `part-audio/${partId}/${kind}/${contentHash}/chapter.mp3`;
@@ -311,6 +329,7 @@ async function objectsExistForAsset(asset: AssetRow): Promise<boolean> {
 
 export async function needsRegen(partId: string, role: TtsVoiceRole, contentHash: string): Promise<boolean> {
   const kind = audioKindForRole(role);
+  const generationKey = buildContentAssetGenerationKey({ partId, kind, contentHash });
   const [asset] = await db
     .select()
     .from(contentAssetTable)
@@ -319,7 +338,12 @@ export async function needsRegen(partId: string, role: TtsVoiceRole, contentHash
   if (!asset) {
     return true;
   }
-  if (asset.status === 'generating') {
+  if (
+    asset.status === 'generating' &&
+    asset.generationKey === generationKey &&
+    asset.generationLeaseExpiresAt &&
+    asset.generationLeaseExpiresAt > new Date()
+  ) {
     return false;
   }
   if (asset.status === 'failed') {
@@ -331,47 +355,116 @@ export async function needsRegen(partId: string, role: TtsVoiceRole, contentHash
   return !(await objectsExistForAsset(asset));
 }
 
-async function markGenerating(input: {
+async function claimPartAudioGeneration(input: {
   partId: string;
   workId: string;
   role: TtsVoiceRole;
   contentHash: string;
-}): Promise<{ previousKeys: string[] }> {
+  force: boolean;
+  allowReady: boolean;
+}): Promise<AudioGenerationClaim | null> {
   const kind = audioKindForRole(input.role);
+  const generationKey = buildContentAssetGenerationKey({ partId: input.partId, kind, contentHash: input.contentHash });
   const chapterKey = partAudioChapterKey(input.partId, kind, input.contentHash);
+  const claimedAt = new Date();
+  const leaseExpiresAt = new Date(claimedAt.getTime() + AUDIO_GENERATION_LEASE_MS);
+  const generationToken = randomUUID();
+
+  const [inserted] = await db
+    .insert(contentAssetTable)
+    .values({
+      id: randomUUID(),
+      workId: input.workId,
+      partId: input.partId,
+      kind,
+      status: 'generating',
+      storageKey: chapterKey,
+      mimeType: AUDIO_MIME,
+      contentHash: input.contentHash,
+      generationKey,
+      generationToken,
+      generationClaimedAt: claimedAt,
+      generationLeaseExpiresAt: leaseExpiresAt,
+      meta: { lastError: undefined, objectKeys: [], timeline: [] },
+    })
+    .onConflictDoNothing()
+    .returning({ id: contentAssetTable.id });
+  if (inserted) {
+    return {
+      generationKey,
+      generationToken,
+      generationClaimedAt: claimedAt,
+      generationLeaseExpiresAt: leaseExpiresAt,
+      assetId: inserted.id,
+      previousKeys: [],
+    };
+  }
+
   const [existing] = await db
     .select()
     .from(contentAssetTable)
     .where(and(eq(contentAssetTable.partId, input.partId), eq(contentAssetTable.kind, kind)))
     .limit(1);
+  if (!existing) {
+    return null;
+  }
 
   const previousKeys =
     existing?.meta.objectKeys && existing.contentHash !== input.contentHash ? [...existing.meta.objectKeys] : [];
 
-  const values = {
-    id: existing?.id ?? randomUUID(),
-    workId: input.workId,
-    partId: input.partId,
-    kind,
-    status: 'generating',
-    storageKey: chapterKey,
-    mimeType: AUDIO_MIME,
-    contentHash: input.contentHash,
-    meta: {
-      ...(existing?.meta ?? {}),
-      lastError: undefined,
-      objectKeys: existing?.meta.objectKeys,
-      timeline: undefined,
-    } satisfies ContentAssetMeta,
-  };
-
-  if (existing) {
-    await db.update(contentAssetTable).set(values).where(eq(contentAssetTable.id, existing.id));
-  } else {
-    await db.insert(contentAssetTable).values(values);
+  const eligible = [
+    sql`${contentAssetTable.generationKey} is distinct from ${generationKey}`,
+    eq(contentAssetTable.status, 'failed'),
+    and(
+      eq(contentAssetTable.status, 'generating'),
+      or(
+        isNull(contentAssetTable.generationLeaseExpiresAt),
+        lte(contentAssetTable.generationLeaseExpiresAt, claimedAt),
+      ),
+    )!,
+  ];
+  if (input.force || input.allowReady) {
+    eligible.push(eq(contentAssetTable.status, 'ready'));
+  }
+  if (input.force) {
+    eligible.push(eq(contentAssetTable.status, 'generating'));
   }
 
-  return { previousKeys };
+  const [claimed] = await db
+    .update(contentAssetTable)
+    .set({
+      workId: input.workId,
+      partId: input.partId,
+      kind,
+      status: 'generating',
+      storageKey: chapterKey,
+      mimeType: AUDIO_MIME,
+      contentHash: input.contentHash,
+      generationKey,
+      generationToken,
+      generationClaimedAt: claimedAt,
+      generationLeaseExpiresAt: leaseExpiresAt,
+      meta: {
+        ...(existing?.meta ?? {}),
+        lastError: undefined,
+        objectKeys: [],
+        timeline: undefined,
+      } satisfies ContentAssetMeta,
+    })
+    .where(and(eq(contentAssetTable.id, existing.id), or(...eligible)))
+    .returning({ id: contentAssetTable.id });
+
+  if (!claimed) {
+    return null;
+  }
+  return {
+    generationKey,
+    generationToken,
+    generationClaimedAt: claimedAt,
+    generationLeaseExpiresAt: leaseExpiresAt,
+    assetId: claimed.id,
+    previousKeys,
+  };
 }
 
 export async function enqueuePartAudio(partId: string, body: GeneratePartAudioBody): Promise<EnqueueAudioResult> {
@@ -392,11 +485,33 @@ export async function enqueuePartAudio(partId: string, body: GeneratePartAudioBo
       skipped.push({ partId, role, reason: 'fresh' });
       continue;
     }
-    await markGenerating({ partId, workId: part.workId, role, contentHash });
+    const claim = await claimPartAudioGeneration({
+      partId,
+      workId: part.workId,
+      role,
+      contentHash,
+      force,
+      allowReady: true,
+    });
+    if (!claim) {
+      skipped.push({ partId, role, reason: 'fresh' });
+      continue;
+    }
     const jobId = await enqueue(
       PART_AUDIO_JOB,
-      { workId: part.workId, partId, role, force },
-      { attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
+      {
+        workId: part.workId,
+        partId,
+        role,
+        force,
+        generationKey: claim.generationKey,
+        generationToken: claim.generationToken,
+      },
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+        jobId: `${PART_AUDIO_JOB}:${claim.generationKey}:${claim.generationToken}`,
+      },
     );
     enqueued.push({ partId, role, jobId });
   }
@@ -440,11 +555,33 @@ export async function enqueueWorkAudio(workId: string, body: GenerateWorkAudioBo
         skipped.push({ partId: part.id, role, reason: 'fresh' });
         continue;
       }
-      await markGenerating({ partId: part.id, workId, role, contentHash });
+      const claim = await claimPartAudioGeneration({
+        partId: part.id,
+        workId,
+        role,
+        contentHash,
+        force,
+        allowReady: true,
+      });
+      if (!claim) {
+        skipped.push({ partId: part.id, role, reason: 'fresh' });
+        continue;
+      }
       const jobId = await enqueue(
         PART_AUDIO_JOB,
-        { workId, partId: part.id, role, force },
-        { attempts: 3, backoff: { type: 'exponential', delay: 5000 } },
+        {
+          workId,
+          partId: part.id,
+          role,
+          force,
+          generationKey: claim.generationKey,
+          generationToken: claim.generationToken,
+        },
+        {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 5000 },
+          jobId: `${PART_AUDIO_JOB}:${claim.generationKey}:${claim.generationToken}`,
+        },
       );
       enqueued.push({ partId: part.id, role, jobId });
     }
@@ -453,14 +590,39 @@ export async function enqueueWorkAudio(workId: string, body: GenerateWorkAudioBo
   return { workId, enqueued, skipped };
 }
 
-/** Worker entry — synthesize segments, concat chapter, upsert asset. */
-export async function runPartAudioGenerate(input: {
+type PartAudioGenerateInput = {
   workId: string;
   partId: string;
   role: TtsVoiceRole;
   force: boolean;
+  generationKey: string;
+  generationToken: string;
   userId?: string;
-}): Promise<void> {
+};
+
+async function assertGenerationOwnership(input: PartAudioGenerateInput, kind: string): Promise<AssetRow> {
+  const [asset] = await db
+    .select()
+    .from(contentAssetTable)
+    .where(
+      and(
+        eq(contentAssetTable.partId, input.partId),
+        eq(contentAssetTable.kind, kind),
+        eq(contentAssetTable.generationKey, input.generationKey),
+        eq(contentAssetTable.generationToken, input.generationToken),
+        eq(contentAssetTable.status, 'generating'),
+        gt(contentAssetTable.generationLeaseExpiresAt, new Date()),
+      ),
+    )
+    .limit(1);
+  if (!asset) {
+    throw new GenerationOwnershipLostError();
+  }
+  return asset;
+}
+
+/** Worker entry — synthesize segments, concat chapter, upsert asset. */
+export async function runPartAudioGenerate(input: PartAudioGenerateInput): Promise<void> {
   const part = await loadPart(input.partId);
   if (part.workId !== input.workId) {
     throw new AppError(HTTP_STATUS.BAD_REQUEST, 'Part does not belong to work');
@@ -473,16 +635,24 @@ export async function runPartAudioGenerate(input: {
 
   const contentHash = hashPartAudioContent(part.body);
   const kind = audioKindForRole(input.role);
+  const generationKey = buildContentAssetGenerationKey({ partId: input.partId, kind, contentHash });
+  if (generationKey !== input.generationKey) {
+    return;
+  }
   const segments = splitForTts(text);
   if (segments.length === 0) {
     throw new AppError(HTTP_STATUS.BAD_REQUEST, 'Part has no text to synthesize');
   }
 
-  const [existing] = await db
-    .select()
-    .from(contentAssetTable)
-    .where(and(eq(contentAssetTable.partId, input.partId), eq(contentAssetTable.kind, kind)))
-    .limit(1);
+  let existing: AssetRow;
+  try {
+    existing = await assertGenerationOwnership(input, kind);
+  } catch (error) {
+    if (error instanceof GenerationOwnershipLostError) {
+      return;
+    }
+    throw error;
+  }
 
   const previousKeys =
     existing?.meta.objectKeys && existing.contentHash !== contentHash ? [...existing.meta.objectKeys] : [];
@@ -498,6 +668,7 @@ export async function runPartAudioGenerate(input: {
   try {
     for (let i = 0; i < segments.length; i += 1) {
       const segText = segments[i]!;
+      await assertGenerationOwnership(input, kind);
       const result = await synthesizeTts({
         text: segText,
         role: input.role,
@@ -506,6 +677,7 @@ export async function runPartAudioGenerate(input: {
       });
       voice = result.voice;
       const segKey = partAudioSegmentKey(input.partId, kind, contentHash, i);
+      await assertGenerationOwnership(input, kind);
       await putObject({ key: segKey, body: result.audio, contentType: result.mimeType });
       objectKeys.push(segKey);
       segBuffers.push(result.audio);
@@ -535,6 +707,7 @@ export async function runPartAudioGenerate(input: {
 
     const chapterBuffer = await concatMp3Buffers(segBuffers);
     const chapterKey = partAudioChapterKey(input.partId, kind, contentHash);
+    await assertGenerationOwnership(input, kind);
     await putObject({ key: chapterKey, body: chapterBuffer, contentType: AUDIO_MIME });
     objectKeys.push(chapterKey);
 
@@ -547,22 +720,34 @@ export async function runPartAudioGenerate(input: {
       objectKeys,
     };
 
-    const values = {
-      id: existing?.id ?? randomUUID(),
-      workId: input.workId,
-      partId: input.partId,
-      kind,
-      status: 'ready',
-      storageKey: chapterKey,
-      mimeType: AUDIO_MIME,
-      contentHash,
-      meta,
-    };
-
-    if (existing) {
-      await db.update(contentAssetTable).set(values).where(eq(contentAssetTable.id, existing.id));
-    } else {
-      await db.insert(contentAssetTable).values(values);
+    const [completed] = await db
+      .update(contentAssetTable)
+      .set({
+        workId: input.workId,
+        partId: input.partId,
+        kind,
+        status: 'ready',
+        storageKey: chapterKey,
+        mimeType: AUDIO_MIME,
+        contentHash,
+        generationKey: input.generationKey,
+        generationToken: null,
+        generationClaimedAt: null,
+        generationLeaseExpiresAt: null,
+        meta,
+      })
+      .where(
+        and(
+          eq(contentAssetTable.id, existing.id),
+          eq(contentAssetTable.generationKey, input.generationKey),
+          eq(contentAssetTable.generationToken, input.generationToken),
+          eq(contentAssetTable.status, 'generating'),
+          gt(contentAssetTable.generationLeaseExpiresAt, new Date()),
+        ),
+      )
+      .returning({ id: contentAssetTable.id });
+    if (!completed) {
+      throw new GenerationOwnershipLostError();
     }
 
     if (previousKeys.length > 0) {
@@ -585,36 +770,59 @@ export async function runPartAudioGenerate(input: {
 
     await tryAdvanceTtsWorkflow(input.workId);
   } catch (error) {
+    if (error instanceof GenerationOwnershipLostError) {
+      return;
+    }
     const message = error instanceof Error ? error.message : String(error);
     const errorCode = error instanceof AppError ? String(error.statusCode) : '500';
 
     if (objectKeys.length > 0) {
+      try {
+        await assertGenerationOwnership(input, kind);
+      } catch (ownershipError) {
+        if (ownershipError instanceof GenerationOwnershipLostError) {
+          return;
+        }
+        throw ownershipError;
+      }
       await deleteObjectKeys(objectKeys, { partId: input.partId, role: input.role, orphan: true });
     }
 
-    const failedValues = {
-      id: existing?.id ?? randomUUID(),
-      workId: input.workId,
-      partId: input.partId,
-      kind,
-      status: 'failed',
-      storageKey: partAudioChapterKey(input.partId, kind, contentHash),
-      mimeType: AUDIO_MIME,
-      contentHash,
-      meta: {
-        voice: voice || undefined,
-        lastError: message,
-        objectKeys: [],
-        timeline: [],
-        generatedAt: new Date().toISOString(),
-        durationMs: 0,
-      } satisfies ContentAssetMeta,
-    };
-
-    if (existing) {
-      await db.update(contentAssetTable).set(failedValues).where(eq(contentAssetTable.id, existing.id));
-    } else {
-      await db.insert(contentAssetTable).values(failedValues);
+    const [failed] = await db
+      .update(contentAssetTable)
+      .set({
+        workId: input.workId,
+        partId: input.partId,
+        kind,
+        status: 'failed',
+        storageKey: partAudioChapterKey(input.partId, kind, contentHash),
+        mimeType: AUDIO_MIME,
+        contentHash,
+        generationKey: input.generationKey,
+        generationToken: null,
+        generationClaimedAt: null,
+        generationLeaseExpiresAt: null,
+        meta: {
+          voice: voice || undefined,
+          lastError: message,
+          objectKeys: [],
+          timeline: [],
+          generatedAt: new Date().toISOString(),
+          durationMs: 0,
+        } satisfies ContentAssetMeta,
+      })
+      .where(
+        and(
+          eq(contentAssetTable.id, existing.id),
+          eq(contentAssetTable.generationKey, input.generationKey),
+          eq(contentAssetTable.generationToken, input.generationToken),
+          eq(contentAssetTable.status, 'generating'),
+          gt(contentAssetTable.generationLeaseExpiresAt, new Date()),
+        ),
+      )
+      .returning({ id: contentAssetTable.id });
+    if (!failed) {
+      return;
     }
 
     await recordTtsInvocation({
@@ -644,7 +852,7 @@ export async function tryAdvanceTtsWorkflow(workId: string): Promise<void> {
   }
   // Auto-TTS pipeline off: never block publish on chapter audio.
   if (!TTS_STEP_ENABLED) {
-    await completeWorkflowStep(workId, 'ready');
+    await completeWorkflowStep(workId, 'ready', undefined, 'tts');
     return;
   }
 
@@ -658,7 +866,7 @@ export async function tryAdvanceTtsWorkflow(workId: string): Promise<void> {
     .where(eq(readingPartTable.workId, workId));
 
   if (parts.length === 0) {
-    await completeWorkflowStep(workId, 'ready');
+    await completeWorkflowStep(workId, 'ready', undefined, 'tts');
     return;
   }
 
@@ -675,7 +883,7 @@ export async function tryAdvanceTtsWorkflow(workId: string): Promise<void> {
     }
   }
 
-  await completeWorkflowStep(workId, 'ready');
+  await completeWorkflowStep(workId, 'ready', undefined, 'tts');
 }
 
 export type PartAudioAvailability = { us: boolean; uk: boolean };

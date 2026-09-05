@@ -956,6 +956,7 @@ export async function retryWorkflow(id: string, input: RetryWorkflowBody = {}): 
   }
 
   const step = input.step ?? failedStepOf(existing);
+  const retryJobToken = randomUUID();
   if (!step) {
     throw new AppError(HTTP_STATUS.BAD_REQUEST, '没有可重试的步骤');
   }
@@ -963,7 +964,7 @@ export async function retryWorkflow(id: string, input: RetryWorkflowBody = {}): 
     if (!TTS_STEP_ENABLED) {
       throw new AppError(HTTP_STATUS.BAD_REQUEST, '音频步骤未启用自动流程，请在作品页手动生成');
     }
-    await db
+    const [claimed] = await db
       .update(readingWorkTable)
       .set({
         status: stepRunningStatus(step),
@@ -972,16 +973,21 @@ export async function retryWorkflow(id: string, input: RetryWorkflowBody = {}): 
           failedStep: undefined,
           lastError: undefined,
           failedAt: undefined,
+          retryJobToken,
         },
       })
-      .where(eq(readingWorkTable.id, id));
+      .where(and(eq(readingWorkTable.id, id), eq(readingWorkTable.status, existing.status)))
+      .returning({ id: readingWorkTable.id });
+    if (!claimed) {
+      throw new AppError(HTTP_STATUS.CONFLICT, '作品状态已变化，请刷新后再试');
+    }
     const { enqueueWorkAudio } = await import('@/modules/content-assets/service');
     await enqueueWorkAudio(id, { force: false, roles: ['us', 'uk'] });
     return getAdminWork(id);
   }
 
   // Queue only — step output reset runs inside the job so HTTP returns quickly.
-  await db
+  const [claimed] = await db
     .update(readingWorkTable)
     .set({
       status: stepRunningStatus(step),
@@ -990,15 +996,20 @@ export async function retryWorkflow(id: string, input: RetryWorkflowBody = {}): 
         failedStep: undefined,
         lastError: undefined,
         failedAt: undefined,
+        retryJobToken,
         ...(step === 'metadata'
           ? { metadataAt: undefined, metadataEnrichGaps: undefined, metadataEnrichError: undefined }
           : {}),
         ...(step === 'parse' ? { parsed: undefined, metadataAt: undefined, metadataEnrichGaps: undefined } : {}),
       },
     })
-    .where(eq(readingWorkTable.id, id));
+    .where(and(eq(readingWorkTable.id, id), eq(readingWorkTable.status, existing.status)))
+    .returning({ id: readingWorkTable.id });
+  if (!claimed) {
+    throw new AppError(HTTP_STATUS.CONFLICT, '作品状态已变化，请刷新后再试');
+  }
 
-  await enqueue(STEP_JOB[step], { workId: id }, { attempts: 2 });
+  await enqueue(STEP_JOB[step], { workId: id }, { attempts: 2, jobId: `${STEP_JOB[step]}:${id}:${retryJobToken}` });
   return getAdminWork(id);
 }
 

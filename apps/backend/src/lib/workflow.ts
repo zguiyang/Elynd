@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, or, sql } from 'drizzle-orm';
 
 import { readingWork as readingWorkTable } from '@gloaming/db';
 import type { WorkflowStep, WorkStatus } from '@gloaming/shared/api/works';
@@ -28,43 +28,37 @@ export function stepRunningStatus(step: WorkflowStep): WorkStatus {
  * elsewhere, in which case the caller should no-op.
  */
 export async function claimWorkflowStep(workId: string, step: WorkflowStep): Promise<boolean> {
-  const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId)).limit(1);
-  if (!work) {
-    return false;
-  }
   const running = STEP_RUNNING_STATUS[step];
   const idle = STEP_IDLE_CLAIM_STATUS[step];
-  const failedHere = work.status === 'failed' && work.originMeta.failedStep === step;
-  if (work.status !== running && work.status !== idle && !failedHere) {
-    return false;
+  const eligible = [eq(readingWorkTable.status, running)];
+  if (idle) {
+    eligible.push(eq(readingWorkTable.status, idle));
   }
-  await db.update(readingWorkTable).set({ status: running }).where(eq(readingWorkTable.id, workId));
-  return true;
+  eligible.push(
+    and(eq(readingWorkTable.status, 'failed'), sql`${readingWorkTable.originMeta}->>'failedStep' = ${step}`)!,
+  );
+
+  const [claimed] = await db
+    .update(readingWorkTable)
+    .set({ status: running })
+    .where(and(eq(readingWorkTable.id, workId), or(...eligible)))
+    .returning({ id: readingWorkTable.id });
+  return Boolean(claimed);
 }
 
 /** Record a step failure: status → failed + failedStep/lastError/failedAt. */
-export async function failWorkflowStep(workId: string, step: WorkflowStep, error: unknown): Promise<void> {
-  const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId)).limit(1);
-  if (!work) {
-    return;
-  }
+export async function failWorkflowStep(workId: string, step: WorkflowStep, error: unknown): Promise<boolean> {
   const message = error instanceof Error ? error.message : String(error);
-  await db
+  const failedAt = new Date().toISOString();
+  const [failed] = await db
     .update(readingWorkTable)
     .set({
       status: 'failed',
-      originMeta: {
-        ...work.originMeta,
-        failedStep: step,
-        lastError: message,
-        failedAt: new Date().toISOString(),
-        // Drop prior success markers so the UI cannot keep showing "done".
-        metadataAt: undefined,
-        metadataEnrichGaps: undefined,
-        metadataEnrichError: undefined,
-      },
+      originMeta: sql`(${readingWorkTable.originMeta} - 'metadataAt' - 'metadataEnrichGaps' - 'metadataEnrichError') || ${JSON.stringify({ failedStep: step, lastError: message, failedAt })}::jsonb`,
     })
-    .where(eq(readingWorkTable.id, workId));
+    .where(and(eq(readingWorkTable.id, workId), eq(readingWorkTable.status, STEP_RUNNING_STATUS[step])))
+    .returning({ id: readingWorkTable.id });
+  return Boolean(failed);
 }
 
 /** Complete the step: move to the next status and clear failure residue. */
@@ -72,17 +66,21 @@ export async function completeWorkflowStep(
   workId: string,
   nextStatus: WorkStatus,
   metaPatch?: Record<string, unknown>,
-): Promise<void> {
-  const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId)).limit(1);
-  if (!work) {
-    return;
-  }
-  const originMeta: Record<string, unknown> = {
-    ...work.originMeta,
-    failedStep: undefined,
-    lastError: undefined,
-    failedAt: undefined,
-    ...metaPatch,
-  };
-  await db.update(readingWorkTable).set({ status: nextStatus, originMeta }).where(eq(readingWorkTable.id, workId));
+  expectedStatus?: WorkStatus | WorkStatus[],
+): Promise<boolean> {
+  const statuses = expectedStatus
+    ? Array.isArray(expectedStatus)
+      ? expectedStatus
+      : [expectedStatus]
+    : ['processing', 'metadata', 'tts' as const];
+  const patch = JSON.stringify(metaPatch ?? {});
+  const [completed] = await db
+    .update(readingWorkTable)
+    .set({
+      status: nextStatus,
+      originMeta: sql`(${readingWorkTable.originMeta} - 'failedStep' - 'lastError' - 'failedAt') || ${patch}::jsonb`,
+    })
+    .where(and(eq(readingWorkTable.id, workId), or(...statuses.map((status) => eq(readingWorkTable.status, status)))))
+    .returning({ id: readingWorkTable.id });
+  return Boolean(completed);
 }

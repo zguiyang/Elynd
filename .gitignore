@@ -48,7 +48,9 @@ openspec/
 .opencode/
 .claude/
 .codex/
-.agents/
+.agents/*
+!.agents/skills/
+!.agents/skills/**
 .junie/
 
 # Worktrees

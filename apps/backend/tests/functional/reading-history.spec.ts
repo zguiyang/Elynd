@@ -1,10 +1,20 @@
 import { randomUUID } from 'node:crypto';
 
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { readingState as readingStateTable, readingWork as readingWorkTable, user as userTable } from '@gloaming/db';
-import { calendarDateInTimeZone, type ReadingHistoryData } from '@gloaming/shared/api/reading-history';
+import {
+  readingDay as readingDayTable,
+  readingState as readingStateTable,
+  readingWork as readingWorkTable,
+  user as userTable,
+} from '@gloaming/db';
+import {
+  calendarDateInTimeZone,
+  READING_DAY_ENGAGED_SECONDS_CAP,
+  READING_HEARTBEAT_MAX_CREDIT_SECONDS,
+  type ReadingHistoryData,
+} from '@gloaming/shared/api/reading-history';
 import type { AdminWork } from '@gloaming/shared/api/works';
 import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 
@@ -12,6 +22,7 @@ import app from '@/app';
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';
 import * as conversationsService from '@/modules/conversations/service';
+import { recordReadingHeartbeat } from '@/modules/reading-history/service';
 
 const password = 'password123';
 
@@ -110,6 +121,13 @@ async function getReadingHistory(cookie: string): Promise<ReadingHistoryData> {
   return (await response.json()) as ReadingHistoryData;
 }
 
+async function listReadingDays(userId: string) {
+  return db
+    .select({ localDate: readingDayTable.localDate, engagedSeconds: readingDayTable.engagedSeconds })
+    .from(readingDayTable)
+    .where(eq(readingDayTable.userId, userId));
+}
+
 describe('Reading history HTTP', () => {
   const createdEmails: string[] = [];
   const createdWorkIds: string[] = [];
@@ -144,7 +162,7 @@ describe('Reading history HTTP', () => {
     });
   });
 
-  it('records reader opens, backfills recoverable dates, and lists in-progress plus completed works', async () => {
+  it('keeps GET read-only and supports bounded, authorized, idempotent backfill', async () => {
     const admin = await createSession('admin');
     const learner = await createSession('user');
     createdEmails.push(admin.email, learner.email);
@@ -165,6 +183,60 @@ describe('Reading history HTTP', () => {
       createdAt,
       lastReadAt,
       completedAt: null,
+    });
+
+    expect(await listReadingDays(learner.userId)).toEqual([]);
+    const readOnly = await getReadingHistory(learner.cookie);
+    expect(await listReadingDays(learner.userId)).toEqual([]);
+    expect(readOnly.activity).toEqual([]);
+
+    const anonymousBackfill = await app.request('/api/admin/reading-history/backfill', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: learner.userId }),
+    });
+    expect(anonymousBackfill.status).toBe(HTTP_STATUS.UNAUTHORIZED);
+
+    const forbiddenBackfill = await app.request('/api/admin/reading-history/backfill', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
+      body: JSON.stringify({ userId: learner.userId }),
+    });
+    expect(forbiddenBackfill.status).toBe(HTTP_STATUS.FORBIDDEN);
+
+    const unboundedBackfill = await app.request('/api/admin/reading-history/backfill', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+      body: JSON.stringify({ userId: learner.userId, dates: ['1900-01-01'] }),
+    });
+    expect(unboundedBackfill.status).toBe(HTTP_STATUS.BAD_REQUEST);
+
+    const firstBackfill = await app.request('/api/admin/reading-history/backfill', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+      body: JSON.stringify({ userId: learner.userId }),
+    });
+    expect(firstBackfill.status).toBe(200);
+    expect(await firstBackfill.json()).toEqual({
+      userId: learner.userId,
+      candidateDays: 2,
+      insertedDays: 2,
+    });
+    expect((await listReadingDays(learner.userId)).map((row) => row.localDate).sort()).toEqual([
+      '2026-01-10',
+      '2026-01-15',
+    ]);
+
+    const retryBackfill = await app.request('/api/admin/reading-history/backfill', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
+      body: JSON.stringify({ userId: learner.userId }),
+    });
+    expect(retryBackfill.status).toBe(200);
+    expect(await retryBackfill.json()).toEqual({
+      userId: learner.userId,
+      candidateDays: 2,
+      insertedDays: 0,
     });
 
     const backfilled = await getReadingHistory(learner.cookie);
@@ -285,6 +357,13 @@ describe('Reading history HTTP', () => {
     });
     expect(unauthorized.status).toBe(HTTP_STATUS.UNAUTHORIZED);
 
+    const overLimit = await app.request('/api/reading-heartbeat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
+      body: JSON.stringify({ seconds: READING_HEARTBEAT_MAX_CREDIT_SECONDS + 1 }),
+    });
+    expect(overLimit.status).toBe(HTTP_STATUS.BAD_REQUEST);
+
     const first = await app.request('/api/reading-heartbeat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
@@ -311,5 +390,16 @@ describe('Reading history HTTP', () => {
     expect(history.activity).toEqual([{ date: calendarDateInTimeZone(), engagedSeconds: 45 }]);
     expect(history.portrait.readingDays).toBe(1);
     expect(history.portrait.consecutiveDays).toBe(1);
+
+    await db
+      .update(readingDayTable)
+      .set({ engagedSeconds: READING_DAY_ENGAGED_SECONDS_CAP - 1 })
+      .where(and(eq(readingDayTable.userId, learner.userId), eq(readingDayTable.localDate, calendarDateInTimeZone())));
+    expect((await recordReadingHeartbeat(learner.userId, READING_HEARTBEAT_MAX_CREDIT_SECONDS)).engagedSeconds).toBe(
+      READING_DAY_ENGAGED_SECONDS_CAP,
+    );
+    expect((await recordReadingHeartbeat(learner.userId, READING_HEARTBEAT_MAX_CREDIT_SECONDS)).engagedSeconds).toBe(
+      READING_DAY_ENGAGED_SECONDS_CAP,
+    );
   });
 });

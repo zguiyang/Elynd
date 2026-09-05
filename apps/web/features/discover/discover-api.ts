@@ -1,7 +1,7 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 import { DEFAULT_PAGE, DEFAULT_SORT_ORDER } from '@gloaming/shared/api/pagination';
-import type { ShelfData, ShelfItem } from '@gloaming/shared/api/shelf';
+import type { ShelfItem } from '@gloaming/shared/api/shelf';
 import {
   type CatalogListData,
   catalogListDataSchema,
@@ -10,15 +10,13 @@ import {
   DEFAULT_CATALOG_SORT_BY,
 } from '@gloaming/shared/api/works';
 
-import { coverUrlFromAssetId } from '@/features/book-detail/book-detail-model';
 import {
   DISCOVER_PAGE_SIZE,
   type DiscoverItem,
   type DiscoverShelfStatus,
   type DiscoverTagFilter,
 } from '@/features/discover/discover-model';
-import { addWorkToShelf } from '@/features/reader/reader-api';
-import { getShelf, shelfQueryKey } from '@/features/shelf/shelf-api';
+import { buildShelfItemMap, coverUrlFromAssetId, getShelf } from '@/features/works-http';
 import { apiRequest, ApiRequestError, formatApiError } from '@/lib/api-request';
 
 export type DiscoverListParams = Partial<Pick<CatalogListQuery, 'page' | 'pageSize' | 'tag' | 'q'>>;
@@ -65,17 +63,6 @@ export async function listCatalogWorks(
     schema: catalogListDataSchema,
     signal: init?.signal,
   });
-}
-
-export function buildShelfItemMap(data: ShelfData): Map<string, ShelfItem> {
-  const map = new Map<string, ShelfItem>();
-  if (data.current) {
-    map.set(data.current.work.id, data.current);
-  }
-  for (const item of data.items) {
-    map.set(item.work.id, item);
-  }
-  return map;
 }
 
 export function resolveShelfStatus(item?: ShelfItem): DiscoverShelfStatus {
@@ -130,17 +117,6 @@ export function useDiscoverCatalogQuery(params: DiscoverListParams, options?: { 
     queryFn: ({ signal }) => fetchDiscoverCatalog(params, { signal }),
     placeholderData: keepPreviousData,
     enabled: options?.enabled ?? true,
-  });
-}
-
-export function useAddToShelfMutation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (workId: string) => addWorkToShelf(workId),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: shelfQueryKey.all });
-      await queryClient.invalidateQueries({ queryKey: discoverQueryKey.all });
-    },
   });
 }
 

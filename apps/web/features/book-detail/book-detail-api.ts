@@ -8,32 +8,28 @@ import { useQuery } from '@tanstack/react-query';
 import type { ReadingState } from '@gloaming/shared/api/reader';
 import { difficultyLabelFromScore, estimatedMinutesFromWordCount } from '@gloaming/shared/api/reading-stats';
 import type { ShelfItem } from '@gloaming/shared/api/shelf';
-import { type PartSummary, type Work, workSchema } from '@gloaming/shared/api/works';
+import type { PartSummary, Work } from '@gloaming/shared/api/works';
 
 import {
   type BookChapter,
   type BookDetail,
-  coverUrlFromAssetId,
   languageLabelFromCode,
   readingStatusFromProgress,
   teaserFromDescription,
 } from '@/features/book-detail/book-detail-model';
-import { buildShelfItemMap } from '@/features/discover/discover-api';
-import { getReaderParts } from '@/features/reader/reader-api';
-import { getShelf } from '@/features/shelf/shelf-api';
-import { apiRequest, ApiRequestError, formatApiError } from '@/lib/api-request';
+import {
+  buildShelfItemMap,
+  coverUrlFromAssetId,
+  getPublishedWork,
+  getShelf,
+  getWorkParts,
+} from '@/features/works-http';
+import { ApiRequestError, formatApiError } from '@/lib/api-request';
 
 export const bookDetailQueryKey = {
   all: ['book-detail'] as const,
   detail: (workId: string) => [...bookDetailQueryKey.all, workId] as const,
 };
-
-export async function getPublishedWork(workId: string, init?: { signal?: AbortSignal }): Promise<Work> {
-  return apiRequest(`/api/catalog/works/${encodeURIComponent(workId)}`, {
-    schema: workSchema,
-    signal: init?.signal,
-  });
-}
 
 function toIsoString(value: string | Date | null | undefined): string | null {
   if (!value) {
@@ -160,7 +156,7 @@ export async function fetchBookDetail(workId: string, init?: { signal?: AbortSig
       }
       throw error;
     }),
-    getReaderParts(workId, init),
+    getWorkParts(workId, init),
   ]);
 
   const shelfMap = shelfData ? buildShelfItemMap(shelfData) : new Map<string, ShelfItem>();

@@ -1,4 +1,14 @@
-import type { AdminOriginAsset, AdminWork, AdminWorkSummary, Work } from '@gloaming/shared/api/works';
+import { type ReaderPartsData, readerPartsDataSchema } from '@gloaming/shared/api/reader';
+import { type ShelfData, shelfDataSchema, type ShelfItem } from '@gloaming/shared/api/shelf';
+import {
+  type AdminOriginAsset,
+  type AdminWork,
+  type AdminWorkSummary,
+  type Work,
+  workSchema,
+} from '@gloaming/shared/api/works';
+
+import { apiRequest } from '@/lib/api-request';
 
 /** Work view model: dates as ISO strings. */
 export type WorkView = {
@@ -45,6 +55,45 @@ export type AdminWorkSummaryView = WorkView & {
 
 function toIso(value: string | Date): string {
   return typeof value === 'string' ? value : value.toISOString();
+}
+
+export async function getPublishedWork(workId: string, init?: { signal?: AbortSignal }): Promise<Work> {
+  return apiRequest(`/api/catalog/works/${encodeURIComponent(workId)}`, {
+    schema: workSchema,
+    signal: init?.signal,
+  });
+}
+
+export async function getWorkParts(workId: string, init?: { signal?: AbortSignal }): Promise<ReaderPartsData> {
+  return apiRequest(`/api/reader/works/${encodeURIComponent(workId)}/parts`, {
+    schema: readerPartsDataSchema,
+    signal: init?.signal,
+  });
+}
+
+export async function getShelf(init?: { signal?: AbortSignal }): Promise<ShelfData> {
+  return apiRequest('/api/shelf', {
+    schema: shelfDataSchema,
+    signal: init?.signal,
+  });
+}
+
+export function buildShelfItemMap(data: ShelfData): Map<string, ShelfItem> {
+  const map = new Map<string, ShelfItem>();
+  if (data.current) {
+    map.set(data.current.work.id, data.current);
+  }
+  for (const item of data.items) {
+    map.set(item.work.id, item);
+  }
+  return map;
+}
+
+export function coverUrlFromAssetId(coverAssetId: string | null): string | null {
+  if (!coverAssetId) {
+    return null;
+  }
+  return `/api/assets/${encodeURIComponent(coverAssetId)}`;
 }
 
 export function normalizeWork(raw: Work): WorkView {

@@ -5,18 +5,21 @@ import {
   type ReaderPartData,
   readerPartDataSchema,
   type ReaderPartsData,
-  readerPartsDataSchema,
   type ReadingState,
   type ReadingStateAction,
   readingStateDataSchema,
-  readingStateSchema,
   type UpdateReadingStateBody,
 } from '@gloaming/shared/api/reader';
 import type { PartSummary } from '@gloaming/shared/api/works';
 
 import type { ReaderViewModel } from '@/features/reader/reader-model';
+import { patchReadingState } from '@/features/reading-state-command';
+import { getWorkParts } from '@/features/works-http';
 import { apiRequest, formatApiError } from '@/lib/api-request';
 import { authClient } from '@/lib/auth';
+
+export { addWorkToShelf, patchReadingState } from '@/features/reading-state-command';
+export { getWorkParts as getReaderParts } from '@/features/works-http';
 
 export const readerQueryKey = {
   all: ['reader'] as const,
@@ -24,13 +27,6 @@ export const readerQueryKey = {
   part: (partId: string) => [...readerQueryKey.all, 'part', partId] as const,
   state: (workId: string) => [...readerQueryKey.all, 'state', workId] as const,
 };
-
-export async function getReaderParts(workId: string, init?: { signal?: AbortSignal }): Promise<ReaderPartsData> {
-  return apiRequest(`/api/reader/works/${encodeURIComponent(workId)}/parts`, {
-    schema: readerPartsDataSchema,
-    signal: init?.signal,
-  });
-}
 
 export async function getReaderPart(partId: string, init?: { signal?: AbortSignal }): Promise<ReaderPartData> {
   return apiRequest(`/api/reader/parts/${encodeURIComponent(partId)}`, {
@@ -49,24 +45,6 @@ export async function getReadingState(workId: string, init?: { signal?: AbortSig
   } catch {
     return null;
   }
-}
-
-export async function patchReadingState(
-  workId: string,
-  body: UpdateReadingStateBody,
-  init?: { signal?: AbortSignal },
-): Promise<ReadingState> {
-  return apiRequest(`/api/reader/works/${encodeURIComponent(workId)}/state`, {
-    method: 'PATCH',
-    schema: readingStateSchema,
-    json: body,
-    signal: init?.signal,
-  });
-}
-
-/** Silent shelf add — creates 0% state without opening reader. */
-export async function addWorkToShelf(workId: string): Promise<void> {
-  await patchReadingState(workId, { action: 'add_to_shelf' });
 }
 
 export async function getReaderAudioTrack(partId: string, role: 'us' | 'uk', init?: { signal?: AbortSignal }) {
@@ -128,7 +106,7 @@ export function toReaderViewModel(
 export function useReaderPartsQuery(workId: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: readerQueryKey.parts(workId),
-    queryFn: ({ signal }) => getReaderParts(workId, { signal }),
+    queryFn: ({ signal }) => getWorkParts(workId, { signal }),
     enabled: options?.enabled ?? Boolean(workId),
   });
 }

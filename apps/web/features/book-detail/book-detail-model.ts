@@ -137,9 +137,4 @@ export function teaserFromDescription(description: string, maxLen = 180): string
   return desc.length > maxLen ? `${desc.slice(0, maxLen - 3)}…` : desc;
 }
 
-export function coverUrlFromAssetId(coverAssetId: string | null): string | null {
-  if (!coverAssetId) {
-    return null;
-  }
-  return `/api/assets/${encodeURIComponent(coverAssetId)}`;
-}
+export { coverUrlFromAssetId } from '@/features/works-http';

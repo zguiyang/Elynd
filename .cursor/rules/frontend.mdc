@@ -65,13 +65,42 @@ Shared content helpers live in `features/content/content-model.ts` (cover tints,
 
 Tailwind v4 (`@import "tailwindcss"`); semantic tokens over raw colors.
 
-Philosophy SSOT: [`DESIGN.md`](../../DESIGN.md) **Interaction philosophy** (why). This file (how + checklists). Taste skills (visual polish only — do not duplicate or override interaction rules here).
+Philosophy SSOT: [`DESIGN.md`](../../DESIGN.md) **Interaction philosophy** (why). This file (how + checklists). Design Skills supplement visual judgment only — they do not duplicate or override project interaction rules here.
+
+### Design Skill invocation contract
+
+Read the relevant `DESIGN.md` chapters first (especially `Interaction philosophy`, motion, tokens, information density, and UI/product behavior); do not load the full Design Skill collection by default. Design Skills are optional methods for visual judgment, not project authority. For visual and interaction decisions, use this fixed priority: user’s explicit task requirements → product docs, ADRs, and locked task behavior → `DESIGN.md` → this rule → the selected Design Skill → shadcn or other component defaults.
+
+#### Default design baseline
+
+Only for creating, refactoring, or reviewing UI, consider these on demand; they remain subordinate to `DESIGN.md`:
+
+- `design-taste-frontend` — landing, portfolio, and anti-generic frontend direction.
+- `redesign-existing-projects` — audit-led visual upgrades to an existing interface without breaking functionality.
+
+#### Specialist capabilities
+
+Load a specialist only when the task explicitly matches it. By default, choose at most one specialist per task unless the user explicitly asks to compare multiple approaches:
+
+- Brand identity and visual world: `brandkit`.
+- Strong motion or GSAP: `gpt-taste`.
+- High-end visual review: `high-end-visual-design`.
+- Image reference to frontend: `image-to-code`.
+- Web visual reference images: `imagegen-frontend-web`.
+- Mobile visual reference images: `imagegen-frontend-mobile`.
+- Industrial or brutalist style: `industrial-brutalist-ui`.
+- Minimal editorial style: `minimalist-ui`.
+- Stitch workflow: `stitch-design-taste`.
+
+Even when a specialist matches, do not directly adopt its hardcoded colors, fonts, radii, shadows, spacing, animation, or page structure. Map useful suggestions to `DESIGN.md` tokens and interaction boundaries first. In particular, `gpt-taste` scrolling pins, strong motion, and narrative pacing are allowed only when compatible with Gloaming’s nearly invisible motion and reading-first principles. `image-to-code` and `imagegen-*` outputs are reference material, not a new design system or product requirement. Industrial and minimalist styles are explicit choices; never apply them automatically to Reader, Admin, or ordinary product pages. Do not add an unauthorized dependency, generated image, motion library, or product feature because a Design Skill recommends it.
+
+Do not load a Design Skill for ordinary bug fixes, copy-only adjustments, or pure logic changes. The role of a UI Design Skill is to supplement project design judgment, never to replace `DESIGN.md`, product rules, or this behavior boundary.
 
 ### UI design judgment (before styling)
 
-**UI rule stack:** locked task brief + `docs/product/` (behavior) → [`DESIGN.md`](../../DESIGN.md) Interaction philosophy → this section → Taste skills (**visual only**) → shadcn / component defaults **last**. Library form patterns do not override project interaction judgment.
+**UI rule stack:** apply the Design Skill invocation contract above: user task → product/ADR/locked behavior → [`DESIGN.md`](../../DESIGN.md) Interaction philosophy → this section → the selected Design Skill (**visual only**) → shadcn / component defaults **last**. Library form patterns do not override project interaction judgment.
 
-**Read order:** `DESIGN.md` Interaction philosophy → this section → UI implementation ladder below → Taste skill if visual polish is in scope.
+**Read order:** `DESIGN.md` Interaction philosophy → this section → UI implementation ladder below → the selected Design Skill if visual polish is in scope.
 
 **Default priority:** Remove → Simplify → Combine → Clarify → Polish. Never scaffold Label + Description + Card + Button first and style later.
 
@@ -83,7 +112,7 @@ Philosophy SSOT: [`DESIGN.md`](../../DESIGN.md) **Interaction philosophy** (why)
 4. Context inference — what does the user already know?
 5. Merge — can related actions share one control context?
 6. Delete — run Anti-Redundancy Checklist
-7. Polish — tokens + shadcn + Taste skills
+7. Polish — project tokens + shadcn + the selected Design Skill
 
 #### Information economy
 

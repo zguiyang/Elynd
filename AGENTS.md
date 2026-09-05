@@ -54,16 +54,22 @@ Shipped code may still use legacy Article names until **Phase 3** migration — 
 
 Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root) — visual tokens **and** interaction philosophy (information economy, compression, admin density, **UI vs product behavior**).
 
-**UI rule stack:** locked task brief + [`docs/product/`](docs/product/) (persistence, fetch, confirm, side effects) → **`DESIGN.md`** → [`.cursor/rules/frontend.mdc`](.cursor/rules/frontend.mdc) → Taste skills (visual polish only) → shadcn defaults last. UI simplification must **not** infer product behavior (auto-save, automatic fetch, implicit confirm, etc.).
+**UI rule stack:** user’s explicit task requirements → locked task behavior plus [`docs/product/`](docs/product/) and relevant ADRs (persistence, fetch, confirm, side effects) → **`DESIGN.md`** → [`.cursor/rules/frontend.mdc`](.cursor/rules/frontend.mdc) → the selected Design Skill (visual polish only) → shadcn or other component defaults last. UI simplification must **not** infer product behavior (auto-save, automatic fetch, implicit confirm, etc.). Tooling, security, and repository-wide safety gates still apply.
 
 - **Before** generating or restyling UI in `apps/web`, read `DESIGN.md` (including **Interaction philosophy**) and [`.cursor/rules/frontend.mdc`](.cursor/rules/frontend.mdc) UI design judgment + Anti-Redundancy Checklist + **Behavior boundary**.
 - Implement appearance via CSS variables / semantic utilities in `apps/web/app/globals.css` — do not hardcode theme colors in feature code.
-- Screen flows: [`docs/product/prototype-flows.md`](docs/product/prototype-flows.md). Visual tokens: **`DESIGN.md`**. Visual polish: Taste skills — they do **not** replace interaction rules or override admin/reader scope in `DESIGN.md` / `frontend.mdc`.
+- Screen flows: [`docs/product/prototype-flows.md`](docs/product/prototype-flows.md). Visual tokens: **`DESIGN.md`**. Visual polish: the selected Design Skill — it does **not** replace interaction rules or override admin/reader scope in `DESIGN.md` / `frontend.mdc`.
 - Product philosophy / anti-drift (non-visual): [`docs/product/`](docs/product/) — especially [`design-guardrails.md`](docs/product/design-guardrails.md).
+
+### Design Skill contract
+
+For UI work, agents must read the relevant `DESIGN.md` and product/flow sections first; they must not load the complete Design Skill collection by default. For visual and interaction decisions, the fixed priority is: (1) the user’s explicit task requirements, (2) product docs, ADRs, and locked task behavior, (3) `DESIGN.md`, (4) `frontend.mdc`, (5) the selected Design Skill, and (6) shadcn or other component defaults.
+
+Design Skills may provide visual, layout, motion, image, or aesthetic methods only. They must not change information architecture, persistence, request timing, confirmation, auto-save, automatic navigation, or other product behavior. When a Skill conflicts with project rules, adapt or omit its recommendation and report the decision; never change the project design system to accommodate it. Select Skills by task relevance instead of loading all of them together.
 
 ## Rules source of truth
 
-[`.cursor/rules/`](.cursor/rules/). Bodies live only in those files — this index does not restate them.
+[`.cursor/rules/`](.cursor/rules/) holds Cursor-specific and path-scoped rule bodies. `AGENTS.md` holds cross-agent hard constraints, routing, and minimal shared contracts; it does not duplicate Cursor-specific implementation detail.
 
 ### Loading
 

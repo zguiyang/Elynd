@@ -8,9 +8,6 @@ alwaysApply: false
 
 Next.js App Router, React, TanStack Form + Query, Better Auth **client** (`lib/auth` → Hono `/api/auth/*`), Tailwind CSS **v4**, shadcn/base-nova under `components/ui/`.
 
-Follow the package and ownership boundaries in `AGENTS.md`; use
-`repository-structure` for structural changes.
-
 ## Naming
 
 Feature/component files: `kebab-case` (`sign-in-form.tsx`); PascalCase exports. Routes: `page.tsx` / `layout.tsx`.
@@ -19,48 +16,20 @@ Feature/component files: `kebab-case` (`sign-in-form.tsx`); PascalCase exports. 
 
 - Extend `../../tsconfig.base.json`; Next options (`jsx`/`bundler`/`plugins`/`paths` `@/*`) local
 
-## Layout
+## Application boundaries
 
-| Layer                 | Location           | Pattern                                                               |
-| --------------------- | ------------------ | --------------------------------------------------------------------- |
-| Routes                | `app/**`           | thin pages; compose features                                          |
-| Features              | `features/**`      | domain UI, forms, feature hooks                                       |
-| Design system         | `components/ui/`   | shadcn atoms only                                                     |
-| Shared non-feature UI | `components/`      | providers/shell                                                       |
-| Auth client           | `lib/auth/`        | `better-auth/react` client; BA session cookie via `/api/auth/*` proxy |
-| Server state          | `lib/query/`       | TanStack Query                                                        |
-| Client UI state       | `stores/`          | Zustand UI-only (create when needed)                                  |
-| Validation            | `lib/validations/` | form Zod; auth bounds from `@gloaming/shared/auth/policy`             |
-| Constants             | `constants/`       | literals used 2+ times                                                |
-| Assets                | `public/`          | optional (`.gitkeep` OK)                                              |
+Current folder and file shapes are conventions to inspect, not a fixed
+template. For a structural change or an overloaded component, load
+`repository-structure` and preserve these boundaries:
 
-- Prefer existing `components/ui/`; shadcn CLI; ask before editing `components/ui/**` source
-- Zustand: UI-only — never API/server SoT.
-
-### Feature page composition (anti–god component)
-
-Prefer **compose many focused components** over one 700–1000 line page module.
-
-| Rule                  | Detail                                                                                                                                      |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Thin route            | `app/**/page.tsx` only passes params / renders a feature entry                                                                              |
-| Page = orchestrator   | `*-page.tsx` owns data load, empty/error gates, layout chrome; delegates UI surfaces                                                        |
-| Colocate siblings     | Page-owned pieces live next to the page under `features/<domain>/` (same dir), not in a catch-all `components/`                             |
-| Size ceiling          | Soft ~300–400 lines; hard split at **>500** by colocated UI concern                                                                          |
-| Isolation             | Keep selection state, chat/rail state, form editor state in their owning child; parent passes props / callbacks                             |
-| When to split vs wait | Split structure **before** wiring the next real API into a megacomponent — do not wait for “full real data” to carve boundaries             |
-| Not this rule         | Stub/mock honesty, data-flow bugs, and `formatXApiError = formatApiError` aliases — fix those separately; splitting alone does not fix them |
-
-Example shape:
-
-```text
-features/reader/
-  reader-page.tsx          # session + chrome + compose
-  reader-part.tsx          # current ReadingPart body + selection toolbar
-  reader-ai-drawer.tsx     # assist drawer
-```
-
-Shared content helpers live in `features/content/content-model.ts` (cover tints, paragraph split). Domain: **ReadingWork** / **ReadingPart** — see ADR-001; do not add **ArticleLevel** or article-centric types in new feature code (Phase 3 migrates legacy).
+- App Router routes are delivery and composition points; feature behavior stays
+  with its owning capability rather than accumulating in a route module.
+- `components/ui/` supplies shadcn/base-nova primitives. Prefer existing atoms,
+  use the shadcn CLI for additions, and ask before editing their source.
+- TanStack Query owns server state. Zustand is UI-only and never an API or
+  server source of truth.
+- Form validation uses Zod; password and username bounds come from
+  `@gloaming/shared/auth/policy`, not a web-local duplicate.
 
 ## Styling
 
@@ -86,8 +55,6 @@ Do not hand-roll a parallel control system. Do not ship “used shadcn but ugly/
 
 **System UI language:** Chinese for labels, nav, empty states, toasts, placeholders. Content field _values_ may be EN/ZH.
 
-**Base UI gotchas:** `Button` + `Link` → `nativeButton={false}`. Tabs active → `data-active`. Toggle pressed → `data-pressed`. Segmented filters: prefer `Tabs`; override list `h-8` with `h-auto` and pad triggers — avoid fixed-height fights.
-
 ## Auth
 
 Soft UX only: cookie presence in `proxy.ts` (`better-auth.session_token` / `__Secure-…`), session + **401 → sign-in** in the client.
@@ -95,8 +62,6 @@ Soft UX only: cookie presence in `proxy.ts` (`better-auth.session_token` / `__Se
 `/admin/**` must check session `user.role` with `@gloaming/shared/auth/policy` before rendering admin content; hiding nav links is UX only, not authorization.
 Any backend-backed admin data must also be protected by Hono `requireAdmin`; never rely on `proxy.ts` or client checks as the security boundary.
 `DELETE /api/auth/logout` is a Next handler so HttpOnly BA session cookie(s) clear on this origin, then Hono `sign-out`.
-Password/username bounds from `@gloaming/shared/auth/policy` — do not re-declare in web Zod.
-
 ## Prototype / stub UI
 
 Admin/content screens backed by static arrays, mock data, or UI-only toasts must be explicitly labeled as prototype/stub in both source comments and user-facing Chinese copy. Do not imply persistence, publishing, CMS sync, or backend integration until the Hono content module exists.

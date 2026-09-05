@@ -8,55 +8,37 @@ alwaysApply: false
 
 Hono API on Node (`@hono/node-server`). Auth: **Better Auth**.
 
-Follow the package and ownership boundaries in `AGENTS.md`. Schema lives in
-`@gloaming/db` (Drizzle); use `repository-structure` for structural changes.
+## Application boundaries
 
-## Directory layout
+Current directory names and file shapes are conventions to inspect, not a fixed
+template. For a structural change or an overloaded unit, load
+`repository-structure` and preserve the boundaries below.
 
-```text
-apps/backend/
-├── src/
-│   ├── index.ts           # HTTP adapter (serve)
-│   ├── worker.ts          # BullMQ worker
-│   ├── app.ts             # Hono app + global middleware + BA mount
-│   ├── constants/
-│   ├── db/                # Drizzle client only (no schema)
-│   ├── jobs/              # one processor file per job name
-│   ├── lib/               # env, redis, queue, logger, auth, errors (no domain workflows)
-│   ├── middleware/        # HTTP cross-cutting only
-│   ├── modules/           # domain modules: route.ts + service.ts + validator.ts
-│   └── routes/            # composition / mount only
-├── .env.example
-└── package.json
-```
+- Application assembly, global middleware, and auth setup do not own domain
+  workflows. Connect capability endpoints through the existing routing
+  composition boundary.
+- HTTP handlers are transport delivery: validate structured input, call the
+  appropriate domain capability, then return the HTTP response.
+- Domain behavior does not depend on Hono `Context` or response helpers.
+- Technical adapters (environment, Redis, queues, logging, auth, errors) do not
+  import domain modules.
 
 ## Core rules
 
 | Rule               | Detail                                                                                                                                           |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| No RoR controllers | Handlers on `app.get/post` or module `route.ts`; prefer path inference                                                                           |
-| Route thin         | Validate → call service → status/JSON. No DB orchestration in routes                                                                             |
-| Service thick      | Business rules; no `c.json` / raw Context                                                                                                        |
-| `lib/`             | Technical only (redis, queue, env, logger). No `modules/` imports                                                                                |
-| Schema             | **Only** in `packages/db` — import `@gloaming/db` / `@gloaming/db/schema`                                                                        |
+| No RoR controllers | Use Hono handlers; prefer path inference                                                                                                          |
 | Auth               | Better Auth at `/api/auth/*` via `auth.handler`; do not reimplement login/register                                                               |
 | Admin auth         | Any `/api/admin/**` route must use `requireAdmin`; hiding navigation or relying on web proxy is not authorization                                |
-| Validation         | Zod (`@hono/zod-validator` or shared schemas)                                                                                                    |
-| Errors             | Self-owned Hono APIs return `{ error, details? }`; use `sendError` / `sendValidationError` from `src/lib/response.ts` in middleware and handlers |
+| Validation         | Validate structured request data with Zod (`@hono/zod-validator` or shared schemas). Multipart or stream boundaries may validate transport constraints locally before domain code runs |
+| Errors             | Self-owned Hono APIs return `{ error, details? }`. Prefer `sendError` / `sendValidationError` from `src/lib/response.ts` for reusable or middleware paths; a boundary-local response is allowed when it keeps that contract |
 
 Better Auth native `/api/auth/*` responses are allowed to keep Better Auth's contract; do not wrap or normalize those endpoints locally.
-
-## Module files
-
-```text
-modules/{domain}/
-  route.ts
-  service.ts
-  validator.ts
-```
-
-Mount new modules from `routes/index.ts` only — do not grow business logic in `app.ts`.
 
 ## Env
 
 `getEnvConfig()` in `src/lib/env.ts` loads package `.env` and Zod-`parse`s it (fail fast at import/boot). Call sites read the exported `env` object — no `process.env` scattered in modules, no one-off getters per variable. Keep only vars the runtime actually reads.
+
+A narrow boundary adapter may read conventional platform variables directly when
+it must preserve inherited runtime behavior (for example, standard proxy
+variables); do not spread that exception into application or domain code.

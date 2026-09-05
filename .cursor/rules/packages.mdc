@@ -6,12 +6,9 @@ alwaysApply: false
 
 # Packages (`packages/**`)
 
-| Package            | Role                                                        |
-| ------------------ | ----------------------------------------------------------- |
-| `@gloaming/shared` | Cross-app constants/types/policy for **2+** apps — no ORM   |
-| `@gloaming/db`     | Drizzle schema + migrations SSOT (Better Auth + app tables) |
-
-Follow the package and ownership boundaries in `AGENTS.md`.
+Package names and source layouts are current owners, not a mandate to create a
+new layer. For a structural change or a question of sharing, load
+`repository-structure`; the root package boundaries remain authoritative.
 
 ## TypeScript
 
@@ -23,10 +20,7 @@ Follow the package and ownership boundaries in `AGENTS.md`.
 ## Ownership
 
 - Password/username/mail-cooldown policy SSOT → `@gloaming/shared/auth/policy`
-- Cross-app validators/types → `@gloaming/shared`
-- Persistence → `@gloaming/db` (Drizzle), not `@gloaming/shared` and not inline in `apps/backend`
-- No Nest/React feature workflows in packages
-- Do not add to `@gloaming/shared` for a single consumer
+- Packages export contracts or policy, never application feature workflows.
 
 ## Zod
 
@@ -34,6 +28,4 @@ When shared Zod is needed: monorepo **Zod v4**; import from `'zod'` only — not
 
 ## Do not
 
-- App aliases in root `tsconfig.base.json`
-- Secrets / env-specific compose in packages
-- Duplicate cross-app policy/constants in `apps/*`
+- Add app aliases in root `tsconfig.base.json`

@@ -1,19 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { type ShelfData, shelfDataSchema } from '@gloaming/shared/api/shelf';
+import { getShelf } from '@/features/works-http';
+import { formatApiError } from '@/lib/api-request';
 
-import { apiRequest, formatApiError } from '@/lib/api-request';
+export { getShelf } from '@/features/works-http';
 
 export const shelfQueryKey = {
   all: ['shelf'] as const,
 };
-
-export async function getShelf(init?: { signal?: AbortSignal }): Promise<ShelfData> {
-  return apiRequest('/api/shelf', {
-    schema: shelfDataSchema,
-    signal: init?.signal,
-  });
-}
 
 export function useShelfQuery(options?: { enabled?: boolean }) {
   return useQuery({

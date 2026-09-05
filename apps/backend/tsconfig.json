@@ -6,6 +6,7 @@
     "rootDir": "./src",
     "noEmit": true,
     "declaration": false,
+    "allowImportingTsExtensions": true,
     "types": ["node"],
     "ignoreDeprecations": "6.0",
     "baseUrl": ".",

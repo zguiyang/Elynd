@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { WORKFLOW_AUTO_CHAIN } from '@gloaming/shared/api/works';
+import { WORKFLOW_AUTO_CHAIN } from '@gloaming/shared';
 
 import { JOB_METADATA_FILL } from '@/jobs/work-metadata-fill';
 import { enqueue } from '@/lib/queue';

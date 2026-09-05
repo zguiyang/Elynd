@@ -2,7 +2,7 @@ import { zValidator } from '@hono/zod-validator';
 import type { Context, ValidationTargets } from 'hono';
 import type { ZodType } from 'zod';
 
-import { recommendationsQuerySchema } from '@gloaming/shared/api/recommendations';
+import { recommendationsQuerySchema } from '@gloaming/shared';
 
 import { sendValidationError } from '@/lib/response';
 

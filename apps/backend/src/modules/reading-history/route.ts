@@ -2,7 +2,7 @@ import { zValidator } from '@hono/zod-validator';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
-import { readingHeartbeatBodySchema } from '@gloaming/shared/api/reading-history';
+import { readingHeartbeatBodySchema } from '@gloaming/shared';
 
 import { rootLogger } from '@/lib/logger';
 import { sendValidationError } from '@/lib/response';

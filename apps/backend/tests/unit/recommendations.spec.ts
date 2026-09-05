@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { clampRecommendationLimit } from '@gloaming/shared/api/recommendations';
+import { clampRecommendationLimit } from '@gloaming/shared';
 
 import {
   buildShelfProfile,

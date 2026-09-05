@@ -1,6 +1,6 @@
 import { ChatOpenAI } from '@langchain/openai';
 
-import { isRuntimeImplemented } from '@gloaming/shared/llm/wire-registry';
+import { isRuntimeImplemented } from '@gloaming/shared';
 
 import { HTTP_STATUS } from '@/constants';
 import { AppError } from '@/lib/errors';

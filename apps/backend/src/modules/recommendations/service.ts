@@ -6,8 +6,8 @@ import {
   readingWork as readingWorkTable,
   readingWorkCategory as readingWorkCategoryTable,
 } from '@gloaming/db';
-import type { RecommendationsData, RecommendationsQuery } from '@gloaming/shared/api/recommendations';
-import type { Work } from '@gloaming/shared/api/works';
+import type { RecommendationsData, RecommendationsQuery } from '@gloaming/shared';
+import type { Work } from '@gloaming/shared';
 
 import { db } from '@/db';
 import { type RecommendationFeatures, resolveRecommendationOrder } from '@/modules/recommendations/score';

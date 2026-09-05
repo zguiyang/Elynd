@@ -2,9 +2,9 @@
 
 import { useMemo } from 'react';
 
-import type { LlmAppSettingView, LlmModel, LlmProvider } from '@gloaming/shared/api/llm-config';
-import type { AiSettingKey } from '@gloaming/shared/api/llm-config-keys';
-import { isRuntimeImplemented } from '@gloaming/shared/llm/wire-registry';
+import type { LlmAppSettingView, LlmModel, LlmProvider } from '@gloaming/shared';
+import type { AiSettingKey } from '@gloaming/shared';
+import { isRuntimeImplemented } from '@gloaming/shared';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

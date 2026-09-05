@@ -1,4 +1,4 @@
-import { DEFAULT_PAGE, type PaginationMeta } from '@gloaming/shared/api/pagination';
+import { DEFAULT_PAGE, type PaginationMeta } from '@gloaming/shared';
 import {
   TTS_INVOCATION_DEFAULT_PAGE_SIZE,
   type TtsInvocationListData,
@@ -7,7 +7,7 @@ import {
   type TtsInvocationStats,
   type TtsInvocationStatsQuery,
   ttsInvocationStatsSchema,
-} from '@gloaming/shared/api/tts-invocations';
+} from '@gloaming/shared';
 
 import { apiRequest, formatApiError } from '@/lib/api-request';
 

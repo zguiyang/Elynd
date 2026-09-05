@@ -1,6 +1,6 @@
 'use client';
 
-import type { DictionaryEntry } from '@gloaming/shared/api/dictionary';
+import type { DictionaryEntry } from '@gloaming/shared';
 
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ReaderDictionaryCard } from '@/features/reader/reader-dictionary-card';

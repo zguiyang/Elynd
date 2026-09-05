@@ -1,7 +1,7 @@
 import { and, desc, eq, ne } from 'drizzle-orm';
 
 import { readingState as readingStateTable, readingWork as readingWorkTable } from '@gloaming/db';
-import { SHELF_ITEMS_LIMIT, type ShelfData } from '@gloaming/shared/api/shelf';
+import { SHELF_ITEMS_LIMIT, type ShelfData } from '@gloaming/shared';
 
 import { db } from '@/db';
 import { toReadingState } from '@/modules/reader/service';

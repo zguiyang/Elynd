@@ -7,7 +7,7 @@ import {
   readingPart as readingPartTable,
   readingWork as readingWorkTable,
 } from '@gloaming/db';
-import { WORKFLOW_AUTO_CHAIN } from '@gloaming/shared/api/works';
+import { WORKFLOW_AUTO_CHAIN } from '@gloaming/shared';
 
 import { db } from '@/db';
 import { rootLogger } from '@/lib/logger';

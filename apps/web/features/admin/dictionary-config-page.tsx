@@ -11,7 +11,7 @@ import {
   DICTIONARY_PROVIDER_YOUDAO,
   type DictionaryConfigView,
   type TestDictionaryResult,
-} from '@gloaming/shared/api/dictionary';
+} from '@gloaming/shared';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

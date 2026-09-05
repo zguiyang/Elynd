@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ConversationDetail } from '@gloaming/shared/api/conversations';
+import type { ConversationDetail } from '@gloaming/shared';
 
 import {
   buildDrawerAssistRequestBody,

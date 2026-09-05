@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 
-import { EPUB_UPLOAD_MAX_BYTES } from '@gloaming/shared/api/works';
+import { EPUB_UPLOAD_MAX_BYTES } from '@gloaming/shared';
 
 import { HTTP_STATUS } from '@/constants';
 import { type AuthVariables, requireAdmin } from '@/middleware/auth';

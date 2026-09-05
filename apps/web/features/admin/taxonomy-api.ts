@@ -8,8 +8,8 @@ import type {
   TaxonomyKind,
   TaxonomyListQuery,
   UpdateTaxonomyBody,
-} from '@gloaming/shared/api/taxonomy';
-import { taxonomyCleanupResultSchema, taxonomyItemSchema, taxonomyListDataSchema } from '@gloaming/shared/api/taxonomy';
+} from '@gloaming/shared';
+import { taxonomyCleanupResultSchema, taxonomyItemSchema, taxonomyListDataSchema } from '@gloaming/shared';
 
 import { apiRequest, formatApiError } from '@/lib/api-request';
 

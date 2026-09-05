@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { WORKFLOW_AUTO_CHAIN } from '@gloaming/shared/api/works';
+import { WORKFLOW_AUTO_CHAIN } from '@gloaming/shared';
 
 const processContentWork = vi.fn();
 const enqueue = vi.fn();

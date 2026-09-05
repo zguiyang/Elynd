@@ -9,8 +9,8 @@ import {
   type AiInvocationLog,
   type AiInvocationStats,
   aiInvocationWindowForDays,
-} from '@gloaming/shared/api/ai-invocations';
-import { DEFAULT_PAGE } from '@gloaming/shared/api/pagination';
+} from '@gloaming/shared';
+import { DEFAULT_PAGE } from '@gloaming/shared';
 
 import { LoadingOverlay } from '@/components/loading-overlay';
 import { Badge } from '@/components/ui/badge';

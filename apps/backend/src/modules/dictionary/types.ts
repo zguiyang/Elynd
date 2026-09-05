@@ -1,4 +1,4 @@
-import type { DictionaryEntry } from '@gloaming/shared/api/dictionary';
+import type { DictionaryEntry } from '@gloaming/shared';
 
 export type ProviderLookupOptions = {
   customEndpoint?: string | null;

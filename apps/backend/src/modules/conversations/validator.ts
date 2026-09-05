@@ -2,7 +2,7 @@ import { zValidator } from '@hono/zod-validator';
 import type { Context, ValidationTargets } from 'hono';
 import type { ZodType } from 'zod';
 
-import { conversationListQuerySchema, createConversationBodySchema } from '@gloaming/shared/api/conversations';
+import { conversationListQuerySchema, createConversationBodySchema } from '@gloaming/shared';
 
 import { sendValidationError } from '@/lib/response';
 

@@ -4,9 +4,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-import type { LlmModel, LlmProvider, ProviderBalanceResult } from '@gloaming/shared/api/llm-config';
-import type { AiSettingKey } from '@gloaming/shared/api/llm-config-keys';
-import type { LlmApiFamily } from '@gloaming/shared/llm/wire-registry';
+import type { LlmModel, LlmProvider, ProviderBalanceResult } from '@gloaming/shared';
+import type { AiSettingKey } from '@gloaming/shared';
+import type { LlmApiFamily } from '@gloaming/shared';
 
 import {
   AlertDialog,

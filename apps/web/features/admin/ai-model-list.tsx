@@ -2,8 +2,8 @@
 
 import { Pencil, Trash2 } from 'lucide-react';
 
-import type { LlmModel, LlmProvider } from '@gloaming/shared/api/llm-config';
-import { getWireFamilyDefinition, getWireVariantLabel } from '@gloaming/shared/llm/wire-registry';
+import type { LlmModel, LlmProvider } from '@gloaming/shared';
+import { getWireFamilyDefinition, getWireVariantLabel } from '@gloaming/shared';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

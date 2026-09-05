@@ -1,4 +1,4 @@
-import type { TtsWordTiming } from '@gloaming/shared/api/tts';
+import type { TtsWordTiming } from '@gloaming/shared';
 
 /** Azure may emit punctuation-only boundaries; those must not drive highlight. */
 export function isPunctuationOnlyTimingText(text: string): boolean {

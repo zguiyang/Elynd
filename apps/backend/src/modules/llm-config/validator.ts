@@ -10,7 +10,7 @@ import {
   testLlmProviderBodySchema,
   updateLlmModelBodySchema,
   updateLlmProviderBodySchema,
-} from '@gloaming/shared/api/llm-config';
+} from '@gloaming/shared';
 
 import { sendValidationError } from '@/lib/response';
 

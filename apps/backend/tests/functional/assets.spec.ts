@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { contentAsset as contentAssetTable, readingWork as readingWorkTable, user as userTable } from '@gloaming/db';
-import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
+import { AUTH_ADMIN_ROLE } from '@gloaming/shared';
 
 import app from '@/app';
 import { db } from '@/db';

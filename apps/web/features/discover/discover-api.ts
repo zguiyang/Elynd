@@ -1,14 +1,14 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
-import { DEFAULT_PAGE, DEFAULT_SORT_ORDER } from '@gloaming/shared/api/pagination';
-import type { ShelfItem } from '@gloaming/shared/api/shelf';
+import type { ShelfItem } from '@gloaming/shared';
+import { DEFAULT_PAGE, DEFAULT_SORT_ORDER } from '@gloaming/shared';
 import {
   type CatalogListData,
   catalogListDataSchema,
   type CatalogListQuery,
   type CatalogWork,
   DEFAULT_CATALOG_SORT_BY,
-} from '@gloaming/shared/api/works';
+} from '@gloaming/shared';
 
 import {
   DISCOVER_PAGE_SIZE,

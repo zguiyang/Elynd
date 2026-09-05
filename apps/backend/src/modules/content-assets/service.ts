@@ -20,10 +20,10 @@ import {
   roleForAudioKind,
   type WorkAudioSummary,
   type WorkAudioView,
-} from '@gloaming/shared/api/content-assets';
-import { type ReaderAudioTrack } from '@gloaming/shared/api/reader';
-import { type TtsVoiceRole } from '@gloaming/shared/api/tts';
-import { TTS_STEP_ENABLED } from '@gloaming/shared/api/works';
+} from '@gloaming/shared';
+import { type ReaderAudioTrack } from '@gloaming/shared';
+import { type TtsVoiceRole } from '@gloaming/shared';
+import { TTS_STEP_ENABLED } from '@gloaming/shared';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';

@@ -12,7 +12,7 @@ import {
   getPublishWorkIssues,
   WORKFLOW_AUTO_CHAIN,
   type WorkflowStep,
-} from '@gloaming/shared/api/works';
+} from '@gloaming/shared';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

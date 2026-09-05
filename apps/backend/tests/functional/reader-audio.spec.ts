@@ -7,10 +7,10 @@ import {
   ttsConfig as ttsConfigTable,
   user as userTable,
 } from '@gloaming/db';
-import { audioKindForRole } from '@gloaming/shared/api/content-assets';
-import type { ReaderAudioTrack, ReaderPartData } from '@gloaming/shared/api/reader';
-import type { AdminWork } from '@gloaming/shared/api/works';
-import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
+import type { ReaderAudioTrack, ReaderPartData } from '@gloaming/shared';
+import type { AdminWork } from '@gloaming/shared';
+import { audioKindForRole } from '@gloaming/shared';
+import { AUTH_ADMIN_ROLE } from '@gloaming/shared';
 
 import app from '@/app';
 import { db } from '@/db';

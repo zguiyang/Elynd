@@ -21,8 +21,8 @@ import {
   type TestLlmProviderResult,
   type UpdateLlmModelBody,
   type UpdateLlmProviderBody,
-} from '@gloaming/shared/api/llm-config';
-import { AI_SETTING_KEY_VALUES, type AiSettingKey } from '@gloaming/shared/api/llm-config-keys';
+} from '@gloaming/shared';
+import { AI_SETTING_KEY_VALUES, type AiSettingKey } from '@gloaming/shared';
 import {
   assertWireVariantForFamily,
   getDefaultWireVariant,
@@ -32,7 +32,7 @@ import {
   listWireFamilies,
   type LlmApiFamily,
   providerSupportsOptionalField,
-} from '@gloaming/shared/llm/wire-registry';
+} from '@gloaming/shared';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';

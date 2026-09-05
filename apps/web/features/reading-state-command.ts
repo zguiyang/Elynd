@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { type ReadingState, readingStateSchema, type UpdateReadingStateBody } from '@gloaming/shared/api/reader';
+import { type ReadingState, readingStateSchema, type UpdateReadingStateBody } from '@gloaming/shared';
 
 import { apiRequest } from '@/lib/api-request';
 

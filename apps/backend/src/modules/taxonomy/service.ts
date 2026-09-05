@@ -17,7 +17,7 @@ import type {
   TaxonomyKind,
   TaxonomyListQuery,
   UpdateTaxonomyBody,
-} from '@gloaming/shared/api/taxonomy';
+} from '@gloaming/shared';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';

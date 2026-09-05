@@ -5,8 +5,8 @@ import {
   emptyToUndefined,
   paginationMetaSchema,
   paginationQuerySchema,
-} from '@gloaming/shared/api/pagination';
-import { ttsVoiceRoleValues } from '@gloaming/shared/api/tts';
+} from './pagination.ts';
+import { ttsVoiceRoleValues } from './tts.ts';
 
 export const TTS_INVOCATION_STATUSES = ['success', 'failure'] as const;
 export type TtsInvocationStatus = (typeof TTS_INVOCATION_STATUSES)[number];

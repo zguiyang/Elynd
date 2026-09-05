@@ -3,9 +3,9 @@
 import { RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 
-import type { LlmModel, LlmProvider, ProviderModelCandidate } from '@gloaming/shared/api/llm-config';
-import type { LlmApiFamily } from '@gloaming/shared/llm/wire-registry';
-import { getDefaultWireVariant, getWireFamilyDefinition } from '@gloaming/shared/llm/wire-registry';
+import type { LlmModel, LlmProvider, ProviderModelCandidate } from '@gloaming/shared';
+import type { LlmApiFamily } from '@gloaming/shared';
+import { getDefaultWireVariant, getWireFamilyDefinition } from '@gloaming/shared';
 
 import { Button } from '@/components/ui/button';
 import {

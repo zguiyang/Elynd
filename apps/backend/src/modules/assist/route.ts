@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 
-import { ASSIST_SSE_EVENT } from '@gloaming/shared/api/assist';
+import { ASSIST_SSE_EVENT } from '@gloaming/shared';
 
 import { AppError, NotFoundError } from '@/lib/errors';
 import { type AuthVariables, requireAuth } from '@/middleware/auth';

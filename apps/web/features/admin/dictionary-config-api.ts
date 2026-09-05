@@ -5,7 +5,7 @@ import {
   type TestDictionaryBody,
   type TestDictionaryResult,
   testDictionaryResultSchema,
-} from '@gloaming/shared/api/dictionary';
+} from '@gloaming/shared';
 
 import { apiRequest, formatApiError } from '@/lib/api-request';
 

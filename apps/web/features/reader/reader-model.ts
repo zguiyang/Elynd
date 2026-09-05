@@ -1,7 +1,7 @@
 /** Reader UI types — aligned with split reader APIs. */
 
-import type { ReaderAudioAvailability, ReadingStateStatus } from '@gloaming/shared/api/reader';
-import type { PartSummary } from '@gloaming/shared/api/works';
+import type { ReaderAudioAvailability, ReadingStateStatus } from '@gloaming/shared';
+import type { PartSummary } from '@gloaming/shared';
 
 export type ReaderFontSize = 'sm' | 'md' | 'lg';
 

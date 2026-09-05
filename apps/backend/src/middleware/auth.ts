@@ -1,6 +1,6 @@
 import { createMiddleware } from 'hono/factory';
 
-import { isAdminRole } from '@gloaming/shared/auth/policy';
+import { isAdminRole } from '@gloaming/shared';
 
 import { HTTP_STATUS } from '@/constants';
 import { auth, type AuthSession, type AuthSessionUser } from '@/lib/auth';

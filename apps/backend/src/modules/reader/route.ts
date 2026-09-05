@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 
-import { readerPartAudioQuerySchema } from '@gloaming/shared/api/reader';
+import { readerPartAudioQuerySchema } from '@gloaming/shared';
 
 import { type AuthVariables, requireAuth } from '@/middleware/auth';
 import * as readerService from '@/modules/reader/service';

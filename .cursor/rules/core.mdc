@@ -58,7 +58,9 @@ Exceptions: explicit user instruction for that path; obvious one-line bug fix; l
 
 ## Skills before MCP
 
-Load matching **project skill(s)** by description first. Use MCP only when the skill lacks the fact, you need version-specific official docs beyond the skill, or you need a live external system. Do not inventory skill names in rules.
+Load matching installed **skill(s)** by description first. A Skill provides guidance only; its presence does not prove that GitNexus MCP or CLI is executable. For GitNexus workflows, follow `codebase-exploration` and load an installed exploration or impact-analysis Skill when available; do not require a local Skill path or inventory Skill names in rules.
+
+Use MCP when the matching Skill lacks the fact, version-specific official docs or a live external system is needed, or the GitNexus policy requires graph analysis and MCP is available.
 
 ## Security
 

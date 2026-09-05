@@ -1,12 +1,14 @@
 ---
-description: Prefer GitNexus for cross-module exploration/impact; verify against source; skip for small local changes
+description: Use GitNexus when available for exploration and impact; verify against source and disclose restricted fallback
 alwaysApply: true
 ---
 
 # Codebase exploration
 
-For cross-module code exploration, architecture analysis, impact analysis, refactoring, and complex debugging, prefer GitNexus when its index is available to understand code relationships, dependency graphs, execution flows, and blast radius.
+For cross-module code exploration, architecture analysis, impact analysis, refactoring, and complex debugging, use GitNexus when its MCP or CLI is available and its index can answer the query. An installed Skill or an index alone does not prove that GitNexus operations are executable.
 
-Treat GitNexus as an architectural/navigation aid rather than the source of truth. Verify important conclusions against the actual source code, especially for dynamic routing, framework middleware, runtime registration, reflection, generated APIs, and other relationships that static analysis may not fully capture.
+Before changing a named function, class, method, or other code symbol, run the available GitNexus impact analysis and report callers, processes, and risk. Before committing, run the available GitNexus graph-change check. Treat HIGH/CRITICAL risk as a blocking warning and `UNKNOWN` or stale/unavailable results as unresolved; never interpret them as no impact.
 
-For small, local changes, do not invoke GitNexus unnecessarily.
+If GitNexus is unavailable, stale, or cannot resolve the target, state the reason and limitation, then use the restricted fallback: source search, call-site review, relevant tests, and an explicit manual impact statement. Do not skip validation or report the fallback as equivalent to graph analysis.
+
+Treat GitNexus as an architectural/navigation aid rather than the source of truth. Verify important conclusions against the actual source code, especially for dynamic routing, framework middleware, runtime registration, reflection, generated APIs, and other relationships that static analysis may not fully capture. For documentation-only or non-code changes, do not invoke GitNexus unnecessarily.

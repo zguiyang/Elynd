@@ -74,6 +74,7 @@ Design Skills may provide visual, layout, motion, image, or aesthetic methods on
 ### Skill lifecycle
 
 - Third-party project Skills are managed by the Skills CLI, with their sources recorded in `skills-lock.json`.
+- Do not directly edit third-party Skill files or bundled instructions (including `SKILL.md`, `AGENTS.md`, scripts, and references). Treat them as vendor-managed; put project-specific routing, constraints, or exceptions in repository-owned rules instead.
 - Use `npx skills list` for inventory when needed.
 - Install, update, and remove third-party Skills only with the corresponding `npx skills` command; updates and removals require explicit user authorization.
 - Treat `npx skills check` as a potentially networked or locally mutating check; obtain user authorization before running it. It is not an ordinary side-effect-free status check.

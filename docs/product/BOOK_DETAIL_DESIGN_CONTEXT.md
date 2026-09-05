@@ -2,7 +2,8 @@
 
 **Purpose:** Fact pack for Book Detail UI design.  
 **Scope:** Research + shipped-route reference.  
-**Date:** 2026-08-20 (routes updated **2026-08-23**).
+**Document status:** **Historical design context — not a maintained current-fact source.** Current-route and workflow notes are dated evidence snapshots for this design record; the domain ADR and implementation paths in the source index remain authoritative.
+**Date:** 2026-09-05 (routes updated **2026-08-24**; EPUB workflow calibrated **2026-09-05**).
 
 > **Superseded sections:** Any journey referencing `/dashboard`, `/library`, `/learn/:id`, or `features/library/**` / `features/learn/**` describes **archived** code (removed). Current learner routes are in **Current shipped routes** below.
 
@@ -36,7 +37,7 @@ Book Detail Role:
 
 - Not a chat / AI home (`product-principles.md` §4; AI lives in Reader).
 - Not a lesson / Practice / Review gate (`mvp-scope.md` §3; practice/review **REMOVED**).
-- Not required upload / import chrome in MVP 1 (Phase **1b**).
+- Not learner upload / import chrome in MVP 1 (Phase **1b**); admin EPUB supply is maintained separately in the admin workflow below.
 
 **Canonical loop (Locked):**
 
@@ -139,13 +140,13 @@ Do **not** use legacy **Article** fields as design authority.
 ```text
 ReadingWork {                     # reading_work — catalog / shelf / AI thread root
   id, title, description, language,
-  status:           draft | processing | published | failed
+  status:           uploaded | processing | parsed | metadata | tts | ready | failed | published
   visibility:       catalog | private
   owner_user_id:    null = official catalog
   origin_kind:      admin_epub | admin_text | (future user_* …)
   origin_meta, tags, cover_asset_id,
   published_at, created_at, updated_at
-  # No body, level, seriesId, estimatedMinutes
+  # No body, level, seriesId
 }
 
 ReadingPart {                     # reading_part — Reader / TTS / Assist text boundary
@@ -177,6 +178,24 @@ Shelf = read model: reading_state JOIN reading_work (no shelf_entry table in MVP
 
 **Reader session:** work metadata + parts[] + current part body + ReadingState + part-level `audioAvailable`.
 
+### Admin EPUB workflow snapshot (implementation evidence, 2026-09-05)
+
+This is an admin supply workflow, not learner Book Detail behavior. `admin_epub` is the MVP primary supply; `admin_text` remains an internal dev/test/seed fallback only.
+
+```text
+POST /api/admin/works/epub
+  → ReadingWork(admin_epub) + ContentAsset(origin_file)
+  → uploaded
+  → parse: EPUB metadata, chapters, cover and referenced images
+  → ReadingPart rows + derived ContentAsset rows
+  → parsed
+  → metadata: extracted fields, then AI backfill when needed
+  → ready
+  → admin publish → published
+```
+
+The default branch configuration is manual between workflow steps (`WORKFLOW_AUTO_CHAIN = false`). TTS auto-generation is disabled (`TTS_STEP_ENABLED = false`): audio is optional, generated separately as `ContentAsset` kinds `audio_us` / `audio_uk`, and does not block publish. Failures surface as `failed` with the failed workflow step; `published` works can be unpublished before retry.
+
 ### Legacy Article model — **removed in Phase 3A**
 
 Do **not** design new UI against these (tables dropped in migration `0013`):
@@ -197,7 +216,7 @@ Short-article era (`ARTICLE_BODY_MAX_WORDS`, level bands) is **archived product*
 
 ### Routes & features
 
-**Current (Phase 3A):** `features/shelf/**`, `discover/**`, `book-detail/**`, `reader/**`, `history/**`; admin **`works-*`**.
+**Current learner routes (Phase 3A):** `features/shelf/**`, `discover/**`, `book-detail/**`, `reader/**`, `history/**`; admin **`works-*`** also contains the implemented EPUB workflow.
 
 | Area          | Path                                                                   |
 | ------------- | ---------------------------------------------------------------------- |
@@ -206,7 +225,7 @@ Short-article era (`ARTICLE_BODY_MAX_WORDS`, level bands) is **archived product*
 | Book detail   | `features/book-detail/**` → `/discover/[workId]`                       |
 | Reader        | `features/reader/**` → `/read/[workId]` (renders **ReadingPart**)      |
 | History       | `features/history/**` → `/reading-history` (completions by **workId**) |
-| Admin catalog | `features/admin/works-*`; EPUB upload = Phase 3B                       |
+| Admin catalog | `features/admin/works-*`; EPUB upload + processing workflow is implemented |
 
 **Removed (do not reference):** `features/dashboard/**`, `features/library/**`, `features/learn/**`, `/progress`, `/dashboard`.
 
@@ -218,7 +237,7 @@ Short-article era (`ARTICLE_BODY_MAX_WORDS`, level bands) is **archived product*
 
 shadcn under `apps/web/components/ui/` (button, card, empty, skeleton, tabs, sheet, badge, …). Feature cards are mostly custom Tailwind on `Link`, not a dedicated BookCard package.
 
-Cover pattern: `coverTintForVolume(themes, title)` — paper/muted washes + title text; **no image asset pipeline**.
+Learner cover fallback: `coverTintForVolume(tags, title)` — paper/muted washes + title text. Admin EPUB ingest also stores parsed cover and referenced images as `ContentAsset` rows; this document does not assert that the learner surface must render them.
 
 ---
 
@@ -290,7 +309,7 @@ Keep:
 - Calm **hero of the work**: cover (or placeholder) + title + short description before reading.
 - Clear **primary reading CTA** that switches Start → Continue when progress exists.
 - **“Add to shelf”** as a first-class action (aligns with Locked Discover primary story).
-- **TOC / chapter list** as a pattern **when** Gloaming has chapters (Phase 1b / long-form) — not forced onto today’s 300-word `article`.
+- **TOC / chapter list** as a pattern when the current `ReadingWork` has chapter parts; do not force it where the content has no usable chapters.
 - Enough metadata to **choose** a text without opening the full body.
 
 ### Avoid (conflicts with Gloaming)
@@ -315,28 +334,28 @@ Suggestions grounded in Locked roles + Existing progress model. **Not** a shippe
 1. **New Book (never opened)**
    - **Why:** Discover choice + entry; user has no progress.
    - **Show:** Enough metadata to decide; primary CTA open / start; add-to-shelf (**Locked** primary Discover story).
-   - **Data today:** article fields; progress absent until Reader opens (opening creates progress — Existing).
+   - **Data today:** `ReadingWork` metadata plus `ReadingPart` content; reading progress belongs to `ReadingState` and is computed for UI, not persisted as `progressRatio`.
 
 2. **Returning Reader (in_progress)**
    - **Why:** User may re-enter from Discover/Detail with existing %. Daily resume still belongs on 我的书架 (**Locked**).
    - **Show:** Progress hint; CTA「继续阅读」; optional last-read time.
-   - **Data:** `progressRatio`, `status`, `lastReadAt`.
+   - **Data:** `ReadingState.status`, `lastReadAt`, and the current part/anchor; any progress ratio is computed for UI.
 
 3. **Reading Completed**
-   - **Why:** `status: completed` exists in schema.
+   - **Why:** `ReadingState.status: completed` exists in the domain model.
    - **Show:** Completed affordance; reopen / read again without quiz gate.
    - **Avoid:** “finish lesson → practice” patterns (**REMOVED**).
 
-4. **On shelf vs not on shelf** (**Future** membership model)
-   - **Why:** Locked Discover story is add-to-shelf; code today has **no** shelf membership — catalog = all published.
-   - **Show (when built):** Add vs Already on shelf; source label `官方` (and later `用户`).
+4. **On shelf vs not on shelf** (**ReadingState-backed**)
+   - **Why:** Add-to-shelf is the Locked Discover story; current shelf membership is represented by `ReadingState` joined with published `ReadingWork`, not a separate `shelf_entry` table.
+   - **Show:** Add vs Already on shelf from the available `ReadingState`; source label `官方` (and later `用户`) remains a product decision.
 
 5. **Mobile layout**
    - **Why:** DESIGN.md collapses multi-column &lt;768px; cards already 2-col on small screens.
    - **Show:** Single-column detail; CTA reachable without desktop-only chrome.
 
 6. **Loading / Error / Not found**
-   - **Why:** Reader and Library already handle pending/error/empty patterns.
+   - **Why:** Reader, Discover, and Shelf handle pending/error/empty patterns.
    - **Show:** Calm empty/error; path back to 发现 / 我的书架 — no AI upsell as empty-state hero (`design-guardrails.md`).
 
 7. **No audio / AI unavailable** (**Locked** degrade)
@@ -353,14 +372,14 @@ Suggestions grounded in Locked roles + Existing progress model. **Not** a shippe
 2. **From Shelf, does open go Detail or straight to Reader?**  
    Locked flows say Shelf → Reader. Detail-from-shelf is undecided.
 
-3. **Content atom for Detail design mock:** short `article` (Existing) vs long-form book with TOC (Future 1b)?  
-   Designing TOC/author/cover as required MVP 1 fields may overfit Future schema.
+3. **Content atom for Detail design mock:** a `ReadingWork` with one or more `ReadingPart` rows; the presence and number of chapter parts may vary by source.
+   Do not require a TOC or other fields that are absent from the loaded work.
 
 4. **Shelf membership data model** — when / how before Detail CTAs can show “已在书架”?
 
-5. **Author, cover image, blurb fields** — add to catalog CMS for 1a, or keep tinted title covers?
+5. **Learner cover presentation** — the EPUB pipeline can provide a `cover` asset, while the current learner surface also has a tinted-title fallback; rendering policy remains a design choice.
 
-6. **Schema fork** (`feature-audit.md` §4.1): extend `article` vs new `document` + parts — Ask before migrate; Detail copy should not invent a second reading type.
+6. **Domain presentation** — use `ReadingWork` + `ReadingPart` from ADR-001; do not create an Article/document schema fork or compatibility alias.
 
 7. **Nav rename timing** (今日→我的书架, 图书馆→发现) vs designing Detail against new names.
 
@@ -379,8 +398,8 @@ Constraints for any Stitch / prototype pass (facts + Locked rules — still **no
    - Open / Continue → **Reader**  
      Resume-of-the-day remains owned by **我的书架**.
 
-3. **Metadata budget (Existing-safe):** title, level, themes, estimated minutes, channel sources, progress if any.  
-   Mark author / real cover / TOC / description blurb as **Future or Open** unless product adds fields.
+3. **Metadata budget (Existing-safe):** title, author, description, language, tags/category/sources, cover, derived reading stats, and available part/TOC information.
+   Treat reading position as `ReadingState` data; do not reintroduce legacy `level`, `themes`, or persisted `progressRatio` fields.
 
 4. **AI Companion / TTS on Detail:**
 
@@ -417,7 +436,9 @@ Constraints for any Stitch / prototype pass (facts + Locked rules — still **no
 | Roadmap                      | `docs/product/roadmap.md`                                                                                   |
 | Visual SSOT                  | `DESIGN.md`, `apps/web/app/globals.css`                                                                     |
 | Domain SSOT                  | `docs/adr/001-reading-content-domain-model.md`, `docs/product/engineering-vocabulary.md`                    |
-| Schema (target)              | `packages/db/src/schema.ts` — **Phase 3:** `reading_work`, `reading_part`, `reading_state`, `content_asset` |
-| Shared DTOs (target)         | `@gloaming/shared/api/works`, `reader`, `shelf` — **Phase 3** retires `api/articles`                        |
+| Schema / domain              | `packages/db/src/schema.ts`; `docs/adr/001-reading-content-domain-model.md` — `ReadingWork`, `ReadingPart`, `ReadingState`, `ContentAsset` |
+| Shared DTOs                  | `packages/shared/src/api/works.ts`, reader, shelf, content-assets — current Work/Part/State/asset contracts     |
 | Shelf / Discover / Reader UI | `apps/web/features/shelf/**`, `discover/**`, `book-detail/**`, `reader/**`                                  |
+| Admin EPUB workflow          | `apps/backend/src/modules/works/route.ts`, `apps/web/features/admin/works-api.ts`, `apps/backend/src/modules/epub-ingest/epub.ts`, `apps/backend/src/modules/content-parser/service.ts`, `apps/backend/src/modules/metadata-fill/service.ts`, `apps/backend/src/modules/content-assets/service.ts` |
+| Workflow status / jobs       | `packages/shared/src/api/works.ts`, `apps/backend/src/lib/workflow.ts`, `apps/backend/src/jobs/content-parse.ts`, `apps/backend/src/jobs/work-metadata-fill.ts` |
 | TextStack reference          | https://github.com/mrviduus/textstack (`BookDetailPage`, `BookDetailHero`, `BookDetail` type)               |

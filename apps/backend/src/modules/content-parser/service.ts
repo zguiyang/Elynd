@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 
 import {
   contentAsset as contentAssetTable,
@@ -11,7 +11,7 @@ import { WORKFLOW_AUTO_CHAIN } from '@gloaming/shared/api/works';
 
 import { db } from '@/db';
 import { rootLogger } from '@/lib/logger';
-import { claimWorkflowStep, failWorkflowStep } from '@/lib/workflow';
+import { claimWorkflowStep, failWorkflowStep, workflowClaimWhere } from '@/lib/workflow';
 import { parserFor } from '@/modules/content-parser/registry';
 import type { ParsedContent } from '@/modules/content-parser/types';
 import { deleteObject, getObject, putObject } from '@/modules/oss';
@@ -106,20 +106,38 @@ function rewriteImageSrcs(html: string, images: ParsedContent['images'], hrefToA
  * Claims the `parse` workflow step (self-heals from a failed parse retry) and
  * moves the work to `metadata` (auto-chain) or `parsed` (manual next) on success.
  */
-export async function processContentWork(workId: string): Promise<void> {
+export async function processContentWork(workId: string, retryJobToken?: string): Promise<boolean> {
   const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId)).limit(1);
   if (!work) {
     throw new Error(`Work ${workId} not found`);
   }
-  if (!(await claimWorkflowStep(workId, 'parse'))) {
-    return;
+  const existingToken = typeof work.originMeta.retryJobToken === 'string' ? work.originMeta.retryJobToken : undefined;
+  const jobToken = retryJobToken ?? existingToken ?? randomUUID();
+  if (!existingToken && !retryJobToken) {
+    const [prepared] = await db
+      .update(readingWorkTable)
+      .set({ originMeta: sql`${readingWorkTable.originMeta} || ${JSON.stringify({ retryJobToken: jobToken })}::jsonb` })
+      .where(
+        and(
+          eq(readingWorkTable.id, workId),
+          eq(readingWorkTable.status, work.status),
+          sql`coalesce(${readingWorkTable.originMeta}->>'retryJobToken', '') = ''`,
+        ),
+      )
+      .returning({ id: readingWorkTable.id });
+    if (!prepared) {
+      return false;
+    }
+  }
+  if (!(await claimWorkflowStep(workId, 'parse', jobToken))) {
+    return false;
   }
 
-  // Reset previous parse outputs inside the job (HTTP retry only enqueues).
-  const { resetParseStepOutputs } = await import('@/modules/works/service');
-  await resetParseStepOutputs(work);
-
   try {
+    // Reset previous parse outputs inside the job (HTTP retry only enqueues).
+    const { resetParseStepOutputs } = await import('@/modules/works/service');
+    await resetParseStepOutputs(work);
+
     const bytes = await loadOriginBytes(workId);
     const parser = parserFor(work.originKind);
     const content = await parser.parse(bytes);
@@ -204,7 +222,7 @@ export async function processContentWork(workId: string): Promise<void> {
     const hasParsedBefore = Boolean(work.originMeta?.parsed);
     const metadata = content.metadata;
 
-    await db
+    const [completed] = await db
       .update(readingWorkTable)
       .set({
         title: hasParsedBefore ? work.title : '',
@@ -222,33 +240,54 @@ export async function processContentWork(workId: string): Promise<void> {
             }),
         status: WORKFLOW_AUTO_CHAIN ? 'metadata' : 'parsed',
         publishedAt: null,
-        originMeta: {
-          ...work.originMeta,
-          parsed: {
-            opfTitle: metadata.title,
-            authors: metadata.authors,
-            description: metadata.description,
-            language: metadata.language,
-            subjects: metadata.subjects,
-            sourceRaw: metadata.sourceRaw,
-            coverHref: content.cover?.originalPath ?? null,
-            spineCount: content.stats.spineCount,
-            navCount: content.stats.navCount,
-            chapterCount: content.stats.chapterCount,
-            imageCount: storedImages,
-            parsedAt: new Date().toISOString(),
-          },
-          failedStep: undefined,
-          lastError: undefined,
-          failedAt: undefined,
-        },
+        originMeta: WORKFLOW_AUTO_CHAIN
+          ? sql`(${readingWorkTable.originMeta} - 'failedStep' - 'lastError' - 'failedAt') || ${JSON.stringify({
+              parsed: {
+                opfTitle: metadata.title,
+                authors: metadata.authors,
+                description: metadata.description,
+                language: metadata.language,
+                subjects: metadata.subjects,
+                sourceRaw: metadata.sourceRaw,
+                coverHref: content.cover?.originalPath ?? null,
+                spineCount: content.stats.spineCount,
+                navCount: content.stats.navCount,
+                chapterCount: content.stats.chapterCount,
+                imageCount: storedImages,
+                parsedAt: new Date().toISOString(),
+              },
+            })}::jsonb`
+          : sql`(${readingWorkTable.originMeta} - 'failedStep' - 'lastError' - 'failedAt' - 'workflowClaimToken' - 'workflowClaimStep') || ${JSON.stringify(
+              {
+                parsed: {
+                  opfTitle: metadata.title,
+                  authors: metadata.authors,
+                  description: metadata.description,
+                  language: metadata.language,
+                  subjects: metadata.subjects,
+                  sourceRaw: metadata.sourceRaw,
+                  coverHref: content.cover?.originalPath ?? null,
+                  spineCount: content.stats.spineCount,
+                  navCount: content.stats.navCount,
+                  chapterCount: content.stats.chapterCount,
+                  imageCount: storedImages,
+                  parsedAt: new Date().toISOString(),
+                },
+              },
+            )}::jsonb`,
       })
-      .where(eq(readingWorkTable.id, workId));
+      .where(workflowClaimWhere(workId, 'parse', jobToken))
+      .returning({ id: readingWorkTable.id });
+
+    if (!completed) {
+      return false;
+    }
 
     ingestLogger.info({ workId, chapters: content.chapters.length, images: storedImages }, 'Content ingest complete');
+    return true;
   } catch (error) {
     ingestLogger.error({ err: error, workId }, 'Content ingest failed');
-    await failWorkflowStep(workId, 'parse', error);
+    await failWorkflowStep(workId, 'parse', jobToken, error);
     throw error;
   }
 }

@@ -9,6 +9,8 @@ export type PartAudioGenerateJobData = {
   partId: string;
   role: TtsVoiceRole;
   force: boolean;
+  generationKey: string;
+  generationToken: string;
   userId?: string;
 };
 

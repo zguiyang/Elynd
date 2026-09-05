@@ -54,7 +54,7 @@ Shipped code may still use legacy Article names until **Phase 3** migration — 
 
 Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root) — visual tokens **and** interaction philosophy (information economy, compression, admin density, **UI vs product behavior**).
 
-**UI rule stack:** user’s explicit task requirements → locked task behavior plus [`docs/product/`](docs/product/) and relevant ADRs (persistence, fetch, confirm, side effects) → **`DESIGN.md`** → [`.cursor/rules/frontend.mdc`](.cursor/rules/frontend.mdc) → the selected Design Skill (visual polish only) → shadcn or other component defaults last. UI simplification must **not** infer product behavior (auto-save, automatic fetch, implicit confirm, etc.). Tooling, security, and repository-wide safety gates still apply.
+**UI rule stack:** apply the global **Instruction authority** below. For the path-specific project-rule level, the UI order is **`DESIGN.md`** → [`.cursor/rules/frontend.mdc`](.cursor/rules/frontend.mdc) → the selected Gloaming-owned/project Skill → the selected third-party Skill → shadcn or other component defaults. UI simplification must **not** infer product behavior (auto-save, automatic fetch, implicit confirm, etc.). Security, authorization, and user-consent boundaries cannot be bypassed; tooling checks provide verification, not product semantics.
 
 - **Before** generating or restyling UI in `apps/web`, read `DESIGN.md` (including **Interaction philosophy**) and [`.cursor/rules/frontend.mdc`](.cursor/rules/frontend.mdc) UI design judgment + Anti-Redundancy Checklist + **Behavior boundary**.
 - Implement appearance via CSS variables / semantic utilities in `apps/web/app/globals.css` — do not hardcode theme colors in feature code.
@@ -63,7 +63,7 @@ Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root) — visual
 
 ### Design Skill contract
 
-For UI work, agents must read the relevant `DESIGN.md` and product/flow sections first; they must not load the complete Design Skill collection by default. For visual and interaction decisions, the fixed priority is: (1) the user’s explicit task requirements, (2) product docs, ADRs, and locked task behavior, (3) `DESIGN.md`, (4) `frontend.mdc`, (5) the selected Design Skill, and (6) shadcn or other component defaults.
+For UI work, agents must read the relevant `DESIGN.md` and product/flow sections first; they must not load the complete Design Skill collection by default. Apply the global instruction authority and the UI rule stack above; do not create a separate priority system for visual work.
 
 Design Skills may provide visual, layout, motion, image, or aesthetic methods only. They must not change information architecture, persistence, request timing, confirmation, auto-save, automatic navigation, or other product behavior. When a Skill conflicts with project rules, adapt or omit its recommendation and report the decision; never change the project design system to accommodate it. Select Skills by task relevance instead of loading all of them together.
 
@@ -74,48 +74,61 @@ Design Skills may provide visual, layout, motion, image, or aesthetic methods on
 ### Skill lifecycle
 
 - Third-party project Skills are managed by the Skills CLI, with their sources recorded in `skills-lock.json`.
+- Use `npx skills list` for inventory when needed.
 - Install, update, and remove third-party Skills only with the corresponding `npx skills` command; updates and removals require explicit user authorization.
+- Treat `npx skills check` as a potentially networked or locally mutating check; obtain user authorization before running it. It is not an ordinary side-effect-free status check.
 - Gloaming-owned Skills are authoritative in repository Git, are not recorded in `skills-lock.json`, and are not managed by `npx skills update/remove`.
 - Global Skills stay outside the project directory and project lockfile.
 
 ### Loading
 
-| Mode                                   | Rules                                                                                                                       |
-| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Always-on                              | `core`, `ponytail`, `layering`, `structure`, `testing-database-safety`, `infrastructure-operations`, `codebase-exploration` |
-| Glob (when matching paths are in play) | `backend` (`apps/backend/**`), `frontend` (`apps/web/**`), `packages` (`packages/**`)                                       |
-| On demand                              | Project skills (by description) → MCP if skills insufficient                                                                |
+| Mode                                   | Rules                                                                                                                                               |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Always-on                              | `core`, `ponytail`, `layering`, `structure`, `testing-database-safety`, `infrastructure-operations`, `codebase-exploration`                         |
+| Glob (when matching paths are in play) | `backend` (`apps/backend/**`), `frontend` (`apps/web/**`), `packages` (`packages/**`)                                                               |
+| On demand                              | Select a matching project/Gloaming-owned Skill or third-party Skill by description; use official docs or MCP for current/external facts when needed |
 
-### Precedence (first wins on conflict)
+### Instruction authority
 
-1. Tooling (ESLint, Prettier, typecheck, tests)
-2. `core` — Ask/Never, decision gate, TDD, security, DoD
-3. `ponytail` — coding minimalism / ladder
-4. `layering` — where a concern belongs
-5. `structure` — create/delete/split/move files
-6. `infrastructure-operations` — env/infra discovery and ops methodology (defers to `core` / `testing-database-safety` for policy)
-7. `codebase-exploration` — when to prefer GitNexus; graph is navigation aid, source is SoT
-8. Glob rule for the touched app/package
-9. **[`DESIGN.md`](DESIGN.md)** for visual / UI appearance (`apps/web` UI)
-10. Project skills
-11. MCP (docs / live systems)
-12. **Filled** [`docs/product/`](docs/product/) for product-scope decisions
-13. User Rules
+Use this order to decide what should be done, whether it is allowed, and how to resolve an instruction conflict:
+
+1. Non-bypassable system, security, permission, and user-authorization boundaries.
+2. The user’s explicit goal, scope, and limits.
+3. Locked task behavior and the product/domain contracts in [`docs/product/`](docs/product/) and [`docs/adr/`](docs/adr/).
+4. `AGENTS.md` and `core` cross-agent hard constraints.
+5. Applicable path rules; for UI, use `DESIGN.md` then `frontend.mdc`.
+6. Gloaming-owned project Skills.
+7. The selected third-party Skill.
+8. Generic component defaults, general best practices, and Agent assumptions.
+
+An explicit user request may change an ordinary product preference, but it cannot bypass security, permission, or explicit authorization boundaries. If it conflicts with locked task behavior or a product/domain contract, report the conflict and obtain an explicit decision rather than silently choosing a side. If rules conflict with code reality, report the mismatch; do not silently select the rules or the code.
+
+Design Skills, third-party Skills, and component defaults may provide visual or implementation guidance, but may not change product behavior or the project design system.
+
+### Facts and verification sources
+
+Use these sources to decide whether something is true or whether the implementation passes:
+
+- Code, configuration, migrations, tests, and runtime state are the primary evidence.
+- Lint, formatting, type checks, tests, and builds are verification mechanisms; they do not decide product semantics.
+- MCP, official documentation, and Skills may provide current facts, external material, or operational guidance, but cannot override project contracts.
+- GitNexus is graph navigation and impact analysis; verify its conclusions against source.
+- When verification fails, fix it, report it, or ask the user to decide. Never use instruction priority to bypass a failed check.
 
 ### Index
 
-| Rule                                                                         | Load              | Role                                                        |
-| ---------------------------------------------------------------------------- | ----------------- | ----------------------------------------------------------- |
-| [core.mdc](.cursor/rules/core.mdc)                                           | Always            | Constitution, gate, Ask/Never, TDD, DoD, router             |
-| [ponytail.mdc](.cursor/rules/ponytail.mdc)                                   | Always            | Lazy-senior ladder before writing code                      |
-| [layering.mdc](.cursor/rules/layering.mdc)                                   | Always            | Package graph, concern placement, cross-layer order         |
-| [structure.mdc](.cursor/rules/structure.mdc)                                 | Always            | File/dir create/delete/split/move; feature UI size ceiling  |
-| [testing-database-safety.mdc](.cursor/rules/testing-database-safety.mdc)     | Always            | Test DB isolation; AI agent pre-test checks                 |
-| [infrastructure-operations.mdc](.cursor/rules/infrastructure-operations.mdc) | Always            | Env/infra discovery — config first, runtime when needed     |
-| [codebase-exploration.mdc](.cursor/rules/codebase-exploration.mdc)           | Always            | Prefer GitNexus for cross-module explore/impact; verify src |
-| [backend.mdc](.cursor/rules/backend.mdc)                                     | `apps/backend/**` | Hono API conventions                                        |
-| [frontend.mdc](.cursor/rules/frontend.mdc)                                   | `apps/web/**`     | Next.js / UI; feature page composition (anti–god component) |
-| [packages.mdc](.cursor/rules/packages.mdc)                                   | `packages/**`     | Shared package conventions                                  |
+| Rule                                                                         | Load              | Role                                                             |
+| ---------------------------------------------------------------------------- | ----------------- | ---------------------------------------------------------------- |
+| [core.mdc](.cursor/rules/core.mdc)                                           | Always            | Constitution, gate, Ask/Never, TDD, DoD, router                  |
+| [ponytail.mdc](.cursor/rules/ponytail.mdc)                                   | Always            | Lazy-senior ladder before writing code                           |
+| [layering.mdc](.cursor/rules/layering.mdc)                                   | Always            | Package graph, concern placement, cross-layer order              |
+| [structure.mdc](.cursor/rules/structure.mdc)                                 | Always            | Structural hard boundaries + `repository-structure` routing      |
+| [testing-database-safety.mdc](.cursor/rules/testing-database-safety.mdc)     | Always            | Test database hard boundaries + `test-database-workflow` routing |
+| [infrastructure-operations.mdc](.cursor/rules/infrastructure-operations.mdc) | Always            | Env/infra discovery — config first, runtime when needed          |
+| [codebase-exploration.mdc](.cursor/rules/codebase-exploration.mdc)           | Always            | Prefer GitNexus for cross-module explore/impact; verify src      |
+| [backend.mdc](.cursor/rules/backend.mdc)                                     | `apps/backend/**` | Hono API conventions                                             |
+| [frontend.mdc](.cursor/rules/frontend.mdc)                                   | `apps/web/**`     | Next.js / UI; feature page composition (anti–god component)      |
+| [packages.mdc](.cursor/rules/packages.mdc)                                   | `packages/**`     | Shared package conventions                                       |
 
 ## Language
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   computeChapterProgress,
+  mergeReadingCompletion,
   mergeReadingPosition,
   NO_CHAPTERS_COMPLETED,
   updateReadingStateBodySchema,
@@ -106,5 +107,12 @@ describe('mergeReadingPosition', () => {
   it('resets only when restart supplies the explicit first position', () => {
     expect(mergeReadingPosition({ action: 'restart', currentPartId: 'p3', restartPartId: 'p1' })).toBe('p1');
     expect(mergeReadingPosition({ action: 'restart', currentPartId: 'p3' })).toBe('p3');
+  });
+});
+
+describe('mergeReadingCompletion', () => {
+  it('keeps the furthest completion when an older write arrives', () => {
+    expect(mergeReadingCompletion(3, 1)).toBe(3);
+    expect(mergeReadingCompletion(1, 3)).toBe(3);
   });
 });

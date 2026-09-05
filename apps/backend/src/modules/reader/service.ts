@@ -1,12 +1,15 @@
 import { randomUUID } from 'node:crypto';
 
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 
 import type { readingPart as readingPartTable } from '@gloaming/db';
 import { readingState as readingStateTable } from '@gloaming/db';
 import {
   computeChapterProgress,
+  mergeReadingCompletion,
+  mergeReadingPosition,
   NO_CHAPTERS_COMPLETED,
+  type PartSortOrder,
   type ReaderPartData,
   type ReaderPartsData,
   type ReadingState,
@@ -62,13 +65,14 @@ function toWorkSummary(
   };
 }
 
-function toReadingState(row: StateRow, parts: PartRow[]): ReadingState {
-  const partSortOrders = sortedParts(parts).map((part) => ({ sortOrder: part.sortOrder }));
+function toReadingState(row: StateRow, parts: PartSortOrder[]): ReadingState {
+  const partSortOrders = parts.map((part) => ({ sortOrder: part.sortOrder }));
   const completedThrough = row.completedThroughSortOrder ?? NO_CHAPTERS_COMPLETED;
   return {
     status: row.status as ReadingState['status'],
     currentPartId: row.currentPartId,
     completedThroughSortOrder: completedThrough,
+    revision: row.revision,
     progressRatio: computeChapterProgress({
       status: row.status as ReadingState['status'],
       completedThroughSortOrder: completedThrough,
@@ -95,10 +99,6 @@ function nextPartAfter(parts: PartRow[], current: PartRow): PartRow | null {
     return null;
   }
   return ordered[index + 1] ?? null;
-}
-
-function maxCompletedThrough(current: number, candidate: number): number {
-  return Math.max(current, candidate);
 }
 
 export async function getReaderParts(workId: string): Promise<ReaderPartsData> {
@@ -150,15 +150,6 @@ export async function getReadingState(userId: string, workId: string): Promise<R
   return toReadingState(row, parts);
 }
 
-async function loadStateRow(userId: string, workId: string): Promise<StateRow | null> {
-  const [row] = await db
-    .select()
-    .from(readingStateTable)
-    .where(and(eq(readingStateTable.userId, userId), eq(readingStateTable.workId, workId)))
-    .limit(1);
-  return row ?? null;
-}
-
 export async function updateReadingState(
   userId: string,
   workId: string,
@@ -168,82 +159,16 @@ export async function updateReadingState(
   const ordered = sortedParts(parts);
   const firstPart = ordered[0]!;
   const now = new Date();
-  const existing = await loadStateRow(userId, workId);
+  const state = await db.transaction(async (tx) => {
+    let [existing] = await tx
+      .select()
+      .from(readingStateTable)
+      .where(and(eq(readingStateTable.userId, userId), eq(readingStateTable.workId, workId)))
+      .for('update')
+      .limit(1);
 
-  const resolvePartId = (preferred?: string | null): string => {
-    if (preferred && parts.some((part) => part.id === preferred)) {
-      return preferred;
-    }
-    if (existing?.currentPartId && parts.some((part) => part.id === existing.currentPartId)) {
-      return existing.currentPartId;
-    }
-    return firstPart.id;
-  };
-
-  if (input.action === 'add_to_shelf') {
-    if (existing) {
-      await touchReadingDay(userId);
-      return toReadingState(existing, parts);
-    }
-    const [created] = await db
-      .insert(readingStateTable)
-      .values({
-        id: randomUUID(),
-        userId,
-        workId,
-        currentPartId: firstPart.id,
-        completedThroughSortOrder: NO_CHAPTERS_COMPLETED,
-        status: 'in_progress',
-        addedAt: now,
-        lastReadAt: now,
-        completedAt: null,
-      })
-      .returning();
-    if (!created) {
-      throw new AppError(500, 'Failed to create reading state');
-    }
-    await touchReadingDay(userId);
-    return toReadingState(created, parts);
-  }
-
-  if (input.action === 'open') {
-    const partId = resolvePartId(input.partId);
-    if (!existing) {
-      const [created] = await db
-        .insert(readingStateTable)
-        .values({
-          id: randomUUID(),
-          userId,
-          workId,
-          currentPartId: partId,
-          completedThroughSortOrder: NO_CHAPTERS_COMPLETED,
-          status: 'in_progress',
-          addedAt: now,
-          lastReadAt: now,
-          completedAt: null,
-        })
-        .returning();
-      if (!created) {
-        throw new AppError(500, 'Failed to create reading state');
-      }
-      await touchReadingDay(userId);
-      return toReadingState(created, parts);
-    }
-    const [updated] = await db
-      .update(readingStateTable)
-      .set({ currentPartId: partId, lastReadAt: now })
-      .where(eq(readingStateTable.id, existing.id))
-      .returning();
-    if (!updated) {
-      throw new NotFoundError('Reading state');
-    }
-    await touchReadingDay(userId);
-    return toReadingState(updated, parts);
-  }
-
-  if (input.action === 'restart') {
-    if (!existing) {
-      const [created] = await db
+    if (!existing && (input.action === 'add_to_shelf' || input.action === 'open' || input.action === 'restart')) {
+      const [created] = await tx
         .insert(readingStateTable)
         .values({
           id: randomUUID(),
@@ -256,106 +181,126 @@ export async function updateReadingState(
           lastReadAt: now,
           completedAt: null,
         })
+        .onConflictDoNothing({ target: [readingStateTable.userId, readingStateTable.workId] })
         .returning();
-      if (!created) {
-        throw new AppError(500, 'Failed to create reading state');
+      existing = created;
+      if (!existing) {
+        [existing] = await tx
+          .select()
+          .from(readingStateTable)
+          .where(and(eq(readingStateTable.userId, userId), eq(readingStateTable.workId, workId)))
+          .for('update')
+          .limit(1);
       }
-      await touchReadingDay(userId);
-      return toReadingState(created, parts);
     }
-    const [updated] = await db
-      .update(readingStateTable)
-      .set({
+
+    if (!existing) {
+      throw new NotFoundError('Reading state');
+    }
+    if (input.expectedRevision != null && input.expectedRevision !== existing.revision) {
+      throw new AppError(409, 'Reading state revision conflict');
+    }
+
+    const updateState = async (changes: Partial<typeof readingStateTable.$inferInsert>): Promise<StateRow> => {
+      const [updated] = await tx
+        .update(readingStateTable)
+        .set({
+          ...changes,
+          revision: sql`${readingStateTable.revision} + 1`,
+        })
+        .where(and(eq(readingStateTable.id, existing.id), eq(readingStateTable.revision, existing.revision)))
+        .returning();
+      if (!updated) {
+        throw new AppError(409, 'Reading state revision conflict');
+      }
+      return updated;
+    };
+
+    if (input.action === 'add_to_shelf') {
+      return existing;
+    }
+
+    const currentPart = existing.currentPartId ? parts.find((part) => part.id === existing.currentPartId) : undefined;
+    const currentPartId = currentPart?.id ?? null;
+    const requestedPartId = input.partId && parts.some((part) => part.id === input.partId) ? input.partId : undefined;
+
+    if (input.action === 'open') {
+      const mergedPartId = mergeReadingPosition({
+        action: input.action,
+        currentPartId,
+        requestedPartId,
+      });
+      return updateState({ currentPartId: mergedPartId ?? firstPart.id, lastReadAt: now });
+    }
+
+    if (input.action === 'restart') {
+      const mergedPartId = mergeReadingPosition({
+        action: input.action,
+        currentPartId,
+        restartPartId: requestedPartId,
+      });
+      return updateState({
         status: 'in_progress',
-        currentPartId: firstPart.id,
+        currentPartId: mergedPartId ?? firstPart.id,
         completedThroughSortOrder: NO_CHAPTERS_COMPLETED,
         completedAt: null,
         lastReadAt: now,
-      })
-      .where(eq(readingStateTable.id, existing.id))
-      .returning();
-    if (!updated) {
-      throw new NotFoundError('Reading state');
+      });
     }
-    await touchReadingDay(userId);
-    return toReadingState(updated, parts);
-  }
 
-  if (!existing) {
-    throw new NotFoundError('Reading state');
-  }
-
-  if (input.action === 'complete_chapter') {
-    const current = existing.currentPartId ? findPart(parts, existing.currentPartId) : firstPart;
-    const completedThrough = maxCompletedThrough(
-      existing.completedThroughSortOrder ?? NO_CHAPTERS_COMPLETED,
-      current.sortOrder,
-    );
-    const next = input.nextPartId != null ? findPart(parts, input.nextPartId) : nextPartAfter(parts, current);
-    if (!next) {
-      throw new AppError(400, 'No next chapter — use finish to complete the book');
-    }
-    const [updated] = await db
-      .update(readingStateTable)
-      .set({
+    if (input.action === 'complete_chapter') {
+      const current = currentPart ?? firstPart;
+      const completedThrough = mergeReadingCompletion(
+        existing.completedThroughSortOrder ?? NO_CHAPTERS_COMPLETED,
+        current.sortOrder,
+      );
+      const next = input.nextPartId != null ? findPart(parts, input.nextPartId) : nextPartAfter(parts, current);
+      if (!next) {
+        throw new AppError(400, 'No next chapter — use finish to complete the book');
+      }
+      return updateState({
         currentPartId: next.id,
         completedThroughSortOrder: completedThrough,
         status: 'in_progress',
+        completedAt: null,
         lastReadAt: now,
-      })
-      .where(eq(readingStateTable.id, existing.id))
-      .returning();
-    if (!updated) {
-      throw new NotFoundError('Reading state');
+      });
     }
-    await touchReadingDay(userId);
-    return toReadingState(updated, parts);
-  }
 
-  if (input.action === 'navigate') {
-    const target = findPart(parts, input.partId!);
-    const current = existing.currentPartId ? findPart(parts, existing.currentPartId) : firstPart;
-    let completedThrough = existing.completedThroughSortOrder ?? NO_CHAPTERS_COMPLETED;
-    if (target.sortOrder > current.sortOrder) {
-      completedThrough = maxCompletedThrough(completedThrough, target.sortOrder - 1);
-    }
-    const [updated] = await db
-      .update(readingStateTable)
-      .set({
+    if (input.action === 'navigate') {
+      const target = findPart(parts, input.partId!);
+      const current = currentPart ?? firstPart;
+      let completedThrough = existing.completedThroughSortOrder ?? NO_CHAPTERS_COMPLETED;
+      if (target.sortOrder > current.sortOrder) {
+        completedThrough = mergeReadingCompletion(completedThrough, target.sortOrder - 1);
+      }
+      return updateState({
         currentPartId: target.id,
         completedThroughSortOrder: completedThrough,
         status: 'in_progress',
+        completedAt: null,
         lastReadAt: now,
-      })
-      .where(eq(readingStateTable.id, existing.id))
-      .returning();
-    if (!updated) {
-      throw new NotFoundError('Reading state');
+      });
     }
-    await touchReadingDay(userId);
-    return toReadingState(updated, parts);
-  }
 
-  if (input.action === 'finish') {
-    const maxSort = ordered[ordered.length - 1]!.sortOrder;
-    const [updated] = await db
-      .update(readingStateTable)
-      .set({
+    if (input.action === 'finish') {
+      const maxSort = ordered[ordered.length - 1]!.sortOrder;
+      return updateState({
         status: 'completed',
-        completedThroughSortOrder: maxSort,
+        completedThroughSortOrder: mergeReadingCompletion(
+          existing.completedThroughSortOrder ?? NO_CHAPTERS_COMPLETED,
+          maxSort,
+        ),
         completedAt: existing.completedAt ?? now,
         lastReadAt: now,
-      })
-      .where(eq(readingStateTable.id, existing.id))
-      .returning();
-    if (!updated) {
-      throw new NotFoundError('Reading state');
+      });
     }
-    await touchReadingDay(userId);
-    return toReadingState(updated, parts);
-  }
 
-  throw new AppError(400, 'Unsupported action');
+    throw new AppError(400, 'Unsupported action');
+  });
+
+  await touchReadingDay(userId);
+  return toReadingState(state, parts);
 }
 
 export { getPublishedPartAudioTrack, toReadingState };

@@ -1,7 +1,7 @@
 import { eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { readingWork as readingWorkTable, user as userTable } from '@gloaming/db';
+import { readingState as readingStateTable, readingWork as readingWorkTable, user as userTable } from '@gloaming/db';
 import { type ReaderPartsData, type ReadingState } from '@gloaming/shared/api/reader';
 import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 
@@ -116,15 +116,46 @@ describe('Reader HTTP', () => {
     const partRes = await app.request(`/api/reader/parts/${partId}`);
     expect(partRes.status).toBe(200);
 
-    const open = await app.request(`/api/reader/works/${work.id}/state`, {
+    const [open, addToShelf] = await Promise.all([
+      app.request(`/api/reader/works/${work.id}/state`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
+        body: JSON.stringify({ action: 'open' }),
+      }),
+      app.request(`/api/reader/works/${work.id}/state`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
+        body: JSON.stringify({ action: 'add_to_shelf' }),
+      }),
+    ]);
+    expect(open.status).toBe(200);
+    expect(addToShelf.status).toBe(200);
+    const opened = (await open.json()) as ReadingState;
+    const [learnerRow] = await db
+      .select({ id: userTable.id })
+      .from(userTable)
+      .where(eq(userTable.email, learner.email))
+      .limit(1);
+    const stateRows = await db.select().from(readingStateTable).where(eq(readingStateTable.userId, learnerRow!.id));
+    expect(stateRows.filter((row) => row.workId === work.id)).toHaveLength(1);
+    expect(opened.revision).toEqual(expect.any(Number));
+    expect(opened.status).toBe('in_progress');
+    expect(opened.progressRatio).toBe(0);
+
+    const currentOpen = await app.request(`/api/reader/works/${work.id}/state`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
       body: JSON.stringify({ action: 'open' }),
     });
-    expect(open.status).toBe(200);
-    const opened = (await open.json()) as ReadingState;
-    expect(opened.status).toBe('in_progress');
-    expect(opened.progressRatio).toBe(0);
+    expect(currentOpen.status).toBe(200);
+    expect((currentOpen.headers.get('content-type') ?? '').toLowerCase()).toContain('application/json');
+
+    const staleOpen = await app.request(`/api/reader/works/${work.id}/state`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
+      body: JSON.stringify({ action: 'open', expectedRevision: opened.revision }),
+    });
+    expect(staleOpen.status).toBe(409);
 
     const finish = await app.request(`/api/reader/works/${work.id}/state`, {
       method: 'PATCH',
@@ -134,12 +165,25 @@ describe('Reader HTTP', () => {
     expect(finish.status).toBe(200);
     expect(((await finish.json()) as ReadingState).progressRatio).toBe(100);
 
+    const navigateAfterFinish = await app.request(`/api/reader/works/${work.id}/state`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
+      body: JSON.stringify({ action: 'navigate', partId }),
+    });
+    expect(navigateAfterFinish.status).toBe(200);
+    const navigated = (await navigateAfterFinish.json()) as ReadingState;
+    expect(navigated.status).toBe('in_progress');
+    expect(navigated.completedAt).toBeNull();
+
     const restart = await app.request(`/api/reader/works/${work.id}/state`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
       body: JSON.stringify({ action: 'restart' }),
     });
     expect(restart.status).toBe(200);
-    expect(((await restart.json()) as ReadingState).progressRatio).toBe(0);
+    const restarted = (await restart.json()) as ReadingState;
+    expect(restarted.progressRatio).toBe(0);
+    expect(restarted.currentPartId).toBe(partId);
+    expect(restarted.completedAt).toBeNull();
   });
 });

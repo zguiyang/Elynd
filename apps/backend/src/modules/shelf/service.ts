@@ -1,14 +1,13 @@
 import { and, desc, eq, ne } from 'drizzle-orm';
 
 import { readingState as readingStateTable, readingWork as readingWorkTable } from '@gloaming/db';
-import { computeChapterProgress, NO_CHAPTERS_COMPLETED, type ReadingState } from '@gloaming/shared/api/reader';
 import { SHELF_ITEMS_LIMIT, type ShelfData } from '@gloaming/shared/api/shelf';
 
 import { db } from '@/db';
+import { toReadingState } from '@/modules/reader/service';
 import { loadPartSortOrdersByWorkIds, loadTagsByWorkIds } from '@/modules/works/service';
 
 type WorkRow = typeof readingWorkTable.$inferSelect;
-type StateRow = typeof readingStateTable.$inferSelect;
 
 function toIso(value: Date): string {
   return value.toISOString();
@@ -22,23 +21,6 @@ function toWorkSummary(row: WorkRow, tags: string[]) {
     tags,
     coverAssetId: row.coverAssetId,
     publishedAt: row.publishedAt ? toIso(row.publishedAt) : null,
-  };
-}
-
-function toState(row: StateRow, parts: { sortOrder: number }[]): ReadingState {
-  const completedThrough = row.completedThroughSortOrder ?? NO_CHAPTERS_COMPLETED;
-  return {
-    status: row.status as ReadingState['status'],
-    currentPartId: row.currentPartId,
-    completedThroughSortOrder: completedThrough,
-    progressRatio: computeChapterProgress({
-      status: row.status as ReadingState['status'],
-      completedThroughSortOrder: completedThrough,
-      parts,
-    }),
-    totalPartCount: parts.length,
-    lastReadAt: toIso(row.lastReadAt),
-    completedAt: row.completedAt ? toIso(row.completedAt) : null,
   };
 }
 
@@ -86,12 +68,12 @@ export async function getShelf(userId: string): Promise<ShelfData> {
     current: currentRow
       ? {
           work: toWorkSummary(currentRow.work, tagsByWork.get(currentRow.work.id) ?? []),
-          state: toState(currentRow.state, partsByWork.get(currentRow.work.id) ?? []),
+          state: toReadingState(currentRow.state, partsByWork.get(currentRow.work.id) ?? []),
         }
       : null,
     items: itemRows.map((row) => ({
       work: toWorkSummary(row.work, tagsByWork.get(row.work.id) ?? []),
-      state: toState(row.state, partsByWork.get(row.work.id) ?? []),
+      state: toReadingState(row.state, partsByWork.get(row.work.id) ?? []),
     })),
   };
 }

@@ -60,6 +60,11 @@ export function mergeReadingPosition(input: {
   return input.requestedPartId ?? input.currentPartId;
 }
 
+/** Completion never moves backward; restart is the explicit reset operation. */
+export function mergeReadingCompletion(current: number, incoming: number): number {
+  return Math.max(current, incoming);
+}
+
 /** Chapter-based progress: completed parts / total parts. */
 export function computeChapterProgress(input: {
   status: ReadingStateStatus;

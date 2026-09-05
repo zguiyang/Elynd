@@ -160,5 +160,18 @@ describe('Shelf HTTP', () => {
     expect(shelfData.items).toHaveLength(1);
     expect(shelfData.items[0]?.work.id).toBe(first.id);
     expect(shelfData.items[0]?.state.status).toBe('completed');
+
+    const readerCurrent = await app.request(`/api/reader/works/${second.id}/state`, {
+      headers: { cookie: learner.cookie },
+    });
+    const readerCompleted = await app.request(`/api/reader/works/${first.id}/state`, {
+      headers: { cookie: learner.cookie },
+    });
+    const readerCurrentData = (await readerCurrent.json()) as {
+      state: NonNullable<ShelfData['current']>['state'];
+    };
+    const readerCompletedData = (await readerCompleted.json()) as { state: ShelfData['items'][number]['state'] };
+    expect(shelfData.current?.state).toEqual(readerCurrentData.state);
+    expect(shelfData.items[0]?.state).toEqual(readerCompletedData.state);
   });
 });

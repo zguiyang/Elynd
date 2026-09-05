@@ -8,7 +8,8 @@ alwaysApply: false
 
 Hono API on Node (`@hono/node-server`). Auth: **Better Auth**.
 
-Placement: `layering` + `structure`. Schema: `@gloaming/db` (Drizzle).
+Follow the package and ownership boundaries in `AGENTS.md`. Schema lives in
+`@gloaming/db` (Drizzle); use `repository-structure` for structural changes.
 
 ## Directory layout
 
@@ -31,17 +32,17 @@ apps/backend/
 
 ## Core rules
 
-| Rule | Detail |
-| --- | --- |
-| No RoR controllers | Handlers on `app.get/post` or module `route.ts`; prefer path inference |
-| Route thin | Validate → call service → status/JSON. No DB orchestration in routes |
-| Service thick | Business rules; no `c.json` / raw Context |
-| `lib/` | Technical only (redis, queue, env, logger). No `modules/` imports |
-| Schema | **Only** in `packages/db` — import `@gloaming/db` / `@gloaming/db/schema` |
-| Auth | Better Auth at `/api/auth/*` via `auth.handler`; do not reimplement login/register |
-| Admin auth | Any `/api/admin/**` route must use `requireAdmin`; hiding navigation or relying on web proxy is not authorization |
-| Validation | Zod (`@hono/zod-validator` or shared schemas) |
-| Errors | Self-owned Hono APIs return `{ error, details? }`; use `sendError` / `sendValidationError` from `src/lib/response.ts` in middleware and handlers |
+| Rule               | Detail                                                                                                                                           |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| No RoR controllers | Handlers on `app.get/post` or module `route.ts`; prefer path inference                                                                           |
+| Route thin         | Validate → call service → status/JSON. No DB orchestration in routes                                                                             |
+| Service thick      | Business rules; no `c.json` / raw Context                                                                                                        |
+| `lib/`             | Technical only (redis, queue, env, logger). No `modules/` imports                                                                                |
+| Schema             | **Only** in `packages/db` — import `@gloaming/db` / `@gloaming/db/schema`                                                                        |
+| Auth               | Better Auth at `/api/auth/*` via `auth.handler`; do not reimplement login/register                                                               |
+| Admin auth         | Any `/api/admin/**` route must use `requireAdmin`; hiding navigation or relying on web proxy is not authorization                                |
+| Validation         | Zod (`@hono/zod-validator` or shared schemas)                                                                                                    |
+| Errors             | Self-owned Hono APIs return `{ error, details? }`; use `sendError` / `sendValidationError` from `src/lib/response.ts` in middleware and handlers |
 
 Better Auth native `/api/auth/*` responses are allowed to keep Better Auth's contract; do not wrap or normalize those endpoints locally.
 

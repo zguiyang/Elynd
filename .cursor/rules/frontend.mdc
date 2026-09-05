@@ -8,7 +8,8 @@ alwaysApply: false
 
 Next.js App Router, React, TanStack Form + Query, Better Auth **client** (`lib/auth` → Hono `/api/auth/*`), Tailwind CSS **v4**, shadcn/base-nova under `components/ui/`.
 
-Placement: **`layering`** + **`structure`**.
+Follow the package and ownership boundaries in `AGENTS.md`; use
+`repository-structure` for structural changes.
 
 ## Naming
 
@@ -20,35 +21,35 @@ Feature/component files: `kebab-case` (`sign-in-form.tsx`); PascalCase exports. 
 
 ## Layout
 
-| Layer | Location | Pattern |
-| --- | --- | --- |
-| Routes | `app/**` | thin pages; compose features |
-| Features | `features/**` | domain UI, forms, feature hooks |
-| Design system | `components/ui/` | shadcn atoms only |
-| Shared non-feature UI | `components/` | providers/shell |
-| Auth client | `lib/auth/` | `better-auth/react` client; BA session cookie via `/api/auth/*` proxy |
-| Server state | `lib/query/` | TanStack Query |
-| Client UI state | `stores/` | Zustand UI-only (create when needed) |
-| Validation | `lib/validations/` | form Zod; auth bounds from `@gloaming/shared/auth/policy` |
-| Constants | `constants/` | literals used 2+ times |
-| Assets | `public/` | optional (`.gitkeep` OK) |
+| Layer                 | Location           | Pattern                                                               |
+| --------------------- | ------------------ | --------------------------------------------------------------------- |
+| Routes                | `app/**`           | thin pages; compose features                                          |
+| Features              | `features/**`      | domain UI, forms, feature hooks                                       |
+| Design system         | `components/ui/`   | shadcn atoms only                                                     |
+| Shared non-feature UI | `components/`      | providers/shell                                                       |
+| Auth client           | `lib/auth/`        | `better-auth/react` client; BA session cookie via `/api/auth/*` proxy |
+| Server state          | `lib/query/`       | TanStack Query                                                        |
+| Client UI state       | `stores/`          | Zustand UI-only (create when needed)                                  |
+| Validation            | `lib/validations/` | form Zod; auth bounds from `@gloaming/shared/auth/policy`             |
+| Constants             | `constants/`       | literals used 2+ times                                                |
+| Assets                | `public/`          | optional (`.gitkeep` OK)                                              |
 
 - Prefer existing `components/ui/`; shadcn CLI; ask before editing `components/ui/**` source
-- Zustand: UI-only — never API/server SoT (`layering`)
+- Zustand: UI-only — never API/server SoT.
 
 ### Feature page composition (anti–god component)
 
 Prefer **compose many focused components** over one 700–1000 line page module.
 
-| Rule | Detail |
-| --- | --- |
-| Thin route | `app/**/page.tsx` only passes params / renders a feature entry |
-| Page = orchestrator | `*-page.tsx` owns data load, empty/error gates, layout chrome; delegates UI surfaces |
-| Colocate siblings | Page-owned pieces live next to the page under `features/<domain>/` (same dir), not in a catch-all `components/` |
-| Size ceiling | Soft ~300–400 lines; hard split at **>500** — see `structure` Feature UI size ceiling |
-| Isolation | Keep selection state, chat/rail state, form editor state in their owning child; parent passes props / callbacks |
-| When to split vs wait | Split structure **before** wiring the next real API into a megacomponent — do not wait for “full real data” to carve boundaries |
-| Not this rule | Stub/mock honesty, data-flow bugs, and `formatXApiError = formatApiError` aliases — fix those separately; splitting alone does not fix them |
+| Rule                  | Detail                                                                                                                                      |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Thin route            | `app/**/page.tsx` only passes params / renders a feature entry                                                                              |
+| Page = orchestrator   | `*-page.tsx` owns data load, empty/error gates, layout chrome; delegates UI surfaces                                                        |
+| Colocate siblings     | Page-owned pieces live next to the page under `features/<domain>/` (same dir), not in a catch-all `components/`                             |
+| Size ceiling          | Soft ~300–400 lines; hard split at **>500** by colocated UI concern                                                                          |
+| Isolation             | Keep selection state, chat/rail state, form editor state in their owning child; parent passes props / callbacks                             |
+| When to split vs wait | Split structure **before** wiring the next real API into a megacomponent — do not wait for “full real data” to carve boundaries             |
+| Not this rule         | Stub/mock honesty, data-flow bugs, and `formatXApiError = formatApiError` aliases — fix those separately; splitting alone does not fix them |
 
 Example shape:
 
@@ -63,157 +64,18 @@ Shared content helpers live in `features/content/content-model.ts` (cover tints,
 
 ## Styling
 
-Tailwind v4 (`@import "tailwindcss"`); semantic tokens over raw colors.
+Tailwind v4 (`@import "tailwindcss"`); use semantic tokens rather than raw
+feature colors. Read [`DESIGN.md`](../../DESIGN.md) before UI creation,
+restyling, or review: it is the sole owner of visual tokens, interaction
+philosophy, UI/product behavior, information economy, and admin density.
 
-Philosophy SSOT: [`DESIGN.md`](../../DESIGN.md) **Interaction philosophy** (why). This file (how + checklists). Design Skills supplement visual judgment only — they do not duplicate or override project interaction rules here.
-
-### Design Skill invocation contract
-
-Read the relevant `DESIGN.md` chapters first (especially `Interaction philosophy`, motion, tokens, information density, and UI/product behavior); do not load the full Design Skill collection by default. Design Skills are optional methods for visual judgment, not project authority. For visual and interaction decisions, use this fixed priority: user’s explicit task requirements → product docs, ADRs, and locked task behavior → `DESIGN.md` → this rule → the selected Design Skill → shadcn or other component defaults.
-
-#### Default design baseline
-
-Only for creating, refactoring, or reviewing UI, consider these on demand; they remain subordinate to `DESIGN.md`:
-
-- `design-taste-frontend` — landing, portfolio, and anti-generic frontend direction.
-- `redesign-existing-projects` — audit-led visual upgrades to an existing interface without breaking functionality.
-
-#### Specialist capabilities
-
-Load a specialist only when the task explicitly matches it. By default, choose at most one specialist per task unless the user explicitly asks to compare multiple approaches:
-
-- Brand identity and visual world: `brandkit`.
-- Strong motion or GSAP: `gpt-taste`.
-- High-end visual review: `high-end-visual-design`.
-- Image reference to frontend: `image-to-code`.
-- Web visual reference images: `imagegen-frontend-web`.
-- Mobile visual reference images: `imagegen-frontend-mobile`.
-- Industrial or brutalist style: `industrial-brutalist-ui`.
-- Minimal editorial style: `minimalist-ui`.
-- Stitch workflow: `stitch-design-taste`.
-
-Even when a specialist matches, do not directly adopt its hardcoded colors, fonts, radii, shadows, spacing, animation, or page structure. Map useful suggestions to `DESIGN.md` tokens and interaction boundaries first. In particular, `gpt-taste` scrolling pins, strong motion, and narrative pacing are allowed only when compatible with Gloaming’s nearly invisible motion and reading-first principles. `image-to-code` and `imagegen-*` outputs are reference material, not a new design system or product requirement. Industrial and minimalist styles are explicit choices; never apply them automatically to Reader, Admin, or ordinary product pages. Do not add an unauthorized dependency, generated image, motion library, or product feature because a Design Skill recommends it.
-
-Do not load a Design Skill for ordinary bug fixes, copy-only adjustments, or pure logic changes. The role of a UI Design Skill is to supplement project design judgment, never to replace `DESIGN.md`, product rules, or this behavior boundary.
-
-### UI design judgment (before styling)
-
-**UI rule stack:** apply the Design Skill invocation contract above: user task → product/ADR/locked behavior → [`DESIGN.md`](../../DESIGN.md) Interaction philosophy → this section → the selected Design Skill (**visual only**) → shadcn / component defaults **last**. Library form patterns do not override project interaction judgment.
-
-**Read order:** `DESIGN.md` Interaction philosophy → this section → UI implementation ladder below → the selected Design Skill if visual polish is in scope.
-
-**Default priority:** Remove → Simplify → Combine → Clarify → Polish. Never scaffold Label + Description + Card + Button first and style later.
-
-**Decision flow (every new or changed UI surface):**
-
-1. Product task — what must complete here?
-2. Minimum information — what cannot be inferred from title, tab, grouping, or control?
-3. Minimum interactions — fewest controls that finish the task
-4. Context inference — what does the user already know?
-5. Merge — can related actions share one control context?
-6. Delete — run Anti-Redundancy Checklist
-7. Polish — project tokens + shadcn + the selected Design Skill
-
-#### Information economy
-
-Each visible element must provide **unique** information or **unique** action. Before adding Label, Description, Helper text, Badge, status text, Heading, Divider, Card, Button, Icon button, or secondary action, ask:
-
-- Why does this exist?
-- Is this already represented elsewhere on the same surface?
-- If I remove it, does comprehension, discoverability, or function clearly suffer?
-
-If not → remove. **Not** “labels/descriptions/cards/buttons are bad” — keep any element with unique information, action, context, or discoverability for that audience and task.
-
-#### Behavior boundary (do not infer product behavior)
-
-UI judgment may merge controls, remove copy, or relocate actions. It must **not** change persistence, fetch timing, confirmation, or side effects without product/task basis.
-
-**Preserve unless the task explicitly requires otherwise:** explicit Save/Submit, APIs that save per field or per row, manual refresh, confirm dialogs, fetch-on-open, debounced auto-save, optimistic updates, delete confirmations.
-
-**Do not introduce without product/task basis:** auto-save, blur-save, immediate or optimistic persistence, automatic fetch or refresh on mount, automatic submission, automatic deletion, implicit confirmation, hidden side effects.
-
-If simplification would replace Save with auto-save (or similar) → mark **PRODUCT / BEHAVIOR**, keep current behavior, stop (`core` decision gate). Execution detail: [`DESIGN.md`](../../DESIGN.md) Interaction philosophy → **UI vs product behavior**.
-
-#### Interaction compression
-
-Assign every action to its **object** and **task** first:
-
-| Pattern | Prefer |
-| --- | --- |
-| Load list + pick item | One Select/Combobox with contextual refresh (icon in trigger row), not Fetch button + Select |
-| Toggle a setting | Switch with one label naming the **setting**, not label + "启用/Enabled" status text |
-| Edit one record | One save **surface** per editing context when product already uses form-level save — do not remove Save or switch to auto-save without product decision |
-| Row maintenance | Icon actions on the row (edit/delete/test), not a separate action bar for the same row |
-
-Standalone buttons stay when the action is page-scoped, destructive, or needs primary emphasis.
-
-#### Contextual actions
-
-Place actions adjacent to what they modify — field row end, Select trigger group, table row — instead of a detached button that repeats the same task.
-
-#### State representation
-
-- **Switch:** control = state. Label names the setting (`AI 模型`), not on/off. No parallel "启用" / "Enabled" text.
-- **Select / Combobox:** selected value = state. No redundant "已选择" badge.
-- **Badge / status line:** only for health, errors, or saved-vs-draft — not duplicate control state.
-- **Form vs collection:** no redundant status beside a form Switch; table/list status columns for scanning many rows are OK.
-- **a11y:** `aria-label` or visually hidden name when the visible UI is icon-only — not a second visible status word.
-
-#### Semantic redundancy
-
-Do not stack the same fact in title + description + field label + helper + badge. Page title + section + field name often already answer "what is this?"
-
-Description/helper text: **only** for non-obvious constraints (format, side effects, irreversible ops) — not restating the field name in prose.
-
-#### Admin UI (`features/admin/**`, `/admin/**`)
-
-**Scope:** stricter economy for admin/configuration only — not a global mandate to strip labels, descriptions, or text buttons from reader/consumer UI.
-
-Operators understand domain terms. Apply stricter economy:
-
-- One-line page intro when the task is non-obvious; skip when nav + layout already state the job.
-- No consumer-style helper on every field; Region/API Key/Model need labels, not paragraphs.
-- Prefer flat sections and row actions over Card → Card → Heading stacks for one task.
-- Tables/lists: inline icon actions; status column only when not inferable from row opacity/disabled state.
-- Same `DESIGN.md` tokens; denser spacing OK — not a separate theme.
-
-#### Anti-Redundancy Checklist (post-design, before polish)
-
-**Element audit** — for each visible element:
-
-- What unique information or action does it provide?
-- Already represented elsewhere?
-- Can this action merge into another control?
-- Removable without harm?
-
-**Interaction audit** — for each user task:
-
-- How many steps and independent controls?
-- Any controls separated without a task reason?
-- Can a standalone button become inline/contextual?
-
-**Density audit** — flag and remove:
-
-- redundant labels, descriptions, helper text, status text
-- unnecessary buttons, cards, dividers, headings
-- duplicated actions; decorative chrome without function
-
-Do **not** treat the checklist as “delete all labels/descriptions/badges/cards/buttons” or “icons always win.” Re-check against **Behavior boundary** before removing Save, confirm, or fetch controls.
-
-#### Component patterns (Gloaming)
-
-| Control | Rule |
-| --- | --- |
-| `Switch` | One label = setting name. Horizontal `Field` OK. No "启用" beside switch. |
-| `Select` / `Combobox` | Label = object (`模型`, `默认模型`). Refresh/fetch as sibling icon in trigger row when lists are remote. |
-| `Field` + `FieldDescription` | Max one description per field; must add constraint not in label. No Description + helper saying the same thing. |
-| `Card` | One task or one grouping level. No card inside card for a single form. Prefer bordered section when elevation adds nothing. |
-| Page header | `h1` + optional one-line subtitle. No subtitle that repeats tab label. |
-| Save | Form-level or explicit dirty-state Save when product uses batch save; per-row/per-key Save when API requires it — **never** swap Save for auto-save without **PRODUCT / BEHAVIOR** approval |
+For visual polish, select at most one task-relevant visual Skill. Map any useful
+output to `DESIGN.md`; it may not change product behavior, the design system, or
+dependencies.
 
 ### UI implementation ladder (visual polish last)
 
-Product UI must look like Gloaming (`DESIGN.md`) **after** interaction judgment above passes. Atoms are a means, not the goal.
+Use project visual language from `DESIGN.md`; atoms are a means, not the goal.
 
 1. Prefer **shadcn** atoms in `components/ui/` (add via CLI: `pnpm exec shadcn add …` from `apps/web`). Use variants/props first.
 2. Polish with **Tailwind `className`** on those atoms when defaults fall short.
@@ -222,7 +84,7 @@ Product UI must look like Gloaming (`DESIGN.md`) **after** interaction judgment 
 
 Do not hand-roll a parallel control system. Do not ship “used shadcn but ugly/default tooling” UIs.
 
-**System UI language:** Chinese for labels, nav, empty states, toasts, placeholders. Content field *values* may be EN/ZH.
+**System UI language:** Chinese for labels, nav, empty states, toasts, placeholders. Content field _values_ may be EN/ZH.
 
 **Base UI gotchas:** `Button` + `Link` → `nativeButton={false}`. Tabs active → `data-active`. Toggle pressed → `data-pressed`. Segmented filters: prefer `Tabs`; override list `h-8` with `h-auto` and pad triggers — avoid fixed-height fights.
 

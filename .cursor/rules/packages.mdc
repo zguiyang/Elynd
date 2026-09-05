@@ -6,19 +6,19 @@ alwaysApply: false
 
 # Packages (`packages/**`)
 
-| Package | Role |
-| --- | --- |
-| `@gloaming/shared` | Cross-app constants/types/policy for **2+** apps — no ORM |
-| `@gloaming/db` | Drizzle schema + migrations SSOT (Better Auth + app tables) |
+| Package            | Role                                                        |
+| ------------------ | ----------------------------------------------------------- |
+| `@gloaming/shared` | Cross-app constants/types/policy for **2+** apps — no ORM   |
+| `@gloaming/db`     | Drizzle schema + migrations SSOT (Better Auth + app tables) |
 
-Layering: `layering`. Cross-layer edits: `layering` propagation section.
+Follow the package and ownership boundaries in `AGENTS.md`.
 
 ## TypeScript
 
 - Extend `../../tsconfig.base.json`; local `rootDir`/`include` as needed
 - Source-first package: `exports` → `src/*.ts`, `tsc --noEmit` only (no `dist` / `build`)
 - Cross-package: `@gloaming/*` names, not relative across packages
-- Import suffixes: `core` **Never** (repo-wide). Packages use `allowImportingTsExtensions` + `noEmit`; ESLint enforces.
+- Packages use `allowImportingTsExtensions` + `noEmit`; ESLint enforces import suffixes.
 
 ## Ownership
 

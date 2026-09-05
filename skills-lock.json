@@ -17,7 +17,7 @@
       "source": "zguiyang/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/codebase-guardrails/SKILL.md",
-      "computedHash": "c3e38c1f78b8f416ebd8ebdc18be3b798f099b79d7450a875402394482a77674"
+      "computedHash": "639b3b6bc1862477e5f43d186292c28aef5821b82de11054061240299813f6ee"
     },
     "design-taste-frontend": {
       "source": "Leonxlnx/taste-skill",
@@ -89,7 +89,7 @@
       "source": "zguiyang/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/repository-structure/SKILL.md",
-      "computedHash": "a299a7a82642eab914795c08750f2801be44b21bbc59aec67484620b20c97ab9"
+      "computedHash": "74b4f85777f69f8c700f9650ba2244b02fb519224cc0f9945a7ab567af2ba693"
     },
     "shadcn": {
       "source": "shadcn/ui",

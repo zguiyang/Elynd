@@ -56,11 +56,11 @@ Exceptions: explicit user instruction for that path; obvious one-line bug fix; l
 
 **Never:** commit secrets/`.env` or local `docker-compose.yaml`; touch `node_modules/`; operate on production data; disable security middleware; start `dev:*`/`start`/`preview` without approval; `apps/web` ↔ `apps/backend` app-source imports; push without approval; TS/TSX imports with `.js`/`.mjs`/`.cjs`/`.jsx` suffixes (extensionless or `.ts`/`.tsx`; `.js` only when importing a real JavaScript file).
 
-## Skills before MCP
+## Skills and facts routing
 
-Load matching installed **skill(s)** by description first. A Skill provides guidance only; its presence does not prove that GitNexus MCP or CLI is executable. For GitNexus workflows, follow `codebase-exploration` and load an installed exploration or impact-analysis Skill when available; do not require a local Skill path or inventory Skill names in rules.
+Select a Skill or fact source by need; there is no fixed Skill-first rule. Use a matching project/Gloaming-owned Skill for project workflow and implementation boundaries, and use the corresponding official documentation or MCP for version-specific, real-time, or external-system facts. Use both when the task needs workflow guidance and current facts.
 
-Use MCP when the matching Skill lacks the fact, version-specific official docs or a live external system is needed, or the GitNexus policy requires graph analysis and MCP is available.
+A Skill provides guidance only; it cannot override project contracts, product behavior, security, permissions, or user authorization. MCP and official documentation provide facts or operational access, not a higher project authority. GitNexus guidance still depends on actual MCP/CLI availability; verify graph conclusions against source. Do not require a local Skill path or inventory Skill names in rules.
 
 ## Security
 
@@ -95,4 +95,4 @@ English imperative; one logical change; prefer subject-only. Format via commitli
 | Cross-module explore / impact / refactor / complex debug | `codebase-exploration` |
 | Product scope / build X? | `docs/product/` |
 
-Rule SoT: `.cursor/rules/`. Conflict order: tooling → `core` (Ask/Never/TDD/security) → `ponytail` (minimalism) → `layering` (placement) → `structure` (files) → `infrastructure-operations` → `codebase-exploration` → glob rules → `DESIGN.md` (UI look) → skills → MCP → `docs/product/` → User Rules.
+Rule routing: `AGENTS.md` defines cross-agent hard constraints and shared contracts; `.cursor/rules/` contains Cursor-specific and path-scoped rule bodies. Use the applicable glob rule and matching project Skill for implementation guidance, and use the repository’s evidence and verification sources to validate the result. Resolve instruction conflicts through `AGENTS.md`’s authority model rather than duplicating it here.

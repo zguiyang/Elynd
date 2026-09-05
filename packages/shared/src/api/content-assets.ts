@@ -5,6 +5,25 @@ import { ttsVoiceRoleValues, ttsWordTimingSchema } from '@gloaming/shared/api/tt
 export const CONTENT_ASSET_AUDIO_KINDS = ['audio_us', 'audio_uk'] as const;
 export type ContentAssetAudioKind = (typeof CONTENT_ASSET_AUDIO_KINDS)[number];
 
+/** Stable identity for one part/audio-role/source-content generation. */
+export function buildContentAssetGenerationKey(input: {
+  partId: string;
+  kind: ContentAssetAudioKind;
+  contentHash: string;
+}): string {
+  return `${input.partId}:${input.kind}:${input.contentHash}`;
+}
+
+/** Backend handoff facts for one DB-backed generation claim; not a learner response. */
+export const contentAssetGenerationClaimSchema = z.object({
+  generationKey: z.string().min(1),
+  generationToken: z.string().min(1),
+  generationClaimedAt: z.union([z.string(), z.date()]),
+  generationLeaseExpiresAt: z.union([z.string(), z.date()]),
+});
+
+export type ContentAssetGenerationClaim = z.infer<typeof contentAssetGenerationClaimSchema>;
+
 /** Map TTS voice role to content_asset.kind. */
 export function audioKindForRole(role: (typeof ttsVoiceRoleValues)[number]): ContentAssetAudioKind {
   return role === 'us' ? 'audio_us' : 'audio_uk';

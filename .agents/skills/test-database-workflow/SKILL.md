@@ -1,29 +1,34 @@
 ---
 name: test-database-workflow
 description: >-
-  Use for integration or functional tests, test databases, test migrations, seeds, SQL writes, or test cleanup; do not use for pure unit tests, read-only development-environment investigation, or ordinary code changes without database access.
+  Use for integration or functional tests that may migrate, seed, write, or
+  clean a database. Do not use for pure unit tests or read-only investigation.
 ---
 
 # Test database workflow
 
-Use this workflow for any test or AI action that can write to a database.
+Use the repository's isolated test-database configuration before any database
+write. This Skill does not authorize writes to development, staging, or
+production data.
 
-## Preflight
+## Establish the target
 
-1. Read [`apps/backend/.env.test.example`](../../../apps/backend/.env.test.example) and the actual test configuration.
-2. Confirm `TEST_DATABASE_URL` is present and its database name is exactly `gloaming_test`.
-3. If the variable is missing or the target is unclear, stop. Never fall back to `DATABASE_URL` or `gloaming_backend`.
+1. Read the test configuration, environment template, and test command for the
+   task.
+2. Confirm the connection is the explicitly designated test target and that it
+   is distinct from development and production.
+3. If the target, isolation, or command is unclear, stop and ask. Never infer a
+   fallback connection string or substitute a default database variable.
 
-## Test boundary
+## Keep test data bounded
 
-- Pure unit tests use mocks and do not need this workflow.
-- Integration and functional tests use `TEST_DATABASE_URL`; apply the test schema with `pnpm db:migrate:test` when required.
-- Manual development verification is read-only by default. Database writes require the test database or explicit user approval.
+- Use the project test runner, migration, fixture, and cleanup mechanisms.
+- Give created external records a test-specific identity where that aids safe
+  cleanup.
+- Track created records and clean up only data created by the test. Never use
+  truncate, unscoped deletes, or broad time/pattern matching as routine cleanup.
+- Prefer mocks for pure unit tests; use a real test database only when the
+  behavior under test requires it.
 
-## Safe data lifecycle
-
-- Use unique prefixes for records created by a test.
-- Track every created ID and clean up only those IDs in scoped teardown; never truncate or issue unscoped deletes.
-- Check the shared test wiring in [`apps/backend/tests/setup.ts`](../../../apps/backend/tests/setup.ts) and [`apps/backend/src/lib/env.ts`](../../../apps/backend/src/lib/env.ts).
-
-Functional test examples live in [`apps/backend/tests/functional/`](../../../apps/backend/tests/functional/); command entry points are in [`package.json`](../../../package.json).
+Follow stricter repository-specific data, migration, and authorization rules
+when they exist.

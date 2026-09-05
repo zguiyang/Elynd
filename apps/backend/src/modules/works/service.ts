@@ -48,7 +48,6 @@ import { rootLogger } from '@/lib/logger';
 import { enqueue } from '@/lib/queue';
 import { normalizeTag } from '@/lib/text';
 import { completeWorkflowStep, stepRunningStatus } from '@/lib/workflow';
-import { clearDerivedAssets } from '@/modules/content-parser/service';
 import { getWorksDerivedFreshness } from '@/modules/derived-freshness';
 import { deleteObject } from '@/modules/oss';
 import { computePartReadingStats, computeWorkReadingStats } from '@/modules/reading-stats/service';
@@ -1031,45 +1030,6 @@ export async function retryWorkflow(id: string, input: RetryWorkflowBody = {}): 
     { attempts: 2, jobId: `${STEP_JOB[step]}:${id}:${retryJobToken}` },
   );
   return getAdminWork(id);
-}
-
-/** Re-parse reset: parts, derived assets, AI outputs, extracted junctions, and filled metadata fields. */
-export async function resetParseStepOutputs(work: WorkRow): Promise<void> {
-  await clearDerivedAssets(work.id);
-  await db.delete(readingPartTable).where(eq(readingPartTable.workId, work.id));
-  await resetMetadataAiOutputs(work);
-  await db
-    .delete(readingWorkTagTable)
-    .where(and(eq(readingWorkTagTable.workId, work.id), eq(readingWorkTagTable.provenance, 'extracted')));
-  await db
-    .delete(readingWorkSourceTable)
-    .where(and(eq(readingWorkSourceTable.workId, work.id), eq(readingWorkSourceTable.provenance, 'extracted')));
-  await db
-    .update(readingWorkTable)
-    .set({
-      title: '',
-      author: '',
-      description: '',
-      coverAssetId: null,
-      descriptionProvenance: null,
-    })
-    .where(eq(readingWorkTable.id, work.id));
-}
-
-/** AI-output reset: ai-provenance tag/category associations and ai-filled fields. */
-export async function resetMetadataAiOutputs(work: WorkRow): Promise<void> {
-  await db
-    .delete(readingWorkTagTable)
-    .where(and(eq(readingWorkTagTable.workId, work.id), eq(readingWorkTagTable.provenance, 'ai')));
-  await db
-    .delete(readingWorkCategoryTable)
-    .where(and(eq(readingWorkCategoryTable.workId, work.id), eq(readingWorkCategoryTable.provenance, 'ai')));
-  if (work.descriptionProvenance === 'ai') {
-    await db
-      .update(readingWorkTable)
-      .set({ description: '', descriptionProvenance: null })
-      .where(eq(readingWorkTable.id, work.id));
-  }
 }
 
 export async function deleteWork(id: string): Promise<void> {

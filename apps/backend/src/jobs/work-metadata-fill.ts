@@ -9,6 +9,7 @@ import { JOB_METADATA_ENRICH } from '@/jobs/metadata-enrich';
 import { rootLogger } from '@/lib/logger';
 import { enqueue } from '@/lib/queue';
 import { claimWorkflowStep, failWorkflowStep, rotateWorkflowJobToken } from '@/lib/workflow';
+import { resetMetadataAiOutputs } from '@/modules/ingest-reset/service';
 import { fillWorkMetadata } from '@/modules/metadata-fill/service';
 
 export const JOB_METADATA_FILL = 'metadata-fill';
@@ -31,7 +32,6 @@ export async function processWorkMetadataFill(data: WorkMetadataFillJobData): Pr
     return { ok: true, workId: data.workId };
   }
   try {
-    const { resetMetadataAiOutputs } = await import('@/modules/works/service');
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, data.workId)).limit(1);
     if (work) {
       await resetMetadataAiOutputs(work);

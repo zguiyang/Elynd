@@ -13,6 +13,7 @@ import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
 import app from '@/app';
 import { db } from '@/db';
 import { processContentWork } from '@/modules/content-parser';
+import { resetMetadataAiOutputs } from '@/modules/ingest-reset/service';
 import { fillWorkMetadata } from '@/modules/metadata-fill/service';
 import { resetObjectStoreCache, setObjectStoreForTests } from '@/modules/oss';
 import { hashFileContent } from '@/modules/uploads/service';
@@ -295,12 +296,53 @@ describe('POST /api/admin/works/:id/workflow/retry', () => {
     expect(retry.status).toBe(200);
     expect(((await retry.json()) as { status: string }).status).toBe('processing');
 
+    const beforeParts = await db
+      .select({ id: readingPartTable.id })
+      .from(readingPartTable)
+      .where(eq(readingPartTable.workId, workId));
+    const staleImageKey = `stale/${workId}/image.png`;
+    const staleCoverKey = `stale/${workId}/cover.png`;
+    memory.store.set(staleImageKey, { body: Buffer.from('stale image'), contentType: 'image/png' });
+    memory.store.set(staleCoverKey, { body: Buffer.from('stale cover'), contentType: 'image/png' });
+    await db.insert(contentAssetTable).values([
+      {
+        id: `stale-image-${workId}`,
+        workId,
+        kind: 'image',
+        storageKey: staleImageKey,
+        mimeType: 'image/png',
+        contentHash: 'stale-image-hash',
+        status: 'ready',
+      },
+      {
+        id: `stale-cover-${workId}`,
+        workId,
+        kind: 'cover',
+        storageKey: staleCoverKey,
+        mimeType: 'image/png',
+        contentHash: 'stale-cover-hash',
+        status: 'ready',
+      },
+    ]);
+
     const [mid] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
     expect(mid!.status).toBe('processing');
 
     await processContentWork(workId);
     await db.update(readingWorkTable).set({ status: 'metadata' }).where(eq(readingWorkTable.id, workId));
     await fillWorkMetadata(workId);
+
+    const afterAssets = await db.select().from(contentAssetTable).where(eq(contentAssetTable.workId, workId));
+    expect(afterAssets.filter((asset) => asset.kind === 'image')).toHaveLength(1);
+    expect(afterAssets.filter((asset) => asset.kind === 'cover')).toHaveLength(1);
+    expect(memory.store.has(staleImageKey)).toBe(false);
+    expect(memory.store.has(staleCoverKey)).toBe(false);
+
+    const afterParts = await db
+      .select({ id: readingPartTable.id })
+      .from(readingPartTable)
+      .where(eq(readingPartTable.workId, workId));
+    expect(afterParts.map((part) => part.id)).not.toEqual(beforeParts.map((part) => part.id));
 
     const [after] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
     expect(after!.status).toBe('metadata');
@@ -321,7 +363,6 @@ describe('POST /api/admin/works/:id/workflow/retry', () => {
     expect(((await retry.json()) as { status: string }).status).toBe('metadata');
 
     // HTTP only queues — AI field wipe runs inside the fill job.
-    const { resetMetadataAiOutputs } = await import('@/modules/works/service');
     const [beforeReset] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
     expect(beforeReset!.description).toBe('AI filled summary');
     await resetMetadataAiOutputs(beforeReset!);

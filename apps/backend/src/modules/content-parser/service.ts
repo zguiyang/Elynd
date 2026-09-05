@@ -14,7 +14,8 @@ import { rootLogger } from '@/lib/logger';
 import { claimWorkflowStep, failWorkflowStep, workflowClaimWhere } from '@/lib/workflow';
 import { parserFor } from '@/modules/content-parser/registry';
 import type { ParsedContent } from '@/modules/content-parser/types';
-import { deleteObject, getObject, putObject } from '@/modules/oss';
+import { resetParseStepOutputs } from '@/modules/ingest-reset/service';
+import { getObject, putObject } from '@/modules/oss';
 import { computePartReadingStats, computeWorkReadingStats } from '@/modules/reading-stats/service';
 
 const ingestLogger = rootLogger.child({ module: 'ContentParser' });
@@ -52,38 +53,6 @@ async function loadOriginBytes(workId: string): Promise<Buffer> {
     throw new Error(`Origin file object missing: ${asset.storageKey}`);
   }
   return object.body;
-}
-
-/** Delete derived image/cover assets (objects + rows) — re-parse / workflow reset. */
-export async function clearDerivedAssets(workId: string): Promise<void> {
-  const rows = await db
-    .select({ id: contentAssetTable.id, storageKey: contentAssetTable.storageKey, kind: contentAssetTable.kind })
-    .from(contentAssetTable)
-    .where(and(eq(contentAssetTable.workId, workId), eq(contentAssetTable.kind, 'image')));
-  const cover = await db
-    .select({ id: contentAssetTable.id, storageKey: contentAssetTable.storageKey })
-    .from(contentAssetTable)
-    .where(and(eq(contentAssetTable.workId, workId), eq(contentAssetTable.kind, 'cover')))
-    .limit(1);
-
-  for (const row of [...rows, ...cover]) {
-    try {
-      await deleteObject(row.storageKey);
-    } catch (error) {
-      ingestLogger.warn({ err: error, workId, storageKey: row.storageKey }, 'Failed to delete derived asset object');
-    }
-  }
-
-  if (rows.length > 0) {
-    await db
-      .delete(contentAssetTable)
-      .where(and(eq(contentAssetTable.workId, workId), eq(contentAssetTable.kind, 'image')));
-  }
-  if (cover.length > 0) {
-    await db
-      .delete(contentAssetTable)
-      .where(and(eq(contentAssetTable.workId, workId), eq(contentAssetTable.kind, 'cover')));
-  }
 }
 
 /** Rewrite placeholder tokens to published asset URLs (or drop unresolved ones). */
@@ -135,7 +104,6 @@ export async function processContentWork(workId: string, retryJobToken?: string)
 
   try {
     // Reset previous parse outputs inside the job (HTTP retry only enqueues).
-    const { resetParseStepOutputs } = await import('@/modules/works/service');
     await resetParseStepOutputs(work);
 
     const bytes = await loadOriginBytes(workId);

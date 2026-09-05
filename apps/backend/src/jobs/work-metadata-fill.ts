@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { eq } from 'drizzle-orm';
 
 import { readingWork as readingWorkTable } from '@gloaming/db';
@@ -6,13 +8,14 @@ import { db } from '@/db';
 import { JOB_METADATA_ENRICH } from '@/jobs/metadata-enrich';
 import { rootLogger } from '@/lib/logger';
 import { enqueue } from '@/lib/queue';
-import { claimWorkflowStep, failWorkflowStep } from '@/lib/workflow';
+import { claimWorkflowStep, failWorkflowStep, rotateWorkflowJobToken } from '@/lib/workflow';
 import { fillWorkMetadata } from '@/modules/metadata-fill/service';
 
 export const JOB_METADATA_FILL = 'metadata-fill';
 
 export type WorkMetadataFillJobData = {
   workId: string;
+  retryJobToken: string;
 };
 
 const fillJobLogger = rootLogger.child({ module: 'MetadataFillJob' });
@@ -24,7 +27,7 @@ const fillJobLogger = rootLogger.child({ module: 'MetadataFillJob' });
  * enrichment, which short-circuits when nothing needs AI.
  */
 export async function processWorkMetadataFill(data: WorkMetadataFillJobData): Promise<{ ok: true; workId: string }> {
-  if (!(await claimWorkflowStep(data.workId, 'metadata'))) {
+  if (!(await claimWorkflowStep(data.workId, 'metadata', data.retryJobToken))) {
     return { ok: true, workId: data.workId };
   }
   try {
@@ -36,9 +39,19 @@ export async function processWorkMetadataFill(data: WorkMetadataFillJobData): Pr
     await fillWorkMetadata(data.workId);
   } catch (error) {
     fillJobLogger.error({ err: error, workId: data.workId }, 'Metadata fill failed');
-    await failWorkflowStep(data.workId, 'metadata', error);
+    await failWorkflowStep(data.workId, 'metadata', data.retryJobToken, error);
     throw error;
   }
-  await enqueue(JOB_METADATA_ENRICH, { workId: data.workId }, { attempts: 2 });
+  const retryJobToken = randomUUID();
+  if (
+    !(await rotateWorkflowJobToken(data.workId, 'metadata', 'metadata', data.retryJobToken, retryJobToken, 'metadata'))
+  ) {
+    return { ok: true, workId: data.workId };
+  }
+  await enqueue(
+    JOB_METADATA_ENRICH,
+    { workId: data.workId, retryJobToken },
+    { attempts: 2, jobId: `${JOB_METADATA_ENRICH}:${data.workId}:${retryJobToken}` },
+  );
   return { ok: true, workId: data.workId };
 }

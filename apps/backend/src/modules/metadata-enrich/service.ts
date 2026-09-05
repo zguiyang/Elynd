@@ -103,14 +103,30 @@ const FIELD_GAP_LABEL: Partial<Record<MetadataFieldId, string>> = {
  * `gaps` records AI targets that stayed empty/weak so the admin UI can show
  * partial completion instead of a false "done".
  */
-async function completeMetadataStep(workId: string, gaps: MetadataFieldId[] = []): Promise<void> {
+async function completeMetadataStep(
+  workId: string,
+  retryJobToken: string | undefined,
+  gaps: MetadataFieldId[] = [],
+): Promise<void> {
   const uniqueGaps = [...new Set(gaps)];
-  await completeWorkflowStep(workId, TTS_STEP_ENABLED ? 'tts' : 'ready', {
+  const metaPatch = {
     metadataAt: new Date().toISOString(),
     metadataEnrichGaps: uniqueGaps.length > 0 ? uniqueGaps : undefined,
     metadataEnrichError:
       uniqueGaps.length > 0 ? `未补全：${uniqueGaps.map((id) => FIELD_GAP_LABEL[id] ?? id).join('、')}` : undefined,
-  });
+  };
+  if (retryJobToken) {
+    await completeWorkflowStep(
+      workId,
+      TTS_STEP_ENABLED ? 'tts' : 'ready',
+      metaPatch,
+      'metadata',
+      retryJobToken,
+      'metadata',
+    );
+  } else {
+    await completeWorkflowStep(workId, TTS_STEP_ENABLED ? 'tts' : 'ready', metaPatch, 'metadata');
+  }
   if (TTS_STEP_ENABLED) {
     const { enqueueWorkAudio } = await import('@/modules/content-assets/service');
     await enqueueWorkAudio(workId, { force: false, roles: ['us', 'uk'] });
@@ -123,7 +139,7 @@ async function completeMetadataStep(workId: string, gaps: MetadataFieldId[] = []
  * Model-not-configured degrades to a completed step (rules already landed);
  * other failures bubble up so the job can fail the step and retry.
  */
-export async function enrichWorkMetadata(workId: string): Promise<void> {
+export async function enrichWorkMetadata(workId: string, retryJobToken?: string): Promise<void> {
   const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId)).limit(1);
   if (!work) {
     throw new Error(`Work ${workId} not found`);
@@ -155,7 +171,7 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
   }
 
   if (needed.size === 0) {
-    await completeMetadataStep(workId);
+    await completeMetadataStep(workId, retryJobToken);
     return;
   }
 
@@ -185,7 +201,7 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
   } catch (error) {
     if (isModelNotConfigured(error)) {
       // Rules already landed; surface remaining AI targets as gaps.
-      await completeMetadataStep(workId, [...needed]);
+      await completeMetadataStep(workId, retryJobToken, [...needed]);
       return;
     }
     throw error;
@@ -264,7 +280,7 @@ export async function enrichWorkMetadata(workId: string): Promise<void> {
     if (def.isWeak(current)) gaps.push(id);
   }
 
-  await completeMetadataStep(workId, gaps);
+  await completeMetadataStep(workId, retryJobToken, gaps);
   if (gaps.length > 0) {
     enrichLogger.warn({ workId, missingFields: gaps }, 'Metadata enrich completed with fields left unfilled');
   }

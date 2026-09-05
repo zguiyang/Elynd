@@ -593,6 +593,12 @@ async function insertEpubWorkAndAsset(input: {
 }): Promise<CreateEpubWorkResult> {
   const workId = randomUUID();
   const title = stripFileExtension(input.fileName).slice(0, 200) || input.fileName;
+  const retryJobToken = WORKFLOW_AUTO_CHAIN ? randomUUID() : undefined;
+  const originMeta = {
+    originalFileName: input.fileName,
+    reused: input.reused,
+    ...(retryJobToken ? { retryJobToken } : {}),
+  };
 
   try {
     await db.insert(readingWorkTable).values({
@@ -601,7 +607,7 @@ async function insertEpubWorkAndAsset(input: {
       description: '',
       status: WORKFLOW_AUTO_CHAIN ? 'processing' : 'uploaded',
       originKind: 'admin_epub',
-      originMeta: { originalFileName: input.fileName, reused: input.reused },
+      originMeta,
       publishedAt: null,
     });
 
@@ -629,7 +635,7 @@ async function insertEpubWorkAndAsset(input: {
     title,
     status: WORKFLOW_AUTO_CHAIN ? 'processing' : 'uploaded',
     originKind: 'admin_epub',
-    originMeta: { originalFileName: input.fileName, reused: input.reused },
+    originMeta,
     asset: {
       storageKey: input.meta.storageKey,
       mimeType: input.meta.mimeType,
@@ -671,7 +677,12 @@ export async function createAdminEpubWork(input: {
     reused: result.duplicated,
   });
   if (WORKFLOW_AUTO_CHAIN) {
-    await enqueue(JOB_CONTENT_PARSE, { workId: created.id });
+    const retryJobToken = String(created.originMeta.retryJobToken);
+    await enqueue(
+      JOB_CONTENT_PARSE,
+      { workId: created.id, retryJobToken },
+      { attempts: 2, jobId: `${JOB_CONTENT_PARSE}:${created.id}:${retryJobToken}` },
+    );
   }
   return created;
 }
@@ -710,7 +721,12 @@ export async function reuseAdminEpubWork(input: {
 
   const created = await insertEpubWorkAndAsset({ fileName, meta: result.meta, reused: true });
   if (WORKFLOW_AUTO_CHAIN) {
-    await enqueue(JOB_CONTENT_PARSE, { workId: created.id });
+    const retryJobToken = String(created.originMeta.retryJobToken);
+    await enqueue(
+      JOB_CONTENT_PARSE,
+      { workId: created.id, retryJobToken },
+      { attempts: 2, jobId: `${JOB_CONTENT_PARSE}:${created.id}:${retryJobToken}` },
+    );
   }
   return created;
 }
@@ -1009,7 +1025,11 @@ export async function retryWorkflow(id: string, input: RetryWorkflowBody = {}): 
     throw new AppError(HTTP_STATUS.CONFLICT, '作品状态已变化，请刷新后再试');
   }
 
-  await enqueue(STEP_JOB[step], { workId: id }, { attempts: 2, jobId: `${STEP_JOB[step]}:${id}:${retryJobToken}` });
+  await enqueue(
+    STEP_JOB[step],
+    { workId: id, retryJobToken },
+    { attempts: 2, jobId: `${STEP_JOB[step]}:${id}:${retryJobToken}` },
+  );
   return getAdminWork(id);
 }
 

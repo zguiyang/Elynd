@@ -6,6 +6,7 @@ export const JOB_METADATA_ENRICH = 'metadata-enrich';
 
 export type MetadataEnrichJobData = {
   workId: string;
+  retryJobToken: string;
 };
 
 const enrichJobLogger = rootLogger.child({ module: 'MetadataEnrichJob' });
@@ -17,14 +18,14 @@ const enrichJobLogger = rootLogger.child({ module: 'MetadataEnrichJob' });
  * and completes the step without AI.
  */
 export async function processMetadataEnrich(data: MetadataEnrichJobData): Promise<{ ok: true; workId: string }> {
-  if (!(await claimWorkflowStep(data.workId, 'metadata'))) {
+  if (!(await claimWorkflowStep(data.workId, 'metadata', data.retryJobToken))) {
     return { ok: true, workId: data.workId };
   }
   try {
-    await enrichWorkMetadata(data.workId);
+    await enrichWorkMetadata(data.workId, data.retryJobToken);
   } catch (error) {
     enrichJobLogger.error({ err: error, workId: data.workId }, 'Metadata enrich failed');
-    await failWorkflowStep(data.workId, 'metadata', error);
+    await failWorkflowStep(data.workId, 'metadata', data.retryJobToken, error);
     throw error;
   }
   return { ok: true, workId: data.workId };

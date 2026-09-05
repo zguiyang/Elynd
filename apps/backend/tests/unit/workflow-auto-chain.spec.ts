@@ -17,15 +17,15 @@ describe('WORKFLOW_AUTO_CHAIN gates', () => {
   beforeEach(() => {
     processContentWork.mockReset();
     enqueue.mockReset();
-    processContentWork.mockResolvedValue(undefined);
+    processContentWork.mockResolvedValue(true);
     enqueue.mockResolvedValue(undefined);
   });
 
   it('is off by default so parse does not auto-enqueue metadata-fill', async () => {
     expect(WORKFLOW_AUTO_CHAIN).toBe(false);
     const { processContentParse } = await import('@/jobs/content-parse');
-    await processContentParse({ workId: 'work-1' });
-    expect(processContentWork).toHaveBeenCalledWith('work-1');
+    await processContentParse({ workId: 'work-1', retryJobToken: 'retry-a' });
+    expect(processContentWork).toHaveBeenCalledWith('work-1', 'retry-a');
     expect(enqueue).not.toHaveBeenCalled();
   });
 });

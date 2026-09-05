@@ -37,7 +37,7 @@ import {
   WORKFLOW_AUTO_CHAIN,
   WORKFLOW_STEPS,
   type WorkflowStep,
-} from '@gloaming/shared/api/works';
+} from '@gloaming/shared';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';

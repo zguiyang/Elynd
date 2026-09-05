@@ -1,4 +1,4 @@
-export { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
+export { AUTH_ADMIN_ROLE } from '@gloaming/shared';
 
 export const APP_NAME = '书灯阅读' as const;
 

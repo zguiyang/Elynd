@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { readingPart as readingPartTable, readingWork as readingWorkTable } from '@gloaming/db';
-import { type AssistAskBody } from '@gloaming/shared/api/assist';
+import { type AssistAskBody } from '@gloaming/shared';
 
 import { db } from '@/db';
 import { NotFoundError } from '@/lib/errors';

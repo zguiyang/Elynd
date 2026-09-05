@@ -1,8 +1,8 @@
 import { eq } from 'drizzle-orm';
 
 import { llmModel as llmModelTable, llmProvider as llmProviderTable } from '@gloaming/db';
-import type { LlmApiFamily } from '@gloaming/shared/llm/wire-registry';
-import { assertWireVariantForFamily, isLlmApiFamily, isRuntimeImplemented } from '@gloaming/shared/llm/wire-registry';
+import type { LlmApiFamily } from '@gloaming/shared';
+import { assertWireVariantForFamily, isLlmApiFamily, isRuntimeImplemented } from '@gloaming/shared';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';

@@ -11,7 +11,7 @@ import {
   readingWorkTag as readingWorkTagTable,
   tag as tagTable,
 } from '@gloaming/db';
-import { TTS_STEP_ENABLED } from '@gloaming/shared/api/works';
+import { TTS_STEP_ENABLED } from '@gloaming/shared';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';

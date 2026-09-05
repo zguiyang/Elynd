@@ -2,9 +2,9 @@ import { eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { readingWork as readingWorkTable, user as userTable } from '@gloaming/db';
-import type { ShelfData } from '@gloaming/shared/api/shelf';
-import type { AdminWork } from '@gloaming/shared/api/works';
-import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
+import type { ShelfData } from '@gloaming/shared';
+import type { AdminWork } from '@gloaming/shared';
+import { AUTH_ADMIN_ROLE } from '@gloaming/shared';
 
 import app from '@/app';
 import { db } from '@/db';

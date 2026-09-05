@@ -2,11 +2,7 @@ import { zValidator } from '@hono/zod-validator';
 import type { Context, ValidationTargets } from 'hono';
 import type { ZodType } from 'zod';
 
-import {
-  generatePartAudioBodySchema,
-  generateWorkAudioBodySchema,
-  workAudioQuerySchema,
-} from '@gloaming/shared/api/content-assets';
+import { generatePartAudioBodySchema, generateWorkAudioBodySchema, workAudioQuerySchema } from '@gloaming/shared';
 
 import { sendValidationError } from '@/lib/response';
 

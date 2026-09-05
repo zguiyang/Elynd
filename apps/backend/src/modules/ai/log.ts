@@ -15,8 +15,8 @@ import {
   type AiInvocationStatsQuery,
   type AiInvocationStatus,
   resolveAiInvocationWindow,
-} from '@gloaming/shared/api/ai-invocations';
-import { buildPaginationMeta } from '@gloaming/shared/api/pagination';
+} from '@gloaming/shared';
+import { buildPaginationMeta } from '@gloaming/shared';
 
 import { db } from '@/db';
 

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import type { AiSettingKey } from '@gloaming/shared';
 import {
   type CreateLlmModelBody,
   type CreateLlmProviderBody,
@@ -19,8 +20,7 @@ import {
   testLlmProviderResultSchema,
   type UpdateLlmModelBody,
   type UpdateLlmProviderBody,
-} from '@gloaming/shared/api/llm-config';
-import type { AiSettingKey } from '@gloaming/shared/api/llm-config-keys';
+} from '@gloaming/shared';
 
 import { apiRequest, formatApiError } from '@/lib/api-request';
 

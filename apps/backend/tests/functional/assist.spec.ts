@@ -6,9 +6,9 @@ import {
   readingWork as readingWorkTable,
   user as userTable,
 } from '@gloaming/db';
-import { ASSIST_SSE_EVENT, type AssistSseDone, type AssistSseError } from '@gloaming/shared/api/assist';
-import type { AdminWork } from '@gloaming/shared/api/works';
-import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
+import type { AdminWork } from '@gloaming/shared';
+import { ASSIST_SSE_EVENT, type AssistSseDone, type AssistSseError } from '@gloaming/shared';
+import { AUTH_ADMIN_ROLE } from '@gloaming/shared';
 
 import app from '@/app';
 import { HTTP_STATUS } from '@/constants';

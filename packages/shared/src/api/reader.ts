@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { ttsVoiceRoleValues, ttsWordTimingSchema } from '@gloaming/shared/api/tts';
-import { partSummarySchema, workSchema } from '@gloaming/shared/api/works';
+import { ttsVoiceRoleValues, ttsWordTimingSchema } from './tts.ts';
+import { partSummarySchema, workSchema } from './works.ts';
 
 export const READING_STATE_STATUSES = ['in_progress', 'completed'] as const;
 export type ReadingStateStatus = (typeof READING_STATE_STATUSES)[number];

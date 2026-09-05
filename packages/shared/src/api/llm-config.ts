@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import { AI_SETTING_KEY_VALUES } from '@gloaming/shared/api/llm-config-keys';
-import { LLM_API_FAMILIES } from '@gloaming/shared/llm/wire-registry';
+import { LLM_API_FAMILIES } from '../llm/wire-registry.ts';
+import { AI_SETTING_KEY_VALUES } from './llm-config-keys.ts';
 
 export const llmApiFamilySchema = z.enum(LLM_API_FAMILIES);
 

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 
-import type { ShelfItem } from '@gloaming/shared/api/shelf';
+import type { ShelfItem } from '@gloaming/shared';
 
 import { AUTH_ROUTES } from '@/constants';
 import { BookDetailCover } from '@/features/book-detail/book-detail-cover';

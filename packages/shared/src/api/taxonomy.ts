@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { WORK_METADATA_PROVENANCES, type WorkMetadataProvenance } from '@gloaming/shared/api/works';
+import { WORK_METADATA_PROVENANCES, type WorkMetadataProvenance } from './works.ts';
 
 /** Shared dimension kinds — system-level concepts usable beyond works. */
 export const TAXONOMY_KINDS = ['tag', 'category', 'source'] as const;

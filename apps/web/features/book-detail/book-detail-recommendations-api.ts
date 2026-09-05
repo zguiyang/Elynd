@@ -4,13 +4,9 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-import { difficultyLabelFromScore } from '@gloaming/shared/api/reading-stats';
-import {
-  type RecommendationsData,
-  recommendationsDataSchema,
-  type RecommendationsQuery,
-} from '@gloaming/shared/api/recommendations';
-import type { Work } from '@gloaming/shared/api/works';
+import type { Work } from '@gloaming/shared';
+import { difficultyLabelFromScore } from '@gloaming/shared';
+import { type RecommendationsData, recommendationsDataSchema, type RecommendationsQuery } from '@gloaming/shared';
 
 import {
   type BookDetail,

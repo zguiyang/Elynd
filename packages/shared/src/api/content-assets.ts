@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { ttsVoiceRoleValues, ttsWordTimingSchema } from '@gloaming/shared/api/tts';
+import { ttsVoiceRoleValues, ttsWordTimingSchema } from './tts.ts';
 
 export const CONTENT_ASSET_AUDIO_KINDS = ['audio_us', 'audio_uk'] as const;
 export type ContentAssetAudioKind = (typeof CONTENT_ASSET_AUDIO_KINDS)[number];

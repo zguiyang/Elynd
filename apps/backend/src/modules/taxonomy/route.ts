@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 
-import type { TaxonomyKind } from '@gloaming/shared/api/taxonomy';
-import { TAXONOMY_KINDS } from '@gloaming/shared/api/taxonomy';
+import type { TaxonomyKind } from '@gloaming/shared';
+import { TAXONOMY_KINDS } from '@gloaming/shared';
 
 import { HTTP_STATUS } from '@/constants';
 import { type AuthVariables, requireAdmin } from '@/middleware/auth';

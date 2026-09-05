@@ -2,7 +2,7 @@ import { zValidator } from '@hono/zod-validator';
 import type { Context, ValidationTargets } from 'hono';
 import type { ZodType } from 'zod';
 
-import { updateReadingStateBodySchema } from '@gloaming/shared/api/reader';
+import { updateReadingStateBodySchema } from '@gloaming/shared';
 
 import { sendValidationError } from '@/lib/response';
 

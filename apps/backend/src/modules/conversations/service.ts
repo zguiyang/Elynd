@@ -21,7 +21,7 @@ import {
   type ConversationSummary,
   type ConversationSurface,
   type CreateConversationBody,
-} from '@gloaming/shared/api/conversations';
+} from '@gloaming/shared';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';

@@ -10,7 +10,7 @@ import {
   uploadedObject as uploadedObjectTable,
   user as userTable,
 } from '@gloaming/db';
-import { AUTH_ADMIN_ROLE } from '@gloaming/shared/auth/policy';
+import { AUTH_ADMIN_ROLE } from '@gloaming/shared';
 
 import app from '@/app';
 import { HTTP_STATUS } from '@/constants';

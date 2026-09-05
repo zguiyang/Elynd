@@ -5,17 +5,13 @@ import Link from 'next/link';
 import { type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 
-import {
-  DIFFICULTY_SCORE_MAX,
-  DIFFICULTY_SCORE_MIN,
-  difficultyLabelFromScore,
-} from '@gloaming/shared/api/reading-stats';
+import { DIFFICULTY_SCORE_MAX, DIFFICULTY_SCORE_MIN, difficultyLabelFromScore } from '@gloaming/shared';
 import {
   type UpdateWorkBody,
   WORKFLOW_AUTO_CHAIN,
   type WorkflowStep,
   type WorkMetadataProvenance,
-} from '@gloaming/shared/api/works';
+} from '@gloaming/shared';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

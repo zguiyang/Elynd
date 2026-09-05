@@ -4,8 +4,8 @@ import { FolderOpen, Link2, PencilLine, Plus, Search, Tags, Trash2 } from 'lucid
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-import type { TaxonomyItem, TaxonomyKind } from '@gloaming/shared/api/taxonomy';
-import type { WorkMetadataProvenance } from '@gloaming/shared/api/works';
+import type { TaxonomyItem, TaxonomyKind } from '@gloaming/shared';
+import type { WorkMetadataProvenance } from '@gloaming/shared';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

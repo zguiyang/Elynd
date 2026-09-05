@@ -3,7 +3,7 @@
 import { Wallet } from 'lucide-react';
 import { useState } from 'react';
 
-import type { LlmProvider, ProviderBalanceResult } from '@gloaming/shared/api/llm-config';
+import type { LlmProvider, ProviderBalanceResult } from '@gloaming/shared';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

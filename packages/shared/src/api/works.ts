@@ -6,8 +6,8 @@ import {
   emptyToUndefined,
   paginationMetaSchema,
   paginationQuerySchema,
-} from '@gloaming/shared/api/pagination';
-import { DIFFICULTY_SCORE_MAX, DIFFICULTY_SCORE_MIN, WORK_STATS_PROVENANCES } from '@gloaming/shared/api/reading-stats';
+} from './pagination.ts';
+import { DIFFICULTY_SCORE_MAX, DIFFICULTY_SCORE_MIN, WORK_STATS_PROVENANCES } from './reading-stats.ts';
 
 /**
  * Work lifecycle statuses.

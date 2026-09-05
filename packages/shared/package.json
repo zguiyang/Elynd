@@ -5,27 +5,7 @@
   "type": "module",
   "license": "GPL-3.0-or-later OR Commercial",
   "exports": {
-    ".": "./src/index.ts",
-    "./auth/policy": "./src/auth/policy.ts",
-    "./api/ai-invocations": "./src/api/ai-invocations.ts",
-    "./api/assist": "./src/api/assist.ts",
-    "./api/content-assets": "./src/api/content-assets.ts",
-    "./api/conversations": "./src/api/conversations.ts",
-    "./api/dictionary": "./src/api/dictionary.ts",
-    "./api/reader": "./src/api/reader.ts",
-    "./api/reading-history": "./src/api/reading-history.ts",
-    "./api/shelf": "./src/api/shelf.ts",
-    "./api/taxonomy": "./src/api/taxonomy.ts",
-    "./api/llm-config": "./src/api/llm-config.ts",
-    "./api/llm-config-keys": "./src/api/llm-config-keys.ts",
-    "./llm/wire-registry": "./src/llm/wire-registry.ts",
-    "./api/pagination": "./src/api/pagination.ts",
-    "./api/translate": "./src/api/translate.ts",
-    "./api/tts": "./src/api/tts.ts",
-    "./api/tts-invocations": "./src/api/tts-invocations.ts",
-    "./api/reading-stats": "./src/api/reading-stats.ts",
-    "./api/recommendations": "./src/api/recommendations.ts",
-    "./api/works": "./src/api/works.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

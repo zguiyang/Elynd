@@ -1,200 +1,109 @@
 # AGENTS.md
 
-Guidance for AI coding assistants in the Gloaming repository.
+Shared instructions for agents working in Gloaming. Read only the documents and
+Skills selected by the task route below; `docs/` is product/engineering evidence,
+not an always-on AI-rule directory.
 
-## Product intent (read before feature work)
+## Product and domain boundaries
 
-Canonical product docs (English): [`docs/product/`](docs/product/).
+Gloaming is an AI-native English reading environment: authentic reading with
+contextual AI when needed, not a course, drill product, or chatbot. Read
+[`docs/product/README.md`](docs/product/README.md) only for product or feature
+decisions, then follow its relevant document route.
 
-| Doc                                                                                            | Use                                                        |
-| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| [`docs/adr/001-reading-content-domain-model.md`](docs/adr/001-reading-content-domain-model.md) | **Domain SSOT** — ReadingWork, Part, State, Asset          |
-| [`docs/product/README.md`](docs/product/README.md)                                             | Index / read order                                         |
-| [`docs/product/product-vision.md`](docs/product/product-vision.md)                             | What Gloaming is / is not; personas; experience references |
-| [`docs/product/product-principles.md`](docs/product/product-principles.md)                     | Reading-first decision rules                               |
-| [`docs/product/mvp-scope.md`](docs/product/mvp-scope.md)                                       | V1 capability must / must-not                              |
-| [`docs/product/mvp-1-modules.md`](docs/product/mvp-1-modules.md)                               | **MVP 1 module roadmap** (prototype / build anti-drift)    |
-| [`docs/product/roadmap.md`](docs/product/roadmap.md)                                           | Phase 1–3 outcomes; Phase 1a vs 1b                         |
-| [`docs/product/feature-audit.md`](docs/product/feature-audit.md)                               | KEEP / hide / migrate existing code                        |
-| [`docs/product/learning-philosophy.md`](docs/product/learning-philosophy.md)                   | Why authentic reading                                      |
-| [`docs/product/content-strategy.md`](docs/product/content-strategy.md)                         | ReadingWork supply; admin EPUB (MVP); user import (1b)     |
-| [`docs/product/engineering-vocabulary.md`](docs/product/engineering-vocabulary.md)             | Product vs engineering naming; target APIs                 |
-| [`docs/product/prototype-flows.md`](docs/product/prototype-flows.md)                           | First-time + daily reading loop                            |
-| [`docs/product/success-metrics.md`](docs/product/success-metrics.md)                           | North star and drift metrics                               |
-| [`docs/product/feature-decision-guide.md`](docs/product/feature-decision-guide.md)             | Should we build this?                                      |
-| [`docs/product/design-guardrails.md`](docs/product/design-guardrails.md)                       | Anti-drift review                                          |
+Before schema or API work, read the [domain SSOT](docs/adr/001-reading-content-domain-model.md)
+and [engineering vocabulary](docs/product/engineering-vocabulary.md). New work
+targets `ReadingWork`, `ReadingPart`, `ReadingState`, `ContentAsset`, and
+`Conversation` with `subject_type = reading_work`.
 
-**One-liner:** Gloaming is an AI Native Language Reading Environment—read authentic English like a modern ebook reader, with contextual AI when you get stuck. Not a course, not drills, not a chatbot. The core is helping people keep reading English they actually want to read.
+Do not extend legacy `Article`, introduce Article compatibility aliases or dual
+models, add `reading_progress` or `article_audio`, add lesson/course/Learn*
+entities, or make Short Article Library the product identity. `admin_epub` is
+the MVP supply; `admin_text` is internal development/test fallback only.
 
-## Domain model rules
+## Project hard boundaries
 
-The content domain is **ReadingWork-based** (ADR-001). Read [`docs/adr/001-reading-content-domain-model.md`](docs/adr/001-reading-content-domain-model.md) and [`docs/product/engineering-vocabulary.md`](docs/product/engineering-vocabulary.md) before schema or API work.
+- Never commit secrets, `.env`, or local `docker-compose.yaml`; expose server
+  secrets to clients; operate on production data; or disable security middleware.
+- Do not start `dev:*`, `start`, or `preview`; push changes; add dependencies;
+  delete files/directories; or change authentication, root/package configuration,
+  or an existing-data schema without explicit user approval.
+- `apps/web` and `apps/backend` never import each other's source. Both may use
+  `@gloaming/shared`; only `@gloaming/db` owns Drizzle schema and migrations.
+  `@gloaming/shared` has cross-app contracts/policy, never ORM, secrets, or
+  business workflows.
+- For cross-layer work, change the owning layer before its consumers: database
+  schema → backend → tests → web; shared public contract → backend and web.
+  Keep facts in one owner; import or derive them rather than copying them.
+- Automated tests and agent database writes may target only `gloaming_test`. If
+  `TEST_DATABASE_URL` or its target is missing or unclear, stop; never fall back
+  to the development database. Cleanup must be limited to data created by the test.
 
-**Do not introduce:**
+Inspect code, configuration, migrations, tests, and runtime state before claiming
+facts. Use the smallest correct change and report actual verification results;
+never claim a check that did not run or bypass a failure. Ask when product,
+behavior, security, architecture, or irreversible scope remains unresolved.
 
-- `Article` as the content root (legacy — Phase 3 removes it)
-- `reading_progress`, `article_audio` (use **ReadingState**, **ContentAsset**)
-- Lesson / course / Learn* product entities
-- Short Article Library as product identity
-- Article compatibility aliases or dual models
+## UI boundary
 
-**Use:**
+For `apps/web` UI work, read [`DESIGN.md`](DESIGN.md),
+[`.cursor/rules/frontend.mdc`](.cursor/rules/frontend.mdc), and the relevant
+product flow. `DESIGN.md` solely owns visual tokens, interaction philosophy, and
+the UI-versus-product-behavior boundary. Use semantic variables from
+`apps/web/app/globals.css`; never infer persistence, auto-save, automatic fetch,
+confirmation, or navigation from visual simplification.
 
-- **ReadingWork** — catalog / shelf / conversation root (no body)
-- **ReadingPart** — Reader, TTS, Translate, Assist text boundary
-- **ReadingState** — shelf membership + position
-- **ContentAsset** — EPUB file, TTS audio, cover, derivatives
-- **Conversation** with `subject_type = reading_work`
+Choose at most one relevant visual Skill only when visual polish is in scope.
+It may inform aesthetics, layout, motion, or imagery, but cannot change product
+behavior, the design system, dependencies, or project contracts.
 
-**MVP supply:** `admin_epub` (primary). **`admin_text`** = internal dev/test fallback only — not product.
+## Skill management
 
-Shipped code may still use legacy Article names until **Phase 3** migration — do not extend the Article model; implement toward target names in docs.
+Project Skills are vendor-managed dependencies: install, update, and remove them
+only with `npx skills`; their source and version are recorded in
+[`skills-lock.json`](skills-lock.json). Do not edit bundled Skill files. `npx
+skills check` may mutate or access the network, so run it only with user approval.
+Global Skills remain user-environment dependencies and are not project dependencies.
 
-## Visual design (UI)
+## Task route
 
-Agent-facing design system SSOT: [`DESIGN.md`](DESIGN.md) (repo root) — visual tokens **and** interaction philosophy (information economy, compression, admin density, **UI vs product behavior**).
+| Task signal                                                              | Read or load                                                                   |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| Non-trivial implementation or repository decision                        | `codebase-guardrails`                                                          |
+| `apps/backend/**`                                                        | [backend.mdc](.cursor/rules/backend.mdc); domain SSOT for API/schema work      |
+| `apps/web/**`                                                            | [frontend.mdc](.cursor/rules/frontend.mdc), `DESIGN.md`, relevant product flow |
+| `packages/**`                                                            | [packages.mdc](.cursor/rules/packages.mdc)                                     |
+| Database writes, migrations, seeds, integration/functional tests         | `test-database-workflow` plus this file's test boundary                        |
+| Add, delete, split, move, or promote code                                | `repository-structure` plus applicable path rule                               |
+| Deployment, containers, environment, runtime diagnosis                   | `infrastructure-operations` plus repository configuration                      |
+| Named-symbol change, cross-module exploration/refactor/complex debugging | matching global GitNexus Skill when available                                  |
+| Product scope or feature decision                                        | only the relevant document under `docs/product/` or `docs/adr/`                |
 
-**UI rule stack:** apply the global **Instruction authority** below. For the path-specific project-rule level, the UI order is **`DESIGN.md`** → [`.cursor/rules/frontend.mdc`](.cursor/rules/frontend.mdc) → the selected Gloaming-owned/project Skill → the selected third-party Skill → shadcn or other component defaults. UI simplification must **not** infer product behavior (auto-save, automatic fetch, implicit confirm, etc.). Security, authorization, and user-consent boundaries cannot be bypassed; tooling checks provide verification, not product semantics.
+## Instruction and evidence authority
 
-- **Before** generating or restyling UI in `apps/web`, read `DESIGN.md` (including **Interaction philosophy**) and [`.cursor/rules/frontend.mdc`](.cursor/rules/frontend.mdc) UI design judgment + Anti-Redundancy Checklist + **Behavior boundary**.
-- Implement appearance via CSS variables / semantic utilities in `apps/web/app/globals.css` — do not hardcode theme colors in feature code.
-- Screen flows: [`docs/product/prototype-flows.md`](docs/product/prototype-flows.md). Visual tokens: **`DESIGN.md`**. Visual polish: the selected Design Skill — it does **not** replace interaction rules or override admin/reader scope in `DESIGN.md` / `frontend.mdc`.
-- Product philosophy / anti-drift (non-visual): [`docs/product/`](docs/product/) — especially [`design-guardrails.md`](docs/product/design-guardrails.md).
+1. System, security, permission, and explicit user-authorization boundaries.
+2. The user's explicit goal, scope, and limits.
+3. Locked task behavior and product/domain contracts.
+4. This file and applicable path rules; for UI, `DESIGN.md` then `frontend.mdc`.
+5. The selected Skill, then framework/component defaults and assumptions.
 
-### Design Skill contract
+Code/configuration/tests/runtime are factual evidence. Lint, formatting,
+typechecks, tests, and builds verify an implementation; they do not decide
+product semantics. Official docs, MCP, and Skills provide external facts or
+guidance, but never override project contracts. If sources conflict, report the
+mismatch and ask rather than silently choosing.
 
-For UI work, agents must read the relevant `DESIGN.md` and product/flow sections first; they must not load the complete Design Skill collection by default. Apply the global instruction authority and the UI rule stack above; do not create a separate priority system for visual work.
+## GitNexus
 
-Design Skills may provide visual, layout, motion, image, or aesthetic methods only. They must not change information architecture, persistence, request timing, confirmation, auto-save, automatic navigation, or other product behavior. When a Skill conflicts with project rules, adapt or omit its recommendation and report the decision; never change the project design system to accommodate it. Select Skills by task relevance instead of loading all of them together.
-
-## Rules source of truth
-
-[`.cursor/rules/`](.cursor/rules/) holds Cursor-specific and path-scoped rule bodies. `AGENTS.md` holds cross-agent hard constraints, routing, and minimal shared contracts; it does not duplicate Cursor-specific implementation detail.
-
-### Skill lifecycle
-
-- Third-party project Skills are managed by the Skills CLI, with their sources recorded in `skills-lock.json`.
-- Do not directly edit third-party Skill files or bundled instructions (including `SKILL.md`, `AGENTS.md`, scripts, and references). Treat them as vendor-managed; put project-specific routing, constraints, or exceptions in repository-owned rules instead.
-- Use `npx skills list` for inventory when needed.
-- Install, update, and remove third-party Skills only with the corresponding `npx skills` command; updates and removals require explicit user authorization.
-- Treat `npx skills check` as a potentially networked or locally mutating check; obtain user authorization before running it. It is not an ordinary side-effect-free status check.
-- Gloaming-owned Skills are authoritative in repository Git, are not recorded in `skills-lock.json`, and are not managed by `npx skills update/remove`.
-- Global Skills stay outside the project directory and project lockfile.
-
-### Loading
-
-| Mode                                   | Rules                                                                                                                                               |
-| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Always-on                              | `core`, `ponytail`, `layering`, `structure`, `testing-database-safety`, `infrastructure-operations`, `codebase-exploration`                         |
-| Glob (when matching paths are in play) | `backend` (`apps/backend/**`), `frontend` (`apps/web/**`), `packages` (`packages/**`)                                                               |
-| On demand                              | Select a matching project/Gloaming-owned Skill or third-party Skill by description; use official docs or MCP for current/external facts when needed |
-
-### Instruction authority
-
-Use this order to decide what should be done, whether it is allowed, and how to resolve an instruction conflict:
-
-1. Non-bypassable system, security, permission, and user-authorization boundaries.
-2. The user’s explicit goal, scope, and limits.
-3. Locked task behavior and the product/domain contracts in [`docs/product/`](docs/product/) and [`docs/adr/`](docs/adr/).
-4. `AGENTS.md` and `core` cross-agent hard constraints.
-5. Applicable path rules; for UI, use `DESIGN.md` then `frontend.mdc`.
-6. Gloaming-owned project Skills.
-7. The selected third-party Skill.
-8. Generic component defaults, general best practices, and Agent assumptions.
-
-An explicit user request may change an ordinary product preference, but it cannot bypass security, permission, or explicit authorization boundaries. If it conflicts with locked task behavior or a product/domain contract, report the conflict and obtain an explicit decision rather than silently choosing a side. If rules conflict with code reality, report the mismatch; do not silently select the rules or the code.
-
-Design Skills, third-party Skills, and component defaults may provide visual or implementation guidance, but may not change product behavior or the project design system.
-
-### Facts and verification sources
-
-Use these sources to decide whether something is true or whether the implementation passes:
-
-- Code, configuration, migrations, tests, and runtime state are the primary evidence.
-- Lint, formatting, type checks, tests, and builds are verification mechanisms; they do not decide product semantics.
-- MCP, official documentation, and Skills may provide current facts, external material, or operational guidance, but cannot override project contracts.
-- GitNexus is graph navigation and impact analysis; verify its conclusions against source.
-- When verification fails, fix it, report it, or ask the user to decide. Never use instruction priority to bypass a failed check.
-
-### Index
-
-| Rule                                                                         | Load              | Role                                                             |
-| ---------------------------------------------------------------------------- | ----------------- | ---------------------------------------------------------------- |
-| [core.mdc](.cursor/rules/core.mdc)                                           | Always            | Constitution, gate, Ask/Never, TDD, DoD, router                  |
-| [ponytail.mdc](.cursor/rules/ponytail.mdc)                                   | Always            | Lazy-senior ladder before writing code                           |
-| [layering.mdc](.cursor/rules/layering.mdc)                                   | Always            | Package graph, concern placement, cross-layer order              |
-| [structure.mdc](.cursor/rules/structure.mdc)                                 | Always            | Structural hard boundaries + `repository-structure` routing      |
-| [testing-database-safety.mdc](.cursor/rules/testing-database-safety.mdc)     | Always            | Test database hard boundaries + `test-database-workflow` routing |
-| [infrastructure-operations.mdc](.cursor/rules/infrastructure-operations.mdc) | Always            | Env/infra discovery — config first, runtime when needed          |
-| [codebase-exploration.mdc](.cursor/rules/codebase-exploration.mdc)           | Always            | Prefer GitNexus for cross-module explore/impact; verify src      |
-| [backend.mdc](.cursor/rules/backend.mdc)                                     | `apps/backend/**` | Hono API conventions                                             |
-| [frontend.mdc](.cursor/rules/frontend.mdc)                                   | `apps/web/**`     | Next.js / UI; feature page composition (anti–god component)      |
-| [packages.mdc](.cursor/rules/packages.mdc)                                   | `packages/**`     | Shared package conventions                                       |
+Use GitNexus only when its MCP or CLI is available and its index is current;
+verify material graph conclusions against source. Before a named-symbol edit,
+obtain impact analysis; before a commit, obtain a complete graph-change check.
+High, critical, unknown, stale, partial, or truncated results are not an
+all-clear. If unavailable, state the limitation and perform source/call-site
+review, relevant tests, and an explicit manual-impact statement.
 
 ## Language
 
-- Conversation: Chinese when the user writes Chinese
-- Plans (generate / present / review with the user): Chinese
-- Code comments, identifiers, commits: English
-- Repo docs (`docs/`, README): English by default; follow the user's language when they specify one
-
-## Common commands
-
-**Do not** run `pnpm run dev:*`, `start`, or `preview` unless the user explicitly asks.
-
-```bash
-pnpm compose:init      # docker-compose.yaml.example → docker-compose.yaml
-pnpm run dev:backend   # Hono API :3333
-pnpm run dev:web       # Web :3000
-pnpm run lint
-pnpm run format:check
-pnpm run typecheck
-pnpm run test
-pnpm db:migrate:test   # migrate gloaming_test (after cp apps/backend/.env.test.example → .env.test)
-pnpm run build
-pnpm db:generate       # Drizzle generate (@gloaming/db)
-pnpm db:migrate        # Drizzle migrate
-```
-
-## External docs
-
-- [Hono](https://hono.dev/) · [Better Auth](https://www.better-auth.com/) · [Drizzle](https://orm.drizzle.team/) · [Next.js](https://nextjs.org/docs) · [TanStack Query](https://tanstack.com/query/latest) · [Tailwind CSS](https://tailwindcss.com/docs)
-
-<!-- gitnexus:start -->
-
-# GitNexus — Code Intelligence
-
-This project may be indexed by GitNexus as **gloaming-reader**. An index is a navigation aid, not source truth; do not assume it is current or available.
-
-GitNexus capabilities are separate: an installed Skill provides guidance, while MCP and CLI availability determines whether graph operations can actually run. Do not infer executable GitNexus access from a Skill, an index, or a configuration file. Do not rebuild or bootstrap an index automatically; if the index or tool is unavailable or stale, report that condition and use the restricted fallback below.
-
-## Always Do
-
-- **MUST run impact before changing a named function, class, method, or other code symbol when GitNexus MCP or CLI is available.** Use `impact({target: "symbolName", direction: "upstream"})` or the equivalent CLI operation; report callers, processes, and risk. Never substitute grep for an available graph analysis.
-- **MUST analyze graph changes before committing when GitNexus MCP or CLI is available.** Use `detect_changes({scope: "all"})` (MCP) or the equivalent CLI operation. `partial: true` or `truncated: true` is not a clean check — unseen results are not evidence of no impact. For regression review, use the compare scope against the target base ref.
-- MUST warn on HIGH/CRITICAL `risk` pre-edit; never use `riskSharedAxes` to waive a HIGH/CRITICAL `risk` warning. Compare File/symbol: MCP File omits axes; Graph-RAG expands File.
-- **MUST treat `risk: UNKNOWN` as unresolved, not as low.** An empty caller set is not evidence the symbol is unused — it can also mean the callers are not resolvable by the index (plain-object property access, dynamic dispatch, cross-language calls). `impact` pairs `UNKNOWN` with a `riskNote` saying so. Confirm with a text search before treating the symbol as safe to change or delete; do not proceed on the strength of a zero.
-- **When GitNexus is unavailable, stale, or cannot resolve the target, the Agent MUST state the reason and analysis limitation.** A restricted fallback is allowed: source search, call-site review, relevant tests, and an explicit manual impact statement. The fallback MUST NOT be reported as “no impact” and MUST NOT skip validation.
-- When GitNexus is available, use its query/context/impact operations for callers, dependencies, imports, and execution flows; verify important conclusions against source. For security review, use the available taint-analysis operation when supported.
-
-## Never Do
-
-- NEVER edit a function, class, or method before available MCP/CLI impact analysis; if unavailable, disclose the restricted fallback and its limitations.
-- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis, and never read `UNKNOWN` as an all-clear — it means the walk could not answer, which is the one verdict that requires confirming by other means.
-- NEVER rename symbols with find-and-replace — use `rename` which understands the call graph.
-- NEVER commit before available MCP/CLI graph change analysis; if unavailable, disclose that the graph check could not be performed and record the fallback validation.
-
-## Resources
-
-| Resource                                         | Use for                                  |
-| ------------------------------------------------ | ---------------------------------------- |
-| `gitnexus://repo/gloaming-reader/context`        | Codebase overview, check index freshness |
-| `gitnexus://repo/gloaming-reader/clusters`       | All functional areas                     |
-| `gitnexus://repo/gloaming-reader/processes`      | All execution flows                      |
-| `gitnexus://repo/gloaming-reader/process/{name}` | Step-by-step execution trace             |
-
-## Skill guidance
-
-When an installed GitNexus Skill is available, load the matching exploration, impact-analysis, debugging, refactoring, guide, or CLI guidance before using that workflow. Skill guidance does not prove that GitNexus MCP or CLI is executable in the current Agent environment, and these rules never require a local Skill path to exist.
-
-<!-- gitnexus:end -->
+- Reply and present plans in Chinese when the user writes Chinese.
+- Code comments, identifiers, and commits are English.
+- Repository documentation is English unless the user requests another language.

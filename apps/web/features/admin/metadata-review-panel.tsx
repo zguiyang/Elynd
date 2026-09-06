@@ -6,12 +6,7 @@ import { type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 
 import { DIFFICULTY_SCORE_MAX, DIFFICULTY_SCORE_MIN, difficultyLabelFromScore } from '@gloaming/shared';
-import {
-  type UpdateWorkBody,
-  WORKFLOW_AUTO_CHAIN,
-  type WorkflowStep,
-  type WorkMetadataProvenance,
-} from '@gloaming/shared';
+import { type UpdateWorkBody, type WorkflowStep, type WorkMetadataProvenance } from '@gloaming/shared';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -356,7 +351,7 @@ export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
   if (isBusy && status === 'metadata') {
     hint = '正在根据正文内容补全信息，完成后即可逐项核对。';
   } else if (isBusy && status === 'processing') {
-    hint = WORKFLOW_AUTO_CHAIN ? '等待内容解析完成后自动完善…' : '等待内容解析完成后再开始完善。';
+    hint = work.workflowPolicy.autoChainEnabled ? '等待内容解析完成后自动完善…' : '等待内容解析完成后再开始完善。';
   } else if (isBusy) {
     hint = '已提交任务，正在排队…';
   } else if (isAwaitingStart) {
@@ -374,7 +369,7 @@ export function MetadataStatusCard({ work }: { work: AdminWorkView }) {
   } else if (status === 'ready' || status === 'published' || status === 'tts') {
     hint = '规则层已写入可用字段；可逐项核对编辑。';
   } else {
-    hint = WORKFLOW_AUTO_CHAIN
+    hint = work.workflowPolicy.autoChainEnabled
       ? '解析完成后，AI 将自动补全缺失的简介、标签与分类。'
       : '解析完成后，需手动开始完善原数据。';
   }

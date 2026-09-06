@@ -34,6 +34,22 @@ Part-scoped APIs: TTS / translate / assist use `partId` (+ `workId` for thread s
 
 ---
 
+## Shared facade and workflow policy
+
+The shared package has one supported entrypoint: `@gloaming/shared`. Its root
+facade exposes cross-layer DTOs, Zod schemas, controlled values, types, and
+pure functions. It does not own backend queue, retry, lease, or workflow
+runtime policy.
+
+`apps/backend` owns workflow policy and preserves the current manual pipeline
+and TTS-off defaults. Admin work responses expose a read-only policy projection
+for the management UI; Web code must render that projection rather than infer
+runtime behavior from shared compile-time flags. This separation leaves the
+ADR-001 `ReadingWork` / `ReadingPart` / `ReadingState` / `ContentAsset` model
+and the `admin_epub` / `admin_text` origin boundary unchanged.
+
+---
+
 ## Current code = target domain (Phase 3A)
 
 | Layer                | Current (= Target, ADR-001)                       |
@@ -82,7 +98,7 @@ Part-scoped APIs: TTS / translate / assist use `partId` (+ `workId` for thread s
 - `article_audio`, `ArticleAudio`, `ArticleLevel`
 - `seriesId`, `seriesOrder`, `ARTICLE_BODY_MAX_WORDS`
 - `GET /api/articles`, `/api/admin/articles`, `/api/reader/articles/:articleId`
-- `@gloaming/shared/api/articles`, `@gloaming/shared/api/article-audio`
+- Legacy shared subpath imports — use the `@gloaming/shared` root facade.
 
 **Legacy product modules**
 

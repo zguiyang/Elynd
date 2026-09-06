@@ -9,11 +9,7 @@ import {
 } from './pagination.ts';
 import { DIFFICULTY_SCORE_MAX, DIFFICULTY_SCORE_MIN, WORK_STATS_PROVENANCES } from './reading-stats.ts';
 
-/**
- * Work lifecycle statuses.
- * `uploaded` / `parsed` are idle waits between manual pipeline steps
- * (only used when `WORKFLOW_AUTO_CHAIN` is false).
- */
+/** Work lifecycle statuses. */
 export const WORK_STATUSES = [
   'uploaded',
   'processing',
@@ -40,20 +36,6 @@ export const WORK_STATUS_LABELS = {
 /** Linear generation steps of the EPUB work pipeline (retry/re-run target). */
 export const WORKFLOW_STEPS = ['parse', 'metadata', 'tts'] as const;
 export type WorkflowStep = (typeof WORKFLOW_STEPS)[number];
-
-/**
- * When true, upload → parse → metadata-fill → metadata-enrich chain automatically.
- * When false (default), each step stops for an admin “next” click; auto-enqueue
- * call sites stay in code behind this flag for a future switch-back.
- */
-export const WORKFLOW_AUTO_CHAIN = false;
-
-/**
- * When true, metadata completion advances to `tts` and auto-enqueues chapter audio.
- * When false (default), metadata completes to `ready`; audio is generated only from
- * the admin audio step (manual). Independent of `WORKFLOW_AUTO_CHAIN`.
- */
-export const TTS_STEP_ENABLED = false;
 
 export const WORK_VISIBILITIES = ['catalog', 'private'] as const;
 export type WorkVisibility = (typeof WORK_VISIBILITIES)[number];
@@ -174,8 +156,17 @@ export const adminOriginAssetSchema = z.object({
 
 export type AdminOriginAsset = z.infer<typeof adminOriginAssetSchema>;
 
+/** Read-only backend-owned workflow policy shown by admin work projections. */
+export const adminWorkflowPolicySchema = z.object({
+  autoChainEnabled: z.boolean(),
+  ttsStepEnabled: z.boolean(),
+});
+
+export type AdminWorkflowPolicy = z.infer<typeof adminWorkflowPolicySchema>;
+
 /** Admin work JSON includes derived projection freshness for ops reminders. */
 export const adminWorkSchema = workSchema.extend({
+  workflowPolicy: adminWorkflowPolicySchema,
   derivedFreshness: derivedFreshnessSchema,
   originMeta: z.record(z.string(), z.unknown()).default({}),
   originAsset: adminOriginAssetSchema.nullable(),
@@ -194,6 +185,7 @@ export type AdminWork = z.infer<typeof adminWorkSchema>;
  * chapter counts without shipping HTML for every part.
  */
 export const adminWorkSummarySchema = workSchema.extend({
+  workflowPolicy: adminWorkflowPolicySchema,
   derivedFreshness: derivedFreshnessSchema,
   originMeta: z.record(z.string(), z.unknown()).default({}),
   originAsset: adminOriginAssetSchema.nullable(),

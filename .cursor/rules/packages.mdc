@@ -19,8 +19,13 @@ new layer. For a structural change or a question of sharing, load
 
 ## Ownership
 
-- Password/username/mail-cooldown policy SSOT → `@gloaming/shared/auth/policy`
+- Password/username/mail-cooldown policy SSOT → the `@gloaming/shared` root facade.
+- The shared package root is the only supported package entrypoint; add exports
+  explicitly and keep them limited to cross-layer contracts, controlled values,
+  types, and pure functions.
 - Packages export contracts or policy, never application feature workflows.
+- Runtime workflow policy belongs to `apps/backend`; admin APIs may expose its
+  read-only projection through shared response contracts.
 
 ## Zod
 

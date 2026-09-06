@@ -7,11 +7,11 @@ import {
   readingPart as readingPartTable,
   readingWork as readingWorkTable,
 } from '@gloaming/db';
-import { WORKFLOW_AUTO_CHAIN } from '@gloaming/shared';
 
 import { db } from '@/db';
 import { rootLogger } from '@/lib/logger';
 import { claimWorkflowStep, failWorkflowStep, workflowClaimWhere } from '@/lib/workflow';
+import { WORKFLOW_AUTO_CHAIN } from '@/lib/workflow-policy';
 import { parserFor } from '@/modules/content-parser/registry';
 import type { ParsedContent } from '@/modules/content-parser/types';
 import { resetParseStepOutputs } from '@/modules/ingest-reset/service';

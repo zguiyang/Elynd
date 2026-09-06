@@ -47,7 +47,13 @@ import { AppError, NotFoundError, ValidationFailedError } from '@/lib/errors';
 import { rootLogger } from '@/lib/logger';
 import { enqueue } from '@/lib/queue';
 import { normalizeTag } from '@/lib/text';
-import { completeWorkflowStep, stepRunningStatus } from '@/lib/workflow';
+import {
+  completeWorkflowStep,
+  failWorkflowEnqueue,
+  prepareWorkflowEnqueue,
+  stepRunningStatus,
+  workflowLeaseExpiresAt,
+} from '@/lib/workflow';
 import { getWorksDerivedFreshness } from '@/modules/derived-freshness';
 import { deleteObject } from '@/modules/oss';
 import { computePartReadingStats, computeWorkReadingStats } from '@/modules/reading-stats/service';
@@ -429,6 +435,45 @@ function failedStepOf(row: WorkRow): WorkflowStep | null {
     : null;
 }
 
+function hasExpiredWorkflowClaim(row: WorkRow, step: WorkflowStep): boolean {
+  const meta = row.originMeta as Record<string, unknown>;
+  const lease = meta.workflowClaimLeaseExpiresAt;
+  return (
+    meta.workflowClaimStep === step &&
+    typeof meta.workflowClaimAttempt === 'string' &&
+    meta.workflowClaimAttempt.length > 0 &&
+    typeof lease === 'string' &&
+    Number.isFinite(Date.parse(lease)) &&
+    Date.parse(lease) <= Date.now()
+  );
+}
+
+function hasExpiredWorkflowEnqueue(row: WorkRow, step: WorkflowStep): boolean {
+  const meta = row.originMeta as Record<string, unknown>;
+  const lease = meta.workflowEnqueueLeaseExpiresAt;
+  return (
+    meta.workflowEnqueueStep === step &&
+    typeof meta.workflowEnqueueAttempt === 'string' &&
+    meta.workflowEnqueueAttempt.length > 0 &&
+    typeof lease === 'string' &&
+    Number.isFinite(Date.parse(lease)) &&
+    Date.parse(lease) <= Date.now()
+  );
+}
+
+function workflowRetryLeaseRecoveryWhere(step: WorkflowStep) {
+  return or(
+    and(
+      sql`${readingWorkTable.originMeta}->>'workflowClaimStep' = ${step}`,
+      sql`(${readingWorkTable.originMeta}->>'workflowClaimLeaseExpiresAt')::timestamptz <= now()`,
+    ),
+    and(
+      sql`${readingWorkTable.originMeta}->>'workflowEnqueueStep' = ${step}`,
+      sql`(${readingWorkTable.originMeta}->>'workflowEnqueueLeaseExpiresAt')::timestamptz <= now()`,
+    ),
+  );
+}
+
 function escapeIlikePattern(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
 }
@@ -677,11 +722,20 @@ export async function createAdminEpubWork(input: {
   });
   if (WORKFLOW_AUTO_CHAIN) {
     const retryJobToken = String(created.originMeta.retryJobToken);
-    await enqueue(
-      JOB_CONTENT_PARSE,
-      { workId: created.id, retryJobToken },
-      { attempts: 2, jobId: `${JOB_CONTENT_PARSE}:${created.id}:${retryJobToken}` },
-    );
+    const enqueueAttemptToken = randomUUID();
+    if (!(await prepareWorkflowEnqueue(created.id, 'parse', 'processing', retryJobToken, enqueueAttemptToken))) {
+      throw new AppError(500, 'Failed to reserve EPUB parse enqueue');
+    }
+    try {
+      await enqueue(
+        JOB_CONTENT_PARSE,
+        { workId: created.id, retryJobToken },
+        { attempts: 2, jobId: `${JOB_CONTENT_PARSE}:${created.id}:${retryJobToken}` },
+      );
+    } catch (error) {
+      await failWorkflowEnqueue(created.id, 'parse', retryJobToken, 'processing', enqueueAttemptToken, error);
+      throw error;
+    }
   }
   return created;
 }
@@ -721,11 +775,20 @@ export async function reuseAdminEpubWork(input: {
   const created = await insertEpubWorkAndAsset({ fileName, meta: result.meta, reused: true });
   if (WORKFLOW_AUTO_CHAIN) {
     const retryJobToken = String(created.originMeta.retryJobToken);
-    await enqueue(
-      JOB_CONTENT_PARSE,
-      { workId: created.id, retryJobToken },
-      { attempts: 2, jobId: `${JOB_CONTENT_PARSE}:${created.id}:${retryJobToken}` },
-    );
+    const enqueueAttemptToken = randomUUID();
+    if (!(await prepareWorkflowEnqueue(created.id, 'parse', 'processing', retryJobToken, enqueueAttemptToken))) {
+      throw new AppError(500, 'Failed to reserve EPUB parse enqueue');
+    }
+    try {
+      await enqueue(
+        JOB_CONTENT_PARSE,
+        { workId: created.id, retryJobToken },
+        { attempts: 2, jobId: `${JOB_CONTENT_PARSE}:${created.id}:${retryJobToken}` },
+      );
+    } catch (error) {
+      await failWorkflowEnqueue(created.id, 'parse', retryJobToken, 'processing', enqueueAttemptToken, error);
+      throw error;
+    }
   }
   return created;
 }
@@ -966,15 +1029,18 @@ export async function retryWorkflow(id: string, input: RetryWorkflowBody = {}): 
   if (existing.status === 'published') {
     throw new AppError(HTTP_STATUS.CONFLICT, '请先下架作品后再重试');
   }
-  if (existing.status === 'processing' || existing.status === 'metadata' || existing.status === 'tts') {
-    throw new AppError(HTTP_STATUS.CONFLICT, '作品正在处理中，请稍后再试');
-  }
-
   const step = input.step ?? failedStepOf(existing);
   const retryJobToken = randomUUID();
   if (!step) {
     throw new AppError(HTTP_STATUS.BAD_REQUEST, '没有可重试的步骤');
   }
+  const running = existing.status === 'processing' || existing.status === 'metadata' || existing.status === 'tts';
+  const expiredClaim = hasExpiredWorkflowClaim(existing, step);
+  const expiredEnqueue = hasExpiredWorkflowEnqueue(existing, step);
+  if (running && !expiredClaim && !expiredEnqueue) {
+    throw new AppError(HTTP_STATUS.CONFLICT, '作品正在处理中，请稍后再试');
+  }
+  const retryAttemptToken = randomUUID();
   if (step === 'tts') {
     if (!TTS_STEP_ENABLED) {
       throw new AppError(HTTP_STATUS.BAD_REQUEST, '音频步骤未启用自动流程，请在作品页手动生成');
@@ -989,15 +1055,32 @@ export async function retryWorkflow(id: string, input: RetryWorkflowBody = {}): 
           lastError: undefined,
           failedAt: undefined,
           retryJobToken,
+          workflowClaimAttempt: undefined,
+          workflowClaimStep: undefined,
+          workflowClaimLeaseExpiresAt: undefined,
+          workflowEnqueueStep: 'tts',
+          workflowEnqueueAttempt: retryAttemptToken,
+          workflowEnqueueLeaseExpiresAt: workflowLeaseExpiresAt(),
         },
       })
-      .where(and(eq(readingWorkTable.id, id), eq(readingWorkTable.status, existing.status)))
+      .where(
+        and(
+          eq(readingWorkTable.id, id),
+          eq(readingWorkTable.status, existing.status),
+          running ? workflowRetryLeaseRecoveryWhere(step) : sql`true`,
+        ),
+      )
       .returning({ id: readingWorkTable.id });
     if (!claimed) {
       throw new AppError(HTTP_STATUS.CONFLICT, '作品状态已变化，请刷新后再试');
     }
     const { enqueueWorkAudio } = await import('@/modules/content-assets/service');
-    await enqueueWorkAudio(id, { force: false, roles: ['us', 'uk'] });
+    try {
+      await enqueueWorkAudio(id, { force: false, roles: ['us', 'uk'] });
+    } catch (error) {
+      await failWorkflowEnqueue(id, 'tts', retryJobToken, 'tts', retryAttemptToken, error);
+      throw error;
+    }
     return getAdminWork(id);
   }
 
@@ -1012,23 +1095,40 @@ export async function retryWorkflow(id: string, input: RetryWorkflowBody = {}): 
         lastError: undefined,
         failedAt: undefined,
         retryJobToken,
+        workflowClaimAttempt: undefined,
+        workflowClaimStep: undefined,
+        workflowClaimLeaseExpiresAt: undefined,
+        workflowEnqueueStep: step,
+        workflowEnqueueAttempt: retryAttemptToken,
+        workflowEnqueueLeaseExpiresAt: workflowLeaseExpiresAt(),
         ...(step === 'metadata'
           ? { metadataAt: undefined, metadataEnrichGaps: undefined, metadataEnrichError: undefined }
           : {}),
         ...(step === 'parse' ? { parsed: undefined, metadataAt: undefined, metadataEnrichGaps: undefined } : {}),
       },
     })
-    .where(and(eq(readingWorkTable.id, id), eq(readingWorkTable.status, existing.status)))
+    .where(
+      and(
+        eq(readingWorkTable.id, id),
+        eq(readingWorkTable.status, existing.status),
+        running ? workflowRetryLeaseRecoveryWhere(step) : sql`true`,
+      ),
+    )
     .returning({ id: readingWorkTable.id });
   if (!claimed) {
     throw new AppError(HTTP_STATUS.CONFLICT, '作品状态已变化，请刷新后再试');
   }
 
-  await enqueue(
-    STEP_JOB[step],
-    { workId: id, retryJobToken },
-    { attempts: 2, jobId: `${STEP_JOB[step]}:${id}:${retryJobToken}` },
-  );
+  try {
+    await enqueue(
+      STEP_JOB[step],
+      { workId: id, retryJobToken },
+      { attempts: 2, jobId: `${STEP_JOB[step]}:${id}:${retryJobToken}` },
+    );
+  } catch (error) {
+    await failWorkflowEnqueue(id, step, retryJobToken, stepRunningStatus(step), retryAttemptToken, error);
+    throw error;
+  }
   return getAdminWork(id);
 }
 

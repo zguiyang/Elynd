@@ -11,6 +11,8 @@ const STEP_RUNNING_STATUS: Record<WorkflowStep, WorkStatus> = {
   tts: 'tts',
 };
 
+const WORKFLOW_LEASE_MS = 15 * 60 * 1000;
+
 /** Idle wait statuses that may still claim the next step (manual pipeline). */
 const STEP_IDLE_CLAIM_STATUS: Partial<Record<WorkflowStep, WorkStatus>> = {
   parse: 'uploaded',
@@ -25,20 +27,42 @@ function workflowTokenMatch(retryJobToken: string) {
   return sql`${readingWorkTable.originMeta}->>'retryJobToken' = ${retryJobToken}`;
 }
 
-function workflowClaimMatch(retryJobToken: string, step: WorkflowStep) {
+function workflowClaimMatch(attemptToken: string, step: WorkflowStep) {
   return and(
-    sql`${readingWorkTable.originMeta}->>'workflowClaimToken' = ${retryJobToken}`,
+    sql`${readingWorkTable.originMeta}->>'workflowClaimAttempt' = ${attemptToken}`,
     sql`${readingWorkTable.originMeta}->>'workflowClaimStep' = ${step}`,
+    sql`(${readingWorkTable.originMeta}->>'workflowClaimLeaseExpiresAt')::timestamptz > now()`,
   );
 }
 
+function claimIsAvailable(step: WorkflowStep) {
+  return or(
+    sql`coalesce(${readingWorkTable.originMeta}->>'workflowClaimAttempt', '') = ''`,
+    and(
+      sql`${readingWorkTable.originMeta}->>'workflowClaimStep' = ${step}`,
+      sql`(${readingWorkTable.originMeta}->>'workflowClaimLeaseExpiresAt')::timestamptz <= now()`,
+    )!,
+  );
+}
+
+function enqueueLeaseIsAvailable() {
+  return or(
+    sql`coalesce(${readingWorkTable.originMeta}->>'workflowEnqueueAttempt', '') = ''`,
+    sql`(${readingWorkTable.originMeta}->>'workflowEnqueueLeaseExpiresAt')::timestamptz <= now()`,
+  );
+}
+
+export function workflowLeaseExpiresAt(): string {
+  return new Date(Date.now() + WORKFLOW_LEASE_MS).toISOString();
+}
+
 /** Conditional ownership predicate for a worker that has already claimed a step. */
-export function workflowClaimWhere(workId: string, step: WorkflowStep, retryJobToken: string) {
+export function workflowClaimWhere(workId: string, step: WorkflowStep, retryJobToken: string, attemptToken: string) {
   return and(
     eq(readingWorkTable.id, workId),
     eq(readingWorkTable.status, STEP_RUNNING_STATUS[step]),
     workflowTokenMatch(retryJobToken),
-    workflowClaimMatch(retryJobToken, step),
+    workflowClaimMatch(attemptToken, step),
   );
 }
 
@@ -49,23 +73,28 @@ export function workflowClaimWhere(workId: string, step: WorkflowStep, retryJobT
  * retry token is the execution identity, so duplicate deliveries cannot claim
  * the same row twice.
  */
-export async function claimWorkflowStep(workId: string, step: WorkflowStep, retryJobToken: string): Promise<boolean> {
-  if (!retryJobToken) {
+export async function claimWorkflowStep(
+  workId: string,
+  step: WorkflowStep,
+  retryJobToken: string,
+  attemptToken: string,
+): Promise<boolean> {
+  if (!retryJobToken || !attemptToken) {
     return false;
   }
   const running = STEP_RUNNING_STATUS[step];
   const idle = STEP_IDLE_CLAIM_STATUS[step];
-  const unclaimed = sql`coalesce(${readingWorkTable.originMeta}->>'workflowClaimToken', '') = ''`;
-  const eligible = [and(eq(readingWorkTable.status, running), workflowTokenMatch(retryJobToken), unclaimed)!];
+  const available = claimIsAvailable(step);
+  const eligible = [and(eq(readingWorkTable.status, running), workflowTokenMatch(retryJobToken), available)!];
   if (idle) {
-    eligible.push(and(eq(readingWorkTable.status, idle), workflowTokenMatch(retryJobToken), unclaimed)!);
+    eligible.push(and(eq(readingWorkTable.status, idle), workflowTokenMatch(retryJobToken), available)!);
   }
   eligible.push(
     and(
       eq(readingWorkTable.status, 'failed'),
       sql`${readingWorkTable.originMeta}->>'failedStep' = ${step}`,
       workflowTokenMatch(retryJobToken),
-      unclaimed,
+      available,
     )!,
   );
 
@@ -73,7 +102,13 @@ export async function claimWorkflowStep(workId: string, step: WorkflowStep, retr
     .update(readingWorkTable)
     .set({
       status: running,
-      originMeta: sql`${readingWorkTable.originMeta} || ${JSON.stringify({ workflowClaimToken: retryJobToken, workflowClaimStep: step })}::jsonb`,
+      originMeta: sql`(${readingWorkTable.originMeta} - 'failedStep' - 'lastError' - 'failedAt' - 'workflowClaimAttempt' - 'workflowClaimStep' - 'workflowClaimLeaseExpiresAt' - 'workflowEnqueueAttempt' - 'workflowEnqueueLeaseExpiresAt') || ${JSON.stringify(
+        {
+          workflowClaimAttempt: attemptToken,
+          workflowClaimStep: step,
+          workflowClaimLeaseExpiresAt: workflowLeaseExpiresAt(),
+        },
+      )}::jsonb`,
     })
     .where(and(eq(readingWorkTable.id, workId), or(...eligible)))
     .returning({ id: readingWorkTable.id });
@@ -85,6 +120,7 @@ export async function failWorkflowStep(
   workId: string,
   step: WorkflowStep,
   retryJobToken: string,
+  attemptToken: string,
   error: unknown,
 ): Promise<boolean> {
   const message = error instanceof Error ? error.message : String(error);
@@ -93,9 +129,40 @@ export async function failWorkflowStep(
     .update(readingWorkTable)
     .set({
       status: 'failed',
-      originMeta: sql`(${readingWorkTable.originMeta} - 'metadataAt' - 'metadataEnrichGaps' - 'metadataEnrichError' - 'workflowClaimToken' - 'workflowClaimStep') || ${JSON.stringify({ failedStep: step, lastError: message, failedAt })}::jsonb`,
+      originMeta: sql`(${readingWorkTable.originMeta} - 'metadataAt' - 'metadataEnrichGaps' - 'metadataEnrichError' - 'workflowClaimAttempt' - 'workflowClaimStep' - 'workflowClaimLeaseExpiresAt' - 'workflowEnqueueStep' - 'workflowEnqueueAttempt' - 'workflowEnqueueLeaseExpiresAt') || ${JSON.stringify({ failedStep: step, lastError: message, failedAt })}::jsonb`,
     })
-    .where(workflowClaimWhere(workId, step, retryJobToken))
+    .where(workflowClaimWhere(workId, step, retryJobToken, attemptToken))
+    .returning({ id: readingWorkTable.id });
+  return Boolean(failed);
+}
+
+/** Convert a post-claim enqueue failure into a retryable workflow failure. */
+export async function failWorkflowEnqueue(
+  workId: string,
+  step: WorkflowStep,
+  retryJobToken: string,
+  currentStatus: WorkStatus,
+  attemptToken: string,
+  error: unknown,
+): Promise<boolean> {
+  const message = error instanceof Error ? error.message : String(error);
+  const failedAt = new Date().toISOString();
+  const [failed] = await db
+    .update(readingWorkTable)
+    .set({
+      status: 'failed',
+      originMeta: sql`(${readingWorkTable.originMeta} - 'metadataAt' - 'metadataEnrichGaps' - 'metadataEnrichError' - 'workflowClaimAttempt' - 'workflowClaimStep' - 'workflowClaimLeaseExpiresAt' - 'workflowEnqueueStep' - 'workflowEnqueueAttempt' - 'workflowEnqueueLeaseExpiresAt') || ${JSON.stringify({ failedStep: step, lastError: message, failedAt })}::jsonb`,
+    })
+    .where(
+      and(
+        eq(readingWorkTable.id, workId),
+        eq(readingWorkTable.status, currentStatus),
+        workflowTokenMatch(retryJobToken),
+        sql`${readingWorkTable.originMeta}->>'workflowEnqueueStep' = ${step}`,
+        sql`${readingWorkTable.originMeta}->>'workflowEnqueueAttempt' = ${attemptToken}`,
+        sql`(${readingWorkTable.originMeta}->>'workflowEnqueueLeaseExpiresAt')::timestamptz > now()`,
+      ),
+    )
     .returning({ id: readingWorkTable.id });
   return Boolean(failed);
 }
@@ -108,6 +175,7 @@ export async function completeWorkflowStep(
   expectedStatus?: WorkStatus | WorkStatus[],
   retryJobToken?: string,
   claimStep?: WorkflowStep,
+  attemptToken?: string,
 ): Promise<boolean> {
   const statuses = expectedStatus
     ? Array.isArray(expectedStatus)
@@ -119,15 +187,15 @@ export async function completeWorkflowStep(
     .update(readingWorkTable)
     .set({
       status: nextStatus,
-      originMeta: sql`(${readingWorkTable.originMeta} - 'failedStep' - 'lastError' - 'failedAt' - 'workflowClaimToken' - 'workflowClaimStep') || ${patch}::jsonb`,
+      originMeta: sql`(${readingWorkTable.originMeta} - 'failedStep' - 'lastError' - 'failedAt' - 'workflowClaimAttempt' - 'workflowClaimStep' - 'workflowClaimLeaseExpiresAt' - 'workflowEnqueueAttempt' - 'workflowEnqueueLeaseExpiresAt') || ${patch}::jsonb`,
     })
     .where(
-      retryJobToken && claimStep
+      retryJobToken && claimStep && attemptToken
         ? and(
             eq(readingWorkTable.id, workId),
             or(...statuses.map((status) => eq(readingWorkTable.status, status))),
             workflowTokenMatch(retryJobToken),
-            workflowClaimMatch(retryJobToken, claimStep),
+            workflowClaimMatch(attemptToken, claimStep),
           )
         : and(eq(readingWorkTable.id, workId), or(...statuses.map((status) => eq(readingWorkTable.status, status)))),
     )
@@ -141,6 +209,7 @@ export async function rotateWorkflowJobToken(
   claimStep: WorkflowStep,
   currentStatus: WorkStatus,
   currentToken: string,
+  currentAttemptToken: string,
   nextToken: string,
   nextStatus: WorkStatus,
 ): Promise<boolean> {
@@ -148,16 +217,52 @@ export async function rotateWorkflowJobToken(
     .update(readingWorkTable)
     .set({
       status: nextStatus,
-      originMeta: sql`(${readingWorkTable.originMeta} - 'workflowClaimToken' - 'workflowClaimStep') || ${JSON.stringify({ retryJobToken: nextToken })}::jsonb`,
+      originMeta: sql`(${readingWorkTable.originMeta} - 'workflowClaimAttempt' - 'workflowClaimStep' - 'workflowClaimLeaseExpiresAt' - 'workflowEnqueueAttempt' - 'workflowEnqueueLeaseExpiresAt') || ${JSON.stringify(
+        {
+          retryJobToken: nextToken,
+          workflowEnqueueStep: claimStep,
+          workflowEnqueueAttempt: currentAttemptToken,
+          workflowEnqueueLeaseExpiresAt: workflowLeaseExpiresAt(),
+        },
+      )}::jsonb`,
     })
     .where(
       and(
         eq(readingWorkTable.id, workId),
         eq(readingWorkTable.status, currentStatus),
         workflowTokenMatch(currentToken),
-        workflowClaimMatch(currentToken, claimStep),
+        workflowClaimMatch(currentAttemptToken, claimStep),
       ),
     )
     .returning({ id: readingWorkTable.id });
   return Boolean(rotated);
+}
+
+/** Reserve the enqueue transition before a newly-created workflow is queued. */
+export async function prepareWorkflowEnqueue(
+  workId: string,
+  step: WorkflowStep,
+  currentStatus: WorkStatus,
+  retryJobToken: string,
+  enqueueAttemptToken: string,
+): Promise<boolean> {
+  const [prepared] = await db
+    .update(readingWorkTable)
+    .set({
+      originMeta: sql`${readingWorkTable.originMeta} || ${JSON.stringify({
+        workflowEnqueueStep: step,
+        workflowEnqueueAttempt: enqueueAttemptToken,
+        workflowEnqueueLeaseExpiresAt: workflowLeaseExpiresAt(),
+      })}::jsonb`,
+    })
+    .where(
+      and(
+        eq(readingWorkTable.id, workId),
+        eq(readingWorkTable.status, currentStatus),
+        workflowTokenMatch(retryJobToken),
+        enqueueLeaseIsAvailable(),
+      ),
+    )
+    .returning({ id: readingWorkTable.id });
+  return Boolean(prepared);
 }

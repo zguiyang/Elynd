@@ -302,8 +302,12 @@ describe('POST /api/admin/works/:id/workflow/retry', () => {
       .where(eq(readingPartTable.workId, workId));
     const staleImageKey = `stale/${workId}/image.png`;
     const staleCoverKey = `stale/${workId}/cover.png`;
+    const staleAudioSegmentKey = `stale/${workId}/audio-us/segment.mp3`;
+    const staleAudioChapterKey = `stale/${workId}/audio-us/chapter.mp3`;
     memory.store.set(staleImageKey, { body: Buffer.from('stale image'), contentType: 'image/png' });
     memory.store.set(staleCoverKey, { body: Buffer.from('stale cover'), contentType: 'image/png' });
+    memory.store.set(staleAudioSegmentKey, { body: Buffer.from('stale audio segment'), contentType: 'audio/mpeg' });
+    memory.store.set(staleAudioChapterKey, { body: Buffer.from('stale audio chapter'), contentType: 'audio/mpeg' });
     await db.insert(contentAssetTable).values([
       {
         id: `stale-image-${workId}`,
@@ -323,6 +327,17 @@ describe('POST /api/admin/works/:id/workflow/retry', () => {
         contentHash: 'stale-cover-hash',
         status: 'ready',
       },
+      {
+        id: `stale-audio-${workId}`,
+        workId,
+        partId: null,
+        kind: 'audio_us',
+        storageKey: staleAudioChapterKey,
+        mimeType: 'audio/mpeg',
+        contentHash: 'stale-audio-hash',
+        status: 'ready',
+        meta: { objectKeys: [staleAudioSegmentKey, staleAudioChapterKey], timeline: [] },
+      },
     ]);
 
     const [mid] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
@@ -335,8 +350,11 @@ describe('POST /api/admin/works/:id/workflow/retry', () => {
     const afterAssets = await db.select().from(contentAssetTable).where(eq(contentAssetTable.workId, workId));
     expect(afterAssets.filter((asset) => asset.kind === 'image')).toHaveLength(1);
     expect(afterAssets.filter((asset) => asset.kind === 'cover')).toHaveLength(1);
+    expect(afterAssets.filter((asset) => asset.kind.startsWith('audio_'))).toHaveLength(0);
     expect(memory.store.has(staleImageKey)).toBe(false);
     expect(memory.store.has(staleCoverKey)).toBe(false);
+    expect(memory.store.has(staleAudioSegmentKey)).toBe(false);
+    expect(memory.store.has(staleAudioChapterKey)).toBe(false);
 
     const afterParts = await db
       .select({ id: readingPartTable.id })

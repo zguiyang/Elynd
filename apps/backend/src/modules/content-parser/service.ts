@@ -75,7 +75,11 @@ function rewriteImageSrcs(html: string, images: ParsedContent['images'], hrefToA
  * Claims the `parse` workflow step (self-heals from a failed parse retry) and
  * moves the work to `metadata` (auto-chain) or `parsed` (manual next) on success.
  */
-export async function processContentWork(workId: string, retryJobToken?: string): Promise<boolean> {
+export async function processContentWork(
+  workId: string,
+  retryJobToken?: string,
+  attemptToken = randomUUID(),
+): Promise<boolean> {
   const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId)).limit(1);
   if (!work) {
     throw new Error(`Work ${workId} not found`);
@@ -98,7 +102,7 @@ export async function processContentWork(workId: string, retryJobToken?: string)
       return false;
     }
   }
-  if (!(await claimWorkflowStep(workId, 'parse', jobToken))) {
+  if (!(await claimWorkflowStep(workId, 'parse', jobToken, attemptToken))) {
     return false;
   }
 
@@ -225,7 +229,7 @@ export async function processContentWork(workId: string, retryJobToken?: string)
                 parsedAt: new Date().toISOString(),
               },
             })}::jsonb`
-          : sql`(${readingWorkTable.originMeta} - 'failedStep' - 'lastError' - 'failedAt' - 'workflowClaimToken' - 'workflowClaimStep') || ${JSON.stringify(
+          : sql`(${readingWorkTable.originMeta} - 'failedStep' - 'lastError' - 'failedAt' - 'workflowClaimAttempt' - 'workflowClaimStep' - 'workflowClaimLeaseExpiresAt') || ${JSON.stringify(
               {
                 parsed: {
                   opfTitle: metadata.title,
@@ -244,7 +248,7 @@ export async function processContentWork(workId: string, retryJobToken?: string)
               },
             )}::jsonb`,
       })
-      .where(workflowClaimWhere(workId, 'parse', jobToken))
+      .where(workflowClaimWhere(workId, 'parse', jobToken, attemptToken))
       .returning({ id: readingWorkTable.id });
 
     if (!completed) {
@@ -255,7 +259,7 @@ export async function processContentWork(workId: string, retryJobToken?: string)
     return true;
   } catch (error) {
     ingestLogger.error({ err: error, workId }, 'Content ingest failed');
-    await failWorkflowStep(workId, 'parse', jobToken, error);
+    await failWorkflowStep(workId, 'parse', jobToken, attemptToken, error);
     throw error;
   }
 }

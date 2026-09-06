@@ -4,7 +4,7 @@ import { WORKFLOW_AUTO_CHAIN } from '@gloaming/shared';
 
 import { JOB_METADATA_FILL } from '@/jobs/work-metadata-fill';
 import { enqueue } from '@/lib/queue';
-import { rotateWorkflowJobToken } from '@/lib/workflow';
+import { failWorkflowEnqueue, rotateWorkflowJobToken } from '@/lib/workflow';
 import { processContentWork } from '@/modules/content-parser';
 
 export const JOB_CONTENT_PARSE = 'content-parse';
@@ -14,8 +14,11 @@ export type ContentParseJobData = {
   retryJobToken: string;
 };
 
-export async function processContentParse(data: ContentParseJobData): Promise<{ ok: true; workId: string }> {
-  if (!(await processContentWork(data.workId, data.retryJobToken))) {
+export async function processContentParse(
+  data: ContentParseJobData,
+  attemptToken = randomUUID(),
+): Promise<{ ok: true; workId: string }> {
+  if (!(await processContentWork(data.workId, data.retryJobToken, attemptToken))) {
     return { ok: true, workId: data.workId };
   }
   // Auto-chain kept for future: when WORKFLOW_AUTO_CHAIN flips back to true,
@@ -23,15 +26,28 @@ export async function processContentParse(data: ContentParseJobData): Promise<{ 
   if (WORKFLOW_AUTO_CHAIN) {
     const retryJobToken = randomUUID();
     if (
-      !(await rotateWorkflowJobToken(data.workId, 'parse', 'metadata', data.retryJobToken, retryJobToken, 'metadata'))
+      !(await rotateWorkflowJobToken(
+        data.workId,
+        'parse',
+        'metadata',
+        data.retryJobToken,
+        attemptToken,
+        retryJobToken,
+        'metadata',
+      ))
     ) {
       return { ok: true, workId: data.workId };
     }
-    await enqueue(
-      JOB_METADATA_FILL,
-      { workId: data.workId, retryJobToken },
-      { attempts: 2, jobId: `${JOB_METADATA_FILL}:${data.workId}:${retryJobToken}` },
-    );
+    try {
+      await enqueue(
+        JOB_METADATA_FILL,
+        { workId: data.workId, retryJobToken },
+        { attempts: 2, jobId: `${JOB_METADATA_FILL}:${data.workId}:${retryJobToken}` },
+      );
+    } catch (error) {
+      await failWorkflowEnqueue(data.workId, 'metadata', retryJobToken, 'metadata', attemptToken, error);
+      throw error;
+    }
   }
   return { ok: true, workId: data.workId };
 }

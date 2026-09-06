@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray, or } from 'drizzle-orm';
 
 import {
   contentAsset as contentAssetTable,
@@ -11,6 +11,7 @@ import {
 
 import { db } from '@/db';
 import { rootLogger } from '@/lib/logger';
+import { deleteAudioAssetObjects } from '@/modules/content-assets/service';
 import { deleteObject } from '@/modules/oss';
 
 const ingestLogger = rootLogger.child({ module: 'IngestReset' });
@@ -46,6 +47,27 @@ async function clearDerivedAssets(workId: string): Promise<void> {
     await db
       .delete(contentAssetTable)
       .where(and(eq(contentAssetTable.workId, workId), eq(contentAssetTable.kind, 'cover')));
+  }
+
+  const audio = await db
+    .select()
+    .from(contentAssetTable)
+    .where(
+      and(
+        eq(contentAssetTable.workId, workId),
+        or(eq(contentAssetTable.kind, 'audio_us'), eq(contentAssetTable.kind, 'audio_uk')),
+      ),
+    );
+  for (const row of audio) {
+    await deleteAudioAssetObjects(row);
+  }
+  if (audio.length > 0) {
+    await db.delete(contentAssetTable).where(
+      inArray(
+        contentAssetTable.id,
+        audio.map((row) => row.id),
+      ),
+    );
   }
 }
 

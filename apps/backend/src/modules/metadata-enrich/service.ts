@@ -18,7 +18,7 @@ import { db } from '@/db';
 import { AppError } from '@/lib/errors';
 import { rootLogger } from '@/lib/logger';
 import { normalizeTag } from '@/lib/text';
-import { completeWorkflowStep } from '@/lib/workflow';
+import { completeWorkflowStep, failWorkflowEnqueue, workflowLeaseExpiresAt } from '@/lib/workflow';
 import { type AiInvokeResult, invokeAi } from '@/modules/ai';
 import type { MetadataFieldId } from '@/modules/metadata-enrich/fields';
 import { buildEnrichMessages, EXCERPT_MAX_CHARS, TOC_TITLE_MAX } from '@/modules/metadata-enrich/prompt';
@@ -106,8 +106,9 @@ const FIELD_GAP_LABEL: Partial<Record<MetadataFieldId, string>> = {
 async function completeMetadataStep(
   workId: string,
   retryJobToken: string | undefined,
+  attemptToken: string | undefined,
   gaps: MetadataFieldId[] = [],
-): Promise<void> {
+): Promise<boolean> {
   const uniqueGaps = [...new Set(gaps)];
   const metaPatch = {
     metadataAt: new Date().toISOString(),
@@ -115,22 +116,40 @@ async function completeMetadataStep(
     metadataEnrichError:
       uniqueGaps.length > 0 ? `未补全：${uniqueGaps.map((id) => FIELD_GAP_LABEL[id] ?? id).join('、')}` : undefined,
   };
-  if (retryJobToken) {
-    await completeWorkflowStep(
-      workId,
-      TTS_STEP_ENABLED ? 'tts' : 'ready',
-      metaPatch,
-      'metadata',
-      retryJobToken,
-      'metadata',
-    );
-  } else {
-    await completeWorkflowStep(workId, TTS_STEP_ENABLED ? 'tts' : 'ready', metaPatch, 'metadata');
+  const completed =
+    retryJobToken && attemptToken
+      ? await completeWorkflowStep(
+          workId,
+          TTS_STEP_ENABLED ? 'tts' : 'ready',
+          TTS_STEP_ENABLED
+            ? {
+                ...metaPatch,
+                workflowEnqueueStep: 'tts',
+                workflowEnqueueAttempt: attemptToken,
+                workflowEnqueueLeaseExpiresAt: workflowLeaseExpiresAt(),
+              }
+            : metaPatch,
+          'metadata',
+          retryJobToken,
+          'metadata',
+          attemptToken,
+        )
+      : await completeWorkflowStep(workId, TTS_STEP_ENABLED ? 'tts' : 'ready', metaPatch, 'metadata');
+  if (!completed) {
+    return false;
   }
   if (TTS_STEP_ENABLED) {
     const { enqueueWorkAudio } = await import('@/modules/content-assets/service');
-    await enqueueWorkAudio(workId, { force: false, roles: ['us', 'uk'] });
+    try {
+      await enqueueWorkAudio(workId, { force: false, roles: ['us', 'uk'] });
+    } catch (error) {
+      if (retryJobToken && attemptToken) {
+        await failWorkflowEnqueue(workId, 'tts', retryJobToken, 'tts', attemptToken, error);
+      }
+      throw error;
+    }
   }
+  return true;
 }
 
 /**
@@ -139,16 +158,20 @@ async function completeMetadataStep(
  * Model-not-configured degrades to a completed step (rules already landed);
  * other failures bubble up so the job can fail the step and retry.
  */
-export async function enrichWorkMetadata(workId: string, retryJobToken?: string): Promise<void> {
+export async function enrichWorkMetadata(
+  workId: string,
+  retryJobToken?: string,
+  attemptToken?: string,
+): Promise<boolean> {
   const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId)).limit(1);
   if (!work) {
     throw new Error(`Work ${workId} not found`);
   }
   if (work.originKind !== 'admin_epub') {
-    return;
+    return true;
   }
   if (work.status !== 'metadata') {
-    return;
+    return true;
   }
 
   const [currentTags, currentCategory, context] = await Promise.all([
@@ -171,8 +194,7 @@ export async function enrichWorkMetadata(workId: string, retryJobToken?: string)
   }
 
   if (needed.size === 0) {
-    await completeMetadataStep(workId, retryJobToken);
-    return;
+    return completeMetadataStep(workId, retryJobToken, attemptToken);
   }
 
   const catalogSubjects = loadCatalogSubjects(work);
@@ -201,8 +223,7 @@ export async function enrichWorkMetadata(workId: string, retryJobToken?: string)
   } catch (error) {
     if (isModelNotConfigured(error)) {
       // Rules already landed; surface remaining AI targets as gaps.
-      await completeMetadataStep(workId, retryJobToken, [...needed]);
-      return;
+      return completeMetadataStep(workId, retryJobToken, attemptToken, [...needed]);
     }
     throw error;
   }
@@ -280,10 +301,14 @@ export async function enrichWorkMetadata(workId: string, retryJobToken?: string)
     if (def.isWeak(current)) gaps.push(id);
   }
 
-  await completeMetadataStep(workId, retryJobToken, gaps);
+  const completed = await completeMetadataStep(workId, retryJobToken, attemptToken, gaps);
+  if (!completed) {
+    return false;
+  }
   if (gaps.length > 0) {
     enrichLogger.warn({ workId, missingFields: gaps }, 'Metadata enrich completed with fields left unfilled');
   }
+  return true;
 }
 
 /** Resolve a tag ref to a concrete dimension id — reuse validated, then normalized, then create. */

@@ -15,6 +15,7 @@ import { AUTH_ADMIN_ROLE } from '@gloaming/shared';
 
 import app from '@/app';
 import { db } from '@/db';
+import { claimWorkflowStep, completeWorkflowStep, failWorkflowStep } from '@/lib/workflow';
 import { processContentWork } from '@/modules/content-parser';
 import { fillWorkMetadata } from '@/modules/metadata-fill/service';
 import { resetObjectStoreCache, setObjectStoreForTests } from '@/modules/oss';
@@ -377,6 +378,50 @@ describe('metadata-fill rule layer (extracted) + updateWork (manual)', () => {
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
     expect(work!.status).toBe('metadata');
     expect(work!.originMeta.lastError).toBeUndefined();
+  });
+
+  it('keeps an active claim exclusive and lets a new attempt recover an expired lease', async () => {
+    const workId = await uploadAndFill(
+      await buildEpubBytes({
+        title: 'Workflow Lease Book',
+        chapters: [{ href: 'chapter-1.xhtml', content: '<html><body><p>Body.</p></body></html>' }],
+      }),
+    );
+    const retryJobToken = `retry-${workId}`;
+    await db
+      .update(readingWorkTable)
+      .set({
+        status: 'processing',
+        originMeta: {
+          retryJobToken,
+          workflowClaimAttempt: 'attempt-a',
+          workflowClaimStep: 'parse',
+          workflowClaimLeaseExpiresAt: new Date(Date.now() + 60_000).toISOString(),
+        },
+      })
+      .where(eq(readingWorkTable.id, workId));
+
+    expect(await claimWorkflowStep(workId, 'parse', retryJobToken, 'attempt-b')).toBe(false);
+    await db
+      .update(readingWorkTable)
+      .set({
+        originMeta: {
+          retryJobToken,
+          workflowClaimAttempt: 'attempt-a',
+          workflowClaimStep: 'parse',
+          workflowClaimLeaseExpiresAt: new Date(Date.now() - 1_000).toISOString(),
+        },
+      })
+      .where(eq(readingWorkTable.id, workId));
+
+    expect(await claimWorkflowStep(workId, 'parse', retryJobToken, 'attempt-b')).toBe(true);
+    expect(
+      await completeWorkflowStep(workId, 'ready', undefined, 'processing', retryJobToken, 'parse', 'attempt-a'),
+    ).toBe(false);
+    expect(await failWorkflowStep(workId, 'parse', retryJobToken, 'attempt-a', new Error('stale'))).toBe(false);
+    expect(
+      await completeWorkflowStep(workId, 'ready', undefined, 'processing', retryJobToken, 'parse', 'attempt-b'),
+    ).toBe(true);
   });
 
   it('refuses workflow retry for non-EPUB works', async () => {

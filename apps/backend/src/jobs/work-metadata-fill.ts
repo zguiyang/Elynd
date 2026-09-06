@@ -8,7 +8,7 @@ import { db } from '@/db';
 import { JOB_METADATA_ENRICH } from '@/jobs/metadata-enrich';
 import { rootLogger } from '@/lib/logger';
 import { enqueue } from '@/lib/queue';
-import { claimWorkflowStep, failWorkflowStep, rotateWorkflowJobToken } from '@/lib/workflow';
+import { claimWorkflowStep, failWorkflowEnqueue, failWorkflowStep, rotateWorkflowJobToken } from '@/lib/workflow';
 import { resetMetadataAiOutputs } from '@/modules/ingest-reset/service';
 import { fillWorkMetadata } from '@/modules/metadata-fill/service';
 
@@ -27,8 +27,11 @@ const fillJobLogger = rootLogger.child({ module: 'MetadataFillJob' });
  * retry self-heals through the workflow claim. Success chains into AI
  * enrichment, which short-circuits when nothing needs AI.
  */
-export async function processWorkMetadataFill(data: WorkMetadataFillJobData): Promise<{ ok: true; workId: string }> {
-  if (!(await claimWorkflowStep(data.workId, 'metadata', data.retryJobToken))) {
+export async function processWorkMetadataFill(
+  data: WorkMetadataFillJobData,
+  attemptToken = randomUUID(),
+): Promise<{ ok: true; workId: string }> {
+  if (!(await claimWorkflowStep(data.workId, 'metadata', data.retryJobToken, attemptToken))) {
     return { ok: true, workId: data.workId };
   }
   try {
@@ -39,19 +42,32 @@ export async function processWorkMetadataFill(data: WorkMetadataFillJobData): Pr
     await fillWorkMetadata(data.workId);
   } catch (error) {
     fillJobLogger.error({ err: error, workId: data.workId }, 'Metadata fill failed');
-    await failWorkflowStep(data.workId, 'metadata', data.retryJobToken, error);
+    await failWorkflowStep(data.workId, 'metadata', data.retryJobToken, attemptToken, error);
     throw error;
   }
   const retryJobToken = randomUUID();
   if (
-    !(await rotateWorkflowJobToken(data.workId, 'metadata', 'metadata', data.retryJobToken, retryJobToken, 'metadata'))
+    !(await rotateWorkflowJobToken(
+      data.workId,
+      'metadata',
+      'metadata',
+      data.retryJobToken,
+      attemptToken,
+      retryJobToken,
+      'metadata',
+    ))
   ) {
     return { ok: true, workId: data.workId };
   }
-  await enqueue(
-    JOB_METADATA_ENRICH,
-    { workId: data.workId, retryJobToken },
-    { attempts: 2, jobId: `${JOB_METADATA_ENRICH}:${data.workId}:${retryJobToken}` },
-  );
+  try {
+    await enqueue(
+      JOB_METADATA_ENRICH,
+      { workId: data.workId, retryJobToken },
+      { attempts: 2, jobId: `${JOB_METADATA_ENRICH}:${data.workId}:${retryJobToken}` },
+    );
+  } catch (error) {
+    await failWorkflowEnqueue(data.workId, 'metadata', retryJobToken, 'metadata', attemptToken, error);
+    throw error;
+  }
   return { ok: true, workId: data.workId };
 }

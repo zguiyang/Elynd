@@ -1,7 +1,8 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
+  contentAsset as contentAssetTable,
   readingPart as readingPartTable,
   readingWork as readingWorkTable,
   ttsConfig as ttsConfigTable,
@@ -194,7 +195,7 @@ describe('learner part audio', () => {
       };
     });
     vi.spyOn(audioConcat, 'concatMp3Buffers').mockImplementation(async (parts) => Buffer.concat(parts));
-    vi.spyOn(queueLib, 'enqueue').mockImplementation(async (name, data, options) => {
+    const queueSpy = vi.spyOn(queueLib, 'enqueue').mockImplementation(async (name, data, options) => {
       if (name === 'part-audio-generate') {
         const job = data as Parameters<typeof processPartAudioGenerate>[0];
         audioJobs.push(job);
@@ -254,6 +255,58 @@ describe('learner part audio', () => {
     ).toBe(200);
     expect(ttsCallCount).toBe(2);
     expect(audioJobs).toHaveLength(2);
+
+    const usKind = audioKindForRole('us');
+    const [usBeforeEnqueueFailure] = await db
+      .select()
+      .from(contentAssetTable)
+      .where(and(eq(contentAssetTable.partId, partId), eq(contentAssetTable.kind, usKind)))
+      .limit(1);
+    expect(usBeforeEnqueueFailure?.status).toBe('ready');
+    const originalUsKeys = usBeforeEnqueueFailure?.meta.objectKeys ?? [];
+    queueSpy.mockRejectedValueOnce(new Error('queue unavailable'));
+    const enqueueFailure = await app.request(`/api/admin/parts/${partId}/audio/generate`, {
+      method: 'POST',
+      headers: { Cookie: admin.cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ force: true, roles: ['us'] }),
+    });
+    expect(enqueueFailure.status).toBe(500);
+    const [usAfterEnqueueFailure] = await db
+      .select()
+      .from(contentAssetTable)
+      .where(and(eq(contentAssetTable.partId, partId), eq(contentAssetTable.kind, usKind)))
+      .limit(1);
+    expect(usAfterEnqueueFailure?.status).toBe('ready');
+    expect(usAfterEnqueueFailure?.meta.objectKeys).toEqual(originalUsKeys);
+    queueSpy.mockImplementation(async (name, data, options) => {
+      if (name === 'part-audio-generate') {
+        const job = data as Parameters<typeof processPartAudioGenerate>[0];
+        audioJobs.push(job);
+        audioJobIds.push((options as { jobId?: string } | undefined)?.jobId ?? '');
+        await processPartAudioGenerate(job);
+      }
+      return `job-${Date.now()}`;
+    });
+
+    await db
+      .update(contentAssetTable)
+      .set({
+        status: 'generating',
+        generationToken: 'active-owner',
+        generationLeaseExpiresAt: new Date(Date.now() + 60_000),
+      })
+      .where(and(eq(contentAssetTable.partId, partId), eq(contentAssetTable.kind, usKind)));
+    const forceWhileActive = await app.request(`/api/admin/parts/${partId}/audio/generate`, {
+      method: 'POST',
+      headers: { Cookie: admin.cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ force: true, roles: ['us'] }),
+    });
+    expect(forceWhileActive.status).toBe(200);
+    expect(ttsCallCount).toBe(2);
+    await db
+      .update(contentAssetTable)
+      .set({ status: 'ready', generationToken: null, generationLeaseExpiresAt: null })
+      .where(and(eq(contentAssetTable.partId, partId), eq(contentAssetTable.kind, usKind)));
 
     const staleJob = audioJobs[0]!;
     expect(

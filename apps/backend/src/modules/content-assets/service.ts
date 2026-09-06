@@ -56,6 +56,14 @@ type AudioGenerationClaim = {
   generationLeaseExpiresAt: Date;
   assetId: string;
   previousKeys: string[];
+  previousAsset?: {
+    status: AssetRow['status'];
+    storageKey: string | null;
+    mimeType: string;
+    contentHash: string | null;
+    generationKey: string | null;
+    meta: ContentAssetMeta;
+  };
 };
 
 class GenerationOwnershipLostError extends Error {
@@ -411,7 +419,15 @@ async function claimPartAudioGeneration(input: {
     return null;
   }
 
-  const previousKeys = existing.contentHash !== input.contentHash ? audioObjectKeys(existing) : [];
+  const previousKeys = audioObjectKeys(existing);
+  const previousAsset = {
+    status: existing.status,
+    storageKey: existing.storageKey,
+    mimeType: existing.mimeType,
+    contentHash: existing.contentHash,
+    generationKey: existing.generationKey,
+    meta: existing.meta ?? {},
+  } satisfies NonNullable<AudioGenerationClaim['previousAsset']>;
 
   const eligible = [
     sql`${contentAssetTable.generationKey} is distinct from ${generationKey}`,
@@ -426,9 +442,6 @@ async function claimPartAudioGeneration(input: {
   ];
   if (input.force || input.allowReady) {
     eligible.push(eq(contentAssetTable.status, 'ready'));
-  }
-  if (input.force) {
-    eligible.push(eq(contentAssetTable.status, 'generating'));
   }
 
   const [claimed] = await db
@@ -465,23 +478,32 @@ async function claimPartAudioGeneration(input: {
     generationLeaseExpiresAt: leaseExpiresAt,
     assetId: claimed.id,
     previousKeys,
+    previousAsset,
   };
 }
 
 async function releasePartAudioGenerationClaim(claim: AudioGenerationClaim, error: unknown): Promise<void> {
   const message = error instanceof Error ? error.message : String(error);
-  const [released] = await db
+  const previous = claim.previousAsset;
+  const restored = previous?.status === 'ready';
+  await db
     .update(contentAssetTable)
     .set({
-      status: 'failed',
+      status: restored ? 'ready' : 'failed',
+      storageKey: restored ? (previous.storageKey ?? undefined) : undefined,
+      mimeType: restored ? previous.mimeType : AUDIO_MIME,
+      contentHash: restored ? (previous.contentHash ?? undefined) : undefined,
+      generationKey: restored ? previous.generationKey : claim.generationKey,
       generationToken: null,
       generationClaimedAt: null,
       generationLeaseExpiresAt: null,
-      meta: {
-        lastError: `Audio job enqueue failed: ${message}`,
-        objectKeys: [],
-        timeline: [],
-      } satisfies ContentAssetMeta,
+      meta: restored
+        ? previous.meta
+        : ({
+            lastError: `Audio job enqueue failed: ${message}`,
+            objectKeys: [],
+            timeline: [],
+          } satisfies ContentAssetMeta),
     })
     .where(
       and(
@@ -492,9 +514,6 @@ async function releasePartAudioGenerationClaim(claim: AudioGenerationClaim, erro
       ),
     )
     .returning({ id: contentAssetTable.id });
-  if (released && claim.previousKeys.length > 0) {
-    await deleteObjectKeys(claim.previousKeys, { generationKey: claim.generationKey, enqueueCompensation: true });
-  }
 }
 
 export async function enqueuePartAudio(partId: string, body: GeneratePartAudioBody): Promise<EnqueueAudioResult> {
@@ -538,6 +557,7 @@ export async function enqueuePartAudio(partId: string, body: GeneratePartAudioBo
           force,
           generationKey: claim.generationKey,
           generationToken: claim.generationToken,
+          previousKeys: claim.previousKeys,
         },
         {
           attempts: 3,
@@ -614,6 +634,7 @@ export async function enqueueWorkAudio(workId: string, body: GenerateWorkAudioBo
             force,
             generationKey: claim.generationKey,
             generationToken: claim.generationToken,
+            previousKeys: claim.previousKeys,
           },
           {
             attempts: 3,
@@ -639,6 +660,7 @@ type PartAudioGenerateInput = {
   force: boolean;
   generationKey: string;
   generationToken: string;
+  previousKeys?: string[];
   userId?: string;
 };
 
@@ -744,7 +766,7 @@ export async function runPartAudioGenerate(input: PartAudioGenerateInput): Promi
     throw error;
   }
 
-  const previousKeys = existing.contentHash !== contentHash ? audioObjectKeys(existing) : [];
+  const previousKeys = input.previousKeys ?? [];
 
   const started = Date.now();
   const objectKeys: string[] = [];
@@ -840,8 +862,9 @@ export async function runPartAudioGenerate(input: PartAudioGenerateInput): Promi
       throw new GenerationOwnershipLostError();
     }
 
-    if (previousKeys.length > 0) {
-      await deleteObjectKeys(previousKeys, { partId: input.partId, role: input.role });
+    const obsoleteKeys = previousKeys.filter((key) => !objectKeys.includes(key));
+    if (obsoleteKeys.length > 0) {
+      await deleteObjectKeys(obsoleteKeys, { partId: input.partId, role: input.role });
     }
 
     await recordTtsInvocation({
@@ -861,6 +884,7 @@ export async function runPartAudioGenerate(input: PartAudioGenerateInput): Promi
     await tryAdvanceTtsWorkflow(input.workId);
   } catch (error) {
     if (error instanceof GenerationOwnershipLostError) {
+      await cleanupOrphanObjectsAfterOwnershipLoss(input, kind, contentHash, objectKeys);
       return;
     }
     const message = error instanceof Error ? error.message : String(error);

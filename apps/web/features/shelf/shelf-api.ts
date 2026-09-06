@@ -3,8 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { getShelf } from '@/features/works-http';
 import { formatApiError } from '@/lib/api-request';
 
-export { getShelf } from '@/features/works-http';
-
 export const shelfQueryKey = {
   all: ['shelf'] as const,
 };

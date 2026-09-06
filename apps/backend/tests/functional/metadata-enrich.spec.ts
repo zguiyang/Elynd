@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { eq, inArray } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -18,6 +20,7 @@ import { db } from '@/db';
 import { processMetadataEnrich } from '@/jobs/metadata-enrich';
 import { AppError } from '@/lib/errors';
 import { normalizeTag } from '@/lib/text';
+import { claimWorkflowStep, rotateWorkflowJobToken } from '@/lib/workflow';
 import { processContentWork } from '@/modules/content-parser';
 import { enrichWorkMetadata } from '@/modules/metadata-enrich/service';
 import { listCategoriesTool, listExistingTagsTool } from '@/modules/metadata-enrich/tools';
@@ -142,9 +145,26 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
     const created = (await response.json()) as { id: string };
     createdWorkIds.push(created.id);
     await processContentWork(created.id);
-    // Manual pipeline leaves `parsed`; enrich requires the `metadata` running status.
-    await db.update(readingWorkTable).set({ status: 'metadata' }).where(eq(readingWorkTable.id, created.id));
+    const [parsed] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
+    const fillRetryJobToken = parsed!.originMeta.retryJobToken as string;
+    const fillAttemptToken = randomUUID();
+    const enrichRetryJobToken = randomUUID();
+    const enrichEnqueueAttemptToken = randomUUID();
+    expect(await claimWorkflowStep(created.id, 'metadata', fillRetryJobToken, fillAttemptToken)).toBe(true);
     await fillWorkMetadata(created.id);
+    expect(
+      await rotateWorkflowJobToken(
+        created.id,
+        'metadata',
+        'metadata',
+        fillRetryJobToken,
+        fillAttemptToken,
+        enrichRetryJobToken,
+        enrichEnqueueAttemptToken,
+        'metadata',
+        'metadata',
+      ),
+    ).toBe(true);
     return created.id;
   }
 
@@ -464,25 +484,37 @@ describe('metadata-enrich AI backfill (invokeAi mocked)', () => {
 
   it('restores the failed step so the bounded retry can re-claim (at-least-once)', async () => {
     const workId = await createParsedWork({ title: 'Retry Book' });
+    const [prepared] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
+    const retryJobToken = prepared!.originMeta.retryJobToken as string;
+    const firstAttemptToken = randomUUID();
+    const retryAttemptToken = randomUUID();
 
     invokeAiMock.mockRejectedValueOnce(new Error('upstream boom'));
 
-    await expect(processMetadataEnrich({ workId })).rejects.toThrow('upstream boom');
+    await expect(processMetadataEnrich({ workId, retryJobToken }, firstAttemptToken)).rejects.toThrow('upstream boom');
 
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
     expect(work!.status).toBe('failed');
     expect(work!.originMeta.failedStep).toBe('metadata');
+    expect(work!.originMeta.workflowClaimAttempt).toBeUndefined();
 
-    invokeAiMock.mockResolvedValueOnce({
-      content: { description: 'Recovered on retry.' },
-      model: { rowId: 'row', label: 'mock', modelId: 'mock-model' },
-      usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+    let retryClaimAttempt: unknown;
+    invokeAiMock.mockImplementationOnce(async () => {
+      const [claimed] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
+      retryClaimAttempt = claimed!.originMeta.workflowClaimAttempt;
+      return {
+        content: { description: 'Recovered on retry.' },
+        model: { rowId: 'row', label: 'mock', modelId: 'mock-model' },
+        usage: { inputTokens: 0, outputTokens: 0, totalTokens: 0 },
+      };
     });
-    await processMetadataEnrich({ workId });
+    await processMetadataEnrich({ workId, retryJobToken }, retryAttemptToken);
 
     const [after] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, workId));
     expect(after!.status).toBe('ready');
     expect(after!.description).toBe('Recovered on retry.');
+    expect(retryClaimAttempt).toBe(retryAttemptToken);
+    expect(retryClaimAttempt).not.toBe(firstAttemptToken);
   });
 
   it('list_existing_tags returns top-N by usage and searches by normalized name', async () => {

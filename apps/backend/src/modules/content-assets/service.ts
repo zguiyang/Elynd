@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import { and, asc, eq, gt, inArray, isNull, lte, or, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNull, lte, or } from 'drizzle-orm';
 
 import {
   contentAsset as contentAssetTable,
@@ -430,7 +430,6 @@ async function claimPartAudioGeneration(input: {
   } satisfies NonNullable<AudioGenerationClaim['previousAsset']>;
 
   const eligible = [
-    sql`${contentAssetTable.generationKey} is distinct from ${generationKey}`,
     eq(contentAssetTable.status, 'failed'),
     and(
       eq(contentAssetTable.status, 'generating'),

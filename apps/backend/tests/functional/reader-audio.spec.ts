@@ -303,6 +303,22 @@ describe('learner part audio', () => {
     });
     expect(forceWhileActive.status).toBe(200);
     expect(ttsCallCount).toBe(2);
+
+    await db.update(readingPartTable).set({ body: 'Listen body changed.' }).where(eq(readingPartTable.id, partId));
+    const forceWhileDifferentHashActive = await app.request(`/api/admin/parts/${partId}/audio/generate`, {
+      method: 'POST',
+      headers: { Cookie: admin.cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ force: true, roles: ['us'] }),
+    });
+    expect(forceWhileDifferentHashActive.status).toBe(200);
+    expect(ttsCallCount).toBe(2);
+    expect(audioJobs).toHaveLength(2);
+    expect(await forceWhileDifferentHashActive.json()).toMatchObject({
+      enqueued: [],
+      skipped: [{ partId, role: 'us', reason: 'fresh' }],
+    });
+    await db.update(readingPartTable).set({ body: 'Listen body here.' }).where(eq(readingPartTable.id, partId));
+
     await db
       .update(contentAssetTable)
       .set({ status: 'ready', generationToken: null, generationLeaseExpiresAt: null })

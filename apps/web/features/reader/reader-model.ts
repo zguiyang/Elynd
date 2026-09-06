@@ -21,6 +21,7 @@ export type ReaderAiMessage = {
 
 export type ReaderProgressState = {
   status: ReadingStateStatus;
+  revision?: number;
   progressRatio: number;
   completedThroughSortOrder: number;
   totalPartCount: number;

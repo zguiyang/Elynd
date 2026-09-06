@@ -9,16 +9,22 @@ import {
   type ReadingState,
   type ReadingStateAction,
   readingStateDataSchema,
+  type ReadingStateStatus,
   type UpdateReadingStateBody,
 } from '@gloaming/shared';
 
 import type { ReaderViewModel } from '@/features/reader/reader-model';
-import { patchReadingState } from '@/features/reading-state-command';
+import {
+  isReadingStateRevisionConflict,
+  patchReadingState,
+  withExpectedReadingStateRevision,
+} from '@/features/reading-state-command';
 import { getWorkParts } from '@/features/works-http';
 import { apiRequest, formatApiError } from '@/lib/api-request';
 import { authClient } from '@/lib/auth';
 
 export { addWorkToShelf, patchReadingState } from '@/features/reading-state-command';
+export { isReadingStateRevisionConflict } from '@/features/reading-state-command';
 export { getWorkParts as getReaderParts } from '@/features/works-http';
 
 export const readerQueryKey = {
@@ -70,6 +76,17 @@ export function resolvePartId(
   return sorted[0]!.id;
 }
 
+export function getReaderBootstrapCommand(input: {
+  stateStatus: ReadingStateStatus | null;
+  resolvedPartId: string;
+  preferredPartId: string | null;
+}): UpdateReadingStateBody {
+  return {
+    action: 'open',
+    partId: input.stateStatus === 'completed' ? input.resolvedPartId : (input.preferredPartId ?? undefined),
+  };
+}
+
 export function toReaderViewModel(
   partsData: ReaderPartsData,
   partData: ReaderPartData,
@@ -88,6 +105,7 @@ export function toReaderViewModel(
     state: state
       ? {
           status: state.status,
+          revision: state.revision,
           progressRatio: state.progressRatio,
           completedThroughSortOrder: state.completedThroughSortOrder,
           totalPartCount: state.totalPartCount,
@@ -131,12 +149,21 @@ export function useReadingStateQuery(workId: string, options?: { enabled?: boole
 
 export function useReaderStateMutation(workId: string) {
   const queryClient = useQueryClient();
+  const stateKey = readerQueryKey.state(workId);
   return useMutation({
-    mutationFn: (body: UpdateReadingStateBody) => patchReadingState(workId, body),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: readerQueryKey.state(workId) });
+    mutationFn: (body: UpdateReadingStateBody) => {
+      const currentState = queryClient.getQueryData<ReadingState | null>(stateKey);
+      return patchReadingState(workId, withExpectedReadingStateRevision(body, currentState?.revision));
+    },
+    onSuccess: (state) => {
+      queryClient.setQueryData(stateKey, state);
       void queryClient.invalidateQueries({ queryKey: ['shelf'] });
       void queryClient.invalidateQueries({ queryKey: ['book-detail'] });
+    },
+    onError: async (error) => {
+      if (isReadingStateRevisionConflict(error)) {
+        await queryClient.refetchQueries({ queryKey: stateKey, type: 'active' });
+      }
     },
   });
 }

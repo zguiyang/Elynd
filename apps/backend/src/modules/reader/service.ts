@@ -237,7 +237,7 @@ export async function updateReadingState(
       const mergedPartId = mergeReadingPosition({
         action: input.action,
         currentPartId,
-        restartPartId: requestedPartId,
+        restartPartId: requestedPartId ?? firstPart.id,
       });
       return updateState({
         status: 'in_progress',
@@ -261,24 +261,15 @@ export async function updateReadingState(
       return updateState({
         currentPartId: next.id,
         completedThroughSortOrder: completedThrough,
-        status: 'in_progress',
-        completedAt: null,
+        ...(existing.status === 'completed' ? {} : { status: 'in_progress', completedAt: null }),
         lastReadAt: now,
       });
     }
 
     if (input.action === 'navigate') {
       const target = findPart(parts, input.partId!);
-      const current = currentPart ?? firstPart;
-      let completedThrough = existing.completedThroughSortOrder ?? NO_CHAPTERS_COMPLETED;
-      if (target.sortOrder > current.sortOrder) {
-        completedThrough = mergeReadingCompletion(completedThrough, target.sortOrder - 1);
-      }
       return updateState({
         currentPartId: target.id,
-        completedThroughSortOrder: completedThrough,
-        status: 'in_progress',
-        completedAt: null,
         lastReadAt: now,
       });
     }

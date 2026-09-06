@@ -10,33 +10,93 @@ import {
 
 import { db } from '@/db';
 import { rootLogger } from '@/lib/logger';
-import { claimWorkflowStep, failWorkflowStep, workflowClaimWhere } from '@/lib/workflow';
+import { claimWorkflowStep, failWorkflowStep, renewWorkflowClaim, workflowClaimWhere } from '@/lib/workflow';
 import { WORKFLOW_AUTO_CHAIN } from '@/lib/workflow-policy';
 import { parserFor } from '@/modules/content-parser/registry';
 import type { ParsedContent } from '@/modules/content-parser/types';
 import { resetParseStepOutputs } from '@/modules/ingest-reset/service';
-import { getObject, putObject } from '@/modules/oss';
+import { deleteObject, getObject, putObject } from '@/modules/oss';
 import { computePartReadingStats, computeWorkReadingStats } from '@/modules/reading-stats/service';
 
 const ingestLogger = rootLogger.child({ module: 'ContentParser' });
 
 /** Max images extracted per book (abuse / runaway protection). */
 const MAX_BOOK_IMAGES = 200;
+const PARSE_LEASE_HEARTBEAT_MS = 5 * 60 * 1000;
 
 type WorkRow = typeof readingWorkTable.$inferSelect;
 
-function imageKey(workId: string, contentHash: string, mime: string): string {
+function imageKey(workId: string, attemptToken: string, contentHash: string, mime: string): string {
   const ext = mime === 'image/png' ? 'png' : mime === 'image/gif' ? 'gif' : mime === 'image/webp' ? 'webp' : 'jpg';
-  return `book-images/${workId}/${contentHash}.${ext}`;
+  return `book-images/${workId}/${attemptToken}/${contentHash}.${ext}`;
 }
 
-function coverKey(workId: string, mime: string): string {
+function coverKey(workId: string, attemptToken: string, mime: string): string {
   const ext = mime === 'image/png' ? 'png' : mime === 'image/gif' ? 'gif' : mime === 'image/webp' ? 'webp' : 'jpg';
-  return `covers/${workId}.${ext}`;
+  return `covers/${workId}/${attemptToken}.${ext}`;
 }
 
 function sha256(buffer: Buffer): string {
   return createHash('sha256').update(buffer).digest('hex');
+}
+
+type ParseArtifactManifest = {
+  attemptToken: string;
+  keys: string[];
+};
+
+class ParseWorkflowLeaseLostError extends Error {
+  constructor() {
+    super('Parse workflow lease lost');
+    this.name = 'ParseWorkflowLeaseLostError';
+  }
+}
+
+function parseArtifactManifests(originMeta: WorkRow['originMeta']): ParseArtifactManifest[] {
+  const value = (originMeta as Record<string, unknown>).workflowParseArtifacts;
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== 'object') {
+      return [];
+    }
+    const candidate = entry as { attemptToken?: unknown; keys?: unknown };
+    if (
+      typeof candidate.attemptToken !== 'string' ||
+      !Array.isArray(candidate.keys) ||
+      !candidate.keys.every((key): key is string => typeof key === 'string')
+    ) {
+      return [];
+    }
+    return [{ attemptToken: candidate.attemptToken, keys: candidate.keys }];
+  });
+}
+
+async function deleteParseArtifactKeys(keys: string[]): Promise<void> {
+  for (const key of [...new Set(keys)]) {
+    try {
+      await deleteObject(key);
+    } catch (error) {
+      ingestLogger.warn({ err: error, key }, 'Failed to delete uncommitted parse artifact');
+    }
+  }
+}
+
+async function registerParseArtifactManifest(
+  workId: string,
+  retryJobToken: string,
+  attemptToken: string,
+  keys: string[],
+): Promise<boolean> {
+  const [registered] = await db
+    .update(readingWorkTable)
+    .set({
+      originMeta: sql`jsonb_set(${readingWorkTable.originMeta}, '{workflowParseArtifacts}', coalesce(${readingWorkTable.originMeta}->'workflowParseArtifacts', '[]'::jsonb) || ${JSON.stringify([{ attemptToken, keys }])}::jsonb, true)`,
+    })
+    .where(workflowClaimWhere(workId, 'parse', retryJobToken, attemptToken))
+    .returning({ id: readingWorkTable.id });
+  return Boolean(registered);
 }
 
 async function loadOriginBytes(workId: string): Promise<Buffer> {
@@ -72,8 +132,9 @@ function rewriteImageSrcs(html: string, images: ParsedContent['images'], hrefToA
 /**
  * Content ingest job — resolve the source parser, then store parts/images/cover
  * and update the work. Idempotent: re-running replaces parts + derived assets.
- * Claims the `parse` workflow step (self-heals from a failed parse retry) and
- * moves the work to `metadata` (auto-chain) or `parsed` (manual next) on success.
+ * Claims the `parse` workflow step and moves the work to `metadata`
+ * (auto-chain) or `parsed` (manual next) on success. Parse artifacts are
+ * attempt-scoped until the owner commits them.
  */
 export async function processContentWork(
   workId: string,
@@ -106,13 +167,54 @@ export async function processContentWork(
     return false;
   }
 
+  let leaseLost = false;
+  let heartbeat: Promise<void> | null = null;
+  const renew = async (): Promise<boolean> => {
+    if (leaseLost) {
+      return false;
+    }
+    try {
+      const owned = await renewWorkflowClaim(workId, 'parse', jobToken, attemptToken);
+      if (!owned) {
+        leaseLost = true;
+      }
+      return owned;
+    } catch (error) {
+      leaseLost = true;
+      ingestLogger.warn({ err: error, workId, attemptToken }, 'Parse workflow lease renewal failed');
+      return false;
+    }
+  };
+  const ensureOwned = async (): Promise<void> => {
+    if (!(await renew())) {
+      throw new ParseWorkflowLeaseLostError();
+    }
+  };
+  const heartbeatTimer = setInterval(() => {
+    if (!heartbeat) {
+      heartbeat = renew()
+        .then(() => undefined)
+        .finally(() => {
+          heartbeat = null;
+        });
+    }
+  }, PARSE_LEASE_HEARTBEAT_MS);
+
+  const uploadedKeys: string[] = [];
   try {
-    // Reset previous parse outputs inside the job (HTTP retry only enqueues).
-    await resetParseStepOutputs(work);
+    await ensureOwned();
+
+    const previousArtifacts = parseArtifactManifests(work.originMeta)
+      .filter((manifest) => manifest.attemptToken !== attemptToken)
+      .flatMap((manifest) => manifest.keys);
+    if (previousArtifacts.length > 0) {
+      await deleteParseArtifactKeys(previousArtifacts);
+    }
 
     const bytes = await loadOriginBytes(workId);
     const parser = parserFor(work.originKind);
     const content = await parser.parse(bytes);
+    await ensureOwned();
 
     if (content.chapters.length === 0) {
       throw new Error(`${work.originKind} produced no readable chapters`);
@@ -123,64 +225,54 @@ export async function processContentWork(
     const chapterHtml = content.chapters.map((chapter) => chapter.html).join('\n');
     const usedImages = content.images.filter((image) => chapterHtml.includes(image.token)).slice(0, MAX_BOOK_IMAGES);
 
-    // Store images → content_asset rows → final src URLs.
-    const hrefToAssetId = new Map<string, string>();
-    let storedImages = 0;
-    for (const image of usedImages) {
+    const imageDrafts = usedImages.map((image) => {
       const hash = sha256(image.bytes);
-      const key = imageKey(workId, hash, image.mime);
-      await putObject({ key, body: image.bytes, contentType: image.mime });
-      const assetId = randomUUID();
-      await db.insert(contentAssetTable).values({
-        id: assetId,
-        workId,
-        kind: 'image',
-        storageKey: key,
-        mimeType: image.mime,
-        contentHash: hash,
-        meta: { originalPath: image.href, size: image.bytes.length },
-        status: 'ready',
-      });
-      hrefToAssetId.set(image.href, assetId);
-      storedImages += 1;
+      return {
+        id: randomUUID(),
+        image,
+        hash,
+        key: imageKey(workId, attemptToken, hash, image.mime),
+      };
+    });
+    const coverDraft = content.cover
+      ? {
+          id: randomUUID(),
+          key: coverKey(workId, attemptToken, content.cover.mime),
+          hash: sha256(content.cover.bytes),
+        }
+      : null;
+    const plannedKeys = [...imageDrafts.map((draft) => draft.key), ...(coverDraft ? [coverDraft.key] : [])];
+
+    // Reset and publish only while the attempt owns a row lock. The manifest
+    // is persisted before any upload so a later owner can safely collect it.
+    await resetParseStepOutputs(work, { retryJobToken: jobToken, attemptToken });
+    if (!(await registerParseArtifactManifest(workId, jobToken, attemptToken, plannedKeys))) {
+      throw new ParseWorkflowLeaseLostError();
     }
 
-    // Cover asset.
-    let coverAssetId: string | null = null;
-    if (content.cover) {
-      const key = coverKey(workId, content.cover.mime);
-      await putObject({ key, body: content.cover.bytes, contentType: content.cover.mime });
-      const assetId = randomUUID();
-      await db.insert(contentAssetTable).values({
-        id: assetId,
-        workId,
-        kind: 'cover',
-        storageKey: key,
-        mimeType: content.cover.mime,
-        contentHash: sha256(content.cover.bytes),
-        meta: { originalPath: content.cover.originalPath, size: content.cover.bytes.length },
-        status: 'ready',
-      });
-      coverAssetId = assetId;
+    // Store objects first, but never expose them through asset rows until the
+    // owner-scoped final transaction commits.
+    const hrefToAssetId = new Map<string, string>();
+    for (const draft of imageDrafts) {
+      await ensureOwned();
+      await putObject({ key: draft.key, body: draft.image.bytes, contentType: draft.image.mime });
+      uploadedKeys.push(draft.key);
+      await ensureOwned();
+      hrefToAssetId.set(draft.image.href, draft.id);
     }
 
-    // Replace parts (idempotent re-parse).
-    await db.delete(readingPartTable).where(eq(readingPartTable.workId, workId));
+    if (coverDraft && content.cover) {
+      await ensureOwned();
+      await putObject({ key: coverDraft.key, body: content.cover.bytes, contentType: content.cover.mime });
+      uploadedKeys.push(coverDraft.key);
+      await ensureOwned();
+    }
+
     const partBodies: { body: string }[] = [];
     for (let i = 0; i < content.chapters.length; i += 1) {
       const chapter = content.chapters[i]!;
       const body = rewriteImageSrcs(chapter.html, usedImages, hrefToAssetId);
-      const partStats = computePartReadingStats(body);
       partBodies.push({ body });
-      await db.insert(readingPartTable).values({
-        id: randomUUID(),
-        workId,
-        sortOrder: i,
-        kind: 'chapter',
-        title: chapter.title.slice(0, 200),
-        body,
-        meta: { wordCount: partStats.wordCount },
-      });
     }
 
     const parsedLanguage = content.metadata.language ?? work.language;
@@ -194,73 +286,113 @@ export async function processContentWork(
     const hasParsedBefore = Boolean(work.originMeta?.parsed);
     const metadata = content.metadata;
 
-    const [completed] = await db
-      .update(readingWorkTable)
-      .set({
-        title: hasParsedBefore ? work.title : '',
-        author: hasParsedBefore ? work.author : '',
-        description: hasParsedBefore ? work.description : '',
-        coverAssetId,
-        wordCount: workStats.wordCount,
-        estimatedMinutes: workStats.estimatedMinutes,
-        ...(preserveManualStats
-          ? {}
-          : {
-              suggestedVocabSize: workStats.suggestedVocabSize,
-              difficultyScore: workStats.difficultyScore,
-              statsProvenance: workStats.statsProvenance,
-            }),
-        status: WORKFLOW_AUTO_CHAIN ? 'metadata' : 'parsed',
-        publishedAt: null,
-        originMeta: WORKFLOW_AUTO_CHAIN
-          ? sql`(${readingWorkTable.originMeta} - 'failedStep' - 'lastError' - 'failedAt') || ${JSON.stringify({
-              parsed: {
-                opfTitle: metadata.title,
-                authors: metadata.authors,
-                description: metadata.description,
-                language: metadata.language,
-                subjects: metadata.subjects,
-                sourceRaw: metadata.sourceRaw,
-                coverHref: content.cover?.originalPath ?? null,
-                spineCount: content.stats.spineCount,
-                navCount: content.stats.navCount,
-                chapterCount: content.stats.chapterCount,
-                imageCount: storedImages,
-                parsedAt: new Date().toISOString(),
-              },
-            })}::jsonb`
-          : sql`(${readingWorkTable.originMeta} - 'failedStep' - 'lastError' - 'failedAt' - 'workflowClaimAttempt' - 'workflowClaimStep' - 'workflowClaimLeaseExpiresAt') || ${JSON.stringify(
-              {
-                parsed: {
-                  opfTitle: metadata.title,
-                  authors: metadata.authors,
-                  description: metadata.description,
-                  language: metadata.language,
-                  subjects: metadata.subjects,
-                  sourceRaw: metadata.sourceRaw,
-                  coverHref: content.cover?.originalPath ?? null,
-                  spineCount: content.stats.spineCount,
-                  navCount: content.stats.navCount,
-                  chapterCount: content.stats.chapterCount,
-                  imageCount: storedImages,
-                  parsedAt: new Date().toISOString(),
-                },
-              },
-            )}::jsonb`,
-      })
-      .where(workflowClaimWhere(workId, 'parse', jobToken, attemptToken))
-      .returning({ id: readingWorkTable.id });
+    await ensureOwned();
+    await db.transaction(async (tx) => {
+      const [owned] = await tx
+        .select({ id: readingWorkTable.id })
+        .from(readingWorkTable)
+        .where(workflowClaimWhere(workId, 'parse', jobToken, attemptToken))
+        .for('update');
+      if (!owned) {
+        throw new ParseWorkflowLeaseLostError();
+      }
+      for (const draft of imageDrafts) {
+        await tx.insert(contentAssetTable).values({
+          id: draft.id,
+          workId,
+          kind: 'image',
+          storageKey: draft.key,
+          mimeType: draft.image.mime,
+          contentHash: draft.hash,
+          meta: { originalPath: draft.image.href, size: draft.image.bytes.length },
+          status: 'ready',
+        });
+      }
+      if (coverDraft && content.cover) {
+        await tx.insert(contentAssetTable).values({
+          id: coverDraft.id,
+          workId,
+          kind: 'cover',
+          storageKey: coverDraft.key,
+          mimeType: content.cover.mime,
+          contentHash: coverDraft.hash,
+          meta: { originalPath: content.cover.originalPath, size: content.cover.bytes.length },
+          status: 'ready',
+        });
+      }
+      await tx.delete(readingPartTable).where(eq(readingPartTable.workId, workId));
+      for (let i = 0; i < content.chapters.length; i += 1) {
+        const chapter = content.chapters[i]!;
+        const body = rewriteImageSrcs(chapter.html, usedImages, hrefToAssetId);
+        const partStats = computePartReadingStats(body);
+        await tx.insert(readingPartTable).values({
+          id: randomUUID(),
+          workId,
+          sortOrder: i,
+          kind: 'chapter',
+          title: chapter.title.slice(0, 200),
+          body,
+          meta: { wordCount: partStats.wordCount },
+        });
+      }
+      const parsed = {
+        opfTitle: metadata.title,
+        authors: metadata.authors,
+        description: metadata.description,
+        language: metadata.language,
+        subjects: metadata.subjects,
+        sourceRaw: metadata.sourceRaw,
+        coverHref: content.cover?.originalPath ?? null,
+        spineCount: content.stats.spineCount,
+        navCount: content.stats.navCount,
+        chapterCount: content.stats.chapterCount,
+        imageCount: imageDrafts.length,
+        parsedAt: new Date().toISOString(),
+      };
+      const [completed] = await tx
+        .update(readingWorkTable)
+        .set({
+          title: hasParsedBefore ? work.title : '',
+          author: hasParsedBefore ? work.author : '',
+          description: hasParsedBefore ? work.description : '',
+          coverAssetId: coverDraft?.id ?? null,
+          wordCount: workStats.wordCount,
+          estimatedMinutes: workStats.estimatedMinutes,
+          ...(preserveManualStats
+            ? {}
+            : {
+                suggestedVocabSize: workStats.suggestedVocabSize,
+                difficultyScore: workStats.difficultyScore,
+                statsProvenance: workStats.statsProvenance,
+              }),
+          status: WORKFLOW_AUTO_CHAIN ? 'metadata' : 'parsed',
+          publishedAt: null,
+          originMeta: WORKFLOW_AUTO_CHAIN
+            ? sql`(${readingWorkTable.originMeta} - 'failedStep' - 'lastError' - 'failedAt' - 'workflowParseArtifacts') || ${JSON.stringify({ parsed })}::jsonb`
+            : sql`(${readingWorkTable.originMeta} - 'failedStep' - 'lastError' - 'failedAt' - 'workflowClaimAttempt' - 'workflowClaimStep' - 'workflowClaimLeaseExpiresAt' - 'workflowParseArtifacts') || ${JSON.stringify({ parsed })}::jsonb`,
+        })
+        .where(workflowClaimWhere(workId, 'parse', jobToken, attemptToken))
+        .returning({ id: readingWorkTable.id });
+      if (!completed) {
+        throw new ParseWorkflowLeaseLostError();
+      }
+    });
 
-    if (!completed) {
-      return false;
-    }
-
-    ingestLogger.info({ workId, chapters: content.chapters.length, images: storedImages }, 'Content ingest complete');
+    ingestLogger.info(
+      { workId, chapters: content.chapters.length, images: imageDrafts.length },
+      'Content ingest complete',
+    );
     return true;
   } catch (error) {
     ingestLogger.error({ err: error, workId }, 'Content ingest failed');
+    await deleteParseArtifactKeys(uploadedKeys);
+    if (error instanceof ParseWorkflowLeaseLostError || leaseLost) {
+      return false;
+    }
     await failWorkflowStep(workId, 'parse', jobToken, attemptToken, error);
     throw error;
+  } finally {
+    clearInterval(heartbeatTimer);
   }
 }
 

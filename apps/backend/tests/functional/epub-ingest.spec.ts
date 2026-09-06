@@ -12,7 +12,11 @@ import { AUTH_ADMIN_ROLE } from '@gloaming/shared';
 
 import app from '@/app';
 import { db } from '@/db';
+import { failWorkflowEnqueue } from '@/lib/workflow';
 import { processContentWork } from '@/modules/content-parser';
+import { registerParser } from '@/modules/content-parser/registry';
+import type { ParsedContent } from '@/modules/content-parser/types';
+import { epubContentParser } from '@/modules/epub-ingest';
 import { resetMetadataAiOutputs } from '@/modules/ingest-reset/service';
 import { fillWorkMetadata } from '@/modules/metadata-fill/service';
 import { resetObjectStoreCache, setObjectStoreForTests } from '@/modules/oss';
@@ -25,6 +29,24 @@ const password = 'password123';
 
 function uniqueEmail(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
+}
+
+function parsedAttemptContent(label: string, imageByte: number): ParsedContent {
+  const token = `{{${label}-image}}`;
+  return {
+    metadata: {
+      title: `${label} title`,
+      authors: [`${label} author`],
+      description: `${label} description`,
+      language: 'en',
+      subjects: [],
+      sourceRaw: '',
+    },
+    chapters: [{ title: `${label} chapter`, html: `<p>${label}</p><img src="${token}">` }],
+    images: [{ token, href: `${label}.png`, mime: 'image/png', bytes: Buffer.from([imageByte]) }],
+    cover: { bytes: Buffer.from([imageByte + 1]), mime: 'image/png', originalPath: `${label}-cover.png` },
+    stats: { spineCount: 1, navCount: 1, chapterCount: 1 },
+  };
 }
 
 function cookieHeader(response: Response): string {
@@ -196,6 +218,70 @@ describe('EPUB ingest pipeline', () => {
     expect(work!.status).toBe('failed');
     expect(String(work!.originMeta.lastError ?? '')).toContain('container.xml');
   });
+
+  it('fences a stale parse attempt after a new owner commits parts and objects', async () => {
+    const response = await uploadEpub(adminCookie, await buildSampleEpubBytes(), createdContentHashes);
+    expect(response.status).toBe(201);
+    const created = (await response.json()) as { id: string };
+    createdWorkIds.push(created.id);
+
+    const attemptA = parsedAttemptContent('attempt-a', 11);
+    const attemptB = parsedAttemptContent('attempt-b', 22);
+    let parseCalls = 0;
+    let releaseAttemptA!: () => void;
+    let attemptAStarted!: () => void;
+    const attemptARelease = new Promise<void>((resolve) => {
+      releaseAttemptA = resolve;
+    });
+    const attemptAEntered = new Promise<void>((resolve) => {
+      attemptAStarted = resolve;
+    });
+    registerParser({
+      kind: 'admin_epub',
+      parse: async () => {
+        parseCalls += 1;
+        if (parseCalls === 1) {
+          attemptAStarted();
+          await attemptARelease;
+          return attemptA;
+        }
+        return attemptB;
+      },
+    });
+
+    try {
+      const staleAttempt = processContentWork(created.id, undefined, 'attempt-a');
+      await attemptAEntered;
+      const [claimed] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
+      expect(claimed!.originMeta.workflowClaimAttempt).toBe('attempt-a');
+      await db
+        .update(readingWorkTable)
+        .set({
+          originMeta: {
+            ...claimed!.originMeta,
+            workflowClaimLeaseExpiresAt: new Date(0).toISOString(),
+          },
+        })
+        .where(eq(readingWorkTable.id, created.id));
+
+      await expect(processContentWork(created.id, undefined, 'attempt-b')).resolves.toBe(true);
+      releaseAttemptA();
+      await expect(staleAttempt).resolves.toBe(false);
+
+      const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
+      const parts = await db.select().from(readingPartTable).where(eq(readingPartTable.workId, created.id));
+      const assets = await db.select().from(contentAssetTable).where(eq(contentAssetTable.workId, created.id));
+      expect(work!.status).toBe('parsed');
+      expect(parts).toHaveLength(1);
+      expect(parts[0]!.body).toContain('attempt-b');
+      expect(assets.filter((asset) => asset.kind === 'image')).toHaveLength(1);
+      expect(memory.store.has(assets.find((asset) => asset.kind === 'image')!.storageKey!)).toBe(true);
+      expect([...memory.store.keys()].filter((key) => key.startsWith(`book-images/${created.id}/`))).toHaveLength(1);
+      expect([...memory.store.keys()].filter((key) => key.startsWith(`covers/${created.id}/`))).toHaveLength(1);
+    } finally {
+      registerParser(epubContentParser);
+    }
+  });
 });
 
 describe('POST /api/admin/works/:id/workflow/retry', () => {
@@ -281,6 +367,78 @@ describe('POST /api/admin/works/:id/workflow/retry', () => {
 
     const retry = await retryRequest(created.id, { step: 'parse' });
     expect(retry.status).toBe(409);
+  });
+
+  it('allows the admin to recover an expired parse lease, but not an active one', async () => {
+    const response = await uploadEpub(adminCookie, await buildSampleEpubBytes(), createdContentHashes);
+    expect(response.status).toBe(201);
+    const created = (await response.json()) as { id: string };
+    createdWorkIds.push(created.id);
+    const oldAttempt = 'expired-parse-attempt';
+    await db
+      .update(readingWorkTable)
+      .set({
+        status: 'processing',
+        originMeta: {
+          retryJobToken: 'expired-retry-token',
+          workflowClaimStep: 'parse',
+          workflowClaimAttempt: oldAttempt,
+          workflowClaimLeaseExpiresAt: new Date(0).toISOString(),
+        },
+      })
+      .where(eq(readingWorkTable.id, created.id));
+
+    const retry = await retryRequest(created.id, { step: 'parse' });
+    expect(retry.status).toBe(200);
+    const [recovered] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
+    expect(recovered!.status).toBe('processing');
+    expect(recovered!.originMeta.workflowEnqueueStep).toBe('parse');
+    expect(recovered!.originMeta.workflowEnqueueAttempt).not.toBe(oldAttempt);
+  });
+
+  it('compensates parse-to-metadata enqueue failure only for the persisted enqueue attempt', async () => {
+    const response = await uploadEpub(adminCookie, await buildSampleEpubBytes(), createdContentHashes);
+    expect(response.status).toBe(201);
+    const created = (await response.json()) as { id: string };
+    createdWorkIds.push(created.id);
+    const enqueueAttempt = 'metadata-enqueue-attempt';
+    const originMeta = {
+      retryJobToken: 'metadata-retry-token',
+      workflowEnqueueStep: 'metadata',
+      workflowEnqueueAttempt: enqueueAttempt,
+      workflowEnqueueLeaseExpiresAt: new Date(Date.now() + 60_000).toISOString(),
+    };
+    await db
+      .update(readingWorkTable)
+      .set({ status: 'metadata', originMeta })
+      .where(eq(readingWorkTable.id, created.id));
+
+    await expect(
+      failWorkflowEnqueue(
+        created.id,
+        'metadata',
+        'metadata-retry-token',
+        'metadata',
+        'stale-attempt',
+        new Error('queue down'),
+      ),
+    ).resolves.toBe(false);
+    const [stillMetadata] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
+    expect(stillMetadata!.status).toBe('metadata');
+
+    await expect(
+      failWorkflowEnqueue(
+        created.id,
+        'metadata',
+        'metadata-retry-token',
+        'metadata',
+        enqueueAttempt,
+        new Error('queue down'),
+      ),
+    ).resolves.toBe(true);
+    const [failed] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
+    expect(failed!.status).toBe('failed');
+    expect(failed!.originMeta.failedStep).toBe('metadata');
   });
 
   it('re-running parse overwrites hand-edited fields with parsed values', async () => {

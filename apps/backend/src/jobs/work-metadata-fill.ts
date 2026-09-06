@@ -46,6 +46,7 @@ export async function processWorkMetadataFill(
     throw error;
   }
   const retryJobToken = randomUUID();
+  const enrichEnqueueAttemptToken = randomUUID();
   if (
     !(await rotateWorkflowJobToken(
       data.workId,
@@ -54,6 +55,7 @@ export async function processWorkMetadataFill(
       data.retryJobToken,
       attemptToken,
       retryJobToken,
+      enrichEnqueueAttemptToken,
       'metadata',
     ))
   ) {
@@ -66,7 +68,7 @@ export async function processWorkMetadataFill(
       { attempts: 2, jobId: `${JOB_METADATA_ENRICH}:${data.workId}:${retryJobToken}` },
     );
   } catch (error) {
-    await failWorkflowEnqueue(data.workId, 'metadata', retryJobToken, 'metadata', attemptToken, error);
+    await failWorkflowEnqueue(data.workId, 'metadata', retryJobToken, 'metadata', enrichEnqueueAttemptToken, error);
     throw error;
   }
   return { ok: true, workId: data.workId };

@@ -67,11 +67,9 @@ export function workflowClaimWhere(workId: string, step: WorkflowStep, retryJobT
 }
 
 /**
- * Claim the workflow step before running its job: the work must currently be
- * in this step's running status but not already claimed, its idle wait status
- * (manual next), or failed on exactly this step (retry self-heal). The queued
- * retry token is the execution identity, so duplicate deliveries cannot claim
- * the same row twice.
+ * Claim the workflow step before running its job. BullMQ delivery retries that
+ * arrive while the lease is active are deliberately no-ops; expired claims
+ * are recovered through the explicit admin retry path.
  */
 export async function claimWorkflowStep(
   workId: string,
@@ -113,6 +111,23 @@ export async function claimWorkflowStep(
     .where(and(eq(readingWorkTable.id, workId), or(...eligible)))
     .returning({ id: readingWorkTable.id });
   return Boolean(claimed);
+}
+
+/** Extend a live worker lease without changing its attempt identity. */
+export async function renewWorkflowClaim(
+  workId: string,
+  step: WorkflowStep,
+  retryJobToken: string,
+  attemptToken: string,
+): Promise<boolean> {
+  const [renewed] = await db
+    .update(readingWorkTable)
+    .set({
+      originMeta: sql`jsonb_set(${readingWorkTable.originMeta}, '{workflowClaimLeaseExpiresAt}', to_jsonb(${workflowLeaseExpiresAt()}::text), true)`,
+    })
+    .where(workflowClaimWhere(workId, step, retryJobToken, attemptToken))
+    .returning({ id: readingWorkTable.id });
+  return Boolean(renewed);
 }
 
 /** Record a step failure: status → failed + failedStep/lastError/failedAt. */
@@ -211,6 +226,7 @@ export async function rotateWorkflowJobToken(
   currentToken: string,
   currentAttemptToken: string,
   nextToken: string,
+  nextAttemptToken: string,
   nextStatus: WorkStatus,
 ): Promise<boolean> {
   const [rotated] = await db
@@ -221,7 +237,7 @@ export async function rotateWorkflowJobToken(
         {
           retryJobToken: nextToken,
           workflowEnqueueStep: claimStep,
-          workflowEnqueueAttempt: currentAttemptToken,
+          workflowEnqueueAttempt: nextAttemptToken,
           workflowEnqueueLeaseExpiresAt: workflowLeaseExpiresAt(),
         },
       )}::jsonb`,

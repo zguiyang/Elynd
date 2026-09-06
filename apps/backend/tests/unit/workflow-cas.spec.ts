@@ -13,7 +13,13 @@ vi.mock('@/db', () => ({
   },
 }));
 
-import { claimWorkflowStep, completeWorkflowStep, failWorkflowEnqueue, failWorkflowStep } from '@/lib/workflow';
+import {
+  claimWorkflowStep,
+  completeWorkflowStep,
+  failWorkflowEnqueue,
+  failWorkflowStep,
+  renewWorkflowClaim,
+} from '@/lib/workflow';
 
 describe('workflow CAS helpers', () => {
   beforeEach(() => {
@@ -43,6 +49,14 @@ describe('workflow CAS helpers', () => {
   it('rejects a job without an execution identity before touching the database', async () => {
     await expect(claimWorkflowStep('work-1', 'metadata', '', 'attempt-a')).resolves.toBe(false);
     expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it('renews only the currently fenced attempt', async () => {
+    mocks.returning.mockResolvedValueOnce([{ id: 'work-1' }]).mockResolvedValueOnce([]);
+
+    await expect(renewWorkflowClaim('work-1', 'parse', 'retry-a', 'attempt-a')).resolves.toBe(true);
+    await expect(renewWorkflowClaim('work-1', 'parse', 'retry-a', 'attempt-a')).resolves.toBe(false);
+    expect(mocks.returning).toHaveBeenCalledTimes(2);
   });
 
   it('rejects stale completion and failure updates when no row is affected', async () => {

@@ -24,6 +24,7 @@ export async function processContentParse(
   // parse success immediately queues metadata-fill without an admin click.
   if (WORKFLOW_AUTO_CHAIN) {
     const retryJobToken = randomUUID();
+    const metadataEnqueueAttemptToken = randomUUID();
     if (
       !(await rotateWorkflowJobToken(
         data.workId,
@@ -32,6 +33,7 @@ export async function processContentParse(
         data.retryJobToken,
         attemptToken,
         retryJobToken,
+        metadataEnqueueAttemptToken,
         'metadata',
       ))
     ) {
@@ -44,7 +46,7 @@ export async function processContentParse(
         { attempts: 2, jobId: `${JOB_METADATA_FILL}:${data.workId}:${retryJobToken}` },
       );
     } catch (error) {
-      await failWorkflowEnqueue(data.workId, 'metadata', retryJobToken, 'metadata', attemptToken, error);
+      await failWorkflowEnqueue(data.workId, 'metadata', retryJobToken, 'metadata', metadataEnqueueAttemptToken, error);
       throw error;
     }
   }

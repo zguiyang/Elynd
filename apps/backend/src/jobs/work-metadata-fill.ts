@@ -57,6 +57,7 @@ export async function processWorkMetadataFill(
       retryJobToken,
       enrichEnqueueAttemptToken,
       'metadata',
+      'metadata',
     ))
   ) {
     return { ok: true, workId: data.workId };

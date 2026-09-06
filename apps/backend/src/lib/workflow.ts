@@ -227,6 +227,7 @@ export async function rotateWorkflowJobToken(
   currentAttemptToken: string,
   nextToken: string,
   nextAttemptToken: string,
+  nextEnqueueStep: WorkflowStep,
   nextStatus: WorkStatus,
 ): Promise<boolean> {
   const [rotated] = await db
@@ -236,7 +237,7 @@ export async function rotateWorkflowJobToken(
       originMeta: sql`(${readingWorkTable.originMeta} - 'workflowClaimAttempt' - 'workflowClaimStep' - 'workflowClaimLeaseExpiresAt' - 'workflowEnqueueAttempt' - 'workflowEnqueueLeaseExpiresAt') || ${JSON.stringify(
         {
           retryJobToken: nextToken,
-          workflowEnqueueStep: claimStep,
+          workflowEnqueueStep: nextEnqueueStep,
           workflowEnqueueAttempt: nextAttemptToken,
           workflowEnqueueLeaseExpiresAt: workflowLeaseExpiresAt(),
         },

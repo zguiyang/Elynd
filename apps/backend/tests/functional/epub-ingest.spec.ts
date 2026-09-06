@@ -12,7 +12,7 @@ import { AUTH_ADMIN_ROLE } from '@gloaming/shared';
 
 import app from '@/app';
 import { db } from '@/db';
-import { failWorkflowEnqueue } from '@/lib/workflow';
+import { failWorkflowEnqueue, rotateWorkflowJobToken } from '@/lib/workflow';
 import { processContentWork } from '@/modules/content-parser';
 import { registerParser } from '@/modules/content-parser/registry';
 import type { ParsedContent } from '@/modules/content-parser/types';
@@ -401,17 +401,31 @@ describe('POST /api/admin/works/:id/workflow/retry', () => {
     expect(response.status).toBe(201);
     const created = (await response.json()) as { id: string };
     createdWorkIds.push(created.id);
+    const parseAttempt = 'parse-attempt';
     const enqueueAttempt = 'metadata-enqueue-attempt';
     const originMeta = {
-      retryJobToken: 'metadata-retry-token',
-      workflowEnqueueStep: 'metadata',
-      workflowEnqueueAttempt: enqueueAttempt,
-      workflowEnqueueLeaseExpiresAt: new Date(Date.now() + 60_000).toISOString(),
+      retryJobToken: 'parse-retry-token',
+      workflowClaimStep: 'parse',
+      workflowClaimAttempt: parseAttempt,
+      workflowClaimLeaseExpiresAt: new Date(Date.now() + 60_000).toISOString(),
     };
     await db
       .update(readingWorkTable)
-      .set({ status: 'metadata', originMeta })
+      .set({ status: 'processing', originMeta })
       .where(eq(readingWorkTable.id, created.id));
+    await expect(
+      rotateWorkflowJobToken(
+        created.id,
+        'parse',
+        'processing',
+        'parse-retry-token',
+        parseAttempt,
+        'metadata-retry-token',
+        enqueueAttempt,
+        'metadata',
+        'metadata',
+      ),
+    ).resolves.toBe(true);
 
     await expect(
       failWorkflowEnqueue(

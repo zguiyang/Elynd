@@ -24,9 +24,13 @@ type ParseClaim = {
   retryJobToken: string;
   attemptToken: string;
 };
+type DerivedAssetsForCleanup = {
+  storageKeys: string[];
+  audio: (typeof contentAssetTable.$inferSelect)[];
+};
 
-/** Delete derived image/cover assets (objects + rows) — re-parse / workflow reset. */
-async function clearDerivedAssets(client: DbClient, workId: string): Promise<void> {
+/** Remove derived asset rows and return their objects for post-commit cleanup. */
+async function removeDerivedAssetRows(client: DbClient, workId: string): Promise<DerivedAssetsForCleanup> {
   const rows = await client
     .select({ id: contentAssetTable.id, storageKey: contentAssetTable.storageKey, kind: contentAssetTable.kind })
     .from(contentAssetTable)
@@ -36,14 +40,6 @@ async function clearDerivedAssets(client: DbClient, workId: string): Promise<voi
     .from(contentAssetTable)
     .where(and(eq(contentAssetTable.workId, workId), eq(contentAssetTable.kind, 'cover')))
     .limit(1);
-
-  for (const row of [...rows, ...cover]) {
-    try {
-      await deleteObject(row.storageKey);
-    } catch (error) {
-      ingestLogger.warn({ err: error, workId, storageKey: row.storageKey }, 'Failed to delete derived asset object');
-    }
-  }
 
   if (rows.length > 0) {
     await client
@@ -65,9 +61,6 @@ async function clearDerivedAssets(client: DbClient, workId: string): Promise<voi
         or(eq(contentAssetTable.kind, 'audio_us'), eq(contentAssetTable.kind, 'audio_uk')),
       ),
     );
-  for (const row of audio) {
-    await deleteAudioAssetObjects(row);
-  }
   if (audio.length > 0) {
     await client.delete(contentAssetTable).where(
       inArray(
@@ -75,6 +68,33 @@ async function clearDerivedAssets(client: DbClient, workId: string): Promise<voi
         audio.map((row) => row.id),
       ),
     );
+  }
+
+  return { storageKeys: [...rows, ...cover].map((row) => row.storageKey), audio };
+}
+
+/** Object deletion happens only after the asset-row transaction has committed. */
+async function clearDerivedAssetObjects(workId: string, cleanup: DerivedAssetsForCleanup): Promise<void> {
+  for (const storageKey of cleanup.storageKeys) {
+    try {
+      const [stillReferenced] = await db
+        .select({ id: contentAssetTable.id })
+        .from(contentAssetTable)
+        .where(eq(contentAssetTable.storageKey, storageKey))
+        .limit(1);
+      if (!stillReferenced) {
+        await deleteObject(storageKey);
+      }
+    } catch (error) {
+      ingestLogger.warn({ err: error, workId, storageKey }, 'Failed to delete derived asset object');
+    }
+  }
+  for (const asset of cleanup.audio) {
+    try {
+      await deleteAudioAssetObjects(asset);
+    } catch (error) {
+      ingestLogger.warn({ err: error, workId, assetId: asset.id }, 'Failed to delete derived audio objects');
+    }
   }
 }
 
@@ -96,8 +116,8 @@ export async function resetMetadataAiOutputs(work: WorkRow, client: DbClient = d
 
 /** Re-parse reset: parts, derived assets, AI outputs, extracted junctions, and filled metadata fields. */
 export async function resetParseStepOutputs(work: WorkRow, claim?: ParseClaim): Promise<void> {
-  const reset = async (client: DbClient): Promise<void> => {
-    await clearDerivedAssets(client, work.id);
+  const reset = async (client: DbClient): Promise<DerivedAssetsForCleanup> => {
+    const cleanup = await removeDerivedAssetRows(client, work.id);
     await client.delete(readingPartTable).where(eq(readingPartTable.workId, work.id));
     await resetMetadataAiOutputs(work, client);
     await client
@@ -116,14 +136,16 @@ export async function resetParseStepOutputs(work: WorkRow, claim?: ParseClaim): 
         descriptionProvenance: null,
       })
       .where(eq(readingWorkTable.id, work.id));
+    return cleanup;
   };
 
   if (!claim) {
-    await reset(db);
+    const cleanup = await db.transaction(reset);
+    await clearDerivedAssetObjects(work.id, cleanup);
     return;
   }
 
-  await db.transaction(async (tx) => {
+  const cleanup = await db.transaction(async (tx) => {
     const [owned] = await tx
       .select({ id: readingWorkTable.id })
       .from(readingWorkTable)
@@ -132,6 +154,7 @@ export async function resetParseStepOutputs(work: WorkRow, claim?: ParseClaim): 
     if (!owned) {
       throw new Error('Parse workflow lease lost before reset');
     }
-    await reset(tx);
+    return reset(tx);
   });
+  await clearDerivedAssetObjects(work.id, cleanup);
 }

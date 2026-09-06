@@ -35,6 +35,7 @@ export async function processContentParse(
         retryJobToken,
         metadataEnqueueAttemptToken,
         'metadata',
+        'metadata',
       ))
     ) {
       return { ok: true, workId: data.workId };

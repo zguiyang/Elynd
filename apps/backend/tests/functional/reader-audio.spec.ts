@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -229,20 +229,26 @@ describe('learner part audio', () => {
 
     expect(await partAudioAvail()).toEqual({ us: false, uk: false });
 
-    expect(
-      (
-        await app.request(`/api/admin/parts/${partId}/audio/generate`, {
-          method: 'POST',
-          headers: { Cookie: admin.cookie, 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
-        })
-      ).status,
-    ).toBe(200);
+    const initialGeneration = await app.request(`/api/admin/parts/${partId}/audio/generate`, {
+      method: 'POST',
+      headers: { Cookie: admin.cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    expect(initialGeneration.status).toBe(200);
+    expect(await initialGeneration.json()).toMatchObject({
+      enqueued: [
+        { partId, role: 'us' },
+        { partId, role: 'uk' },
+      ],
+      skipped: [],
+    });
 
     expect(await partAudioAvail()).toEqual({ us: true, uk: true });
     expect(ttsCallCount).toBe(2);
     expect(audioJobs).toHaveLength(2);
     expect(audioJobIds.every((jobId) => jobId.startsWith('part-audio-generate:'))).toBe(true);
+    expect(audioJobs.map(({ role }) => role)).toEqual(['us', 'uk']);
+    expect(audioJobs.every(({ generationKey, generationToken }) => generationKey && generationToken)).toBe(true);
 
     expect(
       (
@@ -292,6 +298,7 @@ describe('learner part audio', () => {
       .update(contentAssetTable)
       .set({
         status: 'generating',
+        generationKey: usBeforeEnqueueFailure!.generationKey,
         generationToken: 'active-owner',
         generationLeaseExpiresAt: new Date(Date.now() + 60_000),
       })
@@ -302,6 +309,10 @@ describe('learner part audio', () => {
       body: JSON.stringify({ force: true, roles: ['us'] }),
     });
     expect(forceWhileActive.status).toBe(200);
+    expect(await forceWhileActive.json()).toMatchObject({
+      enqueued: [],
+      skipped: [{ partId, role: 'us', reason: 'fresh' }],
+    });
     expect(ttsCallCount).toBe(2);
 
     await db.update(readingPartTable).set({ body: 'Listen body changed.' }).where(eq(readingPartTable.id, partId));
@@ -317,6 +328,16 @@ describe('learner part audio', () => {
       enqueued: [],
       skipped: [{ partId, role: 'us', reason: 'fresh' }],
     });
+    const [activeUsAfterForces] = await db
+      .select()
+      .from(contentAssetTable)
+      .where(and(eq(contentAssetTable.partId, partId), eq(contentAssetTable.kind, usKind)))
+      .limit(1);
+    expect(activeUsAfterForces).toMatchObject({
+      status: 'generating',
+      generationKey: usBeforeEnqueueFailure!.generationKey,
+      generationToken: 'active-owner',
+    });
     await db.update(readingPartTable).set({ body: 'Listen body here.' }).where(eq(readingPartTable.id, partId));
 
     await db
@@ -325,18 +346,43 @@ describe('learner part audio', () => {
       .where(and(eq(contentAssetTable.partId, partId), eq(contentAssetTable.kind, usKind)));
 
     const staleJob = audioJobs[0]!;
-    expect(
-      (
-        await app.request(`/api/admin/parts/${partId}/audio/generate`, {
-          method: 'POST',
-          headers: { Cookie: admin.cookie, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ force: true }),
-        })
-      ).status,
-    ).toBe(200);
+    const forcedRegeneration = await app.request(`/api/admin/parts/${partId}/audio/generate`, {
+      method: 'POST',
+      headers: { Cookie: admin.cookie, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ force: true }),
+    });
+    expect(forcedRegeneration.status).toBe(200);
+    expect(await forcedRegeneration.json()).toMatchObject({
+      enqueued: [
+        { partId, role: 'us' },
+        { partId, role: 'uk' },
+      ],
+      skipped: [],
+    });
     expect(ttsCallCount).toBe(4);
     expect(audioJobs).toHaveLength(4);
     expect(audioJobIds[0]).not.toBe(audioJobIds[2]);
+    expect(audioJobs.slice(2).map(({ role }) => role)).toEqual(['us', 'uk']);
+    expect(audioJobs.slice(2).every(({ generationKey, generationToken }) => generationKey && generationToken)).toBe(
+      true,
+    );
+
+    const regeneratedAssets = await db
+      .select({
+        role: contentAssetTable.kind,
+        status: contentAssetTable.status,
+        generationToken: contentAssetTable.generationToken,
+      })
+      .from(contentAssetTable)
+      .where(
+        and(eq(contentAssetTable.partId, partId), inArray(contentAssetTable.kind, [usKind, audioKindForRole('uk')])),
+      );
+    expect(regeneratedAssets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ role: usKind, status: 'ready', generationToken: null }),
+        expect.objectContaining({ role: audioKindForRole('uk'), status: 'ready', generationToken: null }),
+      ]),
+    );
 
     await processPartAudioGenerate(staleJob);
     expect(ttsCallCount).toBe(4);

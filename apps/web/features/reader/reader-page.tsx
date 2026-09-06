@@ -48,6 +48,7 @@ import { ReaderTts } from '@/features/reader/reader-tts';
 import { ReaderUnavailable } from '@/features/reader/reader-unavailable';
 import { useReaderAssist } from '@/features/reader/use-reader-assist';
 import { useReaderTranslate } from '@/features/reader/use-reader-translate';
+import { isReadingStateRevisionConflict } from '@/features/reading-state-command';
 import { authClient } from '@/lib/auth';
 
 type ReaderPageProps = {
@@ -66,6 +67,7 @@ export function ReaderPage({ workId }: ReaderPageProps) {
 
   const partsQuery = useReaderPartsQuery(workId);
   const stateQuery = useReadingStateQuery(workId);
+  const { refetch: refetchState } = stateQuery;
   const stateMutation = useReaderStateMutation(workId);
 
   const [activePartId, setActivePartId] = useState<string | null>(null);
@@ -163,11 +165,18 @@ export function ReaderPage({ workId }: ReaderPageProps) {
         setLocalProgressRatio(opened.progressRatio);
         setActivePartId(opened.currentPartId ?? partId);
       } catch (error) {
+        if (isReadingStateRevisionConflict(error)) {
+          const refreshed = await refetchState();
+          const recovered = refreshed.data;
+          setLocalProgressRatio(recovered?.progressRatio ?? null);
+          setActivePartId(recovered?.currentPartId ?? partId);
+          return;
+        }
         toast.error(formatReaderApiError(error));
         setActivePartId(partId);
       }
     })();
-  }, [partsData, stateData, stateQuery.isPending, isAuthenticated, preferredPartId, stateMutation]);
+  }, [partsData, stateData, stateQuery.isPending, isAuthenticated, preferredPartId, refetchState, stateMutation]);
 
   useEffect(() => {
     if (!partsData || !activePartId) return;
@@ -213,10 +222,23 @@ export function ReaderPage({ workId }: ReaderPageProps) {
           scroll: false,
         });
       } catch (error) {
+        if (isReadingStateRevisionConflict(error)) {
+          const refreshed = await refetchState();
+          const recovered = refreshed.data;
+          if (recovered) {
+            setLocalProgressRatio(recovered.progressRatio);
+            resetAudioPlayback();
+            const recoveredPartId = recovered.currentPartId ?? partId;
+            setActivePartId(recoveredPartId);
+            router.replace(`/read/${workId}?part=${encodeURIComponent(recoveredPartId)}`, { scroll: false });
+          }
+          toast.info('阅读状态已刷新，请继续阅读');
+          return;
+        }
         toast.error(formatReaderApiError(error));
       }
     },
-    [isAuthenticated, openLogin, router, stateMutation, workId, resetAudioPlayback],
+    [isAuthenticated, openLogin, refetchState, resetAudioPlayback, router, stateMutation, workId],
   );
 
   function clearSelectionUi() {
@@ -319,6 +341,22 @@ export function ReaderPage({ workId }: ReaderPageProps) {
       setLocalProgressRatio(updated.progressRatio);
       router.push('/my-shelf');
     } catch (error) {
+      if (isReadingStateRevisionConflict(error)) {
+        const refreshed = await refetchState();
+        const recovered = refreshed.data;
+        if (recovered?.status === 'completed') {
+          router.push('/my-shelf');
+        } else if (recovered) {
+          setLocalProgressRatio(recovered.progressRatio);
+          const recoveredPartId = recovered.currentPartId ?? activePartId;
+          if (recoveredPartId) {
+            setActivePartId(recoveredPartId);
+            router.replace(`/read/${workId}?part=${encodeURIComponent(recoveredPartId)}`, { scroll: false });
+            toast.info('阅读状态已刷新，请继续阅读');
+          }
+        }
+        return;
+      }
       toast.error(formatReaderApiError(error));
     }
   }

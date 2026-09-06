@@ -1,7 +1,14 @@
+import { randomUUID } from 'node:crypto';
+
 import { eq, inArray } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { readingState as readingStateTable, readingWork as readingWorkTable, user as userTable } from '@gloaming/db';
+import {
+  readingPart as readingPartTable,
+  readingState as readingStateTable,
+  readingWork as readingWorkTable,
+  user as userTable,
+} from '@gloaming/db';
 import { type ReaderPartsData, type ReadingState } from '@gloaming/shared';
 import { AUTH_ADMIN_ROLE } from '@gloaming/shared';
 
@@ -95,6 +102,15 @@ describe('Reader HTTP', () => {
     const work = (await create.json()) as { id: string };
     createdWorkIds.push(work.id);
 
+    await db.insert(readingPartTable).values({
+      id: randomUUID(),
+      workId: work.id,
+      sortOrder: 1,
+      kind: 'chapter',
+      title: 'The Second Chapter',
+      body: 'The second chapter begins.',
+    });
+
     await app.request(`/api/admin/works/${work.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', cookie: admin.cookie },
@@ -110,9 +126,10 @@ describe('Reader HTTP', () => {
     const partsRes = await app.request(`/api/reader/works/${work.id}/parts`);
     expect(partsRes.status).toBe(200);
     const partsData = (await partsRes.json()) as ReaderPartsData;
-    expect(partsData.parts.length).toBeGreaterThan(0);
+    expect(partsData.parts).toHaveLength(2);
 
     const partId = partsData.parts[0]!.id;
+    const secondPartId = partsData.parts[1]!.id;
     const partRes = await app.request(`/api/reader/parts/${partId}`);
     expect(partRes.status).toBe(200);
 
@@ -142,6 +159,31 @@ describe('Reader HTTP', () => {
     expect(opened.status).toBe('in_progress');
     expect(opened.progressRatio).toBe(0);
 
+    const navigatedForward = await app.request(`/api/reader/works/${work.id}/state`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
+      body: JSON.stringify({ action: 'navigate', partId: secondPartId, expectedRevision: opened.revision }),
+    });
+    expect(navigatedForward.status).toBe(200);
+    const navigatedForwardState = (await navigatedForward.json()) as ReadingState;
+    expect(navigatedForwardState.currentPartId).toBe(secondPartId);
+    expect(navigatedForwardState.completedThroughSortOrder).toBe(-1);
+    expect(navigatedForwardState.progressRatio).toBe(0);
+
+    const reopenedAtFirstPart = await app.request(`/api/reader/works/${work.id}/state`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
+      body: JSON.stringify({
+        action: 'open',
+        partId,
+        expectedRevision: navigatedForwardState.revision,
+      }),
+    });
+    expect(reopenedAtFirstPart.status).toBe(200);
+    const reopenedState = (await reopenedAtFirstPart.json()) as ReadingState;
+    expect(reopenedState.currentPartId).toBe(partId);
+    expect(reopenedState.progressRatio).toBe(0);
+
     const currentOpen = await app.request(`/api/reader/works/${work.id}/state`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
@@ -168,17 +210,27 @@ describe('Reader HTTP', () => {
     const navigateAfterFinish = await app.request(`/api/reader/works/${work.id}/state`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
-      body: JSON.stringify({ action: 'navigate', partId }),
+      body: JSON.stringify({ action: 'navigate', partId: secondPartId }),
     });
     expect(navigateAfterFinish.status).toBe(200);
     const navigated = (await navigateAfterFinish.json()) as ReadingState;
+    expect(navigated.currentPartId).toBe(secondPartId);
     expect(navigated.status).toBe('in_progress');
     expect(navigated.completedAt).toBeNull();
+
+    const finishAgain = await app.request(`/api/reader/works/${work.id}/state`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
+      body: JSON.stringify({ action: 'finish', expectedRevision: navigated.revision }),
+    });
+    expect(finishAgain.status).toBe(200);
+    const finishedAgain = (await finishAgain.json()) as ReadingState;
+    expect(finishedAgain.currentPartId).toBe(secondPartId);
 
     const restart = await app.request(`/api/reader/works/${work.id}/state`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', cookie: learner.cookie },
-      body: JSON.stringify({ action: 'restart' }),
+      body: JSON.stringify({ action: 'restart', expectedRevision: finishedAgain.revision }),
     });
     expect(restart.status).toBe(200);
     const restarted = (await restart.json()) as ReadingState;

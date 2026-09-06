@@ -2,7 +2,21 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { type ReadingState, readingStateSchema, type UpdateReadingStateBody } from '@gloaming/shared';
 
-import { apiRequest } from '@/lib/api-request';
+import { apiRequest, ApiRequestError } from '@/lib/api-request';
+
+export function withExpectedReadingStateRevision(
+  body: UpdateReadingStateBody,
+  revision: number | undefined,
+): UpdateReadingStateBody {
+  if (body.expectedRevision != null || revision == null) {
+    return body;
+  }
+  return { ...body, expectedRevision: revision };
+}
+
+export function isReadingStateRevisionConflict(error: unknown): boolean {
+  return error instanceof ApiRequestError && error.status === 409;
+}
 
 export async function patchReadingState(
   workId: string,

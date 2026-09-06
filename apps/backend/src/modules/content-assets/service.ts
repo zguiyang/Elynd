@@ -103,6 +103,12 @@ async function deleteObjectKeys(keys: string[], context: Record<string, unknown>
   }
 }
 
+function audioObjectKeys(asset: { storageKey: string | null; meta: ContentAssetMeta }): string[] {
+  return [
+    ...new Set([...(asset.meta.objectKeys ?? []), asset.storageKey].filter((key): key is string => Boolean(key))),
+  ];
+}
+
 export async function deleteAudioAssetObjects(asset: {
   kind: string;
   storageKey: string;
@@ -112,11 +118,7 @@ export async function deleteAudioAssetObjects(asset: {
     await deleteObject(asset.storageKey);
     return;
   }
-  const keys = asset.meta.objectKeys;
-  if (!keys?.length) {
-    throw new AppError(HTTP_STATUS.INTERNAL_ERROR, `Audio asset missing objectKeys (${asset.kind})`);
-  }
-  await deleteObjectKeys(keys, { kind: asset.kind });
+  await deleteObjectKeys(audioObjectKeys(asset), { kind: asset.kind });
 }
 
 async function loadPart(partId: string): Promise<{
@@ -310,8 +312,8 @@ export async function getWorkAudio(workId: string, role: TtsVoiceRole): Promise<
 
 /** Admin/enqueue only (`needsRegen`) — not used on the learner read path. */
 async function objectsExistForAsset(asset: AssetRow): Promise<boolean> {
-  const keys = asset.meta.objectKeys;
-  if (!keys?.length) {
+  const keys = audioObjectKeys(asset);
+  if (keys.length === 0) {
     return false;
   }
   for (const key of keys) {
@@ -409,8 +411,7 @@ async function claimPartAudioGeneration(input: {
     return null;
   }
 
-  const previousKeys =
-    existing?.meta.objectKeys && existing.contentHash !== input.contentHash ? [...existing.meta.objectKeys] : [];
+  const previousKeys = existing.contentHash !== input.contentHash ? audioObjectKeys(existing) : [];
 
   const eligible = [
     sql`${contentAssetTable.generationKey} is distinct from ${generationKey}`,
@@ -467,6 +468,35 @@ async function claimPartAudioGeneration(input: {
   };
 }
 
+async function releasePartAudioGenerationClaim(claim: AudioGenerationClaim, error: unknown): Promise<void> {
+  const message = error instanceof Error ? error.message : String(error);
+  const [released] = await db
+    .update(contentAssetTable)
+    .set({
+      status: 'failed',
+      generationToken: null,
+      generationClaimedAt: null,
+      generationLeaseExpiresAt: null,
+      meta: {
+        lastError: `Audio job enqueue failed: ${message}`,
+        objectKeys: [],
+        timeline: [],
+      } satisfies ContentAssetMeta,
+    })
+    .where(
+      and(
+        eq(contentAssetTable.id, claim.assetId),
+        eq(contentAssetTable.generationKey, claim.generationKey),
+        eq(contentAssetTable.generationToken, claim.generationToken),
+        eq(contentAssetTable.status, 'generating'),
+      ),
+    )
+    .returning({ id: contentAssetTable.id });
+  if (released && claim.previousKeys.length > 0) {
+    await deleteObjectKeys(claim.previousKeys, { generationKey: claim.generationKey, enqueueCompensation: true });
+  }
+}
+
 export async function enqueuePartAudio(partId: string, body: GeneratePartAudioBody): Promise<EnqueueAudioResult> {
   const part = await loadPart(partId);
   const text = buildPartAudioText(htmlToPlainText(part.body));
@@ -497,22 +527,28 @@ export async function enqueuePartAudio(partId: string, body: GeneratePartAudioBo
       skipped.push({ partId, role, reason: 'fresh' });
       continue;
     }
-    const jobId = await enqueue(
-      PART_AUDIO_JOB,
-      {
-        workId: part.workId,
-        partId,
-        role,
-        force,
-        generationKey: claim.generationKey,
-        generationToken: claim.generationToken,
-      },
-      {
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 5000 },
-        jobId: `${PART_AUDIO_JOB}:${claim.generationKey}:${claim.generationToken}`,
-      },
-    );
+    let jobId: string;
+    try {
+      jobId = await enqueue(
+        PART_AUDIO_JOB,
+        {
+          workId: part.workId,
+          partId,
+          role,
+          force,
+          generationKey: claim.generationKey,
+          generationToken: claim.generationToken,
+        },
+        {
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 5000 },
+          jobId: `${PART_AUDIO_JOB}:${claim.generationKey}:${claim.generationToken}`,
+        },
+      );
+    } catch (error) {
+      await releasePartAudioGenerationClaim(claim, error);
+      throw error;
+    }
     enqueued.push({ partId, role, jobId });
   }
 
@@ -567,22 +603,28 @@ export async function enqueueWorkAudio(workId: string, body: GenerateWorkAudioBo
         skipped.push({ partId: part.id, role, reason: 'fresh' });
         continue;
       }
-      const jobId = await enqueue(
-        PART_AUDIO_JOB,
-        {
-          workId,
-          partId: part.id,
-          role,
-          force,
-          generationKey: claim.generationKey,
-          generationToken: claim.generationToken,
-        },
-        {
-          attempts: 3,
-          backoff: { type: 'exponential', delay: 5000 },
-          jobId: `${PART_AUDIO_JOB}:${claim.generationKey}:${claim.generationToken}`,
-        },
-      );
+      let jobId: string;
+      try {
+        jobId = await enqueue(
+          PART_AUDIO_JOB,
+          {
+            workId,
+            partId: part.id,
+            role,
+            force,
+            generationKey: claim.generationKey,
+            generationToken: claim.generationToken,
+          },
+          {
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 5000 },
+            jobId: `${PART_AUDIO_JOB}:${claim.generationKey}:${claim.generationToken}`,
+          },
+        );
+      } catch (error) {
+        await releasePartAudioGenerationClaim(claim, error);
+        throw error;
+      }
       enqueued.push({ partId: part.id, role, jobId });
     }
   }
@@ -621,6 +663,54 @@ async function assertGenerationOwnership(input: PartAudioGenerateInput, kind: st
   return asset;
 }
 
+async function renewGenerationLease(input: PartAudioGenerateInput, kind: string): Promise<boolean> {
+  const now = new Date();
+  const leaseExpiresAt = new Date(now.getTime() + AUDIO_GENERATION_LEASE_MS);
+  const [renewed] = await db
+    .update(contentAssetTable)
+    .set({ generationLeaseExpiresAt: leaseExpiresAt })
+    .where(
+      and(
+        eq(contentAssetTable.partId, input.partId),
+        eq(contentAssetTable.kind, kind),
+        eq(contentAssetTable.generationKey, input.generationKey),
+        eq(contentAssetTable.generationToken, input.generationToken),
+        eq(contentAssetTable.status, 'generating'),
+        gt(contentAssetTable.generationLeaseExpiresAt, now),
+      ),
+    )
+    .returning({ id: contentAssetTable.id });
+  return Boolean(renewed);
+}
+
+async function assertAndRenewGenerationLease(input: PartAudioGenerateInput, kind: string): Promise<void> {
+  if (!(await renewGenerationLease(input, kind))) {
+    throw new GenerationOwnershipLostError();
+  }
+}
+
+async function cleanupOrphanObjectsAfterOwnershipLoss(
+  input: PartAudioGenerateInput,
+  kind: string,
+  contentHash: string,
+  objectKeys: string[],
+): Promise<void> {
+  if (objectKeys.length === 0) {
+    return;
+  }
+  const [current] = await db
+    .select({ contentHash: contentAssetTable.contentHash, generationToken: contentAssetTable.generationToken })
+    .from(contentAssetTable)
+    .where(and(eq(contentAssetTable.partId, input.partId), eq(contentAssetTable.kind, kind)))
+    .limit(1);
+  // Generation keys are deterministic by content. Never remove objects that a
+  // newer owner may already have written for the same content hash.
+  if (current?.generationToken !== input.generationToken && current?.contentHash === contentHash) {
+    return;
+  }
+  await deleteObjectKeys(objectKeys, { partId: input.partId, role: input.role, orphan: true });
+}
+
 /** Worker entry — synthesize segments, concat chapter, upsert asset. */
 export async function runPartAudioGenerate(input: PartAudioGenerateInput): Promise<void> {
   const part = await loadPart(input.partId);
@@ -654,8 +744,7 @@ export async function runPartAudioGenerate(input: PartAudioGenerateInput): Promi
     throw error;
   }
 
-  const previousKeys =
-    existing?.meta.objectKeys && existing.contentHash !== contentHash ? [...existing.meta.objectKeys] : [];
+  const previousKeys = existing.contentHash !== contentHash ? audioObjectKeys(existing) : [];
 
   const started = Date.now();
   const objectKeys: string[] = [];
@@ -668,7 +757,7 @@ export async function runPartAudioGenerate(input: PartAudioGenerateInput): Promi
   try {
     for (let i = 0; i < segments.length; i += 1) {
       const segText = segments[i]!;
-      await assertGenerationOwnership(input, kind);
+      await assertAndRenewGenerationLease(input, kind);
       const result = await synthesizeTts({
         text: segText,
         role: input.role,
@@ -677,7 +766,7 @@ export async function runPartAudioGenerate(input: PartAudioGenerateInput): Promi
       });
       voice = result.voice;
       const segKey = partAudioSegmentKey(input.partId, kind, contentHash, i);
-      await assertGenerationOwnership(input, kind);
+      await assertAndRenewGenerationLease(input, kind);
       await putObject({ key: segKey, body: result.audio, contentType: result.mimeType });
       objectKeys.push(segKey);
       segBuffers.push(result.audio);
@@ -705,9 +794,10 @@ export async function runPartAudioGenerate(input: PartAudioGenerateInput): Promi
       textCursor += segText.length + (i < segments.length - 1 ? 1 : 0);
     }
 
+    await assertAndRenewGenerationLease(input, kind);
     const chapterBuffer = await concatMp3Buffers(segBuffers);
     const chapterKey = partAudioChapterKey(input.partId, kind, contentHash);
-    await assertGenerationOwnership(input, kind);
+    await assertAndRenewGenerationLease(input, kind);
     await putObject({ key: chapterKey, body: chapterBuffer, contentType: AUDIO_MIME });
     objectKeys.push(chapterKey);
 
@@ -781,6 +871,7 @@ export async function runPartAudioGenerate(input: PartAudioGenerateInput): Promi
         await assertGenerationOwnership(input, kind);
       } catch (ownershipError) {
         if (ownershipError instanceof GenerationOwnershipLostError) {
+          await cleanupOrphanObjectsAfterOwnershipLoss(input, kind, contentHash, objectKeys);
           return;
         }
         throw ownershipError;

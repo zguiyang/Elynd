@@ -47,7 +47,7 @@ import { AppError, NotFoundError, ValidationFailedError } from '@/lib/errors';
 import { rootLogger } from '@/lib/logger';
 import { enqueue } from '@/lib/queue';
 import { normalizeTag } from '@/lib/text';
-import { completeWorkflowStep, stepRunningStatus } from '@/lib/workflow';
+import { completeWorkflowStep, failWorkflowEnqueue, stepRunningStatus } from '@/lib/workflow';
 import { getWorksDerivedFreshness } from '@/modules/derived-freshness';
 import { deleteObject } from '@/modules/oss';
 import { computePartReadingStats, computeWorkReadingStats } from '@/modules/reading-stats/service';
@@ -997,7 +997,12 @@ export async function retryWorkflow(id: string, input: RetryWorkflowBody = {}): 
       throw new AppError(HTTP_STATUS.CONFLICT, '作品状态已变化，请刷新后再试');
     }
     const { enqueueWorkAudio } = await import('@/modules/content-assets/service');
-    await enqueueWorkAudio(id, { force: false, roles: ['us', 'uk'] });
+    try {
+      await enqueueWorkAudio(id, { force: false, roles: ['us', 'uk'] });
+    } catch (error) {
+      await failWorkflowEnqueue(id, 'tts', retryJobToken, 'tts', error);
+      throw error;
+    }
     return getAdminWork(id);
   }
 
@@ -1024,11 +1029,16 @@ export async function retryWorkflow(id: string, input: RetryWorkflowBody = {}): 
     throw new AppError(HTTP_STATUS.CONFLICT, '作品状态已变化，请刷新后再试');
   }
 
-  await enqueue(
-    STEP_JOB[step],
-    { workId: id, retryJobToken },
-    { attempts: 2, jobId: `${STEP_JOB[step]}:${id}:${retryJobToken}` },
-  );
+  try {
+    await enqueue(
+      STEP_JOB[step],
+      { workId: id, retryJobToken },
+      { attempts: 2, jobId: `${STEP_JOB[step]}:${id}:${retryJobToken}` },
+    );
+  } catch (error) {
+    await failWorkflowEnqueue(id, step, retryJobToken, stepRunningStatus(step), error);
+    throw error;
+  }
   return getAdminWork(id);
 }
 

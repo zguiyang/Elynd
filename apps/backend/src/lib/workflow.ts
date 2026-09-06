@@ -100,6 +100,33 @@ export async function failWorkflowStep(
   return Boolean(failed);
 }
 
+/** Convert a post-claim enqueue failure into a retryable workflow failure. */
+export async function failWorkflowEnqueue(
+  workId: string,
+  step: WorkflowStep,
+  retryJobToken: string,
+  currentStatus: WorkStatus,
+  error: unknown,
+): Promise<boolean> {
+  const message = error instanceof Error ? error.message : String(error);
+  const failedAt = new Date().toISOString();
+  const [failed] = await db
+    .update(readingWorkTable)
+    .set({
+      status: 'failed',
+      originMeta: sql`(${readingWorkTable.originMeta} - 'metadataAt' - 'metadataEnrichGaps' - 'metadataEnrichError' - 'retryJobToken' - 'workflowClaimToken' - 'workflowClaimStep') || ${JSON.stringify({ failedStep: step, lastError: message, failedAt })}::jsonb`,
+    })
+    .where(
+      and(
+        eq(readingWorkTable.id, workId),
+        eq(readingWorkTable.status, currentStatus),
+        workflowTokenMatch(retryJobToken),
+      ),
+    )
+    .returning({ id: readingWorkTable.id });
+  return Boolean(failed);
+}
+
 /** Complete the step: move to the next status and clear failure residue. */
 export async function completeWorkflowStep(
   workId: string,

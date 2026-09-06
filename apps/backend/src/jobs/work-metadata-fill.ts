@@ -8,7 +8,7 @@ import { db } from '@/db';
 import { JOB_METADATA_ENRICH } from '@/jobs/metadata-enrich';
 import { rootLogger } from '@/lib/logger';
 import { enqueue } from '@/lib/queue';
-import { claimWorkflowStep, failWorkflowStep, rotateWorkflowJobToken } from '@/lib/workflow';
+import { claimWorkflowStep, failWorkflowEnqueue, failWorkflowStep, rotateWorkflowJobToken } from '@/lib/workflow';
 import { resetMetadataAiOutputs } from '@/modules/ingest-reset/service';
 import { fillWorkMetadata } from '@/modules/metadata-fill/service';
 
@@ -48,10 +48,15 @@ export async function processWorkMetadataFill(data: WorkMetadataFillJobData): Pr
   ) {
     return { ok: true, workId: data.workId };
   }
-  await enqueue(
-    JOB_METADATA_ENRICH,
-    { workId: data.workId, retryJobToken },
-    { attempts: 2, jobId: `${JOB_METADATA_ENRICH}:${data.workId}:${retryJobToken}` },
-  );
+  try {
+    await enqueue(
+      JOB_METADATA_ENRICH,
+      { workId: data.workId, retryJobToken },
+      { attempts: 2, jobId: `${JOB_METADATA_ENRICH}:${data.workId}:${retryJobToken}` },
+    );
+  } catch (error) {
+    await failWorkflowEnqueue(data.workId, 'metadata', retryJobToken, 'metadata', error);
+    throw error;
+  }
   return { ok: true, workId: data.workId };
 }

@@ -13,7 +13,7 @@ vi.mock('@/db', () => ({
   },
 }));
 
-import { claimWorkflowStep, completeWorkflowStep, failWorkflowStep } from '@/lib/workflow';
+import { claimWorkflowStep, completeWorkflowStep, failWorkflowEnqueue, failWorkflowStep } from '@/lib/workflow';
 
 describe('workflow CAS helpers', () => {
   beforeEach(() => {
@@ -52,5 +52,16 @@ describe('workflow CAS helpers', () => {
     await expect(failWorkflowStep('work-1', 'tts', 'retry-a', new Error('stale'))).resolves.toBe(false);
     expect(mocks.where).toHaveBeenCalledTimes(2);
     expect(mocks.returning).toHaveBeenCalledTimes(2);
+  });
+
+  it('marks a claimed step failed when enqueue compensation is needed', async () => {
+    mocks.returning.mockResolvedValueOnce([{ id: 'work-1' }]);
+
+    await expect(
+      failWorkflowEnqueue('work-1', 'metadata', 'retry-a', 'metadata', new Error('queue down')),
+    ).resolves.toBe(true);
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+    expect(mocks.where).toHaveBeenCalledTimes(1);
+    expect(mocks.returning).toHaveBeenCalledTimes(1);
   });
 });

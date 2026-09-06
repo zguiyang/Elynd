@@ -359,14 +359,6 @@ describe('learner part audio', () => {
       ],
       skipped: [],
     });
-    expect(ttsCallCount).toBe(4);
-    expect(audioJobs).toHaveLength(4);
-    expect(audioJobIds[0]).not.toBe(audioJobIds[2]);
-    expect(audioJobs.slice(2).map(({ role }) => role)).toEqual(['us', 'uk']);
-    expect(audioJobs.slice(2).every(({ generationKey, generationToken }) => generationKey && generationToken)).toBe(
-      true,
-    );
-
     const regeneratedAssets = await db
       .select({
         role: contentAssetTable.kind,
@@ -382,6 +374,13 @@ describe('learner part audio', () => {
         expect.objectContaining({ role: usKind, status: 'ready', generationToken: null }),
         expect.objectContaining({ role: audioKindForRole('uk'), status: 'ready', generationToken: null }),
       ]),
+    );
+    expect(ttsCallCount).toBe(4);
+    expect(audioJobs).toHaveLength(4);
+    expect(audioJobIds[0]).not.toBe(audioJobIds[2]);
+    expect(audioJobs.slice(2).map(({ role }) => role)).toEqual(['us', 'uk']);
+    expect(audioJobs.slice(2).every(({ generationKey, generationToken }) => generationKey && generationToken)).toBe(
+      true,
     );
 
     await processPartAudioGenerate(staleJob);

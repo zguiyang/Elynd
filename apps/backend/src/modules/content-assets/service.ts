@@ -784,6 +784,7 @@ export async function runPartAudioGenerate(input: PartAudioGenerateInput): Promi
         role: input.role,
         source: 'admin.part_audio',
         userId: input.userId,
+        bypassCache: input.force,
       });
       voice = result.voice;
       const segKey = partAudioSegmentKey(input.partId, kind, contentHash, i);

@@ -25,8 +25,8 @@ describe('WORKFLOW_AUTO_CHAIN gates', () => {
     expect(WORKFLOW_AUTO_CHAIN).toBe(false);
     expect(getWorkflowPolicyProjection()).toEqual({ autoChainEnabled: false, ttsStepEnabled: false });
     const { processContentParse } = await import('@/jobs/content-parse');
-    await processContentParse({ workId: 'work-1', retryJobToken: 'retry-a' });
-    expect(processContentWork).toHaveBeenCalledWith('work-1', 'retry-a');
+    await processContentParse({ workId: 'work-1', retryJobToken: 'retry-a' }, 'parse-attempt-a');
+    expect(processContentWork).toHaveBeenCalledWith('work-1', 'retry-a', 'parse-attempt-a');
     expect(enqueue).not.toHaveBeenCalled();
   });
 });

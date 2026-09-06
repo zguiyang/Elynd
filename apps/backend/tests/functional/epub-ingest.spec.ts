@@ -520,7 +520,7 @@ describe('POST /api/admin/works/:id/workflow/retry', () => {
     await fillWorkMetadata(workId);
 
     const afterAssets = await db.select().from(contentAssetTable).where(eq(contentAssetTable.workId, workId));
-    expect(afterAssets.filter((asset) => asset.kind === 'image')).toHaveLength(1);
+    expect(afterAssets.filter((asset) => asset.kind === 'image')).toHaveLength(0);
     expect(afterAssets.filter((asset) => asset.kind === 'cover')).toHaveLength(1);
     expect(afterAssets.filter((asset) => asset.kind.startsWith('audio_'))).toHaveLength(0);
     expect(memory.store.has(staleImageKey)).toBe(false);

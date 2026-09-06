@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { getReaderBootstrapCommand } from '@/features/reader/reader-api';
 import { isReadingStateRevisionConflict, withExpectedReadingStateRevision } from '@/features/reading-state-command';
 import { ApiRequestError } from '@/lib/api-request';
 
@@ -22,5 +23,22 @@ describe('reading state command revision handling', () => {
     expect(isReadingStateRevisionConflict(new ApiRequestError({ message: 'conflict', status: 409 }))).toBe(true);
     expect(isReadingStateRevisionConflict(new ApiRequestError({ message: 'bad request', status: 400 }))).toBe(false);
     expect(isReadingStateRevisionConflict(new Error('conflict'))).toBe(false);
+  });
+
+  it('opens completed state at the resolved part without restarting it', () => {
+    expect(
+      getReaderBootstrapCommand({
+        stateStatus: 'completed',
+        resolvedPartId: 'p2',
+        preferredPartId: null,
+      }),
+    ).toEqual({ action: 'open', partId: 'p2' });
+    expect(
+      getReaderBootstrapCommand({
+        stateStatus: 'completed',
+        resolvedPartId: 'p1',
+        preferredPartId: 'p1',
+      }),
+    ).toEqual({ action: 'open', partId: 'p1' });
   });
 });

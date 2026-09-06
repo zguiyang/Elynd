@@ -12,6 +12,7 @@ import { ReaderAiInline } from '@/features/reader/reader-ai-inline';
 import {
   formatReaderApiError,
   getReaderAudioTrack,
+  getReaderBootstrapCommand,
   resolvePartId,
   toReaderViewModel,
   useReaderPartQuery,
@@ -152,16 +153,13 @@ export function ReaderPage({ workId }: ReaderPageProps) {
         return;
       }
       try {
-        if (stateData?.status === 'completed') {
-          const restarted = await stateMutation.mutateAsync({ action: 'restart' });
-          setLocalProgressRatio(restarted.progressRatio);
-          setActivePartId(restarted.currentPartId ?? partId);
-          return;
-        }
-        const opened = await stateMutation.mutateAsync({
-          action: 'open',
-          partId: preferredPartId ?? undefined,
-        });
+        const opened = await stateMutation.mutateAsync(
+          getReaderBootstrapCommand({
+            stateStatus: stateData?.status ?? null,
+            resolvedPartId: partId,
+            preferredPartId,
+          }),
+        );
         setLocalProgressRatio(opened.progressRatio);
         setActivePartId(opened.currentPartId ?? partId);
       } catch (error) {

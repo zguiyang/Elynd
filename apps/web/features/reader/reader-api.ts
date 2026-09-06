@@ -9,6 +9,7 @@ import {
   type ReadingState,
   type ReadingStateAction,
   readingStateDataSchema,
+  type ReadingStateStatus,
   type UpdateReadingStateBody,
 } from '@gloaming/shared';
 
@@ -73,6 +74,17 @@ export function resolvePartId(
     return state.currentPartId;
   }
   return sorted[0]!.id;
+}
+
+export function getReaderBootstrapCommand(input: {
+  stateStatus: ReadingStateStatus | null;
+  resolvedPartId: string;
+  preferredPartId: string | null;
+}): UpdateReadingStateBody {
+  return {
+    action: 'open',
+    partId: input.stateStatus === 'completed' ? input.resolvedPartId : (input.preferredPartId ?? undefined),
+  };
 }
 
 export function toReaderViewModel(

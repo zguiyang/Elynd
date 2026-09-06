@@ -187,7 +187,7 @@ describe('EPUB ingest pipeline with real Gutenberg book (integration)', () => {
     await processContentWork(created.id);
 
     const [work] = await db.select().from(readingWorkTable).where(eq(readingWorkTable.id, created.id));
-    expect(work!.status).toBe('metadata');
+    expect(work!.status).toBe('parsed');
     const parsed = work!.originMeta.parsed as { chapterCount: number; navCount: number; imageCount: number };
     expect(parsed.navCount).toBeGreaterThan(0);
     expect(parsed.chapterCount).toBe(10);

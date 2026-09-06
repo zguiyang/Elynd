@@ -261,8 +261,7 @@ export async function updateReadingState(
       return updateState({
         currentPartId: next.id,
         completedThroughSortOrder: completedThrough,
-        status: 'in_progress',
-        completedAt: null,
+        ...(existing.status === 'completed' ? {} : { status: 'in_progress', completedAt: null }),
         lastReadAt: now,
       });
     }
@@ -271,8 +270,6 @@ export async function updateReadingState(
       const target = findPart(parts, input.partId!);
       return updateState({
         currentPartId: target.id,
-        status: 'in_progress',
-        completedAt: null,
         lastReadAt: now,
       });
     }

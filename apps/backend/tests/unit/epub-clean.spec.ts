@@ -45,6 +45,20 @@ describe('cleanXhtml', () => {
     expect(images).toEqual([{ href: 'images/fig1.png', mime: 'image/png' }]);
   });
 
+  it('keeps safe data images and removes non-image data URIs across image-only and nested content', () => {
+    const image = 'data:image/png;base64,AAAA';
+    const unsafeData = 'data:text/html;base64,PHNjcmlwdD4=';
+    const { html } = cleanXhtml(
+      `<img src="${image}"/><img src="${unsafeData}"/><div><figure><img src="${image}"/></figure></div><div><img src="${image}"/>Caption</div>`,
+      () => '',
+    );
+
+    expect(html.match(/data:image\/png;base64,AAAA/g)).toHaveLength(3);
+    expect(html).not.toContain(unsafeData);
+    expect(html).toContain('<figure');
+    expect(html).toContain('Caption');
+  });
+
   it('keeps structure tags like span (blacklist)', () => {
     const { html } = cleanXhtml(`<p>Before <span class="x">inner</span> after</p>`, () => '');
     expect(html).toContain('inner');

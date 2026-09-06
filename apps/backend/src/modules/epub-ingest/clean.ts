@@ -270,7 +270,7 @@ function removeNonDisplayableFigures($: cheerio.CheerioAPI): void {
 
 /** True when an element carries no readable text and no images. */
 function hasNoReadingContent($el: cheerio.Cheerio<never>): boolean {
-  if ($el.find('img').length > 0) return false;
+  if ($el.is('img') || $el.find('img').length > 0) return false;
   return !$el
     .text()
     .replace(/\u00a0/g, ' ')
@@ -366,6 +366,7 @@ function isEmptyPlaceholder($el: cheerio.Cheerio<never>): boolean {
   if (el.type !== 'tag') return true;
   const tag = (el.tagName ?? '').toLowerCase();
   if (tag === 'br' || tag === 'hr') return true;
+  if (tag === 'img') return false;
   if (!$el.text().trim() && !$el.find('img').length) return true;
   return false;
 }

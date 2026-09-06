@@ -55,7 +55,7 @@ Audit date: **2026-08-24** (domain docs aligned; **Phase 3A complete** — Readi
 | Discover API      | `GET /api/articles`                                                                                  | `GET /api/catalog/works`                  |
 | Reader API        | `/api/reader/articles/:articleId`                                                                    | `/api/reader/works/:workId`               |
 | Admin API         | `/api/admin/articles`                                                                                | `/api/admin/works`                        |
-| Shared types      | `@gloaming/shared/api/articles`                                                                      | `@gloaming/shared/api/works`              |
+| Shared types      | Legacy Article contracts retired behind the shared root facade                                       | `@gloaming/shared`                        |
 | Short-article era | [`docs/archive/feature-short-article-library-v1.md`](../archive/feature-short-article-library-v1.md) | **Archived** — not product                |
 
 ### 2.3 DELETE / REMOVED (do not reintroduce)
@@ -139,6 +139,19 @@ See [`engineering-vocabulary.md`](./engineering-vocabulary.md) for product ↔ e
 | `features/reader/**`, assist, translate, tts   | Admin EPUB upload pipeline   | practice, review |
 | Auth, admin LLM/TTS config                     | Origin ContentAsset for EPUB | Learn* modules   |
 | `conversation` (`subject_type = reading_work`) | —                            | Article as SSOT  |
+
+### 4.3 Shared facade and workflow policy
+
+`@gloaming/shared` is the only supported shared package entrypoint. It exposes
+cross-layer DTOs, Zod schemas, controlled values, types, and pure functions;
+application workflow flags and queue/retry/lease behavior do not belong there.
+
+The backend owns runtime workflow policy and keeps the current defaults as a
+manual pipeline with TTS disabled. Admin work and work-summary responses expose
+the backend policy as a read-only projection so the management UI displays the
+actual mode instead of inferring it from compile-time constants. This boundary
+does not change the ADR-001 `ReadingWork` / `ReadingPart` / `ReadingState` /
+`ContentAsset` model or the `admin_epub` / `admin_text` origin boundary.
 
 ---
 

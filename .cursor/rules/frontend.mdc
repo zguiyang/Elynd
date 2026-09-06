@@ -28,8 +28,8 @@ template. For a structural change or an overloaded component, load
   use the shadcn CLI for additions, and ask before editing their source.
 - TanStack Query owns server state. Zustand is UI-only and never an API or
   server source of truth.
-- Form validation uses Zod; password and username bounds come from
-  `@gloaming/shared/auth/policy`, not a web-local duplicate.
+- Form validation uses Zod; password and username bounds come from the
+  controlled `@gloaming/shared` root facade, not a web-local duplicate.
 
 ## Styling
 
@@ -59,7 +59,9 @@ Do not hand-roll a parallel control system. Do not ship “used shadcn but ugly/
 
 Soft UX only: cookie presence in `proxy.ts` (`better-auth.session_token` / `__Secure-…`), session + **401 → sign-in** in the client.
 **Real auth** is Better Auth on `apps/backend` (`auth.api.getSession` / `requireAuth`) — not the Next soft gate.
-`/admin/**` must check session `user.role` with `@gloaming/shared/auth/policy` before rendering admin content; hiding nav links is UX only, not authorization.
+`/admin/**` must check session `user.role` with the auth policy exported from
+`@gloaming/shared` before rendering admin content; hiding nav links is UX only,
+not authorization.
 Any backend-backed admin data must also be protected by Hono `requireAdmin`; never rely on `proxy.ts` or client checks as the security boundary.
 `DELETE /api/auth/logout` is a Next handler so HttpOnly BA session cookie(s) clear on this origin, then Hono `sign-out`.
 ## Prototype / stub UI

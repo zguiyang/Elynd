@@ -23,7 +23,6 @@ import {
 } from '@gloaming/shared';
 import { type ReaderAudioTrack } from '@gloaming/shared';
 import { type TtsVoiceRole } from '@gloaming/shared';
-import { TTS_STEP_ENABLED } from '@gloaming/shared';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';
@@ -34,6 +33,7 @@ import { splitForTts } from '@/lib/part-audio-split';
 import { htmlToPlainText } from '@/lib/part-text';
 import { enqueue } from '@/lib/queue';
 import { completeWorkflowStep } from '@/lib/workflow';
+import { TTS_STEP_ENABLED } from '@/lib/workflow-policy';
 import { deleteObject, objectExists, putObject } from '@/modules/oss';
 import { recordTtsInvocation } from '@/modules/tts/log';
 import { synthesizeTts } from '@/modules/tts/service';

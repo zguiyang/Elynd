@@ -10,7 +10,6 @@ import {
   type CreateEpubWorkResult,
   EPUB_UPLOAD_MAX_BYTES,
   getPublishWorkIssues,
-  WORKFLOW_AUTO_CHAIN,
   type WorkflowStep,
 } from '@gloaming/shared';
 
@@ -45,6 +44,16 @@ const WORKFLOW_STEPS = [
 type WorkflowStepId = (typeof WORKFLOW_STEPS)[number]['id'];
 
 type StepState = 'done' | 'active' | 'todo' | 'failed' | 'na';
+
+export function workflowModeLabels(policy: AdminWorkView['workflowPolicy']): {
+  chain: string;
+  audio: string;
+} {
+  return {
+    chain: policy.autoChainEnabled ? '自动串联' : '手动分步',
+    audio: policy.ttsStepEnabled ? '自动音频' : '手动音频',
+  };
+}
 
 const STATUS_LABEL: Record<AdminWorkView['status'], string> = {
   uploaded: '待解析',
@@ -243,9 +252,8 @@ function EpubDropzone({ onFile, disabled }: { onFile: (file: File) => void; disa
       </div>
       <p className="font-heading text-base font-medium">拖拽 EPUB 到此处，或点击选择</p>
       <p className="text-sm text-muted-foreground">
-        {WORKFLOW_AUTO_CHAIN
-          ? '上传后自动解析为章节。插图书请优先使用带图 EPUB（如 Gutenberg 的 *-images.epub）；无图占位会在解析时去掉，避免打断阅读。'
-          : '上传后需手动点击「开始解析」。插图书请优先使用带图 EPUB（如 Gutenberg 的 *-images.epub）；无图占位会在解析时去掉，避免打断阅读。'}
+        上传后进入内容解析流程，当前处理模式将在编辑页显示。插图书请优先使用带图 EPUB（如 Gutenberg 的
+        *-images.epub）；无图占位会在解析时去掉，避免打断阅读。
       </p>
     </div>
   );
@@ -414,6 +422,7 @@ function WorkEditMode({ workId, work }: WorkflowModeProps) {
   const isActing = actingStep !== null;
   const canRerun = isEpub && work.status !== 'published' && !isRunning && !isActing;
   const hasParts = work.parts.length > 0;
+  const workflowLabels = workflowModeLabels(work.workflowPolicy);
 
   return (
     <div>
@@ -426,6 +435,8 @@ function WorkEditMode({ workId, work }: WorkflowModeProps) {
             >
               {STATUS_LABEL[work.status]}
             </Badge>
+            <Badge variant="outline">{workflowLabels.chain}</Badge>
+            <Badge variant="outline">{workflowLabels.audio}</Badge>
             <span className="text-sm text-muted-foreground">{work.title}</span>
           </div>
         </div>
@@ -743,7 +754,7 @@ export function WorksEditPage({ workId }: WorksEditPageProps) {
         <>
           <StepIndicator states={stepStates(null)} />
           <p className="-mt-4 mb-6 text-sm text-muted-foreground">
-            上传 EPUB 后将自动解析为章节，可在编辑页审查内容并发布到发现。
+            上传 EPUB 后进入内容解析流程，可在编辑页查看当前处理模式、审查内容并发布到发现。
           </p>
           <div className="rounded-2xl border border-border bg-card px-6 py-8">
             <UploadMode onCreated={handleCreated} />

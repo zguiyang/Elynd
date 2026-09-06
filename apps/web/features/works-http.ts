@@ -28,6 +28,7 @@ export type WorkView = {
 };
 
 export type AdminWorkView = WorkView & {
+  workflowPolicy: AdminWork['workflowPolicy'];
   derivedFreshness: AdminWork['derivedFreshness'];
   originMeta: AdminWork['originMeta'];
   originAsset: AdminOriginAsset | null;
@@ -38,6 +39,7 @@ export type AdminWorkView = WorkView & {
 };
 
 export type AdminWorkSummaryView = WorkView & {
+  workflowPolicy: AdminWorkSummary['workflowPolicy'];
   derivedFreshness: AdminWorkSummary['derivedFreshness'];
   originMeta: AdminWorkSummary['originMeta'];
   originAsset: AdminOriginAsset | null;
@@ -117,6 +119,7 @@ export function normalizeWork(raw: Work): WorkView {
 export function normalizeAdminWork(raw: AdminWork): AdminWorkView {
   return {
     ...normalizeWork(raw),
+    workflowPolicy: raw.workflowPolicy,
     derivedFreshness: raw.derivedFreshness,
     originMeta: raw.originMeta,
     originAsset: raw.originAsset,
@@ -130,6 +133,7 @@ export function normalizeAdminWork(raw: AdminWork): AdminWorkView {
 export function normalizeAdminWorkSummary(raw: AdminWorkSummary): AdminWorkSummaryView {
   return {
     ...normalizeWork(raw),
+    workflowPolicy: raw.workflowPolicy,
     derivedFreshness: raw.derivedFreshness,
     originMeta: raw.originMeta,
     originAsset: raw.originAsset,

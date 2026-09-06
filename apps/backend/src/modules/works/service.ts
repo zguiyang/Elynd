@@ -31,10 +31,8 @@ import {
   getPublishWorkIssues,
   type Part,
   type RetryWorkflowBody,
-  TTS_STEP_ENABLED,
   type UpdateWorkBody,
   type Work,
-  WORKFLOW_AUTO_CHAIN,
   WORKFLOW_STEPS,
   type WorkflowStep,
 } from '@gloaming/shared';
@@ -54,6 +52,7 @@ import {
   stepRunningStatus,
   workflowLeaseExpiresAt,
 } from '@/lib/workflow';
+import { getWorkflowPolicyProjection, TTS_STEP_ENABLED, WORKFLOW_AUTO_CHAIN } from '@/lib/workflow-policy';
 import { getWorksDerivedFreshness } from '@/modules/derived-freshness';
 import { deleteObject } from '@/modules/oss';
 import { computePartReadingStats, computeWorkReadingStats } from '@/modules/reading-stats/service';
@@ -387,6 +386,7 @@ async function toAdminWork(row: WorkRow, parts?: PartRow[]): Promise<AdminWork> 
   ]);
   return {
     ...toWork(row, tags, sources),
+    workflowPolicy: getWorkflowPolicyProjection(),
     derivedFreshness: freshness ?? { audio: 'missing' },
     originMeta: row.originMeta,
     originAsset: await loadOriginFileAsset(row.id),
@@ -417,6 +417,7 @@ async function toAdminWorkSummary(row: WorkRow): Promise<AdminWorkSummary> {
   ]);
   return {
     ...toWork(row, tags, sources),
+    workflowPolicy: getWorkflowPolicyProjection(),
     derivedFreshness: freshness ?? { audio: 'missing' },
     originMeta: row.originMeta,
     originAsset: await loadOriginFileAsset(row.id),

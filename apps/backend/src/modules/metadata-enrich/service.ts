@@ -11,7 +11,6 @@ import {
   readingWorkTag as readingWorkTagTable,
   tag as tagTable,
 } from '@gloaming/db';
-import { TTS_STEP_ENABLED } from '@gloaming/shared';
 
 import { HTTP_STATUS } from '@/constants';
 import { db } from '@/db';
@@ -19,6 +18,7 @@ import { AppError } from '@/lib/errors';
 import { rootLogger } from '@/lib/logger';
 import { normalizeTag } from '@/lib/text';
 import { completeWorkflowStep, failWorkflowEnqueue, workflowLeaseExpiresAt } from '@/lib/workflow';
+import { TTS_STEP_ENABLED } from '@/lib/workflow-policy';
 import { type AiInvokeResult, invokeAi } from '@/modules/ai';
 import type { MetadataFieldId } from '@/modules/metadata-enrich/fields';
 import { buildEnrichMessages, EXCERPT_MAX_CHARS, TOC_TITLE_MAX } from '@/modules/metadata-enrich/prompt';

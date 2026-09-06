@@ -23,10 +23,6 @@ import { getWorkParts } from '@/features/works-http';
 import { apiRequest, formatApiError } from '@/lib/api-request';
 import { authClient } from '@/lib/auth';
 
-export { addWorkToShelf, patchReadingState } from '@/features/reading-state-command';
-export { isReadingStateRevisionConflict } from '@/features/reading-state-command';
-export { getWorkParts as getReaderParts } from '@/features/works-http';
-
 export const readerQueryKey = {
   all: ['reader'] as const,
   parts: (workId: string) => [...readerQueryKey.all, 'parts', workId] as const,
